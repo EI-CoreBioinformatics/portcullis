@@ -1,0 +1,14 @@
+/build-aux/
+/autom4te.cache/
+/Makefile
+/Makefile.in
+/config.h
+/config.h.in
+/config.h.in~
+/config.log
+/config.status
+/configure
+/libtool
+/portculis
+/stamp-h1
+*.m4

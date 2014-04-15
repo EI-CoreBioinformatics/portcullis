@@ -1,0 +1,9 @@
+/*.dirstamp
+/*.o
+/*~
+/Makefile
+/kat
+/*.am.autosave
+/.deps/
+/portculis
+*.in
