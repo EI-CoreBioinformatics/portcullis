@@ -117,7 +117,6 @@ AC_CHECK_HEADERS([vector])
 AC_CHECK_HEADERS([getopt.h])
 
 
-
 # Check pthreads and zlib exist and are available
 AC_CHECK_LIB(pthread, pthread_exit)
 AC_CHECK_LIB(z, gzread)
@@ -131,9 +130,10 @@ BOOST_FOREACH
 
 # Header + lib
 BOOST_FILESYSTEM
+BOOST_SYSTEM
 BOOST_THREADS
 BOOST_TEST
-BOOST_SYSTEM
+
 
 
 # Allow users to specify custom directories for seqan library and doxygen.  This might save some users from having to set the environment variables manually.
@@ -151,7 +151,7 @@ AC_ARG_WITH([doxygen],
 
 # Update vars for seqan if required
 if test ${SEQAN_PATH} != 0; then
-        AM_CPPFLAGS="-I${SEQAN_PATH}/include $AM_CPPFLAGS"
+        SEQAN_CPPFLAGS="-I${SEQAN_PATH}/include"
 fi
 
 # Update vars for doxygen if required
@@ -163,7 +163,7 @@ fi
 
 OLD_CPPFLAGS=${CPPFLAGS}
 OLD_LDFLAGS=${LDFLAGS}
-CPPFLAGS="${AM_CPPFLAGS} ${CPPFLAGS}"
+CPPFLAGS="${SEQAN_CPPFLAGS} ${AM_CPPFLAGS} ${CPPFLAGS}"
 LDFLAGS="${AM_LDFLAGS} ${LDFLAGS}"
 
 
@@ -184,15 +184,6 @@ CPPFLAGS=${OLD_CPPFLAGS}
 LDFLAGS=${OLD_LDFLAGS}
 
 
-
-#########
-
-echo "Transfering variables:"
-echo " BOOST_CPPFLAGS: ${BOOST_CPPFLAGS}"
-echo " BOOST_FILESYSTEM_LDFLAGS : ${BOOST_FILESYSTEM_LDFLAGS}"
-echo " BOOST_FILESYSTEM_LIBS : ${BOOST_FILESYSTEM_LIBS}"
-
-
 #########
 
 AC_SUBST([AM_CPPFLAGS])
@@ -201,11 +192,16 @@ AC_SUBST([AM_CFLAGS])
 AC_SUBST([AM_LDFLAGS])
 AC_SUBST([AM_PATH])
 AC_SUBST([AM_LIBS])
+AC_SUBST([SEQAN_CPPFLAGS])
 AC_SUBST([BOOST_CPPFLAGS])
 AC_SUBST([BOOST_FILESYSTEM_LDFLAGS])
 AC_SUBST([BOOST_FILESYSTEM_LIBS])
 AC_SUBST([BOOST_SYSTEM_LDFLAGS])
 AC_SUBST([BOOST_SYSTEM_LIBS])
+AC_SUBST([BOOST_TEST_LDFLAGS])
+AC_SUBST([BOOST_TEST_LIBS])
+AC_SUBST([BOOST_THREADS_LDFLAGS])
+AC_SUBST([BOOST_THREADS_LIBS])
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile])
