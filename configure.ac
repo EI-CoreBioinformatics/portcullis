@@ -142,6 +142,11 @@ BOOST_LIBS="${BOOST_FILESYSTEM_LIBS} ${BOOST_PROGRAM_OPTIONS_LIBS} ${BOOST_SYSTE
 
 # Allow users to specify custom directories for seqan library and doxygen.  This might save some users from having to set the environment variables manually.
 
+AC_ARG_WITH([samtools],
+        [AS_HELP_STRING([--with-samtools=PREFIX],
+                [Use this if your samtools installation prefix was set to a non-standard location.])],
+        [SAMTOOLS_PATH=$withval], [SAMTOOLS_PATH=0])
+
 AC_ARG_WITH([seqan],
         [AS_HELP_STRING([--with-seqan=PREFIX],
                 [Use this if your seqan library installation prefix was set to a non-standard location.])],
@@ -152,6 +157,11 @@ AC_ARG_WITH([doxygen],
 		[Use this if your doxygen installation prefix was set to a non-standard location. Doxygen is only required for building source code documentation.  i.e. if doxygen is not available you will not be able to run [make doxygen-doc] but KAT will still work fine without this.])],
         [DOXYGEN_PATH=$withval], [DOXYGEN_PATH=0])
 
+# Update vars for samtools if required
+if test ${SAMTOOLS_PATH} != 0; then
+        SAMTOOLS_CPPFLAGS="-I${SAMTOOLS_PATH}/include"
+        SAMTOOLS_LDFLAGS="-L${SAMTOOLS_PATH}/lib"
+fi
 
 # Update vars for seqan if required
 if test ${SEQAN_PATH} != 0; then
@@ -167,11 +177,21 @@ fi
 
 OLD_CPPFLAGS=${CPPFLAGS}
 OLD_LDFLAGS=${LDFLAGS}
-CPPFLAGS="${SEQAN_CPPFLAGS} ${AM_CPPFLAGS} ${CPPFLAGS}"
-LDFLAGS="${AM_LDFLAGS} ${LDFLAGS}"
+CPPFLAGS="${SAMTOOLS_CPPFLAGS} ${SEQAN_CPPFLAGS} ${AM_CPPFLAGS} ${CPPFLAGS}"
+LDFLAGS="${SAMTOOLS_LDFLAGS} ${AM_LDFLAGS} ${LDFLAGS}"
 
 
 #### Put any header or lib checks here ####
+
+AC_CHECK_HEADER([bam.h], [], [
+         echo "Samtools is required to compile and run portculis.  Please make sure samtools is installed on your system."
+         echo "If samtools is installed but the headers are not currently available through the CPPFLAGS environment"
+         echo "variable then please re-run \"./configure\".  You can optionally use the \"--with-samtools=prefix\" argument"
+         echo "to specify the root directory of your samtools installation."
+         exit -1],
+         [])
+
+AC_CHECK_LIB([bam], [bam_read1])
 
 AC_CHECK_HEADER([seqan/sequence.h], [], [
          echo "Seqan-library is required to compile and run portculis.  Please make sure seqan-library is installed on your system."
@@ -196,6 +216,8 @@ AC_SUBST([AM_CFLAGS])
 AC_SUBST([AM_LDFLAGS])
 AC_SUBST([AM_PATH])
 AC_SUBST([AM_LIBS])
+AC_SUBST([SAMTOOLS_CPPFLAGS])
+AC_SUBST([SAMTOOLS_LDFLAGS])
 AC_SUBST([SEQAN_CPPFLAGS])
 AC_SUBST([BOOST_CPPFLAGS])
 AC_SUBST([BOOST_LDFLAGS])

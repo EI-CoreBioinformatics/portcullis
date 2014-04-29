@@ -1,3 +1,11 @@
 /Makefile
 /Makefile.in
 /test-suite.log
+/.deps/
+/.libs/
+/check_portculis-check_portculis.o
+/check_portculis-genome_mapper_tests.o
+/check_portculis-portculis_tests.o
+/check_portculis.log
+/check_portculis.trs
+/check_portculis
