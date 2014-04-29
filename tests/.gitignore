@@ -9,3 +9,4 @@
 /check_portculis.log
 /check_portculis.trs
 /check_portculis
+*.o

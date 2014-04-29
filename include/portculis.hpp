@@ -21,8 +21,6 @@
 #include <iostream>
 #include <vector>
 
-#include <bam.h>
-
 #include <boost/foreach.hpp>
 #include <boost/unordered_map.hpp>
 
@@ -78,7 +76,7 @@ private:
     
 
 protected:
-
+/*
     void findSeedsSamtools(vector<bam1_t*>& seeds) {
         if (verbose)
             cerr << "Finding seeds" << endl;
@@ -141,7 +139,7 @@ protected:
         }
 
         return true;
-    }
+    }*/
 
     /*bool isDefinitelyUnsplicedSeqan(seqan::String<seqan::CigarElement<>>& cigar)
     {
@@ -229,21 +227,18 @@ public:
     }
 
     void process() {
-        vector<bam1_t*> samtoolSeeds;
+       /* vector<bam1_t*> samtoolSeeds;
 
         // Filter out all obvious unspliced reads
         findSeedsSamtools(samtoolSeeds);
 
 
         // Tidy up
-
         BOOST_FOREACH(bam1_t* bamRecord, samtoolSeeds) {
             free(bamRecord);
         }
 
-        // Create a map of the genome
-        /*map genomeMap;
-        mapGenome(genomeMap);
+        
 
         // Copy BAM header from input to all BAM output streams
         unsplicedOut->header = bamStreamIn->header;

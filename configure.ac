@@ -134,9 +134,8 @@ LDFLAGS="${BAMTOOLS_LDFLAGS} ${SAMTOOLS_LDFLAGS} ${AM_LDFLAGS} ${LDFLAGS}"
 #### Put any header or lib checks here ####
 
 
-AC_CHECK_LIB([bam], [fai_build])
-AC_CHECK_LIB([bamtools], [bam_read])
-
+AC_CHECK_LIB([bam], [fai_build], [], [echo "Samtools not found" exit -1], [])
+AC_CHECK_HEADER([api/BamMultiReader.h], [], [echo "Bamtools not found" exit -1], [])
 
 # Restore the previous CPPFLAGS
 CPPFLAGS=${OLD_CPPFLAGS}
@@ -153,6 +152,7 @@ AC_SUBST([AM_PATH])
 AC_SUBST([AM_LIBS])
 AC_SUBST([SAMTOOLS_CPPFLAGS])
 AC_SUBST([SAMTOOLS_LDFLAGS])
+AC_SUBST([BAMTOOLS_PATH])
 AC_SUBST([BAMTOOLS_CPPFLAGS])
 AC_SUBST([BAMTOOLS_LDFLAGS])
 AC_SUBST([SEQAN_CPPFLAGS])
