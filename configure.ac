@@ -47,49 +47,6 @@ AC_PROG_INSTALL
 
 
 ######################################################################
-# Debug compilation support.
-######################################################################
-
-AC_MSG_CHECKING([whether to build with debug information])
-AC_ARG_ENABLE([debug],
-    [AS_HELP_STRING([--enable-debug],
-        [enable debug data generation (def=no)])],
-    [debugit="$enableval"],
-    [debugit=no])
-AC_MSG_RESULT([$debugit])
-
-# If in debug mode make a really slow binary with debug symbols, otherwise make a fast one without debug symbols.
-# Generally CPPFLAGS is reserved for include paths and use CXXFLAGS is for c++ compiler settings.
-if test x"$debugit" = x"yes"; then
-    AC_DEFINE([DEBUG],[],[Debug Mode])
-    AM_CXXFLAGS="-g -Wno-uninitialized -O0"
-else
-    AC_DEFINE([NDEBUG],[],[No-debug Mode])
-    AM_CXXFLAGS="-O2"
-fi
-
-######################################################################
-
-
-######################################################################
-# DOXYGEN SUPPORT
-######################################################################
-
-DX_HTML_FEATURE(ON)
-DX_CHM_FEATURE(OFF)
-DX_CHI_FEATURE(OFF)
-DX_MAN_FEATURE(ON)
-DX_RTF_FEATURE(OFF)
-DX_XML_FEATURE(OFF)
-DX_PDF_FEATURE(ON)
-DX_PS_FEATURE(OFF)
-
-DX_INIT_DOXYGEN([$PACKAGE_NAME],[doxygen.cfg])
-
-######################################################################
-
-
-######################################################################
 # Dependency checks
 ######################################################################
 
@@ -147,15 +104,11 @@ AC_ARG_WITH([samtools],
                 [Use this if your samtools installation prefix was set to a non-standard location.])],
         [SAMTOOLS_PATH=$withval], [SAMTOOLS_PATH=0])
 
-AC_ARG_WITH([seqan],
-        [AS_HELP_STRING([--with-seqan=PREFIX],
-                [Use this if your seqan library installation prefix was set to a non-standard location.])],
-        [SEQAN_PATH=$withval], [SEQAN_PATH=0])
+AC_ARG_WITH([bamtools],
+        [AS_HELP_STRING([--with-bamtools=PREFIX],
+                [Use this if your bamtools installation prefix was set to a non-standard location.])],
+        [BAMTOOLS_PATH=$withval], [BAMTOOLS_PATH=0])
 
-AC_ARG_WITH([doxygen],
-        [AS_HELP_STRING([--with-doxygen=PREFIX],
-		[Use this if your doxygen installation prefix was set to a non-standard location. Doxygen is only required for building source code documentation.  i.e. if doxygen is not available you will not be able to run [make doxygen-doc] but KAT will still work fine without this.])],
-        [DOXYGEN_PATH=$withval], [DOXYGEN_PATH=0])
 
 # Update vars for samtools if required
 if test ${SAMTOOLS_PATH} != 0; then
@@ -163,44 +116,26 @@ if test ${SAMTOOLS_PATH} != 0; then
         SAMTOOLS_LDFLAGS="-L${SAMTOOLS_PATH}/lib"
 fi
 
-# Update vars for seqan if required
-if test ${SEQAN_PATH} != 0; then
-        SEQAN_CPPFLAGS="-I${SEQAN_PATH}/include"
+# Update vars for samtools if required
+if test ${BAMTOOLS_PATH} != 0; then
+        BAMTOOLS_CPPFLAGS="-I${BAMTOOLS_PATH}/include"
+        BAMTOOLS_LDFLAGS="-L${BAMTOOLS_PATH}/lib"
 fi
 
-# Update vars for doxygen if required
-if test ${DOXYGEN_PATH} != 0; then
-	AM_PATH="${DOXYGEN_PATH}/bin:${AM_PATH}"
-fi
 
 ######### Header checks (need to use the actual command line vars here so we need to store and restore these)
 
 OLD_CPPFLAGS=${CPPFLAGS}
 OLD_LDFLAGS=${LDFLAGS}
-CPPFLAGS="${SAMTOOLS_CPPFLAGS} ${SEQAN_CPPFLAGS} ${AM_CPPFLAGS} ${CPPFLAGS}"
-LDFLAGS="${SAMTOOLS_LDFLAGS} ${AM_LDFLAGS} ${LDFLAGS}"
+CPPFLAGS="${BAMTOOLS_CPPFLAGS} ${SAMTOOLS_CPPFLAGS} ${SEQAN_CPPFLAGS} ${AM_CPPFLAGS} ${CPPFLAGS}"
+LDFLAGS="${BAMTOOLS_LDFLAGS} ${SAMTOOLS_LDFLAGS} ${AM_LDFLAGS} ${LDFLAGS}"
 
 
 #### Put any header or lib checks here ####
 
-AC_CHECK_HEADER([bam.h], [], [
-         echo "Samtools is required to compile and run portculis.  Please make sure samtools is installed on your system."
-         echo "If samtools is installed but the headers are not currently available through the CPPFLAGS environment"
-         echo "variable then please re-run \"./configure\".  You can optionally use the \"--with-samtools=prefix\" argument"
-         echo "to specify the root directory of your samtools installation."
-         exit -1],
-         [])
 
-AC_CHECK_LIB([bam], [bam_read1])
-
-AC_CHECK_HEADER([seqan/sequence.h], [], [
-         echo "Seqan-library is required to compile and run portculis.  Please make sure seqan-library is installed on your system."
-         echo "If seqan-library is installed but the headers are not currently available through the CPPFLAGS environment"
-         echo "variable then please re-run \"./configure\".  You can optionally use the \"--with-seqan=prefix\" argument"
-         echo "to specify the root directory of your seqan-library installation."
-         exit -1],
-         [])
-
+AC_CHECK_LIB([bam], [fai_build])
+AC_CHECK_LIB([bamtools], [bam_read])
 
 
 # Restore the previous CPPFLAGS
@@ -218,6 +153,8 @@ AC_SUBST([AM_PATH])
 AC_SUBST([AM_LIBS])
 AC_SUBST([SAMTOOLS_CPPFLAGS])
 AC_SUBST([SAMTOOLS_LDFLAGS])
+AC_SUBST([BAMTOOLS_CPPFLAGS])
+AC_SUBST([BAMTOOLS_LDFLAGS])
 AC_SUBST([SEQAN_CPPFLAGS])
 AC_SUBST([BOOST_CPPFLAGS])
 AC_SUBST([BOOST_LDFLAGS])

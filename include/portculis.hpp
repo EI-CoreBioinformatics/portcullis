@@ -23,17 +23,8 @@
 
 #include <bam.h>
 
-#include <seqan/basic.h>
-#include <seqan/bam_io.h>
-#include <seqan/sequence.h>
-#include <seqan/seq_io.h>
-#include <seqan/stream.h>
-
+#include <boost/foreach.hpp>
 #include <boost/unordered_map.hpp>
-
-#include "chunk_loader.hpp"
-#include "chunk_processor.hpp"
-#include "record_writer.hpp"
 
 using std::string;
 using std::cout;
@@ -63,9 +54,6 @@ private:
     uint32_t gapSize;
     bool verbose;
 
-    // Created by the constructor
-    seqan::BamStream* splicedOut = NULL;
-    seqan::BamStream* weirdOut = NULL;
     uint32_t chunkSize;
     
     
@@ -90,21 +78,6 @@ private:
     
 
 protected:
-
-    void findSeedsSeqan(vector<seqan::BamAlignmentRecord>& seeds) {
-        // Open reading stream for bam file
-        seqan::BamStream bamStreamIn(bamInputFile.c_str(), seqan::BamStream::READ);
-
-        seqan::BamAlignmentRecord record;
-        while (!atEnd(bamStreamIn)) {
-            readRecord(record, bamStreamIn);
-
-            /*if (!isDefinitelyUnspliced(record.cigar))
-            {
-                seeds.push_back(record);
-            }*/
-        }
-    }
 
     void findSeedsSamtools(vector<bam1_t*>& seeds) {
         if (verbose)
@@ -256,7 +229,6 @@ public:
     }
 
     void process() {
-        vector<seqan::BamAlignmentRecord> seqanSeeds;
         vector<bam1_t*> samtoolSeeds;
 
         // Filter out all obvious unspliced reads

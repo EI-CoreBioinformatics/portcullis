@@ -23,10 +23,6 @@
 #include <iostream>
 #include <fstream>
 
-#include <seqan/bam_io.h>
-#include <seqan/sequence.h>
-#include <seqan/stream.h>
-
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
