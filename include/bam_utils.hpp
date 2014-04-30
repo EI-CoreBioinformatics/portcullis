@@ -17,15 +17,18 @@
 
 #pragma once
 
+#include <sstream>
 #include <string>
 #include <vector>
 
+#include <api/algorithms/Sort.h>
 #include <api/BamMultiReader.h>
+#include <api/BamReader.h>
 #include <api/BamWriter.h>
 
-using std::string;
-using std::vector;
+#include <bamtools_sort.h>
 
+using namespace::std;
 using namespace BamTools;
 
 namespace portculis {
@@ -52,5 +55,48 @@ namespace portculis {
         
         reader.Close();
         writer.Close();
+    }
+    
+    bool isSortedBam(string bamFile) {
+        
+        BamReader reader;
+        
+        if (!reader.Open(bamFile)) {
+            throw "Could not open input BAM files";
+        }
+
+        const SamHeader header = reader.GetHeader();
+        
+        reader.Close();
+        
+        return header.HasSortOrder();
+    }
+    
+    void sortBam(string unsortedFile, string sortedFile, bool sortByName) {
+        
+        SortSettings settings;
+        settings.InputBamFilename = unsortedFile;
+        settings.OutputBamFilename = sortedFile;
+        settings.IsSortingByName = sortByName;
+        
+        SortTool sorter(&settings);
+        sorter.Run();        
+    }
+    
+    void indexBam(string sortedBam, string indexedBam) {
+        
+        BamReader reader;
+        
+        if (!reader.Open(sortedBam)) {
+            throw "Could not open input BAM files";
+        }
+
+        const SamHeader header = reader.GetHeader();
+        const RefVector refs = reader.GetReferenceData();
+        
+        reader.HasIndex();
+        reader.CreateIndex(BamIndex::BAMTOOLS);
+        
+        reader.Close();
     }
 }

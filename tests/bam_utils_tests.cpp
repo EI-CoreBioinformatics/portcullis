@@ -24,6 +24,7 @@
 #include <boost/filesystem.hpp>
 
 #include <bam_utils.hpp>
+#include <bamtools_sort.cpp>
 
 using std::cout;
 using std::endl;
@@ -47,5 +48,49 @@ BOOST_AUTO_TEST_CASE(merge)
     boost::filesystem::remove(mergedBam);
 }
 
+BOOST_AUTO_TEST_CASE(sort)
+{
+    string unsortedBam = "resources/unsorted.bam";
+    string sortedBam = "resources/unsorted.bam";
+    portculis::sortBam(unsortedBam, sortedBam, false);
+    
+    // Check the merged bam file exists
+    BOOST_CHECK(boost::filesystem::exists(sortedBam));
+    
+    // Delete the merged bam file
+    boost::filesystem::remove(sortedBam);
+}
+
+BOOST_AUTO_TEST_CASE(is_sorted1)
+{
+    string unsortedBam = "resources/unsorted.bam";
+    bool sorted = portculis::isSortedBam(unsortedBam);
+    
+    // Check the merged bam file exists
+    BOOST_CHECK(!sorted);    
+}
+
+BOOST_AUTO_TEST_CASE(is_sorted2)
+{
+    string sortedBam = "resources/sorted.bam";
+    bool sorted = portculis::isSortedBam(sortedBam);
+    
+    // Check the merged bam file exists
+    BOOST_CHECK(sorted);    
+}
+
+
+BOOST_AUTO_TEST_CASE(index)
+{
+    string sortedBam = "resources/sorted.bam";
+    string indexedBam = "resources/sorted.bam";
+    portculis::indexBam(sortedBam, indexedBam);
+    
+    // Check the indexed bam file exists
+    BOOST_CHECK(boost::filesystem::exists(indexedBam));
+    
+    // Delete the indexed bam file
+    boost::filesystem::remove(indexedBam);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
