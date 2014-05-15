@@ -51,13 +51,16 @@ BOOST_AUTO_TEST_CASE(merge)
 BOOST_AUTO_TEST_CASE(sort)
 {
     string unsortedBam = "resources/unsorted.bam";
-    string sortedBam = "resources/unsorted.bam";
+    string sortedBam = "resources/sorted.test.bam";
     portculis::sortBam(unsortedBam, sortedBam, false);
     
-    // Check the merged bam file exists
+    // Check the sorted bam file exists
     BOOST_CHECK(boost::filesystem::exists(sortedBam));
     
-    // Delete the merged bam file
+    // Check the sorted bam file is actually sorted
+    BOOST_CHECK(portculis::isSortedBam(sortedBam)); 
+    
+    // Delete the sorted bam file
     boost::filesystem::remove(sortedBam);
 }
 
@@ -83,7 +86,7 @@ BOOST_AUTO_TEST_CASE(is_sorted2)
 BOOST_AUTO_TEST_CASE(index)
 {
     string sortedBam = "resources/sorted.bam";
-    string indexedBam = "resources/sorted.bam";
+    string indexedBam = "resources/sorted.bam.bti";
     portculis::indexBam(sortedBam, indexedBam);
     
     // Check the indexed bam file exists

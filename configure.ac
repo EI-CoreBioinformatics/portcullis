@@ -78,26 +78,10 @@ AC_CHECK_HEADERS([getopt.h])
 AC_CHECK_LIB(pthread, pthread_exit)
 AC_CHECK_LIB(z, gzread)
 
-## Check for boost
-BOOST_REQUIRE([1.52])
 
-# Header only
-BOOST_STRING_ALGO
-BOOST_FOREACH
-BOOST_UNORDERED
 
-# Header + lib
-BOOST_FILESYSTEM
-BOOST_PROGRAM_OPTIONS
-BOOST_SYSTEM
-BOOST_THREADS
-BOOST_TEST
-
-# Combine BOOST variables (apart for BOOST_TEST)
-BOOST_LDFLAGS="${BOOST_FILESYSTEM_LDFLAGS} ${BOOST_PROGRAM_OPTIONS_LDFLAGS} ${BOOST_SYSTEM_LDFLAGS} ${BOOST_THREAD_LDFLAGS}"
-BOOST_LIBS="${BOOST_FILESYSTEM_LIBS} ${BOOST_PROGRAM_OPTIONS_LIBS} ${BOOST_SYSTEM_LIBS} ${BOOST_THREAD_LIBS}"
-
-# Allow users to specify custom directories for seqan library and doxygen.  This might save some users from having to set the environment variables manually.
+# Allow users to specify custom directories for samtools and bamtools.  
+# This might save some users from having to set the environment variables manually.
 
 AC_ARG_WITH([samtools],
         [AS_HELP_STRING([--with-samtools=PREFIX],
@@ -133,13 +117,38 @@ LDFLAGS="${BAMTOOLS_LDFLAGS} ${SAMTOOLS_LDFLAGS} ${AM_LDFLAGS} ${LDFLAGS}"
 
 #### Put any header or lib checks here ####
 
+AC_CHECK_HEADER([api/BamMultiReader.h], [], [
+    AC_MSG_ERROR([Bamtools not found. Please ensure that the bamtools include directory can be found on the CPPFLAGS env var. Also check that the Bamtools lib directory can be found on the LDFLAGS env var.])
+])
 
-AC_CHECK_LIB([bam], [fai_build], [], [echo "Samtools not found" exit -1], [])
-AC_CHECK_HEADER([api/BamMultiReader.h], [], [echo "Bamtools not found" exit -1], [])
+AC_CHECK_LIB(bam, fai_build, [], [
+    AC_MSG_ERROR([Samtools not found. Please ensure that the Samtools include directory can be found on the CPPFLAGS env var. Also check that the Samtools lib directory can be found on the LDFLAGS env var.])
+])
 
 # Restore the previous CPPFLAGS
 CPPFLAGS=${OLD_CPPFLAGS}
 LDFLAGS=${OLD_LDFLAGS}
+
+
+## Check for boost
+BOOST_REQUIRE([1.52])
+
+# Header only
+BOOST_STRING_ALGO
+BOOST_FOREACH
+BOOST_UNORDERED
+
+# Header + lib
+BOOST_FILESYSTEM
+BOOST_PROGRAM_OPTIONS
+BOOST_SYSTEM
+BOOST_THREADS
+BOOST_TEST
+
+# Combine BOOST variables (apart for BOOST_TEST)
+BOOST_LDFLAGS="${BOOST_FILESYSTEM_LDFLAGS} ${BOOST_PROGRAM_OPTIONS_LDFLAGS} ${BOOST_SYSTEM_LDFLAGS} ${BOOST_THREAD_LDFLAGS}"
+BOOST_LIBS="${BOOST_FILESYSTEM_LIBS} ${BOOST_PROGRAM_OPTIONS_LIBS} ${BOOST_SYSTEM_LIBS} ${BOOST_THREAD_LIBS}"
+
 
 
 #########

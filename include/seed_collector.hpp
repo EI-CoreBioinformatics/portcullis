@@ -22,7 +22,7 @@
 #include <boost/foreach.hpp>
 
 #include <api/BamReader.h>
-#include <api/BamMultiReader.h>
+#include <api/BamWriter.h>
 
 using std::vector;
 
@@ -33,46 +33,77 @@ namespace portculis {
 class SeedCollector {
 private:
  
-    vector<string> bamFiles;    
-    bool collectiveMode;
+    string sortedBam;    
+    string seedFile;
+    bool verbose;
     
-    vector<BamReader> singleReaders;
-    BamMultiReader multiReader;
-    
+    BamReader reader;
+    BamWriter writer;
+        
     SamHeader header;
     RefVector refs;
     
 protected:
     
+    bool isPotentialSeed(BamAlignment& al) {
+        BOOST_FOREACH(CigarOp op, al.CigarData) {
+            if (op.Type == 'N') {
+                return true;
+            }
+        }
+        
+        return false;        
+    }
     
 public:
     
-    SeedCollector(vector<string> _bamFiles, bool _collectiveMode) : 
-            bamFiles(_bamFiles), collectiveMode(_collectiveMode) {
+    SeedCollector(string _sortedBam, string _seedFile, bool _verbose) : 
+            sortedBam(_sortedBam), seedFile(_seedFile), verbose(_verbose) {
         
-        if (collectiveMode) {
-            if (!multiReader.Open(bamFiles)) {
-                throw "Could not open bam files";
-            }
-            
-            header = reader.GetHeader();
-            refs = reader.GetReferenceData();
+        if (!reader.Open(sortedBam)) {
+            throw "Could not open bam reader";
         }
-        else {
-            BOOST_FOREACH(string bamFile, bamFiles) {
-                BamReader reader;                
-                if (!reader.Open(bamFile)) {
-                    throw "Could not open bam files";
-                }
-                singleReaders.push_back(reader);
-            }
-        }                
         
+        if (!writer.Open(seedFile, header, refs)) {
+            throw "Could not open bam writer";
+        }
+        
+        header = reader.GetHeader();
+        refs = reader.GetReferenceData();
+
+        if (verbose) {
+            
+            cout << endl << "Collecting seeds from: " << sortedBam << endl;
+            cout << "Header:" << endl << header.ToString() << endl;
+            cout << "Refs:" << endl;
+
+            BOOST_FOREACH(RefData ref, refs) {
+               cout << ref.RefLength << " - " << ref.RefName << endl;
+            }
+        }
     }
             
-    void sort() {
-        
+    virtual ~SeedCollector() {
+        reader.Close();
+        writer.Close();
     }
+            
+    uint64_t collect() {
+        
+        BamAlignment al;
+        uint64_t count = 0;
+        while(reader.GetNextAlignment(al))
+        {
+            if (isPotentialSeed(al)) {
+                writer.SaveAlignment(al);
+                count++;
+            }
+        }
+        
+        return count;
+    }
+    
+    
 };
 }
 

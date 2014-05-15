@@ -26,8 +26,12 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
+#include <api/BamReader.h>
+#include <api/BamWriter.h>
+
 #include "portculis.hpp"
 #include "genome_mapper.hpp"
+#include "seed_collector.hpp"
 #include "bam_utils.hpp"
 
 using std::string;
@@ -38,6 +42,10 @@ using std::exception;
 
 
 using portculis::GenomeMapper;
+using portculis::SeedCollector;
+using portculis::sortBam;
+using portculis::mergeBams;
+using portculis::indexBam;
 
 namespace po = boost::program_options;
 
@@ -49,6 +57,119 @@ const uint32_t DEFAULT_CHUNK_SIZE_PER_THREAD = 10000;
 const uint32_t DEFAULT_GAP_SIZE = 100;
 
 
+std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, bool forcePrep) {
+    
+    string indexedBamFile;
+    string sortedBamFile;
+    if (bamFiles.size() > 1) {
+        string mergedBam = outputPrefix + ".merged.bam";
+        string sortedBam = outputPrefix + ".merged.sorted.bam";
+        string indexedBam = outputPrefix + ".merged.sorted.bam.bti";
+
+        bool mergedBamExists = boost::filesystem::exists(mergedBam);
+        
+        if (mergedBamExists) {
+            cout << "Pre-merged BAM detected: " << mergedBam << endl;
+            
+            if (forcePrep) {
+                cout << "Forcing merge anyway due to user request." << endl;
+            }
+        }
+        
+        if (!mergedBamExists || forcePrep) {
+            cout << "Found " << bamFiles.size() << " BAM files." << endl 
+                 << "Merging BAMS...";
+            mergeBams(bamFiles, mergedBam);
+            cout << "done." << endl;
+        }
+
+        bool mergedAndSortedBamExists = boost::filesystem::exists(sortedBam);
+        
+        if (mergedAndSortedBamExists) {
+            cout << "Pre-merged and sorted BAM detected: " << sortedBam << endl;
+            
+            if (forcePrep) {
+                cout << "Forcing sort anyway due to user request." << endl;
+            }
+        }
+        
+        if (!mergedAndSortedBamExists || forcePrep) {
+            cout << "Sorting " << mergedBam << " ... ";
+            sortBam(mergedBam, sortedBam, false);
+            cout << "done." << endl;        
+        }
+
+        bool indexedBamExists = boost::filesystem::exists(indexedBam);
+        
+        if (indexedBamExists) {
+            cout << "Pre-merged and sorted BAM index detected: " << indexedBam << endl;
+            
+            if (forcePrep) {
+                cout << "Forcing index creation anyway due to user request." << endl;
+            }
+        }
+        
+        if (!indexedBamExists || forcePrep) {
+            cout << "Indexing " << sortedBam << " ... ";
+            indexBam(sortedBam, indexedBam);
+            cout << "done." << endl;
+        }
+
+        indexedBamFile = indexedBam;
+        sortedBamFile = sortedBam;
+    }
+    else {  // 1 bam File
+
+        string bamFile = bamFiles[0];
+        string bamFileToIndex = bamFile;
+
+        // Sort the BAM file if necessary
+        bool bamIsSorted = portculis::isSortedBam(bamFile);
+
+        if (bamIsSorted) {
+            cout << "Pre-sorted BAM detected: " << bamFile << endl;
+            
+            if (forcePrep) {
+                cout << "Forcing sort anyway due to user request." << endl;
+            }
+        }
+        
+        if (!bamIsSorted || forcePrep) {
+            string sortedBam = bamFile + ".sorted.bam";
+
+            cout << "Sorting " << bamFile << " ... ";
+            sortBam(bamFile, sortedBam, false);
+            cout << "done" << endl;
+
+            bamFileToIndex = sortedBam;
+        }
+
+        string indexedBam = bamFile + ".sorted.bam.bti";
+
+        bool bamIsIndexed = boost::filesystem::exists(indexedBam);
+
+        if (bamIsIndexed) {
+            cout << "Pre-indexed BAM detected: " << indexedBam << endl;
+            
+            if (forcePrep) {
+                cout << "Forcing index creation anyway due to user request." << endl;
+            }
+        }
+
+        // Index the BAM file if necessary.
+        if (!bamIsIndexed || forcePrep) {
+            cout << "Indexing " << bamFileToIndex << " ... ";
+            indexBam(bamFileToIndex, indexedBam);
+            cout << "done." << endl;
+        }
+        indexedBamFile = indexedBam;
+        sortedBamFile = bamFileToIndex;
+    }
+    
+    return std::pair<string, string>(sortedBamFile, indexedBamFile);
+}
+
+
 /**
  * Start point for portculis.
  */
@@ -58,25 +179,27 @@ int main(int argc, char *argv[]) {
         vector<string> bamFiles;
         string genomeFile;
         string outputPrefix;
-        bool collectiveMode;
+        //bool collectiveMode;
         bool forcePrep;
         uint16_t threads;
         bool disableThreadedIO;
         uint32_t gap_size;
         bool verbose;
+        bool version;
+        bool help;
 
         // Declare the supported options.
         po::options_description generic_options("Portculis Help.\nUsage: portculis [options] <genome-file> (<bam-file>)+ \nAllowed options");
         generic_options.add_options()
                 ("output_prefix,o", po::value<string>(&outputPrefix)->default_value(DEFAULT_OUTPUT_PREFIX), "Path prefix for files generated by this program.")
-                ("collective,c", po::value<bool>(&collectiveMode)->default_value(false), "Whether to treat all provided bam files as one large merged bam file or to handle each separately.") 
-                ("force_prep,fp", po::value<bool>(&forcePrep)->default_value(false), "Whether to force preparation (sorting and indexing) of the input bam files.  By default, portculis only sorts bam files if the header does not contain a sorted (coordinate) flag.  Also, it only indexes if it cannot find a bam file with a bamtools bti extension suffix.")
+                //("collective,c", po::value<bool>(&collectiveMode)->default_value(false), "Whether to treat all provided bam files as one large merged bam file or to handle each separately.") 
+                ("force_prep,f", po::bool_switch(&forcePrep)->default_value(false), "Whether to force preparation (sorting and indexing) of the input bam files.  By default, portculis only sorts bam files if the header does not contain a sorted (coordinate) flag.  Also, it only indexes if it cannot find a bam file with a bamtools bti extension suffix.")
                 ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_THREADS), "The number of threads to use.")
                 ("disable_threaded_io", po::value<bool>(&disableThreadedIO)->default_value(false), "Whether to acquire data in parallel to processing.")
                 ("gap,g", po::value<uint32_t>(&gap_size)->default_value(DEFAULT_GAP_SIZE), "The minimum gap size between adjacent alignments that determines whether or not we can chunk the data at this point.")
-                ("verbose,v", "Print extra information")
-                ("version", "Print version string")
-                ("help", "Produce help message")
+                ("verbose,v", po::bool_switch(&verbose)->default_value(false), "Print extra information")
+                ("version", po::bool_switch(&version)->default_value(false), "Print version string")
+                ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
                 ;
 
         // Hidden options, will be allowed both on command line and
@@ -90,7 +213,7 @@ int main(int argc, char *argv[]) {
         // Positional option for the input bam file
         po::positional_options_description p;
         p.add("genome-file", 1);
-        p.add("bam-files", 1);
+        p.add("bam-files", 100);
 
         // Combine non-positional options
         po::options_description cmdline_options;
@@ -102,13 +225,13 @@ int main(int argc, char *argv[]) {
         po::notify(vm);
 
         // Output help information the exit if requested
-        if (vm.count("help")) {
+        if (help) {
             cout << generic_options << endl;
             return 1;
         }
 
         // Output version information then exit if requested
-        if (vm.count("version")) {
+        if (version) {
 #ifndef PACKAGE_NAME
 #define PACKAGE_NAME "Portculis"
 #endif
@@ -119,7 +242,7 @@ int main(int argc, char *argv[]) {
             cout << PACKAGE_NAME << " V" << PACKAGE_VERSION << endl;
             return 0;
         }
-
+        
         // Acquire path to bam file
         if (vm.count("bam-files")) {
             bamFiles = vm["bam-files"].as<vector<string> >();
@@ -156,14 +279,14 @@ int main(int argc, char *argv[]) {
         }
 
         // Print configuration information if in verbose mode
-        if (vm.count("verbose")) {
-            verbose = true;
-
+        if (verbose) {
+            
             cerr << "Portculis settings: " << endl
                     << " Provided " << bamFiles.size() << " bam files" << endl
                     << " Output prefix: " << outputPrefix << endl
                     << " Worker threads: " << threads << endl
                     << " Use threaded IO: " << !disableThreadedIO << endl
+                    << " Forcing BAM prep: " << forcePrep << endl
                     << " Minimum gap size: " << gap_size << endl;
         }
 
@@ -172,52 +295,29 @@ int main(int argc, char *argv[]) {
         // Create a map of the genome (wrapper for faidx from samtools)
         GenomeMapper genomeMapper(genomeFile);
         
-        // In collective mode make sure all bam files are merged and then sorted 
-        // and indexed.  Create a vector of the index files.
-        // TODO: Might be possible to replace these with BamReaders instead!
-        vector<string> indexFiles;
-        vector<string> modBamFiles;
-        if (collectiveMode) {
-            string mergedBam = outputPrefix + ".merge.bam";
-            string sortedBam = outputPrefix + ".merge.sorted.bam";
-            string indexedBam = outputPrefix + ".merge.sorted.bam.bti";
-            portculis::mergeBams(bamFiles, mergedBam);
-            portculis::sortBam(mergedBam, sortedBam, false);
-            portculis::indexBam(sortedBam, indexedBam);
-            indexFiles.push_back(indexedBam);
-            modBamFiles.push_back(sortedBam);
+        // Prep the BAM input to produce a usable sorted bam plus bamtools bti index
+        std::pair<string, string> bamPrepResult = bamPrep(bamFiles, outputPrefix, forcePrep);
+        
+        // First job is to collect seeds (i.e. alignments containing an 'N' in their cigar)
+        string sortedBam = bamPrepResult.first;
+        string indexedBam = bamPrepResult.second;
+        string seedFile = outputPrefix + ".seeds.bam";
+        
+        cout << "Collecting seeds from " << sortedBam << " ... ";
+        uint64_t seedCount = SeedCollector(sortedBam, seedFile, verbose).collect();
+        cout << "done. Found " << seedCount << " seeds." << endl;
+        
+        if (seedCount > 0) {
+        
+            //Portculis instance(bam_file, genome_file, output_prefix, threads, !disable_threaded_io, chunk_size_per_thread, gap_size, verbose);
+            portculis::Portculis instance;
+            instance.process();
         }
         else {
             
-            // Might be possible to thread this part... think about it later...
-            // make sure to consider IO performance.
-            BOOST_FOREACH(string bamFile, bamFiles) {
-                
-                string bamFileToIndex = bamFile;
-                
-                // Sort the BAM file if necessary
-                if (!portculis::isSortedBam(bamFile) || forcePrep) {
-                    string sortedBam = bamFile + ".sorted.bam";
-                    portculis::sortBam(bamFile, sortedBam, false);
-                    bamFileToIndex = sortedBam;
-                }
-                
-                string indexedBam = bamFile + ".sorted.bam.bti";
-                
-                // Index the BAM file if necessary.
-                if (!boost::filesystem::exists(indexedBam) || forcePrep) {
-                    portculis::indexBam(bamFileToIndex, indexedBam);
-                }
-                indexFiles.push_back(indexedBam);
-                modBamFiles.push_back(bamFileToIndex);
-            }
+            // No point in carrying on if no seeds were found
+            cout << "No seeds found.  Portculis finishing." << endl;
         }
-        
-        //SeedCollector seedCollector(bamFiles, collectiveMode);
-        
-        //Portculis instance(bam_file, genome_file, output_prefix, threads, !disable_threaded_io, chunk_size_per_thread, gap_size, verbose);
-        portculis::Portculis instance;
-        instance.process();
 
     } catch (exception& e) {
         cerr << "Error: " << e.what() << endl;

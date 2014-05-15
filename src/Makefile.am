@@ -9,7 +9,9 @@ portculis_CPPFLAGS = -DCPLUSPLUS @BAMTOOLS_CPPFLAGS@ @SAMTOOLS_CPPFLAGS@ @BOOST_
 portculis_LDFLAGS = @BAMTOOLS_LDFLAGS@ @SAMTOOLS_LDFLAGS@ @BOOST_LDFLAGS@ @AM_LDFLAGS@
 portculis_LDADD = -lbam -lbamtools @BOOST_LIBS@ -lpthread -lz
 portculis_SOURCES = \
+	genome_mapper.hpp \
+	seed_collector.hpp \
 	bamtools_sort.h \
-	bamtools_sort.cpp \    
+	bamtools_sort.cpp \
 	portculis.cc
                 
