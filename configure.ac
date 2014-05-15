@@ -79,6 +79,19 @@ AC_CHECK_LIB(pthread, pthread_exit)
 AC_CHECK_LIB(z, gzread)
 
 
+## Check for boost
+AX_BOOST_BASE([1.52],, [AC_MSG_ERROR([Boost not found.  Please ensure that boost is properly built and the BOOST_ROOT environment variable is set.  Alternatively you can override BOOST_ROOT with the --with-boost option.])])
+AX_BOOST_FILESYSTEM
+AX_BOOST_PROGRAM_OPTIONS
+AX_BOOST_SYSTEM
+AX_BOOST_THREAD
+AX_BOOST_UNIT_TEST_FRAMEWORK
+
+# Combine BOOST variables (apart for BOOST_TEST)
+#BOOST_LDFLAGS="${BOOST_FILESYSTEM_LDFLAGS} ${BOOST_PROGRAM_OPTIONS_LDFLAGS} ${BOOST_SYSTEM_LDFLAGS} ${BOOST_THREAD_LDFLAGS}"
+BOOST_LIBS="${BOOST_FILESYSTEM_LIB} ${BOOST_PROGRAM_OPTIONS_LIB} ${BOOST_SYSTEM_LIB} ${BOOST_THREAD_LIB}"
+
+
 
 # Allow users to specify custom directories for samtools and bamtools.  
 # This might save some users from having to set the environment variables manually.
@@ -118,36 +131,16 @@ LDFLAGS="${BAMTOOLS_LDFLAGS} ${SAMTOOLS_LDFLAGS} ${AM_LDFLAGS} ${LDFLAGS}"
 #### Put any header or lib checks here ####
 
 AC_CHECK_HEADER([api/BamMultiReader.h], [], [
-    AC_MSG_ERROR([Bamtools not found. Please ensure that the bamtools include directory can be found on the CPPFLAGS env var. Also check that the Bamtools lib directory can be found on the LDFLAGS env var.])
+    AC_MSG_ERROR([Bamtools not found. Please ensure that the bamtools include directory can be found on the CPPFLAGS env var. Also check that the Bamtools lib directory can be found on the LDFLAGS env var.  Alternatively, you can try the --with-bamtools option, which assumes you have an include and lib dir under a bamtools build directory.])
 ])
 
 AC_CHECK_LIB(bam, fai_build, [], [
-    AC_MSG_ERROR([Samtools not found. Please ensure that the Samtools include directory can be found on the CPPFLAGS env var. Also check that the Samtools lib directory can be found on the LDFLAGS env var.])
+    AC_MSG_ERROR([Samtools not found. Please ensure that the Samtools include directory can be found on the CPPFLAGS env var. Also check that the Samtools lib directory can be found on the LDFLAGS env var.  Alternatively, you can try the --with-samtools option, which assumes you have an include and lib dir under a samtools build directory.])
 ])
 
 # Restore the previous CPPFLAGS
 CPPFLAGS=${OLD_CPPFLAGS}
 LDFLAGS=${OLD_LDFLAGS}
-
-
-## Check for boost
-BOOST_REQUIRE([1.52])
-
-# Header only
-BOOST_STRING_ALGO
-BOOST_FOREACH
-BOOST_UNORDERED
-
-# Header + lib
-BOOST_FILESYSTEM
-BOOST_PROGRAM_OPTIONS
-BOOST_SYSTEM
-BOOST_THREADS
-BOOST_TEST
-
-# Combine BOOST variables (apart for BOOST_TEST)
-BOOST_LDFLAGS="${BOOST_FILESYSTEM_LDFLAGS} ${BOOST_PROGRAM_OPTIONS_LDFLAGS} ${BOOST_SYSTEM_LDFLAGS} ${BOOST_THREAD_LDFLAGS}"
-BOOST_LIBS="${BOOST_FILESYSTEM_LIBS} ${BOOST_PROGRAM_OPTIONS_LIBS} ${BOOST_SYSTEM_LIBS} ${BOOST_THREAD_LIBS}"
 
 
 
