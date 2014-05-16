@@ -20,55 +20,59 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <tr1/unordered_set>
 
 #include <boost/foreach.hpp>
 #include <boost/unordered_map.hpp>
+#include <boost/lexical_cast.hpp>
+
+#include <api/BamReader.h>
+
+#include "junction.hpp"
 
 using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::tr1::unordered_set;
 using std::vector;
 
+using boost::lexical_cast;
 
+using portculis::junction::Junction;
+//using portculis::junction::JunctionHasher;
+using portculis::junction::Location;
+
+using namespace BamTools;
 
 namespace portculis {
 
 const string DEFAULT_OUTPUT_PREFIX = "portculis_out";
 const uint16_t DEFAULT_THREADS = 4;
-const uint32_t DEFAULT_CHUNK_SIZE_PER_THREAD = 10000;
-const uint32_t DEFAULT_GAP_SIZE = 100;
+
 
 class Portculis {
 private:
 
     // Can set these from the outside via the constructor
-    string bamInputFile;
+    string seedFile;
+    string sortedBamFile;
     string genomeFile;
     string outputPrefix;
     uint16_t threads;
-    bool threadedIO;
-    uint32_t chunkSizePerThread;
-    uint32_t gapSize;
     bool verbose;
-
-    uint32_t chunkSize;
     
+    //unordered_set<Location,LocationHasher> junctionLocations;
     
-    void init(  string _bamInputFile, string _genomeFile, string _outputPrefix, 
-                uint16_t _threads, bool _threadedIO, uint32_t _chunkSizePerThread, 
-                uint32_t _gapSize, bool _verbose) {
+    void init(  string _seedFile, string _sortedBamFile, string _genomeFile, 
+                string _outputPrefix, uint16_t _threads, bool _verbose) {
         
-        bamInputFile = _bamInputFile;
+        seedFile = _seedFile;
+        sortedBamFile = _sortedBamFile;
         genomeFile = _genomeFile;
         outputPrefix = _outputPrefix;
         threads = _threads;
-        threadedIO = _threadedIO;
-        chunkSizePerThread = _chunkSizePerThread;
-        gapSize = _gapSize;
         verbose = _verbose;
-        
-        chunkSize = (uint32_t) _threads * _chunkSizePerThread;
         
         if (verbose)
             cerr << "Initialised Portculis instance" << endl;
@@ -76,146 +80,60 @@ private:
     
 
 protected:
-/*
-    void findSeedsSamtools(vector<bam1_t*>& seeds) {
-        if (verbose)
-            cerr << "Finding seeds" << endl;
 
-        bamFile bamIn = bam_open(bamInputFile.c_str(), "r");
-
-        if (bamIn == 0) {
-            throw "Could not open bam file";
-        }
-
-        if (verbose)
-            cerr << "Opened input file" << endl;
-
-        bam_header_t *header = bam_header_read(bamIn);
-
-        if (verbose)
-            cerr << "Processed header" << endl;
-
-        uint64_t alignmentCount = 0;
-
-
-        // Loop until end of file
-        for (;;) {
-            bam1_t* b = bam_init1();
-
-            // Exit loop if end of file
-            if ((bam_read1(bamIn, b)) < 0) {
-                if (verbose)
-                    cerr << "EOF" << endl;
-
-                free(b);
-                break;
+    
+    void calcJunction(BamAlignment& al, Location loc) {
+        
+        loc.refId = al.RefID;
+        loc.lStart = al.Position;
+        
+        int32_t lEnd = loc.lStart;
+        int32_t rEnd = loc.lStart;
+        bool lEndFound = false;
+        bool rEndFound = false;
+        BOOST_FOREACH(CigarOp op, al.CigarData) {
+            
+            if (!lEndFound && op.Type != 'N') {
+                lEnd += op.Length;                
             }
-
-            if (isDefinitelyUnsplicedSamtools(b)) {
-                seeds.push_back(b);
+            else if (!lEndFound && op.Type == 'N') {
+                lEndFound = true;
+                loc.lEnd = lEnd;
+                loc.rStart = lEnd + op.Length;
+                rEnd = loc.rStart;
             }
-
-            alignmentCount++;
+            else if (lEndFound && !rEndFound && op.Type != 'N') {
+                rEnd += op.Length;
+            }
+            else if (lEndFound && !rEndFound && op.Type == 'N') {
+                rEndFound = true;
+                loc.rEnd = rEnd;
+                //loc.doubleJunction = true;
+            }
         }
-
-        if (verbose)
-            cerr << "Read a total of " << alignmentCount << " alignments" << endl
-                << "Found " << seeds.size() << " seeds." << endl;
-
-        bam_header_destroy(header);
-        bam_close(bamIn);
-
-    }
-
-    bool isDefinitelyUnsplicedSamtools(bam1_t* bamRecord) {
-        uint32_t* cigar = bam1_cigar(bamRecord);
-        uint32_t nbCigarOps = bamRecord->core.n_cigar;
-        uint32_t crefSkip = bam_cigar_op(BAM_CREF_SKIP);
-
-        // Brute force pattern matching for every position
-        for (uint32_t i = 0; i < nbCigarOps; i++) {
-            if ((*(cigar + i)) == crefSkip)
-                return false;
+        
+        if (!rEndFound) {
+            loc.rEnd = rEnd;
         }
-
-        return true;
-    }*/
-
-    /*bool isDefinitelyUnsplicedSeqan(seqan::String<seqan::CigarElement<>>& cigar)
-    {
-        // Brute force pattern matching for every position
-        for (unsigned i = 0; i < seqan::length(cigar); i++)
-        {
-            //if (cigar[i] == 'N')
-            //   return false;
-        }
-
-        return true;
-    }*/
-
-    void linearExecution() {
-    }
-
-    void linearChunkedExecution() {
-        /*ChunkLoader chunkLoader(*bamStreamIn, chunkSize, gapSize);
-        ChunkProcessor chunkProcessor(threads);
-        RecordWriter unsplicedWriter(*unsplicedOut);
-        RecordWriter splicedWriter(*splicedOut);
-        RecordWriter weirdWriter(*weirdOut);
-
-        vector<seqan::BamAlignmentRecord*> chunk;
-
-        while(!chunkLoader.isDone())
-        {
-            // Clear chunk
-            chunk.clear();
-
-            // Load chunk
-            chunkLoader.load(&chunk);
-
-            // Process chunk (might use threads)
-            vector<seqan::BamAlignmentRecord*> unspliced;
-            vector<seqan::BamAlignmentRecord*> spliced;
-            vector<seqan::BamAlignmentRecord*> weird;
-
-            chunkProcessor.process(chunk, unspliced, spliced, weird);
-
-            // Append to outputs
-            unsplicedWriter.write(unspliced);
-            splicedWriter.write(spliced);
-            weirdWriter.write(weird);
-        }*/
-    }
-
-    void threadedChunkedExecution() {
-        // Start thread to fetch data from bam
-        // Start thread to process data chunks passed to it from fetcher thread
-        // Start thread to write data
-
-        // Have to carefully manage communication between threads to ensure we don't get into any nasty situations
-
+        
+        //junctions[loc];
     }
 
 public:
 
     Portculis() {
-        init(
+        init(   "",
                 "", 
                 "", 
                 DEFAULT_OUTPUT_PREFIX, 
                 DEFAULT_THREADS, 
-                false, 
-                DEFAULT_CHUNK_SIZE_PER_THREAD,
-                DEFAULT_GAP_SIZE,
-                false);
+                false
+                );
     }
-    
-    Portculis(  string _bamInputFile, string _genomeFile, string _outputPrefix, 
-                uint16_t _threads, bool _threadedIO, uint32_t _chunkSizePerThread, 
-                uint32_t _gapSize, bool _verbose) {
-        init(   _bamInputFile, _genomeFile, _outputPrefix,
-                _threads, _threadedIO, _chunkSizePerThread,
-                _gapSize, _verbose);
+    Portculis(  string _seedFile, string _sortedBam, string _genomeFile, 
+                string _outputPrefix, uint16_t _threads, bool _verbose) {
+        init(   _seedFile, _sortedBam, _genomeFile, 
+                _outputPrefix, _threads, _verbose);
     }
     
     virtual ~Portculis() {
@@ -227,30 +145,21 @@ public:
     }
 
     void process() {
-       /* vector<bam1_t*> samtoolSeeds;
-
-        // Filter out all obvious unspliced reads
-        findSeedsSamtools(samtoolSeeds);
-
-
-        // Tidy up
-        BOOST_FOREACH(bam1_t* bamRecord, samtoolSeeds) {
-            free(bamRecord);
+       
+        BamReader reader;
+        if (!reader.Open(seedFile)) {
+            throw "Could not open bam reader for seed file";
         }
-
         
-
-        // Copy BAM header from input to all BAM output streams
-        unsplicedOut->header = bamStreamIn->header;
-        splicedOut->header = bamStreamIn->header;
-        weirdOut->header = bamStreamIn->header;
-
-        // Decide what mode to work in
-        if (threadedIO)
-            threadedChunkedExecution();
-        else
-            linearChunkedExecution();*/
-
+        BamAlignment al;
+        while(reader.GetNextAlignment(al)) {
+            
+            junction::Location loc;
+            calcJunction(al, loc);
+            cout << loc.toString(true) << endl;            
+        }
+        
+        reader.Close();        
     }
 };
 }

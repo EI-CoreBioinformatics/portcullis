@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <iostream>
 #include <vector>
 
 #include <boost/foreach.hpp>
@@ -30,15 +31,46 @@ using namespace BamTools;
 
 namespace portculis {
 
+class CollectorResults {
+private:
+    void init(uint64_t _seedCount, uint64_t _unsplicedCount) {
+        seedCount = _seedCount;
+        unsplicedCount = _unsplicedCount;
+    }
+
+public:
+    
+    uint64_t seedCount;
+    uint64_t unsplicedCount;
+    
+    CollectorResults() {
+        init(0,0);
+    }
+
+    CollectorResults(uint64_t _seedCount, uint64_t _unsplicedCount) {
+        init(_seedCount, _unsplicedCount);
+    }
+
+    void report(std::ostream& out) {
+        out << endl 
+            << "Seed collection report" << endl
+            << "----------------------" << endl
+            << "Found " << seedCount << " alignments containing one or more potential junctions" << endl
+            << "Found " << unsplicedCount << " unspliced alignments" << endl << endl;
+    }
+};
+    
 class SeedCollector {
 private:
  
     string sortedBam;    
     string seedFile;
+    string unsplicedFile;
     bool verbose;
     
     BamReader reader;
-    BamWriter writer;
+    BamWriter seedWriter;
+    BamWriter unsplicedWriter;
         
     SamHeader header;
     RefVector refs;
@@ -49,7 +81,7 @@ protected:
         BOOST_FOREACH(CigarOp op, al.CigarData) {
             if (op.Type == 'N') {
                 return true;
-            }
+            }            
         }
         
         return false;        
@@ -57,52 +89,68 @@ protected:
     
 public:
     
-    SeedCollector(string _sortedBam, string _seedFile, bool _verbose) : 
-            sortedBam(_sortedBam), seedFile(_seedFile), verbose(_verbose) {
+    SeedCollector(string _sortedBam, string _seedFile, string _unsplicedFile, bool _verbose) : 
+            sortedBam(_sortedBam), seedFile(_seedFile), unsplicedFile(_unsplicedFile), verbose(_verbose) {
         
         if (!reader.Open(sortedBam)) {
             throw "Could not open bam reader";
         }
         
-        if (!writer.Open(seedFile, header, refs)) {
-            throw "Could not open bam writer";
-        }
-        
         header = reader.GetHeader();
         refs = reader.GetReferenceData();
 
+       
+        cout << "Loading alignments from: " << sortedBam << endl;
+        
         if (verbose) {
-            
-            cout << endl << "Collecting seeds from: " << sortedBam << endl;
             cout << "Header:" << endl << header.ToString() << endl;
             cout << "Refs:" << endl;
 
             BOOST_FOREACH(RefData ref, refs) {
                cout << ref.RefLength << " - " << ref.RefName << endl;
             }
+        }      
+        
+        if (!seedWriter.Open(seedFile, header, refs)) {
+            throw "Could not open bam writer for seed file";
         }
+        
+        if (!unsplicedWriter.Open(unsplicedFile, header, refs)) {
+            throw "Could not open bam writer for unspliced file";
+        }
+        
+        cout << "Sending seed alignments to: " << seedFile;
+        cout << "Sending unspliced alignments to: " << unsplicedFile;
     }
             
     virtual ~SeedCollector() {
         reader.Close();
-        writer.Close();
+        seedWriter.Close();
+        unsplicedWriter.Close();
     }
             
-    uint64_t collect() {
+    void collect(CollectorResults& results) {
         
         BamAlignment al;
-        uint64_t count = 0;
+        uint64_t seedCount = 0;
+        uint64_t unsplicedCount = 0;
+        cout << "Processing alignments ... ";
         while(reader.GetNextAlignment(al))
         {
             if (isPotentialSeed(al)) {
-                writer.SaveAlignment(al);
-                count++;
+                seedWriter.SaveAlignment(al);
+                seedCount++;
+            }
+            else {
+                unsplicedWriter.SaveAlignment(al);
+                unsplicedCount++;
             }
         }
+        cout << "done" << endl;
         
-        return count;
-    }
-    
+        results.seedCount = seedCount;
+        results.unsplicedCount = unsplicedCount;
+    }    
     
 };
 }

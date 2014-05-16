@@ -20,10 +20,14 @@
 #include <string>
 #include <iostream>
 
+#include <boost/filesystem.hpp>
+
 #include <faidx.h>
 
-using std::string;
+using std::cout;
+using std::endl;
 using std::ifstream;
+using std::string;
 
 namespace portculis {
 
@@ -32,6 +36,7 @@ private:
  
     // Path to the original genome file in fasta format
     string genomeFile;
+    bool forcePrep;
     
     // Handle to genome map.  Created by constructor.
     faidx_t* index;
@@ -46,14 +51,31 @@ public:
      * uses Samtools to create a fasta index for the genome file and then
      * manages the data structure returned after loading the index.
      */
-    GenomeMapper(string _genomeFile) : genomeFile(_genomeFile) {
+    GenomeMapper(string _genomeFile, bool _forcePrep) : 
+        genomeFile(_genomeFile), forcePrep(_forcePrep) {
         
-        int res = fai_build(genomeFile.c_str());
+        string indexFile = genomeFile + string(".fai");
+                
+        bool indexExists = boost::filesystem::exists(indexFile);
         
-        if (res != 0)
-            throw "Could not build the fasta index for the genome file.";
+        if (indexExists) {
+            cout << "Indexed genome detected: " << indexFile << endl;
+            
+            if (forcePrep) {
+                cout << "Forcing index build anyway due to user request." << endl;
+            }
+        }
+        
+        if (!indexExists || forcePrep) {
+            int res = fai_build(genomeFile.c_str());
+
+            if (res != 0)
+                throw "Could not build the fasta index for the genome file.";
+        }
         
         index = fai_load(genomeFile.c_str());
+        
+        cout << "Genome index acquired" << endl;
     }
     
     virtual ~GenomeMapper() {        
