@@ -78,7 +78,7 @@ class SortTool {
         bool Run(void);
         
     // internal methods
-    private:
+    protected:
         bool CreateSortedTempFile(vector<BamAlignment>& buffer);
         bool GenerateSortedRuns(void);
         bool MergeSortedRuns(void);

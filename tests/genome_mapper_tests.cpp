@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_CASE(ecoli)
     // Get seq
     string name = "gi|556503834|ref|NC_000913.3|";
     int len = -1;
-    char* fullSeq = genomeMapper.fetch(name.c_str(), &len);    
+    //char* fullSeq = genomeMapper.fetch(name.c_str(), &len);    
     BOOST_CHECK(len == 4641652);
     
     string partialSeqExpected = "TCTGACTGCA";

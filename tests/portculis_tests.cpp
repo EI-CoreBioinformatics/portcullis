@@ -28,11 +28,11 @@ BOOST_AUTO_TEST_SUITE(portculis)
 BOOST_AUTO_TEST_CASE(constructor)
 {
     portculis::Portculis portculis(
-                        "tests/resources/ecoli.seeds.bam",
                         "tests/resources/ecoli.bam",
                         "tests/resources/ecoli.fa",
                         "tests/tmp/portculis/constructor1",
                         1,
+                        false,
                         false);
 
     BOOST_CHECK(true);

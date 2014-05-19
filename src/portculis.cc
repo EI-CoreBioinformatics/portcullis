@@ -32,8 +32,6 @@
 #include "portculis.hpp"
 #include "genome_mapper.hpp"
 #include "bam_prepare.hpp"
-#include "seed_collector.hpp"
-
 
 using std::string;
 using std::cout;
@@ -43,7 +41,6 @@ using std::exception;
 
 using portculis::Portculis;
 using portculis::GenomeMapper;
-using portculis::SeedCollector;
 
 
 namespace po = boost::program_options;
@@ -193,35 +190,14 @@ int main(int argc, char *argv[]) {
         // First job is to collect seeds (i.e. alignments containing an 'N' in their cigar)
         string sortedBam = bamPrepResult.first;
         string indexedBam = bamPrepResult.second;
-        string seedFile = outputPrefix + string(".seeds.bam");
-        string unsplicedFile = outputPrefix + string(".unspliced.bam");
         
         cout << endl 
-             << "Seed collecting" << endl
-             << "---------------" << endl;
-        portculis::CollectorResults results;
-        SeedCollector(sortedBam, seedFile, unsplicedFile, verbose).collect(results);
-        results.report(cout);
+             << "Portculis" << endl
+             << "---------" << endl;
         
-        if (results.seedCount > 0) {
-        
-            cout << endl 
-                 << "Processing seeds" << endl
-                 << "----------------" << endl;
-            Portculis instance(seedFile, sortedBam, genomeFile, outputPrefix, threads, verbose);
-            instance.process();
-            cout << endl << "Portculis finished" << endl;
-        }
-        else {            
-            // No point in carrying on if no seeds were found
-            cout << "WARNING: No seeds found." << endl
-                 << "Deleting unspliced alignments file to save disk space (unspliced file will be identical to sorted input)." << endl
-                 << "Portculis finishing." << endl;
-            
-            if (!boost::filesystem::remove(unsplicedFile)) {
-                throw "Error deleting unspliced file";
-            }
-        }
+        Portculis portculis(sortedBam, genomeFile, outputPrefix, threads, true, verbose);
+        portculis.process();
+        cout << endl << "Portculis finished" << endl;
         
         cout.flush();
 

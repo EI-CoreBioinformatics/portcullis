@@ -20,30 +20,31 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
-#include <tr1/unordered_set>
 
-#include <boost/foreach.hpp>
-#include <boost/unordered_map.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/unordered_map.hpp>
 
 #include <api/BamReader.h>
+#include <api/BamWriter.h>
 
+#include "location.hpp"
 #include "junction.hpp"
 
 using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
-using std::tr1::unordered_set;
-using std::vector;
 
 using boost::lexical_cast;
 
-using portculis::junction::Junction;
-//using portculis::junction::JunctionHasher;
-using portculis::junction::Location;
+using portculis::Location;
+using portculis::Junction;
 
 using namespace BamTools;
+
+typedef boost::unordered_map<Location, Junction> DistinctJunctions;
+typedef boost::unordered_map<Location, Junction>::iterator JunctionMapIterator;
+typedef std::vector<Junction*> JunctionList;
 
 namespace portculis {
 
@@ -55,24 +56,52 @@ class Portculis {
 private:
 
     // Can set these from the outside via the constructor
-    string seedFile;
     string sortedBamFile;
     string genomeFile;
     string outputPrefix;
     uint16_t threads;
+    bool outputUnspliced;
     bool verbose;
     
-    //unordered_set<Location,LocationHasher> junctionLocations;
+    BamReader reader;
+    BamWriter unsplicedWriter;
+     
+    // Sam header and refs info from the input bam
+    SamHeader header;
+    RefVector refs;
     
-    void init(  string _seedFile, string _sortedBamFile, string _genomeFile, 
-                string _outputPrefix, uint16_t _threads, bool _verbose) {
+    // The set of distinct junctions found in the BAM file
+    DistinctJunctions distinctJunctions;
+    JunctionList junctionList;
+    
+    void init(  string _sortedBamFile, string _genomeFile, string _outputPrefix, 
+                uint16_t _threads, bool _outputUnspliced, bool _verbose) {
         
-        seedFile = _seedFile;
         sortedBamFile = _sortedBamFile;
         genomeFile = _genomeFile;
         outputPrefix = _outputPrefix;
         threads = _threads;
+        outputUnspliced = _outputUnspliced;
         verbose = _verbose;
+        
+        if (!reader.Open(sortedBamFile)) {
+            throw "Could not open bam reader";
+        }
+        
+        header = reader.GetHeader();
+        refs = reader.GetReferenceData();
+
+       
+        cout << "Will load alignments from: " << sortedBamFile << endl;
+        
+        if (verbose) {
+            cout << "Header:" << endl << header.ToString() << endl;
+            cout << "Refs:" << endl;
+
+            BOOST_FOREACH(RefData ref, refs) {
+               cout << ref.RefLength << " - " << ref.RefName << endl;
+            }
+        }
         
         if (verbose)
             cerr << "Initialised Portculis instance" << endl;
@@ -81,85 +110,150 @@ private:
 
 protected:
 
-    
-    void calcJunction(BamAlignment& al, Location loc) {
-        
-        loc.refId = al.RefID;
-        loc.lStart = al.Position;
-        
-        int32_t lEnd = loc.lStart;
-        int32_t rEnd = loc.lStart;
-        bool lEndFound = false;
-        bool rEndFound = false;
-        BOOST_FOREACH(CigarOp op, al.CigarData) {
-            
-            if (!lEndFound && op.Type != 'N') {
-                lEnd += op.Length;                
-            }
-            else if (!lEndFound && op.Type == 'N') {
-                lEndFound = true;
-                loc.lEnd = lEnd;
-                loc.rStart = lEnd + op.Length;
-                rEnd = loc.rStart;
-            }
-            else if (lEndFound && !rEndFound && op.Type != 'N') {
-                rEnd += op.Length;
-            }
-            else if (lEndFound && !rEndFound && op.Type == 'N') {
-                rEndFound = true;
-                loc.rEnd = rEnd;
-                //loc.doubleJunction = true;
-            }
-        }
-        
-        if (!rEndFound) {
-            loc.rEnd = rEnd;
-        }
-        
-        //junctions[loc];
+    /**
+     * Adds any new junctions found from the given alignment to the set managed 
+     * by this class
+     * @param al The alignment to search for junctions
+     * @return Whether a junction was found in this alignment or not
+     */
+    bool createJunctions(const BamAlignment& al) {
+        return createJunctions(al, 0, 0);
     }
+    
+    bool createJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset) {
+        
+        bool foundJunction = false;
+        
+        size_t nbOps = al.CigarData.size();
+        
+        int32_t refId = al.RefID;
+        int32_t lStart = al.Position + offset;        
+        int32_t lEnd = lStart;
+        int32_t rStart = lStart;
+        int32_t rEnd = lStart;
+        
+        for(size_t i = startOp; i < nbOps; i++) {
+            
+            CigarOp op = al.CigarData[i];
+            if (op.Type == 'N') {
+                foundJunction = true;
+                
+                rStart = lEnd + op.Length;
+                rEnd = rStart;
+                
+                size_t j = i+1;
+                while (j < nbOps && al.CigarData[j].Type != 'N') {
+                    rEnd += al.CigarData[j++].Length;
+                }
+                
+                Location location(refId, lStart, lEnd, rStart, rEnd);
+                Junction junction(location);
+                
+                // We should now have the complete junction location information
+                JunctionMapIterator it = distinctJunctions.find(location);
+                
+                if (it == distinctJunctions.end()) {
+                    distinctJunctions[location] = junction;
+                    junctionList.push_back(&junction);
+                }
+                else {
+                    it->second.addJunctionAlignment(al);
+                }
+                
+                // Check if we have fully processed the cigar or not.  If not, then
+                // that means that this cigar contains additional junctions, so 
+                // process those using recursion
+                if (j < nbOps) {
+                    
+                    createJunctions(al, i+1, rStart);
+                    break;
+                }                
+            }
+            else {
+                lEnd += op.Length;                
+            }            
+        }
+        
+        return foundJunction;        
+    }
+    
+    /**
+     * Populates the set of distinct junctions.  
+     * 
+     * Also outputs all the unspliced alignments to a separate file if requested
+     */
+    void collect() {
+        
+        if (outputUnspliced) {
+            string unsplicedFile = getUnsplicedFile();
+        
+            if (!unsplicedWriter.Open(unsplicedFile, header, refs)) {
+                throw "Could not open bam writer for unspliced file";
+            }
+            
+            cout << "Sending unspliced alignments to: " << unsplicedFile;
+        }
+            
+        BamAlignment al;
+        uint64_t splicedCount = 0;
+        uint64_t unsplicedCount = 0;
+        cout << "Processing alignments ... ";
+        while(reader.GetNextAlignment(al))
+        {
+            if (createJunctions(al)) {
+                splicedCount++;
+            }
+            else if (outputUnspliced) {
+                unsplicedWriter.SaveAlignment(al);
+                unsplicedCount++;
+            }
+        }
+        cout << "done" << endl;
+        
+        if (outputUnspliced) {
+            
+            cout << "Found " << distinctJunctions.size() << " junctions from " << splicedCount << " spliced alignments." << endl;
+            cout << "Found " << unsplicedCount << " unspliced alignments." << endl;
+            unsplicedWriter.Close();
+        }        
+    }    
+    
 
 public:
 
     Portculis() {
         init(   "",
                 "", 
-                "", 
                 DEFAULT_OUTPUT_PREFIX, 
-                DEFAULT_THREADS, 
+                DEFAULT_THREADS,
+                false,
                 false
                 );
     }
-    Portculis(  string _seedFile, string _sortedBam, string _genomeFile, 
-                string _outputPrefix, uint16_t _threads, bool _verbose) {
-        init(   _seedFile, _sortedBam, _genomeFile, 
-                _outputPrefix, _threads, _verbose);
+    Portculis(  string _sortedBam, string _genomeFile, 
+                string _outputPrefix, uint16_t _threads, 
+                bool _outputUnspliced, bool _verbose) {
+        init(  _sortedBam, _genomeFile, _outputPrefix, 
+                _threads, _outputUnspliced, _verbose);
     }
     
     virtual ~Portculis() {
-        /*if (splicedOut != NULL)
-            delete splicedOut;
-
-        if (weirdOut != NULL)
-            delete weirdOut;*/
+        
+        reader.Close();
+        
+        
+    }
+    
+    
+    string getUnsplicedFile() {
+        return string(outputPrefix) + ".unspliced.bam";
     }
 
     void process() {
        
-        BamReader reader;
-        if (!reader.Open(seedFile)) {
-            throw "Could not open bam reader for seed file";
-        }
-        
-        BamAlignment al;
-        while(reader.GetNextAlignment(al)) {
-            
-            junction::Location loc;
-            calcJunction(al, loc);
-            cout << loc.toString(true) << endl;            
-        }
-        
-        reader.Close();        
+        // Collect junctions from BAM file (also outputs unspliced alignments
+        // to a separate file)
+        collect();
     }
 };
 }

@@ -50,9 +50,8 @@ AC_PROG_INSTALL
 # Dependency checks
 ######################################################################
 
-
-# Check some (almost) standard functionality is present that we require to run KAT.
-AC_CHECK_HEADER_STDBOOL
+# Check some (almost) standard functionality is present that we require to run portculis.
+#AC_CHECK_HEADER_STDBOOL
 AC_FUNC_ERROR_AT_LINE
 AC_TYPE_INT16_T
 AC_TYPE_INT32_T
