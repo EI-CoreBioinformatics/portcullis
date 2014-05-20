@@ -34,32 +34,24 @@ BOOST_AUTO_TEST_SUITE(location)
 
 BOOST_AUTO_TEST_CASE(equality1)
 {
-    Location l1(5, 10, 20, 30, 40);
-    Location l2(5, 10, 20, 30, 40);
+    Location l1(5, 10, 20);
+    Location l2(5, 10, 20);
     
     BOOST_CHECK(l1 == l2);
 }
 
 BOOST_AUTO_TEST_CASE(equality2)
 {
-    Location l1(5, 5, 20, 30, 40);
-    Location l2(5, 10, 20, 30, 50);
-    
-    BOOST_CHECK(l1 == l2);
-}
-
-BOOST_AUTO_TEST_CASE(equality3)
-{
-    Location l1(2, 5, 20, 30, 40);
-    Location l2(5, 10, 20, 30, 50);
+    Location l1(2, 20, 30);
+    Location l2(5, 20, 30);
     
     BOOST_CHECK(l1 != l2);
 }
 
-BOOST_AUTO_TEST_CASE(equality4)
+BOOST_AUTO_TEST_CASE(equality3)
 {
-    Location l1(5, 5, 25, 30, 40);
-    Location l2(5, 10, 20, 30, 50);
+    Location l1(5, 5, 25);
+    Location l2(5, 10, 20);
     
     BOOST_CHECK(l1 != l2);
 }

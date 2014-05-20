@@ -95,7 +95,7 @@ public:
                     rEnd += al.CigarData[j++].Length;
                 }
                 
-                Location* location = new Location(refId, lStart, lEnd, rStart, rEnd);
+                shared_ptr<Location> location(new Location(refId, lEnd, rStart-1));
                 
                 // We should now have the complete junction location information
                 JunctionMapIterator it = distinctJunctions.find(*location);
@@ -104,14 +104,16 @@ public:
                 // location / junction pair.  If we've seen this location before
                 // then add this alignment to the existing junction
                 if (it == distinctJunctions.end()) {
-                    shared_ptr<Junction> junction(new Junction(location));
+                    shared_ptr<Junction> junction(new Junction(location, lStart, rEnd));
                     junction->addJunctionAlignment(al);
                     distinctJunctions[*location] = junction;
                     junctionList.push_back(junction);
                 }
                 else {
-                    it->second->addJunctionAlignment(al);
-                    delete location;    // We don't need this location as we already have one
+                    
+                    shared_ptr<Junction> junction = it->second;
+                    junction->addJunctionAlignment(al);
+                    junction->extendFlanks(lStart, rEnd);
                 }
                 
                 // Check if we have fully processed the cigar or not.  If not, then
@@ -131,38 +133,34 @@ public:
         return foundJunction;        
     }
     
-    void useGenome(GenomeMapper* genomeMapper, RefVector& refs) {
+    uint64_t findDonorAcceptorSites(GenomeMapper* genomeMapper, RefVector& refs) {
         
+        uint64_t daSites = 0;
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
             
-            Location* loc = j->getLocation();
+            shared_ptr<Location> loc = j->getLocation();
             
             if (loc != NULL) {
                 int32_t refid = loc->refId;
-                int32_t intronStart = loc->lEnd;
-                int32_t intronEnd = loc->rStart - 1;
                 
                 char* refName = new char[refs[refid].RefName.size() + 1];
                 strcpy(refName, refs[refid].RefName.c_str());
                 int seq1Len = -1;
                 int seq2Len = -1;
 
-                char* seq1 = genomeMapper->fetch(refName, intronStart, intronStart+1, &seq1Len);
-                char* seq2 = genomeMapper->fetch(refName, intronEnd-1, intronEnd, &seq2Len);
+                char* seq1 = genomeMapper->fetch(refName, loc->start, loc->start+1, &seq1Len);
+                char* seq2 = genomeMapper->fetch(refName, loc->end-1, loc->end, &seq2Len);
                 
-                bool hasDA = (seq1Len == 2 && seq2Len == 2) ? 
-                    hasDonorAcceptor(seq1, seq2) :
-                    false;
-                
-                j->setDonorAndAcceptorMotif(hasDA);
+                if (j->setDonorAndAcceptorMotif(string(seq1), string(seq2))) {
+                   daSites++; 
+                }
             }
         }
+        
+        return daSites;
     }
     
-    bool hasDonorAcceptor(char seq1[], char seq2[]) {
-        return ((seq1[0] == 'G' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'G') ||
-                (seq1[0] == 'C' && seq1[1] == 'A' && seq2[0] == 'T' && seq2[1] == 'C'));
-    }
+    
     
     void outputDescription(std::ostream &strm) {
         

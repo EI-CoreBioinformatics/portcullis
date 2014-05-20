@@ -35,11 +35,35 @@ BOOST_AUTO_TEST_SUITE(junction)
 
 BOOST_AUTO_TEST_CASE(intron)
 {
-    Location l1(5, 10, 20, 30, 40);
-    Junction j1(&l1);
+    shared_ptr<Location> l1(new Location(5, 20, 30));
+    Junction j1(l1, 10, 40);
     
     int32_t intronSz = j1.getIntronSize();
     BOOST_CHECK(intronSz == 10);
+}
+
+BOOST_AUTO_TEST_CASE(donor_acceptor)
+{
+    shared_ptr<Location> l1(new Location(5, 20, 30));
+    Junction j1(l1, 10, 40);
+    
+    bool res1 = j1.setDonorAndAcceptorMotif("GT", "AG");
+    BOOST_CHECK(res1);
+    
+    bool res2 = j1.setDonorAndAcceptorMotif("CT", "AC");
+    BOOST_CHECK(res2);
+    
+    bool res3 = j1.setDonorAndAcceptorMotif("GTA", "AG");
+    BOOST_CHECK(!res3);
+    
+    bool res4 = j1.setDonorAndAcceptorMotif("CT", "AG");
+    BOOST_CHECK(!res4);
+    
+    bool res5 = j1.setDonorAndAcceptorMotif("GT", "AC");
+    BOOST_CHECK(!res5);
+    
+    bool res6 = j1.setDonorAndAcceptorMotif("", "");
+    BOOST_CHECK(!res6);        
 }
 
 BOOST_AUTO_TEST_SUITE_END()

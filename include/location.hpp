@@ -20,27 +20,27 @@
 #include <string>
 
 #include <boost/lexical_cast.hpp>
+#include <boost/shared_ptr.hpp>
 
 using std::string;
 
 using boost::lexical_cast;
+using boost::shared_ptr;
 
 namespace portculis {    
 
 class Location {
 public:    
     int32_t refId;
-    int32_t lStart;
-    int32_t lEnd;
-    int32_t rStart;
-    int32_t rEnd;
+    int32_t start;
+    int32_t end;
     
     Location() :
-        refId(-1), lStart(-1), lEnd(-1), rStart(-1), rEnd(-1) {        
+        refId(-1), start(-1), end(-1) {        
     }
     
-    Location(int32_t _refId, int32_t _lStart, int32_t _lEnd, int32_t _rStart, int32_t _rEnd) :
-        refId(_refId), lStart(_lStart), lEnd(_lEnd), rStart(_rStart), rEnd(_rEnd) {
+    Location(int32_t _refId, int32_t _start, int32_t _end) :
+        refId(_refId), start(_start), end(_end) {
     }
 
     
@@ -52,8 +52,8 @@ public:
         // Modify 'seed' by XORing and bit-shifting in
         // one member of 'Key' after the other:
         boost::hash_combine(seed, l.refId);
-        boost::hash_combine(seed, l.lEnd);
-        boost::hash_combine(seed, l.rStart);
+        boost::hash_combine(seed, l.start);
+        boost::hash_combine(seed, l.end);
 
         // Return the result.
         return seed;
@@ -68,8 +68,8 @@ public:
     bool operator==(const Location &other) const
     { 
         return (refId == other.refId &&
-                lEnd == other.lEnd &&
-                rStart == other.rStart);
+                start == other.start &&
+                end == other.end);
     }
     
     bool operator!=(const Location &other) const
@@ -77,20 +77,22 @@ public:
         return !((*this)==other);
     }
     
+    
+    
+    
+    
     void outputDescription(std::ostream &strm) {
         strm << "RefId: " << refId
-             << "; lStart: " << lStart
-             << "; lEnd: " << lEnd
-             << "; rStart: " << rStart
-             << "; rEnd: " << rEnd;
+             << "; Start: " << start
+             << "; End: " << end;
     }
     
     friend std::ostream& operator<<(std::ostream &strm, const Location& l) {
-        return strm << l.refId << "\t" << l.lStart << "\t" << l.lEnd << "\t" << l.rStart << "\t" << l.rEnd;
+        return strm << l.refId << "\t" << l.start << "\t" << l.end;
     }
     
     static string locationOutputHeader() {
-        return string("refid\tlstart\tlend\trstart\trend"); 
+        return string("refid\tstart\tend"); 
     }
     
 };

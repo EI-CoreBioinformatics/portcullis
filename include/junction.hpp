@@ -17,23 +17,28 @@
 
 #pragma once
 
+#include <math.h>
 #include <string>
 #include <vector>
 
 #include <boost/foreach.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <api/BamAlignment.h>
 
 #include "location.hpp"
 
 using std::endl;
+using std::min;
+using std::max;
 using std::string;
 using std::size_t;
 using std::vector;
 
 using boost::lexical_cast;
+using boost::shared_ptr;
 
 using namespace BamTools;
 
@@ -46,7 +51,7 @@ class Junction {
 private:
     
     // **** Properties that describe where the junction is ****
-    Location* location;
+    shared_ptr<Location> intron;
     vector<BamAlignment> junctionAlignments;
     vector<BamAlignment> leftFlankingAlignments;
     vector<BamAlignment> rightFlankingAlignments;
@@ -56,28 +61,36 @@ private:
                                         // Metric 1 (nbReads) derived from size of junction alignment vector
     bool donorAndAcceptorMotif;         // Metric 2 calculated from 
                                         // Metric 3 (intron size) calculated via location properties
-    uint16_t maxMinAnchor;              // Metric 4
+    int32_t maxMinAnchor;               // Metric 4
+    
+    
+    // **** Additional stuff ****
+    
+    int32_t leftFlankStart;
+    int32_t rightFlankEnd;
+    string da1, da2;                    // These store the nucleotides found at the predicted donor / acceptor sites in the intron
     
     
     
-    void init() {
+    void init(int32_t _leftFlankStart, int32_t _rightFlankEnd) {
         
         donorAndAcceptorMotif = false;
-        maxMinAnchor = 0;
+        leftFlankStart = _leftFlankStart;
+        rightFlankEnd = _rightFlankEnd;
+        maxMinAnchor = minAnchor(_leftFlankStart, _rightFlankEnd);
     }
     
 public:
     
     // **** Constructors ****
     
-    Junction() :
-        location(NULL) {
-        init();
+    Junction() {
+        init(0, 0);
     }
     
-    Junction(Location* _location) :
-        location(_location) {
-        init();
+    Junction(shared_ptr<Location> _location, int32_t _leftFlankStart, int32_t _rightFlankEnd) :
+        intron(_location) {
+        init(_leftFlankStart, _rightFlankEnd);
     }
     
     // **** Destructor ****
@@ -86,12 +99,12 @@ public:
     }
     
    
-    Location* getLocation() const {
-        return location;
+    shared_ptr<Location> getLocation() const {
+        return intron;
     }
 
-    void setLocation(Location* location) {
-        this->location = location;
+    void setLocation(shared_ptr<Location> location) {
+        this->intron = location;
     }
 
     
@@ -103,15 +116,51 @@ public:
     void setDonorAndAcceptorMotif(bool donorAndAcceptorMotif) {
         this->donorAndAcceptorMotif = donorAndAcceptorMotif;
     }
-
     
+    bool setDonorAndAcceptorMotif(string seq1, string seq2) {
+        this->da1 = seq1;
+        this->da2 = seq2;
+        this->donorAndAcceptorMotif = validDonorAcceptor(seq1, seq2);
+        return this->donorAndAcceptorMotif;
+    }
+
+    bool validDonorAcceptor(string seq1, string seq2) {
+        return ((seq1.size() == 2 && seq2.size() == 2) &&
+                ((seq1[0] == 'G' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'G') ||
+                 (seq1[0] == 'C' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'C')));
+    }
+    
+    int32_t minAnchor(int32_t otherStart, int32_t otherEnd) {
+        
+        if (intron != NULL) {
+            int32_t lAnchor = intron->start - 1 - otherStart;
+            int32_t rAnchor = otherEnd - intron->end - 1;
+
+            return min(lAnchor, rAnchor);
+        }
+        
+        return 0;
+    }
+    
+    /**
+     * Extends the flanking regions of the junction.  Also updates any relevant 
+     * metrics.
+     * @param otherStart The alternative start position of the left flank
+     * @param otherEnd The alternative end position of the right flank
+     */
+    void extendFlanks(int32_t otherStart, int32_t otherEnd) {        
+        
+        leftFlankStart = min(leftFlankStart, otherStart);
+        rightFlankEnd = max(rightFlankEnd, otherEnd);
+        
+        int32_t otherMinAnchor = minAnchor(otherStart, otherEnd);
+        
+        maxMinAnchor = max(maxMinAnchor, otherMinAnchor);
+    }
+        
     
     // **** Metric getters ****
     
-    uint16_t getMaxMinAnchor() const {
-        return maxMinAnchor;
-    }
-
     /**
      * Metric 1: The number of alignments directly supporting this junction
      * @return 
@@ -134,7 +183,96 @@ public:
      * @return 
      */
     int32_t getIntronSize() const {
-        return location != NULL ? location->rStart - location->lEnd : 0;
+        return intron != NULL ? intron->end - intron->start : 0;
+    }
+    
+    /**
+     * Metric 4: The maximum anchor distance from the shortest side of each supporting 
+     * alignment
+     * @return
+     */
+    int32_t getMaxMinAnchor() const {
+        return maxMinAnchor;
+    }
+    
+    /**
+     * Metric 5: Diff Anchor
+     * @return 
+     */
+    int32_t getDiffAnchor() const {
+        
+        int32_t minLeft = intron->start - leftFlankStart; 
+        int32_t minRight = rightFlankEnd - intron->end; 
+        int32_t maxLeft = 0, maxRight = 0;
+        
+        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+            
+            int32_t end = ba.Position + ba.Length;
+            int32_t left = intron->start - ba.Position;
+            int32_t right = max(end, rightFlankEnd) - intron->end;
+            minLeft = min(minLeft, left);
+            minRight = min(minRight, right);
+            maxLeft = max(maxLeft, left);
+            maxRight = max(maxRight, right);
+        }
+        
+        int32_t diffLeft = maxLeft - minLeft;
+        int32_t diffRight = maxRight - minRight;
+        return min(diffLeft, diffRight);
+    }
+    
+    /**
+     * Metric 6: Entropy (definition from "Graveley et al, The developmental 
+     * transcriptome of Drosophila melanogaster, Nature, 2011")
+     * 
+     * We measured the entropy of the reads that mapped to the splice junction. 
+     * The entropy score is a function of both the total number of reads 
+     * that map to a given junction and the number of different offsets to which 
+     * those reads map and the number that map at each offset. Thus, junctions 
+     * with multiple reads mapping at each of the possible windows across the junction 
+     * will be assigned a higher entropy score, than junctions where many reads 
+     * map to only one or two positions. For this analysis we required that a junction 
+     * have an entropy score of two or greater in at least two biological samples 
+     * for junctions with canonical splice sites, and an entropy score of three 
+     * or greater in at least three biological samples for junctions with non-canonical 
+     * splice sites. Entropy was calculated using the following equations: 
+     * 
+     * pi = reads at offset i / total reads to junction window 
+     * 
+     * Entopy = - sumi(pi * log(pi) / log2) 
+     * 
+     * @return 
+     */
+    double getEntropy() const {
+        
+        size_t nbJunctionAlignments = junctionAlignments.size();
+        
+        if (nbJunctionAlignments <= 1)
+            return 0;
+        
+        double sum = 0.0;
+        
+        int32_t lastOffset = junctionAlignments[0].Position;
+        uint32_t readsAtOffset = 0;
+        
+        for(size_t i = 0; i < nbJunctionAlignments; i++) {
+            
+            const BamAlignment* ba = &(junctionAlignments[i]);
+            int32_t pos = ba->Position;
+            
+            if (pos == lastOffset) {
+                readsAtOffset++;
+            }
+            
+            if (pos != lastOffset || i == nbJunctionAlignments - 1) {
+                double pI = (double)readsAtOffset / (double)getNbJunctionAlignments();
+                sum += pI * log2(pI);
+                lastOffset = pos;
+                readsAtOffset = 0;
+            }
+        }
+        
+        return -sum;
     }
     
     /**
@@ -158,33 +296,44 @@ public:
     void outputDescription(std::ostream &strm) {
         strm << "Location: ";
         
-        if (location != NULL) {
-            location->outputDescription(strm);
+        if (intron != NULL) {
+            intron->outputDescription(strm);
         }
         else {
             strm << "No location set";
         }
         
         strm << endl
+             << "Flank limits: (" << leftFlankStart << ", " << rightFlankEnd << ")" << endl
+             << "Junction Metrics:" << endl
              << "1:  # Junction Alignments: " << getNbJunctionAlignments() << endl
-             << "2:  Has Donor + Acceptor Motif: " << donorAndAcceptorMotif << endl
+             << "2:  Has Donor + Acceptor Motif: " << donorAndAcceptorMotif << "; Sequences: (" << da1 << " " << da2 << ")" << endl
              << "3:  Intron Size: " << getIntronSize() << endl
+             << "4:  MaxMinAnchor: " << maxMinAnchor << endl
+             << "5:  DiffAnchor: " << getDiffAnchor() << endl
+             << "6:  Entropy: " << getEntropy() << endl
              << "10: # Upstream Non-Spliced Alignments: " << getNbUpstream() << endl
-             << "11: # Downstream Non-Spliced Alignments: " << getNbDownstream() << endl;
+             << "11: # Downstream Non-Spliced Alignments: " << getNbDownstream() << endl
+             << endl;
                 
     }
     
     friend std::ostream& operator<<(std::ostream &strm, const Junction& j) {
-        return strm << *(j.location) << "\t" 
+        return strm << *(j.intron) << "\t"
+                    << j.leftFlankStart << "\t"
+                    << j.rightFlankEnd << "\t"
                     << j.getNbJunctionAlignments() << "\t"
                     << j.donorAndAcceptorMotif << "\t"
                     << j.getIntronSize() << "\t"
+                    << j.maxMinAnchor << "\t"
+                    << j.getDiffAnchor() << "\t"
+                    << j.getEntropy() << "\t"
                     << j.getNbUpstream() << "\t"
                     << j.getNbDownstream();
     }
     
     static string junctionOutputHeader() {
-        return string(Location::locationOutputHeader()) + string("\tM1\tM2\tM3\tM10\tM11"); 
+        return string(Location::locationOutputHeader()) + string("left\tright\tM1\tM2\tM3\tM4\tM5\tM6\tM10\tM11"); 
     }
 
 };

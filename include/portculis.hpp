@@ -189,14 +189,18 @@ public:
         // to a separate file)
         collect();
         
-        junctionSystem.useGenome(genomeMapper, refs);
-        
+        cout << "Acquiring donor / acceptor sites from genome ... ";
+        uint64_t daSites = junctionSystem.findDonorAcceptorSites(genomeMapper, refs);
+        cout << "done" << endl
+             << "Found " << daSites << " valid donor / acceptor sites." << endl;
+                
         // Print output
-        /*cout << endl 
-             << "Outputting junctions" << endl
-             << "-------------------" << endl;
-        junctionSystem.outputDescription(cout);*/
-        
+        string junctionReportPath = outputPrefix + ".junctions.txt";
+        ofstream junctionReportStream;
+        junctionReportStream.open (junctionReportPath.c_str());
+        junctionSystem.outputDescription(junctionReportStream);
+        junctionReportStream.close();
+
         string junctionFilePath = outputPrefix + ".junctions.tab";
         ofstream junctionFileStream;
         junctionFileStream.open (junctionFilePath.c_str());

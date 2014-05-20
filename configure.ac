@@ -65,12 +65,12 @@ AC_CHECK_FUNCS([floor])
 AC_CHECK_FUNCS([memset])
 AC_CHECK_FUNCS([sqrt])
 AC_C_INLINE
+AC_CHECK_HEADERS([math.h])
 AC_CHECK_HEADERS([string.h])
 AC_CHECK_HEADERS([iostream])
 AC_CHECK_HEADERS([stdio.h])
 AC_CHECK_HEADERS([fstream])
 AC_CHECK_HEADERS([vector])
-AC_CHECK_HEADERS([getopt.h])
 
 
 # Check pthreads and zlib exist and are available
