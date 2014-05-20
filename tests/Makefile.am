@@ -8,6 +8,8 @@ check_portculis_CXXFLAGS = -g3 -Wall -Werror  -Wl,-rpath,@BAMTOOLS_PATH@/lib @AM
 check_portculis_LDFLAGS = @BAMTOOLS_LDFLAGS@ @SAMTOOLS_LDFLAGS@ @BOOST_LDFLAGS@ @AM_LDFLAGS@
 check_portculis_LDADD = -lboost_unit_test_framework @BOOST_LIBS@ -lbam -lbamtools -lpthread -lz
 check_portculis_SOURCES =   check_portculis.cc \
+			    location_tests.cpp \
+			    junction_tests.cpp \
 			    portculis_tests.cpp \
 			    genome_mapper_tests.cpp \
 			    bam_utils_tests.cpp

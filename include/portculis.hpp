@@ -27,24 +27,25 @@
 #include <api/BamReader.h>
 #include <api/BamWriter.h>
 
+#include "genome_mapper.hpp"
 #include "location.hpp"
 #include "junction.hpp"
+#include "junction_system.hpp"
 
 using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::ofstream;
 
 using boost::lexical_cast;
 
+using portculis::GenomeMapper;
 using portculis::Location;
 using portculis::Junction;
+using portculis::JunctionSystem;
 
 using namespace BamTools;
-
-typedef boost::unordered_map<Location, Junction> DistinctJunctions;
-typedef boost::unordered_map<Location, Junction>::iterator JunctionMapIterator;
-typedef std::vector<Junction*> JunctionList;
 
 namespace portculis {
 
@@ -57,7 +58,7 @@ private:
 
     // Can set these from the outside via the constructor
     string sortedBamFile;
-    string genomeFile;
+    GenomeMapper* genomeMapper;
     string outputPrefix;
     uint16_t threads;
     bool outputUnspliced;
@@ -71,14 +72,13 @@ private:
     RefVector refs;
     
     // The set of distinct junctions found in the BAM file
-    DistinctJunctions distinctJunctions;
-    JunctionList junctionList;
+    JunctionSystem junctionSystem;
     
-    void init(  string _sortedBamFile, string _genomeFile, string _outputPrefix, 
+    void init(  string _sortedBamFile, GenomeMapper* _genomeMapper, string _outputPrefix, 
                 uint16_t _threads, bool _outputUnspliced, bool _verbose) {
         
         sortedBamFile = _sortedBamFile;
-        genomeFile = _genomeFile;
+        genomeMapper = _genomeMapper;
         outputPrefix = _outputPrefix;
         threads = _threads;
         outputUnspliced = _outputUnspliced;
@@ -110,72 +110,6 @@ private:
 
 protected:
 
-    /**
-     * Adds any new junctions found from the given alignment to the set managed 
-     * by this class
-     * @param al The alignment to search for junctions
-     * @return Whether a junction was found in this alignment or not
-     */
-    bool createJunctions(const BamAlignment& al) {
-        return createJunctions(al, 0, 0);
-    }
-    
-    bool createJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset) {
-        
-        bool foundJunction = false;
-        
-        size_t nbOps = al.CigarData.size();
-        
-        int32_t refId = al.RefID;
-        int32_t lStart = al.Position + offset;        
-        int32_t lEnd = lStart;
-        int32_t rStart = lStart;
-        int32_t rEnd = lStart;
-        
-        for(size_t i = startOp; i < nbOps; i++) {
-            
-            CigarOp op = al.CigarData[i];
-            if (op.Type == 'N') {
-                foundJunction = true;
-                
-                rStart = lEnd + op.Length;
-                rEnd = rStart;
-                
-                size_t j = i+1;
-                while (j < nbOps && al.CigarData[j].Type != 'N') {
-                    rEnd += al.CigarData[j++].Length;
-                }
-                
-                Location location(refId, lStart, lEnd, rStart, rEnd);
-                Junction junction(location);
-                
-                // We should now have the complete junction location information
-                JunctionMapIterator it = distinctJunctions.find(location);
-                
-                if (it == distinctJunctions.end()) {
-                    distinctJunctions[location] = junction;
-                    junctionList.push_back(&junction);
-                }
-                else {
-                    it->second.addJunctionAlignment(al);
-                }
-                
-                // Check if we have fully processed the cigar or not.  If not, then
-                // that means that this cigar contains additional junctions, so 
-                // process those using recursion
-                if (j < nbOps) {
-                    
-                    createJunctions(al, i+1, rStart);
-                    break;
-                }                
-            }
-            else {
-                lEnd += op.Length;                
-            }            
-        }
-        
-        return foundJunction;        
-    }
     
     /**
      * Populates the set of distinct junctions.  
@@ -191,7 +125,7 @@ protected:
                 throw "Could not open bam writer for unspliced file";
             }
             
-            cout << "Sending unspliced alignments to: " << unsplicedFile;
+            cout << "Sending unspliced alignments to: " << unsplicedFile << endl;
         }
             
         BamAlignment al;
@@ -200,7 +134,7 @@ protected:
         cout << "Processing alignments ... ";
         while(reader.GetNextAlignment(al))
         {
-            if (createJunctions(al)) {
+            if (junctionSystem.addJunctions(al)) {
                 splicedCount++;
             }
             else if (outputUnspliced) {
@@ -212,28 +146,28 @@ protected:
         
         if (outputUnspliced) {
             
-            cout << "Found " << distinctJunctions.size() << " junctions from " << splicedCount << " spliced alignments." << endl;
+            cout << "Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl;
             cout << "Found " << unsplicedCount << " unspliced alignments." << endl;
             unsplicedWriter.Close();
         }        
-    }    
+    }
     
 
 public:
 
     Portculis() {
         init(   "",
-                "", 
+                NULL, 
                 DEFAULT_OUTPUT_PREFIX, 
                 DEFAULT_THREADS,
                 false,
                 false
                 );
     }
-    Portculis(  string _sortedBam, string _genomeFile, 
+    Portculis(  string _sortedBam, GenomeMapper* _genomeMapper, 
                 string _outputPrefix, uint16_t _threads, 
                 bool _outputUnspliced, bool _verbose) {
-        init(  _sortedBam, _genomeFile, _outputPrefix, 
+        init(  _sortedBam, _genomeMapper, _outputPrefix, 
                 _threads, _outputUnspliced, _verbose);
     }
     
@@ -254,6 +188,21 @@ public:
         // Collect junctions from BAM file (also outputs unspliced alignments
         // to a separate file)
         collect();
+        
+        junctionSystem.useGenome(genomeMapper, refs);
+        
+        // Print output
+        /*cout << endl 
+             << "Outputting junctions" << endl
+             << "-------------------" << endl;
+        junctionSystem.outputDescription(cout);*/
+        
+        string junctionFilePath = outputPrefix + ".junctions.tab";
+        ofstream junctionFileStream;
+        junctionFileStream.open (junctionFilePath.c_str());
+        junctionFileStream << junctionSystem << endl;
+        junctionFileStream.close();
+        
     }
 };
 }

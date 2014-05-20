@@ -37,6 +37,7 @@ private:
     // Path to the original genome file in fasta format
     string genomeFile;
     bool forcePrep;
+    bool verbose;
     
     // Handle to genome map.  Created by constructor.
     faidx_t* index;
@@ -51,14 +52,14 @@ public:
      * uses Samtools to create a fasta index for the genome file and then
      * manages the data structure returned after loading the index.
      */
-    GenomeMapper(string _genomeFile, bool _forcePrep) : 
-        genomeFile(_genomeFile), forcePrep(_forcePrep) {
+    GenomeMapper(string _genomeFile, bool _forcePrep, bool _verbose) : 
+        genomeFile(_genomeFile), forcePrep(_forcePrep), verbose(_verbose) {
         
         string indexFile = genomeFile + string(".fai");
                 
         bool indexExists = boost::filesystem::exists(indexFile);
         
-        if (indexExists) {
+        if (verbose && indexExists) {
             cout << "Indexed genome detected: " << indexFile << endl;
             
             if (forcePrep) {
@@ -75,7 +76,7 @@ public:
         
         index = fai_load(genomeFile.c_str());
         
-        cout << "Genome index acquired" << endl;
+        if (verbose) cout << "Genome index acquired" << endl;
     }
     
     virtual ~GenomeMapper() {        

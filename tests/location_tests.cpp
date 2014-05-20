@@ -21,21 +21,47 @@
 #endif
 #include <boost/test/unit_test.hpp>
 
-#include <portculis.hpp>
+#include <boost/filesystem.hpp>
 
-BOOST_AUTO_TEST_SUITE(portculis)
+#include <location.hpp>
 
-BOOST_AUTO_TEST_CASE(constructor)
+using std::cout;
+using std::endl;
+
+using portculis::Location;
+
+BOOST_AUTO_TEST_SUITE(location)
+
+BOOST_AUTO_TEST_CASE(equality1)
 {
-    /*portculis::Portculis portculis(
-                        "tests/resources/ecoli.bam",
-                        "tests/resources/ecoli.fa",
-                        "tests/tmp/portculis/constructor1",
-                        1,
-                        false,
-                        false);*/
+    Location l1(5, 10, 20, 30, 40);
+    Location l2(5, 10, 20, 30, 40);
+    
+    BOOST_CHECK(l1 == l2);
+}
 
-    BOOST_CHECK(true);
+BOOST_AUTO_TEST_CASE(equality2)
+{
+    Location l1(5, 5, 20, 30, 40);
+    Location l2(5, 10, 20, 30, 50);
+    
+    BOOST_CHECK(l1 == l2);
+}
+
+BOOST_AUTO_TEST_CASE(equality3)
+{
+    Location l1(2, 5, 20, 30, 40);
+    Location l2(5, 10, 20, 30, 50);
+    
+    BOOST_CHECK(l1 != l2);
+}
+
+BOOST_AUTO_TEST_CASE(equality4)
+{
+    Location l1(5, 5, 25, 30, 40);
+    Location l2(5, 10, 20, 30, 50);
+    
+    BOOST_CHECK(l1 != l2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

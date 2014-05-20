@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
         cout << endl 
              << "Indexing genome" << endl
              << "---------------" << endl;
-        GenomeMapper genomeMapper(genomeFile, forcePrep);
+        GenomeMapper genomeMapper(genomeFile, forcePrep, true);
         
         // Prep the BAM input to produce a usable sorted bam plus bamtools bti index
         cout << endl
@@ -195,7 +195,7 @@ int main(int argc, char *argv[]) {
              << "Portculis" << endl
              << "---------" << endl;
         
-        Portculis portculis(sortedBam, genomeFile, outputPrefix, threads, true, verbose);
+        Portculis portculis(sortedBam, &genomeMapper, outputPrefix, threads, true, verbose);
         portculis.process();
         cout << endl << "Portculis finished" << endl;
         

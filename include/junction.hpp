@@ -28,6 +28,7 @@
 
 #include "location.hpp"
 
+using std::endl;
 using std::string;
 using std::size_t;
 using std::vector;
@@ -36,6 +37,8 @@ using boost::lexical_cast;
 
 using namespace BamTools;
 
+using portculis::Location;
+
 namespace portculis {    
 
     
@@ -43,7 +46,7 @@ class Junction {
 private:
     
     // **** Properties that describe where the junction is ****
-    Location location;
+    Location* location;
     vector<BamAlignment> junctionAlignments;
     vector<BamAlignment> leftFlankingAlignments;
     vector<BamAlignment> rightFlankingAlignments;
@@ -67,11 +70,12 @@ public:
     
     // **** Constructors ****
     
-    Junction() {
+    Junction() :
+        location(NULL) {
         init();
     }
     
-    Junction(Location _location) :
+    Junction(Location* _location) :
         location(_location) {
         init();
     }
@@ -82,11 +86,11 @@ public:
     }
     
    
-    Location getLocation() const {
+    Location* getLocation() const {
         return location;
     }
 
-    void setLocation(Location location) {
+    void setLocation(Location* location) {
         this->location = location;
     }
 
@@ -95,6 +99,11 @@ public:
     void addJunctionAlignment(const BamAlignment& al) {
         this->junctionAlignments.push_back(al);                        
     }
+    
+    void setDonorAndAcceptorMotif(bool donorAndAcceptorMotif) {
+        this->donorAndAcceptorMotif = donorAndAcceptorMotif;
+    }
+
     
     
     // **** Metric getters ****
@@ -107,7 +116,7 @@ public:
      * Metric 1: The number of alignments directly supporting this junction
      * @return 
      */
-    uint32_t getNbJunctionAlignments() const {
+    size_t getNbJunctionAlignments() const {
         return junctionAlignments.size();
     }
     
@@ -125,29 +134,59 @@ public:
      * @return 
      */
     int32_t getIntronSize() const {
-        return location.rStart - location.lEnd;
+        return location != NULL ? location->rStart - location->lEnd : 0;
+    }
+    
+    /**
+     * Metric 10: The number of upstream non-spliced supporting reads
+     * @return 
+     */
+    size_t getNbUpstream() const {
+        return leftFlankingAlignments.size();
+    }
+    
+    /**
+     * Metric 10: The number of upstream non-spliced supporting reads
+     * @return 
+     */
+    size_t getNbDownstream() const {
+        return rightFlankingAlignments.size();
     }
     
     
     
-    string toString() const {
-        return  string("RefId: ") + lexical_cast<string>(location.refId) + 
-                string("; lStart: ") + lexical_cast<string>(location.lStart) + 
-                string("; lEnd: ") + lexical_cast<string>(location.lEnd) + 
-                string("; rStart: ") + lexical_cast<string>(location.rStart) + 
-                string("; rEnd: ") + lexical_cast<string>(location.rEnd);
+    void outputDescription(std::ostream &strm) {
+        strm << "Location: ";
+        
+        if (location != NULL) {
+            location->outputDescription(strm);
+        }
+        else {
+            strm << "No location set";
+        }
+        
+        strm << endl
+             << "1:  # Junction Alignments: " << getNbJunctionAlignments() << endl
+             << "2:  Has Donor + Acceptor Motif: " << donorAndAcceptorMotif << endl
+             << "3:  Intron Size: " << getIntronSize() << endl
+             << "10: # Upstream Non-Spliced Alignments: " << getNbUpstream() << endl
+             << "11: # Downstream Non-Spliced Alignments: " << getNbDownstream() << endl;
+                
     }
     
-    string toString(bool tabSeparated) const {
-        return tabSeparated ? 
-            (
-                lexical_cast<string>(location.refId) + string("\t") + 
-                lexical_cast<string>(location.lStart) + string("\t") + 
-                lexical_cast<string>(location.lEnd) + string("\t") + 
-                lexical_cast<string>(location.rStart) + string("\t") + 
-                lexical_cast<string>(location.rEnd) + string("\t")
-            ) 
-            : toString();
+    friend std::ostream& operator<<(std::ostream &strm, const Junction& j) {
+        return strm << *(j.location) << "\t" 
+                    << j.getNbJunctionAlignments() << "\t"
+                    << j.donorAndAcceptorMotif << "\t"
+                    << j.getIntronSize() << "\t"
+                    << j.getNbUpstream() << "\t"
+                    << j.getNbDownstream();
     }
+    
+    static string junctionOutputHeader() {
+        return string(Location::locationOutputHeader()) + string("\tM1\tM2\tM3\tM10\tM11"); 
+    }
+
 };
+
 }

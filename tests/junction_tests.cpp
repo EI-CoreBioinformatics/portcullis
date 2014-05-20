@@ -21,21 +21,25 @@
 #endif
 #include <boost/test/unit_test.hpp>
 
-#include <portculis.hpp>
+#include <boost/filesystem.hpp>
 
-BOOST_AUTO_TEST_SUITE(portculis)
+#include <junction.hpp>
 
-BOOST_AUTO_TEST_CASE(constructor)
+using std::cout;
+using std::endl;
+
+using portculis::Location;
+using portculis::Junction;
+
+BOOST_AUTO_TEST_SUITE(junction)
+
+BOOST_AUTO_TEST_CASE(intron)
 {
-    /*portculis::Portculis portculis(
-                        "tests/resources/ecoli.bam",
-                        "tests/resources/ecoli.fa",
-                        "tests/tmp/portculis/constructor1",
-                        1,
-                        false,
-                        false);*/
-
-    BOOST_CHECK(true);
+    Location l1(5, 10, 20, 30, 40);
+    Junction j1(&l1);
+    
+    int32_t intronSz = j1.getIntronSize();
+    BOOST_CHECK(intronSz == 10);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

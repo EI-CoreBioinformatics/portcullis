@@ -72,24 +72,27 @@ public:
                 rStart == other.rStart);
     }
     
-    string toString() {
-        return  string("RefId: ") + lexical_cast<string>(refId) + 
-                string("; lStart: ") + lexical_cast<string>(lStart) + 
-                string("; lEnd: ") + lexical_cast<string>(lEnd) + 
-                string("; rStart: ") + lexical_cast<string>(rStart) + 
-                string("; rEnd: ") + lexical_cast<string>(rEnd);
+    bool operator!=(const Location &other) const
+    { 
+        return !((*this)==other);
     }
     
-    string toString(bool tabSeparated) {
-        return tabSeparated ? 
-            (
-                lexical_cast<string>(refId) + string("\t") + 
-                lexical_cast<string>(lStart) + string("\t") + 
-                lexical_cast<string>(lEnd) + string("\t") + 
-                lexical_cast<string>(rStart) + string("\t") + 
-                lexical_cast<string>(rEnd) + string("\t")
-            ) 
-            : toString();
+    void outputDescription(std::ostream &strm) {
+        strm << "RefId: " << refId
+             << "; lStart: " << lStart
+             << "; lEnd: " << lEnd
+             << "; rStart: " << rStart
+             << "; rEnd: " << rEnd;
     }
+    
+    friend std::ostream& operator<<(std::ostream &strm, const Location& l) {
+        return strm << l.refId << "\t" << l.lStart << "\t" << l.lEnd << "\t" << l.rStart << "\t" << l.rEnd;
+    }
+    
+    static string locationOutputHeader() {
+        return string("refid\tlstart\tlend\trstart\trend"); 
+    }
+    
 };
+
 }

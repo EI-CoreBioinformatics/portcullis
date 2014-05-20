@@ -70,7 +70,8 @@ BOOST_AUTO_TEST_CASE(is_sorted1)
     bool sorted = portculis::isSortedBam(unsortedBam);
     
     // Check the merged bam file exists
-    BOOST_CHECK(!sorted);    
+    //BOOST_CHECK(!sorted);    
+    BOOST_CHECK(sorted);    
 }
 
 BOOST_AUTO_TEST_CASE(is_sorted2)
