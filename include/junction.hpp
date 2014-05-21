@@ -62,6 +62,8 @@ private:
     bool donorAndAcceptorMotif;         // Metric 2 calculated from 
                                         // Metric 3 (intron size) calculated via location properties
     int32_t maxMinAnchor;               // Metric 4
+    int32_t diffAnchor;                 // Metric 5
+    double entropy;                     // Metric 6
     
     
     // **** Additional stuff ****
@@ -79,6 +81,23 @@ private:
         rightFlankEnd = _rightFlankEnd;
         maxMinAnchor = minAnchor(_leftFlankStart, _rightFlankEnd);
     }
+    
+    int32_t minAnchor(int32_t otherStart, int32_t otherEnd) {
+        
+        if (intron != NULL) {
+            int32_t lAnchor = intron->start - 1 - otherStart;
+            int32_t rAnchor = otherEnd - intron->end - 1;
+
+            return min(lAnchor, rAnchor);
+        }
+        
+        return 0;
+    }
+    
+    
+protected:
+    
+    
     
 public:
     
@@ -124,23 +143,6 @@ public:
         return this->donorAndAcceptorMotif;
     }
 
-    bool validDonorAcceptor(string seq1, string seq2) {
-        return ((seq1.size() == 2 && seq2.size() == 2) &&
-                ((seq1[0] == 'G' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'G') ||
-                 (seq1[0] == 'C' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'C')));
-    }
-    
-    int32_t minAnchor(int32_t otherStart, int32_t otherEnd) {
-        
-        if (intron != NULL) {
-            int32_t lAnchor = intron->start - 1 - otherStart;
-            int32_t rAnchor = otherEnd - intron->end - 1;
-
-            return min(lAnchor, rAnchor);
-        }
-        
-        return 0;
-    }
     
     /**
      * Extends the flanking regions of the junction.  Also updates any relevant 
@@ -158,6 +160,100 @@ public:
         maxMinAnchor = max(maxMinAnchor, otherMinAnchor);
     }
         
+    
+    /**
+     * Call this method to recalculate all junction metrics based on the current location
+     * and alignment information present in this junction
+     */
+    void calcAllMetrics() {
+       
+        calcDiffAnchor();   // Metric 5
+        calcEntropy();      // Metric 6
+    }
+    
+    /**
+     * Metric 5: Diff Anchor
+     * @return 
+     */
+    int32_t calcDiffAnchor() {
+        
+        int32_t minLeft = intron->start - leftFlankStart; 
+        int32_t minRight = rightFlankEnd - intron->end; 
+        int32_t maxLeft = 0, maxRight = 0;
+        
+        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+            
+            int32_t end = ba.Position + ba.Length;
+            int32_t left = intron->start - ba.Position;
+            int32_t right = max(end, rightFlankEnd) - intron->end;
+            minLeft = min(minLeft, left);
+            minRight = min(minRight, right);
+            maxLeft = max(maxLeft, left);
+            maxRight = max(maxRight, right);
+        }
+        
+        int32_t diffLeft = maxLeft - minLeft;
+        int32_t diffRight = maxRight - minRight;
+        diffAnchor = min(diffLeft, diffRight);
+        return diffAnchor;
+    }
+    
+    
+    /**
+     * Metric 6: Entropy (definition from "Graveley et al, The developmental 
+     * transcriptome of Drosophila melanogaster, Nature, 2011")
+     * 
+     * We measured the entropy of the reads that mapped to the splice junction. 
+     * The entropy score is a function of both the total number of reads 
+     * that map to a given junction and the number of different offsets to which 
+     * those reads map and the number that map at each offset. Thus, junctions 
+     * with multiple reads mapping at each of the possible windows across the junction 
+     * will be assigned a higher entropy score, than junctions where many reads 
+     * map to only one or two positions. For this analysis we required that a junction 
+     * have an entropy score of two or greater in at least two biological samples 
+     * for junctions with canonical splice sites, and an entropy score of three 
+     * or greater in at least three biological samples for junctions with non-canonical 
+     * splice sites. Entropy was calculated using the following equations: 
+     * 
+     * pi = reads at offset i / total reads to junction window 
+     * 
+     * Entopy = - sumi(pi * log(pi) / log2) 
+     * 
+     * @return The entropy of this junction
+     */
+    double calcEntropy() {
+        size_t nbJunctionAlignments = junctionAlignments.size();
+        
+        if (nbJunctionAlignments <= 1)
+            return 0;
+        
+        double sum = 0.0;
+        
+        int32_t lastOffset = junctionAlignments[0].Position;
+        uint32_t readsAtOffset = 0;
+        
+        for(size_t i = 0; i < nbJunctionAlignments; i++) {
+            
+            const BamAlignment* ba = &(junctionAlignments[i]);
+            int32_t pos = ba->Position;
+            
+            if (pos == lastOffset) {
+                readsAtOffset++;
+            }
+            
+            if (pos != lastOffset || i == nbJunctionAlignments - 1) {
+                double pI = (double)readsAtOffset / (double)getNbJunctionAlignments();
+                sum += pI * log2(pI);
+                lastOffset = pos;
+                readsAtOffset = 0;
+            }
+        }
+        
+        entropy = -sum;        
+        return entropy;
+    }
+    
+    
     
     // **** Metric getters ****
     
@@ -183,7 +279,7 @@ public:
      * @return 
      */
     int32_t getIntronSize() const {
-        return intron != NULL ? intron->end - intron->start : 0;
+        return intron != NULL ? intron->size() : 0;
     }
     
     /**
@@ -243,36 +339,8 @@ public:
      * 
      * @return 
      */
-    double getEntropy() const {
-        
-        size_t nbJunctionAlignments = junctionAlignments.size();
-        
-        if (nbJunctionAlignments <= 1)
-            return 0;
-        
-        double sum = 0.0;
-        
-        int32_t lastOffset = junctionAlignments[0].Position;
-        uint32_t readsAtOffset = 0;
-        
-        for(size_t i = 0; i < nbJunctionAlignments; i++) {
-            
-            const BamAlignment* ba = &(junctionAlignments[i]);
-            int32_t pos = ba->Position;
-            
-            if (pos == lastOffset) {
-                readsAtOffset++;
-            }
-            
-            if (pos != lastOffset || i == nbJunctionAlignments - 1) {
-                double pI = (double)readsAtOffset / (double)getNbJunctionAlignments();
-                sum += pI * log2(pI);
-                lastOffset = pos;
-                readsAtOffset = 0;
-            }
-        }
-        
-        return -sum;
+    double getEntropy() const {        
+        return entropy;
     }
     
     /**
@@ -293,6 +361,12 @@ public:
     
     
     
+    // **** Output methods ****
+    
+    /**
+     * Complete human readable description of this junction
+     * @param strm
+     */
     void outputDescription(std::ostream &strm) {
         strm << "Location: ";
         
@@ -310,14 +384,21 @@ public:
              << "2:  Has Donor + Acceptor Motif: " << donorAndAcceptorMotif << "; Sequences: (" << da1 << " " << da2 << ")" << endl
              << "3:  Intron Size: " << getIntronSize() << endl
              << "4:  MaxMinAnchor: " << maxMinAnchor << endl
-             << "5:  DiffAnchor: " << getDiffAnchor() << endl
-             << "6:  Entropy: " << getEntropy() << endl
+             << "5:  DiffAnchor: " << diffAnchor << endl
+             << "6:  Entropy: " << entropy << endl
              << "10: # Upstream Non-Spliced Alignments: " << getNbUpstream() << endl
              << "11: # Downstream Non-Spliced Alignments: " << getNbDownstream() << endl
              << endl;
                 
     }
     
+    
+    /**
+     * Represents this junction as a table row
+     * @param seq1
+     * @param seq2
+     * @return 
+     */
     friend std::ostream& operator<<(std::ostream &strm, const Junction& j) {
         return strm << *(j.intron) << "\t"
                     << j.leftFlankStart << "\t"
@@ -326,12 +407,31 @@ public:
                     << j.donorAndAcceptorMotif << "\t"
                     << j.getIntronSize() << "\t"
                     << j.maxMinAnchor << "\t"
-                    << j.getDiffAnchor() << "\t"
-                    << j.getEntropy() << "\t"
+                    << j.diffAnchor << "\t"
+                    << j.entropy << "\t"
                     << j.getNbUpstream() << "\t"
                     << j.getNbDownstream();
     }
     
+        
+    // **** Static methods ****
+
+    /**
+     * Tests whether the two strings could represent valid donor and acceptor sites
+     * @param seq1
+     * @param seq2
+     * @return 
+     */
+    static bool validDonorAcceptor(string seq1, string seq2) {
+        return ((seq1.size() == 2 && seq2.size() == 2) &&
+                ((seq1[0] == 'G' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'G') ||
+                 (seq1[0] == 'C' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'C')));
+    }
+    
+    /**
+     * Header for table output
+     * @return 
+     */
     static string junctionOutputHeader() {
         return string(Location::locationOutputHeader()) + string("left\tright\tM1\tM2\tM3\tM4\tM5\tM6\tM10\tM11"); 
     }

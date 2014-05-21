@@ -160,7 +160,16 @@ public:
         return daSites;
     }
     
-    
+    /**
+     * Call this method to recalculate all junction metrics based on the current location
+     * and alignment information present in this junction
+     */
+    void calcAllMetrics() {
+       
+        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
+            j->calcAllMetrics();
+        }
+    }
     
     void outputDescription(std::ostream &strm) {
         

@@ -78,7 +78,9 @@ public:
     }
     
     
-    
+    int32_t size() const {
+        return end - start;
+    }
     
     
     void outputDescription(std::ostream &strm) {
