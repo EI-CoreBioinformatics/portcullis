@@ -107,9 +107,10 @@ protected:
        
         cout << "Will load alignments from: " << sortedBamFile << endl;
         
+        string indexFile = sortedBamFile + ".bti";
         
         // Opens the index for this BAM file
-        if ( !reader.LocateIndex() ) {
+        if ( !reader.OpenIndex(indexFile) ) {
             
             cerr << "WARNING: Couldn't find suitable index file for: " << sortedBamFile << endl
                  << "         This should not have happened.  Creating index ...";

@@ -207,22 +207,12 @@ public:
         SamHeader header = reader.GetHeader();
         RefVector refs = reader.GetReferenceData();
 
-        //cout << "Will load alignments from: " << unsplicedAlignmentsFile << endl;
-        
-        
         // Opens the index for this BAM file
-        if ( !reader.LocateIndex() ) {
-            
-            /*cerr << "WARNING: Couldn't find suitable index file for: " << unsplicedAlignmentsFile << endl
-                 << "         This should not have happened.  Creating index ...";
-            cerr.flush();*/
-        
+        string indexFile = unsplicedAlignmentsFile + ".bti";
+        if ( !reader.OpenIndex(indexFile) ) {            
             if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
                 throw "Error creating BAM index for unspliced alignments file";
-            }
-            
-            /*cerr << "done." << endl;
-            cerr.flush();*/
+            }            
         }
         
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
@@ -236,22 +226,28 @@ public:
             
             uint32_t nbLeftFlankingAlignments = 0, nbRightFlankingAlignments = 0;
             
-            // Count left flanking alignments
-            if (!reader.SetRegion(refId, lStart, refId, lEnd)) {
-                throw "Could not set region";
-            }
+            BamRegion leftFlank(refId, lStart - (2*meanQueryLength), refId, lEnd + (2*meanQueryLength));
+            BamRegion rightFlank(refId, rStart - (2*meanQueryLength), refId, rEnd + (2*meanQueryLength));
             
             BamAlignment ba;
+            
+            // Count left flanking alignments
+            if (!reader.SetRegion(leftFlank)) {
+                throw "Could not set region";
+            }
             while(reader.GetNextAlignment(ba)) {
-                nbLeftFlankingAlignments++;
+                if (lEnd > ba.Position && lStart < ba.Position + ba.AlignedBases.size()) {
+                    nbLeftFlankingAlignments++;
+                }
             }            
             
-            if (!reader.SetRegion(refId, rStart, refId, rEnd)) {
+            if (!reader.SetRegion(rightFlank)) {
                throw "Could not set region"; 
-            }
-            
+            }            
             while(reader.GetNextAlignment(ba)) {
-                nbRightFlankingAlignments++;
+                if (rEnd > ba.Position && rStart < ba.Position + ba.AlignedBases.size()) {
+                    nbRightFlankingAlignments++;
+                }
             }
 
             j->setFlankingAlignmentCounts(nbLeftFlankingAlignments, nbRightFlankingAlignments);            
