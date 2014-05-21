@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <boost/lexical_cast.hpp>
+#include <boost/timer/timer.hpp>
 #include <boost/unordered_map.hpp>
 
 #include <api/BamReader.h>
@@ -38,6 +39,7 @@ using std::cerr;
 using std::endl;
 using std::ofstream;
 
+using boost::timer::auto_cpu_timer;
 using boost::lexical_cast;
 
 using portculis::GenomeMapper;
@@ -52,6 +54,8 @@ namespace portculis {
 const string DEFAULT_OUTPUT_PREFIX = "portculis_out";
 const uint16_t DEFAULT_THREADS = 4;
 
+typedef boost::chrono::seconds secs;
+typedef boost::chrono::system_clock SystemClock;
 
 class Portculis {
 private:
@@ -99,6 +103,8 @@ protected:
      */
     void separateSplicedAlignments() {
         
+        auto_cpu_timer timer(1, " = Time taken %ws");
+        
         BamReader reader;
         
         if (!reader.Open(sortedBamFile)) {
@@ -127,7 +133,7 @@ protected:
             throw "Could not open BAM writer for non-spliced file";
         }
 
-        cout << " - Saving non-spliced alignments to: " << unsplicedFile << endl;
+        cout << " - Saving unspliced alignments to: " << unsplicedFile << endl;
         
         BamAlignment al;
         uint64_t splicedCount = 0;
@@ -153,7 +159,7 @@ protected:
         junctionSystem.setMeanQueryLength(meanQueryLength);
         
         cout << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl;
-        cout << " - Found " << unsplicedCount << " non-spliced alignments." << endl;
+        cout << " - Found " << unsplicedCount << " unspliced alignments." << endl;
         unsplicedWriter.Close();
         
         // Reset the reader in case anyone else want to use it later
@@ -205,25 +211,22 @@ public:
 
     void process() {
        
+        
+        
         // Collect junctions from BAM file (also outputs unspliced alignments
         // to a separate file)
         cout << "Stage 1: Separating spliced alignments:" << endl;
-        separateSplicedAlignments();
+        separateSplicedAlignments();        
         
         // Acquires donor / acceptor info from indexed genome file
-        cout << "Stage 2: Acquiring donor / acceptor sites from genome ... ";
-        cout.flush();
+        cout << "Stage 2: Scanning reference sequences:" << endl;
         uint64_t daSites = junctionSystem.findDonorAcceptorSites(genomeMapper, refs);
-        cout << "done." << endl
-             << " - Found " << daSites << " valid donor / acceptor sites." << endl;
         
         // Count the number of alignments found in upstream and downstream flanking 
         // regions for each junction
-        cout << "Stage 3: Acquiring non-spliced alignments from flanking windows ... ";
-        cout.flush();
+        cout << "Stage 3: Lookup unspliced alignments:" << endl;
         string unsplicedBamFile = getUnsplicedBamFile();
         junctionSystem.findFlankingAlignments(unsplicedBamFile);
-        cout << "done." << endl;        
         
         // Calculate all remaining metrics
         cout << "Stage 4: Calculating remaining junction metrics ... ";

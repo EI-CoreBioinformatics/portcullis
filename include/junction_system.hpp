@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <boost/shared_ptr.hpp>
+#include <boost/timer/timer.hpp>
 #include <boost/unordered_map.hpp>
 
 #include "location.hpp"
@@ -28,6 +29,7 @@
 
 using boost::lexical_cast;
 using boost::shared_ptr;
+using boost::timer::auto_cpu_timer;
 
 using portculis::Location;
 using portculis::Junction;
@@ -169,6 +171,11 @@ public:
     
     uint64_t findDonorAcceptorSites(GenomeMapper* genomeMapper, RefVector& refs) {
         
+        auto_cpu_timer timer(1, " = Time taken: %ws");        
+        
+        cout << " - Acquiring junction donor / acceptor sites from genome ... ";
+        cout.flush();
+        
         uint64_t daSites = 0;
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
             
@@ -193,11 +200,18 @@ public:
             }
         }
         
+        cout << "done." << endl
+             << " - Found " << daSites << " valid donor / acceptor sites." << endl;
+        
         return daSites;
     }
     
     void findFlankingAlignments(string unsplicedAlignmentsFile) {
         
+        
+        cout << " - Acquiring unspliced alignments from junction flanking windows ... ";
+        cout.flush();
+                
         BamReader reader;
         
         if (!reader.Open(unsplicedAlignmentsFile)) {
@@ -255,6 +269,8 @@ public:
         
         // Reset the reader for future use.
         reader.Close();
+        
+        cout << "done.";
     }
     
     /**

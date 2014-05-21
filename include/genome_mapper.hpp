@@ -20,6 +20,7 @@
 #include <string>
 #include <iostream>
 
+#include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
 
 #include <faidx.h>
@@ -28,6 +29,8 @@ using std::cout;
 using std::endl;
 using std::ifstream;
 using std::string;
+
+using boost::timer::auto_cpu_timer;
 
 namespace portculis {
 
@@ -55,6 +58,8 @@ public:
     GenomeMapper(string _genomeFile, bool _forcePrep, bool _verbose) : 
         genomeFile(_genomeFile), forcePrep(_forcePrep), verbose(_verbose) {
         
+        auto_cpu_timer timer(1, " = Time taken: %ws");        
+            
         string indexFile = genomeFile + string(".fai");
                 
         bool indexExists = boost::filesystem::exists(indexFile);

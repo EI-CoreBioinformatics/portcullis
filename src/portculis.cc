@@ -25,6 +25,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+#include <boost/timer/timer.hpp>
 
 #include <api/BamReader.h>
 #include <api/BamWriter.h>
