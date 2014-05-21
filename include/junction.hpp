@@ -179,24 +179,25 @@ public:
      */
     int32_t calcDiffAnchor() {
         
-        int32_t minLeft = intron->start - leftFlankStart; 
-        int32_t minRight = rightFlankEnd - intron->end; 
-        int32_t maxLeft = 0, maxRight = 0;
+        int32_t minLeftSize = intron->start - leftFlankStart; 
+        int32_t minRightSize = rightFlankEnd - intron->end; 
+        int32_t maxLeftSize = 0, maxRightSize = 0;
+        size_t nbAlignments = junctionAlignments.size();
         
         BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
             
-            int32_t end = ba.Position + ba.Length;
-            int32_t left = intron->start - ba.Position;
-            int32_t right = max(end, rightFlankEnd) - intron->end;
-            minLeft = min(minLeft, left);
-            minRight = min(minRight, right);
-            maxLeft = max(maxLeft, left);
-            maxRight = max(maxRight, right);
+            int32_t end = ba.Position + ba.AlignedBases.size();
+            int32_t leftSize = intron->start - max(ba.Position, leftFlankStart);
+            int32_t rightSize = min(end, rightFlankEnd) - intron->end;
+            minLeftSize = min(minLeftSize, leftSize);
+            minRightSize = min(minRightSize, rightSize);
+            maxLeftSize = max(maxLeftSize, leftSize);
+            maxRightSize = max(maxRightSize, rightSize);
         }
         
-        int32_t diffLeft = maxLeft - minLeft;
-        int32_t diffRight = maxRight - minRight;
-        diffAnchor = min(diffLeft, diffRight);
+        int32_t diffLeftSize = maxLeftSize - minLeftSize;
+        int32_t diffRightSize = maxRightSize - minRightSize;
+        diffAnchor = min(diffLeftSize, diffRightSize);
         return diffAnchor;
     }
     
@@ -231,20 +232,18 @@ public:
         
         double sum = 0.0;
         
-        int32_t lastOffset = junctionAlignments[0].Position;
+        int32_t lastOffset = max(junctionAlignments[0].Position, leftFlankStart);
         uint32_t readsAtOffset = 0;
         
         for(size_t i = 0; i < nbJunctionAlignments; i++) {
             
             const BamAlignment* ba = &(junctionAlignments[i]);
-            int32_t pos = ba->Position;
+            int32_t pos = max(ba->Position, leftFlankStart);
             
-            if (pos == lastOffset) {
-                readsAtOffset++;
-            }
+            readsAtOffset++;
             
             if (pos != lastOffset || i == nbJunctionAlignments - 1) {
-                double pI = (double)readsAtOffset / (double)getNbJunctionAlignments();
+                double pI = (double)readsAtOffset / (double)nbJunctionAlignments;
                 sum += pI * log2(pI);
                 lastOffset = pos;
                 readsAtOffset = 0;
@@ -297,26 +296,8 @@ public:
      * Metric 5: Diff Anchor
      * @return 
      */
-    int32_t getDiffAnchor() const {
-        
-        int32_t minLeft = intron->start - leftFlankStart; 
-        int32_t minRight = rightFlankEnd - intron->end; 
-        int32_t maxLeft = 0, maxRight = 0;
-        
-        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
-            
-            int32_t end = ba.Position + ba.Length;
-            int32_t left = intron->start - ba.Position;
-            int32_t right = max(end, rightFlankEnd) - intron->end;
-            minLeft = min(minLeft, left);
-            minRight = min(minRight, right);
-            maxLeft = max(maxLeft, left);
-            maxRight = max(maxRight, right);
-        }
-        
-        int32_t diffLeft = maxLeft - minLeft;
-        int32_t diffRight = maxRight - minRight;
-        return min(diffLeft, diffRight);
+    int32_t getDiffAnchor() const {        
+        return diffAnchor;
     }
     
     /**
@@ -435,7 +416,7 @@ public:
      * @return 
      */
     static string junctionOutputHeader() {
-        return string(Location::locationOutputHeader()) + string("left\tright\tM1\tM2\tM3\tM4\tM5\tM6\tM10\tM11"); 
+        return string(Location::locationOutputHeader()) + string("\tleft\tright\tM1\tM2\tM3\tM4\tM5\tM6\tM10\tM11"); 
     }
 
 };

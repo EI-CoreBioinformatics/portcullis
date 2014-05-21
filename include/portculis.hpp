@@ -132,6 +132,7 @@ protected:
         uint64_t splicedCount = 0;
         uint64_t unsplicedCount = 0;
         cout << "Processing alignments ... ";
+        cout.flush();
         while(reader.GetNextAlignment(al))
         {
             if (junctionSystem.addJunctions(al)) {
