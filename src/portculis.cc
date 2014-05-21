@@ -195,7 +195,7 @@ int main(int argc, char *argv[]) {
              << "Portculis" << endl
              << "---------" << endl;
         
-        Portculis portculis(sortedBam, &genomeMapper, outputPrefix, threads, false, verbose);
+        Portculis portculis(sortedBam, &genomeMapper, outputPrefix, threads, verbose);
         portculis.process();
         cout << endl << "Portculis finished" << endl;
         

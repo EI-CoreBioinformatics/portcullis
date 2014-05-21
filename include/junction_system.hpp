@@ -44,10 +44,24 @@ private:
     DistinctJunctions distinctJunctions;
     JunctionList junctionList;
     
+    double meanQueryLength;
+    
+    
+protected:
+    
+    bool opFollowsReference(char type) {
+        return  type == 'M' || // Alignment match (= or X)
+                type == 'D' || // Deletion from reference
+                //type == 'S' || // Soft clip
+                type == '=' || // Sequence match
+                type == 'X';   // Sequence mismatch 
+    }
+    
 public:
     
     
-    JunctionSystem() {        
+    JunctionSystem() :
+        meanQueryLength(0) {        
     }
     
     virtual ~JunctionSystem() {
@@ -59,6 +73,15 @@ public:
         return distinctJunctions.size();
     }
     
+    double getMeanQueryLength() const {
+        return meanQueryLength;
+    }
+
+    void setMeanQueryLength(double meanQueryLength) {
+        this->meanQueryLength = meanQueryLength;
+    }
+
+    
     /**
      * Adds any new junctions found from the given alignment to the set managed 
      * by this class
@@ -66,7 +89,7 @@ public:
      * @return Whether a junction was found in this alignment or not
      */
     bool addJunctions(const BamAlignment& al) {
-        return addJunctions(al, 0, 0);
+        return addJunctions(al, 0, al.Position);
     }
     
     bool addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset) {
@@ -76,7 +99,7 @@ public:
         size_t nbOps = al.CigarData.size();
         
         int32_t refId = al.RefID;
-        int32_t lStart = al.Position + offset;        
+        int32_t lStart = offset;        
         int32_t lEnd = lStart;
         int32_t rStart = lStart;
         int32_t rEnd = lStart;
@@ -92,7 +115,11 @@ public:
                 
                 size_t j = i+1;
                 while (j < nbOps && al.CigarData[j].Type != 'N') {
-                    rEnd += al.CigarData[j++].Length;
+                    
+                    CigarOp rOp = al.CigarData[j++];
+                    if (opFollowsReference(rOp.Type)) {
+                        rEnd += rOp.Length;
+                    }
                 }
                 
                 shared_ptr<Location> location(new Location(refId, lEnd, rStart-1));
@@ -125,9 +152,16 @@ public:
                     break;
                 }                
             }
-            else {
+            else if (opFollowsReference(op.Type)) {
                 lEnd += op.Length;                
-            }            
+            }
+            else {
+                
+                // Insertions, should be ignored
+                // if (op.Type == 'I')
+                
+                // Ignore any other op types not already covered
+            }
         }
         
         return foundJunction;        
@@ -160,6 +194,71 @@ public:
         }
         
         return daSites;
+    }
+    
+    void findFlankingAlignments(string unsplicedAlignmentsFile) {
+        
+        BamReader reader;
+        
+        if (!reader.Open(unsplicedAlignmentsFile)) {
+            throw "Could not open bam reader for unspliced alignments file";
+        }
+        // Sam header and refs info from the input bam
+        SamHeader header = reader.GetHeader();
+        RefVector refs = reader.GetReferenceData();
+
+        //cout << "Will load alignments from: " << unsplicedAlignmentsFile << endl;
+        
+        
+        // Opens the index for this BAM file
+        if ( !reader.LocateIndex() ) {
+            
+            /*cerr << "WARNING: Couldn't find suitable index file for: " << unsplicedAlignmentsFile << endl
+                 << "         This should not have happened.  Creating index ...";
+            cerr.flush();*/
+        
+            if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
+                throw "Error creating BAM index for unspliced alignments file";
+            }
+            
+            /*cerr << "done." << endl;
+            cerr.flush();*/
+        }
+        
+        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
+            
+            shared_ptr<Location> intron = j->getIntron();
+            int32_t refId = intron->refId;
+            int32_t lStart = j->getLeftFlankStart();
+            int32_t lEnd = intron->start;
+            int32_t rStart = intron->end;
+            int32_t rEnd = j->getRightFlankEnd();
+            
+            uint32_t nbLeftFlankingAlignments = 0, nbRightFlankingAlignments = 0;
+            
+            // Count left flanking alignments
+            if (!reader.SetRegion(refId, lStart, refId, lEnd)) {
+                throw "Could not set region";
+            }
+            
+            BamAlignment ba;
+            while(reader.GetNextAlignment(ba)) {
+                nbLeftFlankingAlignments++;
+            }            
+            
+            if (!reader.SetRegion(refId, rStart, refId, rEnd)) {
+               throw "Could not set region"; 
+            }
+            
+            while(reader.GetNextAlignment(ba)) {
+                nbRightFlankingAlignments++;
+            }
+
+            j->setFlankingAlignmentCounts(nbLeftFlankingAlignments, nbRightFlankingAlignments);            
+        }
+        
+        // Reset the reader for future use.
+        reader.Close();
     }
     
     /**

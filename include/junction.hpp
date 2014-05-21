@@ -46,6 +46,7 @@ using portculis::Location;
 
 namespace portculis {    
 
+const uint16_t MAP_QUALITY_THRESHOLD = 30;    
     
 class Junction {
 private:
@@ -53,20 +54,24 @@ private:
     // **** Properties that describe where the junction is ****
     shared_ptr<Location> intron;
     vector<BamAlignment> junctionAlignments;
-    vector<BamAlignment> leftFlankingAlignments;
-    vector<BamAlignment> rightFlankingAlignments;
     
     
     // **** Junction metrics ****
-                                        // Metric 1 (nbReads) derived from size of junction alignment vector
-    bool donorAndAcceptorMotif;         // Metric 2 calculated from 
-                                        // Metric 3 (intron size) calculated via location properties
-    int32_t maxMinAnchor;               // Metric 4
-    int32_t diffAnchor;                 // Metric 5
-    double entropy;                     // Metric 6
+                                                // Metric 1 (nbReads) derived from size of junction alignment vector
+    bool donorAndAcceptorMotif;                 // Metric 2 calculated from 
+                                                // Metric 3 (intron size) calculated via location properties
+    int32_t maxMinAnchor;                       // Metric 4
+    int32_t diffAnchor;                         // Metric 5
+    double entropy;                             // Metric 6
+    uint32_t nbDistinctAnchors;                 // Metric 7
+    uint32_t nbDistinctAlignments;              // Metric 8
+    uint32_t nbReliableAlignments;                // Metric 9
+    uint32_t nbUpstreamFlankingAlignments;      // Metric 10
+    uint32_t nbDownstreamFlankingAlignments;    // Metric 11
     
     
-    // **** Additional stuff ****
+    
+    // **** Additional properties ****
     
     int32_t leftFlankStart;
     int32_t rightFlankEnd;
@@ -76,12 +81,17 @@ private:
     
     void init(int32_t _leftFlankStart, int32_t _rightFlankEnd) {
         
-        donorAndAcceptorMotif = false;
         leftFlankStart = _leftFlankStart;
         rightFlankEnd = _rightFlankEnd;
+        donorAndAcceptorMotif = false;
         maxMinAnchor = minAnchor(_leftFlankStart, _rightFlankEnd);
         diffAnchor = 0;
         entropy = 0;
+        nbDistinctAnchors = 0;
+        nbDistinctAlignments = 0;
+        nbReliableAlignments = 0;
+        nbUpstreamFlankingAlignments = 0;
+        nbDownstreamFlankingAlignments = 0;
     }
     
     int32_t minAnchor(int32_t otherStart, int32_t otherEnd) {
@@ -144,6 +154,11 @@ public:
         this->donorAndAcceptorMotif = validDonorAcceptor(seq1, seq2);
         return this->donorAndAcceptorMotif;
     }
+    
+    void setFlankingAlignmentCounts(uint32_t nbUpstream, uint32_t nbDownstream) {
+        this->nbUpstreamFlankingAlignments = nbUpstream;
+        this->nbDownstreamFlankingAlignments = nbDownstream;
+    }
 
     
     /**
@@ -169,36 +184,51 @@ public:
      */
     void calcAllMetrics() {
        
-        calcDiffAnchor();   // Metric 5
-        calcEntropy();      // Metric 6
+        calcAnchorStats();      // Metrics 5 and 7
+        calcEntropy();          // Metric 6
+        calcAlignmentStats();   // Metrics 8 and 9
     }
     
     /**
-     * Metric 5: Diff Anchor
+     * Metric 5 and 7: Diff Anchor and # Distinct Anchors
      * @return 
      */
-    int32_t calcDiffAnchor() {
+    void calcAnchorStats() {
         
+        int32_t lEnd = intron->start;
+        int32_t rStart = intron->end;
         int32_t minLeftSize = intron->start - leftFlankStart; 
         int32_t minRightSize = rightFlankEnd - intron->end; 
         int32_t maxLeftSize = 0, maxRightSize = 0;
         size_t nbAlignments = junctionAlignments.size();
-        
+        uint32_t nbDistinctLeftAnchors = 0, nbDistinctRightAnchors = 0;
+        int32_t lastLStart = -1, lastREnd = -1;
+                
         BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
             
-            int32_t end = ba.Position + ba.AlignedBases.size();
-            int32_t leftSize = intron->start - max(ba.Position, leftFlankStart);
-            int32_t rightSize = min(end, rightFlankEnd) - intron->end;
+            int32_t lStart = max(ba.Position, leftFlankStart);
+            int32_t rEnd = min(ba.Position + (int32_t)ba.AlignedBases.size(), rightFlankEnd);
+            int32_t leftSize = lEnd - lStart;
+            int32_t rightSize = rEnd - rStart;
             minLeftSize = min(minLeftSize, leftSize);
             minRightSize = min(minRightSize, rightSize);
             maxLeftSize = max(maxLeftSize, leftSize);
             maxRightSize = max(maxRightSize, rightSize);
+            
+            if (lStart != lastLStart) {
+                nbDistinctLeftAnchors++;
+                lastLStart = lStart;
+            }
+            if (rEnd != lastREnd) {
+                nbDistinctRightAnchors++;
+                lastREnd = rEnd;
+            }
         }
         
         int32_t diffLeftSize = maxLeftSize - minLeftSize;
         int32_t diffRightSize = maxRightSize - minRightSize;
         diffAnchor = min(diffLeftSize, diffRightSize);
-        return diffAnchor;
+        nbDistinctAnchors = min(nbDistinctLeftAnchors, nbDistinctRightAnchors);
     }
     
     
@@ -253,7 +283,76 @@ public:
         entropy = -sum;        
         return entropy;
     }
+     
     
+    /**
+     * Metric 8, 9: # Distinct Alignments, # Unique Alignments
+     * @return 
+     */
+    void calcAlignmentStats() {
+        
+        int32_t lastStart = -1, lastEnd = -1;
+        
+        nbDistinctAlignments = 0;
+        nbReliableAlignments = 0;
+        
+        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+            
+            int32_t start = ba.Position;
+            int32_t end = ba.Position + ba.AlignedBases.size();
+            
+            if (start != lastStart || end != lastEnd ) {
+                nbDistinctAlignments++;                
+                lastStart = start;
+                lastEnd = end;
+            }
+
+            // TODO Suspect this is wrong!!
+            // This doesn't seem intuitive but this is how they recommend finding
+            // "reliable" (i.e. unique) alignments in samtools.  They do this
+            // because apparently "uniqueness" is not a well defined concept.
+            if (ba.MapQuality >= MAP_QUALITY_THRESHOLD) {
+                nbReliableAlignments++;
+            }
+        }        
+    }
+    
+    double coverage(int32_t a, int32_t b) {
+        
+        double multiplier = 1.0 / (b - a);
+        uint32_t readCount = 0.0;
+        for (int32_t i = a; i <= b; i++) {
+            readCount += 0; // Number of reads found at this position
+        }
+        return multiplier * (double)readCount;
+    }
+    
+    void calcCoverage() {
+        
+        int32_t readLength = 0;
+        uint32_t donorCoverage = coverage(intron->start - 2 * readLength, intron->start - readLength) -
+                coverage(intron->start - readLength, intron->start);
+        uint32_t acceptorCoverage = coverage(intron->end, intron->end + readLength) -
+                coverage(intron->end - readLength, intron->end);
+        
+        uint32_t coverage = donorCoverage + acceptorCoverage;
+    }
+    
+    
+    // **** Core property getters ****
+    
+    shared_ptr<Location> getIntron() const {
+        return intron;
+    }
+
+    int32_t getLeftFlankStart() const {
+        return leftFlankStart;
+    }
+
+    int32_t getRightFlankEnd() const {
+        return rightFlankEnd;
+    }
+
     
     
     // **** Metric getters ****
@@ -263,7 +362,7 @@ public:
      * @return 
      */
     size_t getNbJunctionAlignments() const {
-        return junctionAlignments.size();
+        return this->junctionAlignments.size();
     }
     
     /**
@@ -272,7 +371,7 @@ public:
      * @return 
      */
     bool hasDonorAndAcceptorMotif() const {
-        return donorAndAcceptorMotif;
+        return this->donorAndAcceptorMotif;
     }
     
     /**
@@ -289,7 +388,7 @@ public:
      * @return
      */
     int32_t getMaxMinAnchor() const {
-        return maxMinAnchor;
+        return this->maxMinAnchor;
     }
     
     /**
@@ -297,7 +396,7 @@ public:
      * @return 
      */
     int32_t getDiffAnchor() const {        
-        return diffAnchor;
+        return this->diffAnchor;
     }
     
     /**
@@ -323,25 +422,50 @@ public:
      * @return 
      */
     double getEntropy() const {        
-        return entropy;
+        return this->entropy;
     }
     
+    
+    /**
+     * Metric 7
+     * @return 
+     */
+    uint32_t getNbDistinctAnchors() const {
+        return nbDistinctAnchors;
+    }
+    
+    /**
+     * Metric 8
+     * @return 
+     */
+    uint32_t getNbDistinctAlignments() const {
+        return nbDistinctAlignments;
+    }
+
+    /**
+     * Metric 9
+     * @return 
+     */
+    uint32_t getNbReliableAlignments() const {
+        return nbReliableAlignments;
+    }
+
     /**
      * Metric 10: The number of upstream non-spliced supporting reads
      * @return 
      */
-    size_t getNbUpstream() const {
-        return leftFlankingAlignments.size();
+    uint32_t getNbUpstreamFlankingAlignments() const {
+        return nbUpstreamFlankingAlignments;
     }
     
     /**
-     * Metric 10: The number of upstream non-spliced supporting reads
+     * Metric 11: The number of downstream non-spliced supporting reads
      * @return 
      */
-    size_t getNbDownstream() const {
-        return rightFlankingAlignments.size();
+    uint32_t getNbDownstreamFlankingAlignments() const {
+        return nbDownstreamFlankingAlignments;
     }
-    
+
     
     
     // **** Output methods ****
@@ -369,8 +493,11 @@ public:
              << "4:  MaxMinAnchor: " << maxMinAnchor << endl
              << "5:  DiffAnchor: " << diffAnchor << endl
              << "6:  Entropy: " << entropy << endl
-             << "10: # Upstream Non-Spliced Alignments: " << getNbUpstream() << endl
-             << "11: # Downstream Non-Spliced Alignments: " << getNbDownstream() << endl
+             << "7:  # Distinct Anchors: " << nbDistinctAnchors << endl
+             << "8:  # Distinct Alignments: " << nbDistinctAlignments << endl
+             << "9:  # Reliable (MP >=" << MAP_QUALITY_THRESHOLD << ") Alignments: " << nbReliableAlignments << endl
+             << "10: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << endl
+             << "11: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << endl
              << endl;
                 
     }
@@ -392,8 +519,11 @@ public:
                     << j.maxMinAnchor << "\t"
                     << j.diffAnchor << "\t"
                     << j.entropy << "\t"
-                    << j.getNbUpstream() << "\t"
-                    << j.getNbDownstream();
+                    << j.nbDistinctAnchors << "\t"
+                    << j.nbDistinctAlignments << "\t"
+                    << j.nbReliableAlignments << "\t"
+                    << j.nbUpstreamFlankingAlignments << "\t"
+                    << j.nbDownstreamFlankingAlignments;
     }
     
         
@@ -416,7 +546,7 @@ public:
      * @return 
      */
     static string junctionOutputHeader() {
-        return string(Location::locationOutputHeader()) + string("\tleft\tright\tM1\tM2\tM3\tM4\tM5\tM6\tM10\tM11"); 
+        return string(Location::locationOutputHeader()) + string("\tleft\tright\tM1\tM2\tM3\tM4\tM5\tM6\tM7\tM8\tM9\tM10\tM11"); 
     }
 
 };

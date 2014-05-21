@@ -56,6 +56,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
         if (!mergedBamExists || forcePrep) {
             cout << "Found " << bamFiles.size() << " BAM files." << endl 
                  << "Merging BAMS...";
+            cout.flush();
             mergeBams(bamFiles, mergedBam);
             cout << "done." << endl;
         }
@@ -72,6 +73,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
         
         if (!mergedAndSortedBamExists || forcePrep) {
             cout << "Sorting " << mergedBam << " ... ";
+            cout.flush();
             sortBam(mergedBam, sortedBam, false);
             cout << "done." << endl;        
         }
@@ -88,6 +90,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
         
         if (!indexedBamExists || forcePrep) {
             cout << "Indexing " << sortedBam << " ... ";
+            cout.flush();
             indexBam(sortedBam, indexedBam);
             cout << "done." << endl;
         }
@@ -115,6 +118,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
             string sortedBam = bamFile + ".sorted.bam";
 
             cout << "Sorting " << bamFile << " ... ";
+            cout.flush();
             sortBam(bamFile, sortedBam, false);
             cout << "done" << endl;
 
@@ -136,6 +140,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
         // Index the BAM file if necessary.
         if (!bamIsIndexed || forcePrep) {
             cout << "Indexing " << bamFileToIndex << " ... ";
+            cout.flush();
             indexBam(bamFileToIndex, indexedBam);
             cout << "done." << endl;
         }

@@ -61,12 +61,8 @@ private:
     GenomeMapper* genomeMapper;
     string outputPrefix;
     uint16_t threads;
-    bool outputUnspliced;
     bool verbose;
     
-    BamReader reader;
-    BamWriter unsplicedWriter;
-     
     // Sam header and refs info from the input bam
     SamHeader header;
     RefVector refs;
@@ -75,33 +71,14 @@ private:
     JunctionSystem junctionSystem;
     
     void init(  string _sortedBamFile, GenomeMapper* _genomeMapper, string _outputPrefix, 
-                uint16_t _threads, bool _outputUnspliced, bool _verbose) {
+                uint16_t _threads, bool _verbose) {
         
         sortedBamFile = _sortedBamFile;
         genomeMapper = _genomeMapper;
         outputPrefix = _outputPrefix;
         threads = _threads;
-        outputUnspliced = _outputUnspliced;
         verbose = _verbose;
         
-        if (!reader.Open(sortedBamFile)) {
-            throw "Could not open bam reader";
-        }
-        
-        header = reader.GetHeader();
-        refs = reader.GetReferenceData();
-
-       
-        cout << "Will load alignments from: " << sortedBamFile << endl;
-        
-        if (verbose) {
-            cout << "Header:" << endl << header.ToString() << endl;
-            cout << "Refs:" << endl;
-
-            BOOST_FOREACH(RefData ref, refs) {
-               cout << ref.RefLength << " - " << ref.RefName << endl;
-            }
-        }
         
         if (verbose)
             cerr << "Initialised Portculis instance" << endl;
@@ -118,39 +95,71 @@ protected:
      */
     void collect() {
         
-        if (outputUnspliced) {
-            string unsplicedFile = getUnsplicedFile();
+        BamReader reader;
         
-            if (!unsplicedWriter.Open(unsplicedFile, header, refs)) {
-                throw "Could not open bam writer for unspliced file";
-            }
-            
-            cout << "Sending unspliced alignments to: " << unsplicedFile << endl;
+        if (!reader.Open(sortedBamFile)) {
+            throw "Could not open bam reader";
         }
+        // Sam header and refs info from the input bam
+        header = reader.GetHeader();
+        refs = reader.GetReferenceData();
+
+       
+        cout << "Will load alignments from: " << sortedBamFile << endl;
+        
+        
+        // Opens the index for this BAM file
+        if ( !reader.LocateIndex() ) {
+            
+            cerr << "WARNING: Couldn't find suitable index file for: " << sortedBamFile << endl
+                 << "         This should not have happened.  Creating index ...";
+            cerr.flush();
+        
+            if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
+               throw "Could not create BAM index"; 
+            }
+            cerr << "done." << endl;
+            cerr.flush();
+        }
+        
+        BamWriter unsplicedWriter;
+        string unsplicedFile = getUnsplicedFile();
+
+        if (!unsplicedWriter.Open(unsplicedFile, header, refs)) {
+            throw "Could not open bam writer for unspliced file";
+        }
+
+        cout << "Sending unspliced alignments to: " << unsplicedFile << endl;
             
         BamAlignment al;
         uint64_t splicedCount = 0;
         uint64_t unsplicedCount = 0;
+        uint64_t sumQueryLengths = 0;
         cout << "Processing alignments ... ";
         cout.flush();
         while(reader.GetNextAlignment(al))
         {
+            sumQueryLengths += al.Length;
+            
             if (junctionSystem.addJunctions(al)) {
                 splicedCount++;
             }
-            else if (outputUnspliced) {
+            else {
                 unsplicedWriter.SaveAlignment(al);
                 unsplicedCount++;
             }
         }
-        cout << "done" << endl;
+        cout << "done." << endl;
         
-        if (outputUnspliced) {
-            
-            cout << "Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl;
-            cout << "Found " << unsplicedCount << " unspliced alignments." << endl;
-            unsplicedWriter.Close();
-        }        
+        double meanQueryLength = (double)sumQueryLengths / (double)(splicedCount + unsplicedCount);
+        junctionSystem.setMeanQueryLength(meanQueryLength);
+        
+        cout << "Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl;
+        cout << "Found " << unsplicedCount << " unspliced alignments." << endl;
+        unsplicedWriter.Close();
+        
+        // Reset the reader in case anyone else want to use it later
+        reader.Close();
     }
     
 
@@ -161,22 +170,17 @@ public:
                 NULL, 
                 DEFAULT_OUTPUT_PREFIX, 
                 DEFAULT_THREADS,
-                false,
                 false
                 );
     }
     Portculis(  string _sortedBam, GenomeMapper* _genomeMapper, 
                 string _outputPrefix, uint16_t _threads, 
-                bool _outputUnspliced, bool _verbose) {
+                bool _verbose) {
         init(  _sortedBam, _genomeMapper, _outputPrefix, 
-                _threads, _outputUnspliced, _verbose);
+                _threads, _verbose);
     }
     
-    virtual ~Portculis() {
-        
-        reader.Close();
-        
-        
+    virtual ~Portculis() {        
     }
     
     
@@ -192,12 +196,25 @@ public:
         
         // Acquires donor / acceptor info from indexed genome file
         cout << "Acquiring donor / acceptor sites from genome ... ";
+        cout.flush();
         uint64_t daSites = junctionSystem.findDonorAcceptorSites(genomeMapper, refs);
-        cout << "done" << endl
+        cout << "done." << endl
              << "Found " << daSites << " valid donor / acceptor sites." << endl;
-                
+        
+        // Count the number of alignments found in upstream and downstream flanking 
+        // regions for each junction
+        cout << "Acquiring non-spliced alignments from flanking windows ... ";
+        cout.flush();
+        junctionSystem.findFlankingAlignments(getUnsplicedFile());
+        cout << "done." << endl;
+        
+        
         // Calculate all remaining metrics
+        cout << "Calculating remaining junction metrics ... ";
+        cout.flush();
         junctionSystem.calcAllMetrics();
+        cout << "done." << endl;
+        
         
         // Print descriptive output to file
         string junctionReportPath = outputPrefix + ".junctions.txt";
