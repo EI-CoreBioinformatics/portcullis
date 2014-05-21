@@ -80,6 +80,8 @@ private:
         leftFlankStart = _leftFlankStart;
         rightFlankEnd = _rightFlankEnd;
         maxMinAnchor = minAnchor(_leftFlankStart, _rightFlankEnd);
+        diffAnchor = 0;
+        entropy = 0;
     }
     
     int32_t minAnchor(int32_t otherStart, int32_t otherEnd) {

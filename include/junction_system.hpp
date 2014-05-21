@@ -154,6 +154,8 @@ public:
                 if (j->setDonorAndAcceptorMotif(string(seq1), string(seq2))) {
                    daSites++; 
                 }
+                
+                delete refName;
             }
         }
         
