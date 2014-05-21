@@ -42,7 +42,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
         string mergedBam = outputPrefix + string(".merged.bam");
         string sortedBam = outputPrefix + string(".merged.sorted.bam");
         string indexedBam = outputPrefix + string(".merged.sorted.bam.bti");
-
+        
         bool mergedBamExists = boost::filesystem::exists(mergedBam);
         
         if (mergedBamExists) {
@@ -91,7 +91,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
         if (!indexedBamExists || forcePrep) {
             cout << "Indexing " << sortedBam << " ... ";
             cout.flush();
-            indexBam(sortedBam, indexedBam);
+            indexBam(sortedBam);
             cout << "done." << endl;
         }
 
@@ -141,7 +141,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
         if (!bamIsIndexed || forcePrep) {
             cout << "Indexing " << bamFileToIndex << " ... ";
             cout.flush();
-            indexBam(bamFileToIndex, indexedBam);
+            indexBam(bamFileToIndex);
             cout << "done." << endl;
         }
         indexedBamFile = indexedBam;

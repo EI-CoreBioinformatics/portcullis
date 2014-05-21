@@ -87,56 +87,53 @@ private:
 
 protected:
 
+    string getAssociatedIndexFile(string bamFile) {
+        return string(bamFile) + ".bti";
+    }
+       
     
     /**
      * Populates the set of distinct junctions.  
      * 
      * Also outputs all the unspliced alignments to a separate file if requested
      */
-    void collect() {
+    void separateSplicedAlignments() {
         
         BamReader reader;
         
         if (!reader.Open(sortedBamFile)) {
-            throw "Could not open bam reader";
+            throw "Could not open BAM reader for input";
         }
         // Sam header and refs info from the input bam
         header = reader.GetHeader();
         refs = reader.GetReferenceData();
 
        
-        cout << "Will load alignments from: " << sortedBamFile << endl;
+        cout << " - Separating alignments from: " << sortedBamFile << endl;
         
-        string indexFile = sortedBamFile + ".bti";
+        string indexFile = getAssociatedIndexFile(sortedBamFile);
         
         // Opens the index for this BAM file
-        if ( !reader.OpenIndex(indexFile) ) {
-            
-            cerr << "WARNING: Couldn't find suitable index file for: " << sortedBamFile << endl
-                 << "         This should not have happened.  Creating index ...";
-            cerr.flush();
-        
-            if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
-               throw "Could not create BAM index"; 
-            }
-            cerr << "done." << endl;
-            cerr.flush();
+        if ( !reader.OpenIndex(indexFile) ) {            
+            throw "Could not open index for BAM";             
         }
+        
+        cout << " - Using BAM index: " << indexFile << endl;
         
         BamWriter unsplicedWriter;
-        string unsplicedFile = getUnsplicedFile();
+        string unsplicedFile = getUnsplicedBamFile();
 
         if (!unsplicedWriter.Open(unsplicedFile, header, refs)) {
-            throw "Could not open bam writer for unspliced file";
+            throw "Could not open BAM writer for non-spliced file";
         }
 
-        cout << "Sending unspliced alignments to: " << unsplicedFile << endl;
-            
+        cout << " - Saving non-spliced alignments to: " << unsplicedFile << endl;
+        
         BamAlignment al;
         uint64_t splicedCount = 0;
         uint64_t unsplicedCount = 0;
         uint64_t sumQueryLengths = 0;
-        cout << "Processing alignments ... ";
+        cout << " - Processing alignments ... ";
         cout.flush();
         while(reader.GetNextAlignment(al))
         {
@@ -155,12 +152,28 @@ protected:
         double meanQueryLength = (double)sumQueryLengths / (double)(splicedCount + unsplicedCount);
         junctionSystem.setMeanQueryLength(meanQueryLength);
         
-        cout << "Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl;
-        cout << "Found " << unsplicedCount << " unspliced alignments." << endl;
+        cout << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl;
+        cout << " - Found " << unsplicedCount << " non-spliced alignments." << endl;
         unsplicedWriter.Close();
         
         // Reset the reader in case anyone else want to use it later
         reader.Close();
+        
+        BamReader indexReader;
+        if (!reader.Open(unsplicedFile)) {
+            throw "Could not open bam reader for unspliced alignments file";
+        }
+        // Sam header and refs info from the input bam
+        SamHeader header = reader.GetHeader();
+        RefVector refs = reader.GetReferenceData();
+
+        // Opens the index for this BAM file
+        string unsplicedIndexFile = getAssociatedIndexFile(unsplicedFile);
+        if ( !reader.OpenIndex(unsplicedIndexFile) ) {            
+            if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
+                throw "Error creating BAM index for unspliced alignments file";
+            }            
+        }
     }
     
 
@@ -185,49 +198,53 @@ public:
     }
     
     
-    string getUnsplicedFile() {
-        return string(outputPrefix) + ".unspliced.bam";
+    string getUnsplicedBamFile() {
+        return outputPrefix + ".unspliced.bam";
     }
+    
 
     void process() {
        
         // Collect junctions from BAM file (also outputs unspliced alignments
         // to a separate file)
-        collect();
+        cout << "Stage 1: Separating spliced alignments:" << endl;
+        separateSplicedAlignments();
         
         // Acquires donor / acceptor info from indexed genome file
-        cout << "Acquiring donor / acceptor sites from genome ... ";
+        cout << "Stage 2: Acquiring donor / acceptor sites from genome ... ";
         cout.flush();
         uint64_t daSites = junctionSystem.findDonorAcceptorSites(genomeMapper, refs);
         cout << "done." << endl
-             << "Found " << daSites << " valid donor / acceptor sites." << endl;
+             << " - Found " << daSites << " valid donor / acceptor sites." << endl;
         
         // Count the number of alignments found in upstream and downstream flanking 
         // regions for each junction
-        cout << "Acquiring non-spliced alignments from flanking windows ... ";
+        cout << "Stage 3: Acquiring non-spliced alignments from flanking windows ... ";
         cout.flush();
-        junctionSystem.findFlankingAlignments(getUnsplicedFile());
-        cout << "done." << endl;
-        
+        string unsplicedBamFile = getUnsplicedBamFile();
+        junctionSystem.findFlankingAlignments(unsplicedBamFile);
+        cout << "done." << endl;        
         
         // Calculate all remaining metrics
-        cout << "Calculating remaining junction metrics ... ";
+        cout << "Stage 4: Calculating remaining junction metrics ... ";
         cout.flush();
         junctionSystem.calcAllMetrics();
         cout << "done." << endl;
         
+        string junctionReportPath = outputPrefix + ".junctions.txt";
+        string junctionFilePath = outputPrefix + ".junctions.tab";
+        
+        cout << "Stage 5: Outputting junction information" << endl
+             << " - Junction report: " << junctionReportPath << endl
+             << " - Junction table: " << junctionFilePath << endl;
         
         // Print descriptive output to file
-        string junctionReportPath = outputPrefix + ".junctions.txt";
-        ofstream junctionReportStream;
-        junctionReportStream.open (junctionReportPath.c_str());
+        ofstream junctionReportStream(junctionReportPath.c_str());
         junctionSystem.outputDescription(junctionReportStream);
         junctionReportStream.close();
 
         // Print junction stats to file
-        string junctionFilePath = outputPrefix + ".junctions.tab";
-        ofstream junctionFileStream;
-        junctionFileStream.open (junctionFilePath.c_str());
+        ofstream junctionFileStream(junctionFilePath.c_str());
         junctionFileStream << junctionSystem << endl;
         junctionFileStream.close();
         

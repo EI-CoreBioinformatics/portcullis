@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(index)
 {
     string sortedBam = "resources/sorted.bam";
     string indexedBam = "resources/sorted.bam.bti";
-    portculis::indexBam(sortedBam, indexedBam);
+    portculis::indexBam(sortedBam);
     
     // Check the indexed bam file exists
     BOOST_CHECK(boost::filesystem::exists(indexedBam));

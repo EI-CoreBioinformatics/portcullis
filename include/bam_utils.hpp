@@ -83,20 +83,15 @@ namespace portculis {
         sorter.Run();        
     }
     
-    void indexBam(string sortedBam, string indexedBam) {
+    void indexBam(string sortedBam) {
         
         BamReader reader;
         
         if (!reader.Open(sortedBam)) {
-            throw "Could not open input BAM files";
+            throw "Could not open BAM file to index";
         }
-
-        const SamHeader header = reader.GetHeader();
-        const RefVector refs = reader.GetReferenceData();
         
-        reader.HasIndex();
-        reader.CreateIndex(BamIndex::BAMTOOLS);
-        
+        reader.CreateIndex(BamIndex::BAMTOOLS);        
         reader.Close();
     }
 }
