@@ -58,7 +58,7 @@ public:
     GenomeMapper(string _genomeFile, bool _forcePrep, bool _verbose) : 
         genomeFile(_genomeFile), forcePrep(_forcePrep), verbose(_verbose) {
         
-        auto_cpu_timer timer(1, " = Time taken: %ws");        
+        auto_cpu_timer timer(1, "Wall time taken: %ws\n");        
             
         string indexFile = genomeFile + string(".fai");
                 

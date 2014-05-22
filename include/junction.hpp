@@ -21,12 +21,14 @@
 #include <string>
 #include <vector>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/foreach.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
 
 #include <api/BamAlignment.h>
+#include <utils/bamtools_utilities.h>
 
 #include "location.hpp"
 
@@ -48,6 +50,14 @@ namespace portculis {
 
 const uint16_t MAP_QUALITY_THRESHOLD = 30;    
     
+const char REVCOMP_LOOKUP[] = {'T',  0,  'G', 'H',
+                                0,   0,  'C', 'D',
+                                0,   0,   0,   0,
+                               'K', 'N',  0,   0,
+                                0,  'Y', 'W', 'A',
+                               'A', 'B', 'S', 'X',
+                               'R',  0 };
+
 class Junction {
 private:
     
@@ -109,7 +119,56 @@ private:
     
 protected:
     
+    /**
+     * Tests whether the two strings could represent valid donor and acceptor sites
+     * for this junction
+     * @param seq1
+     * @param seq2
+     * @return 
+     */
+    bool validDonorAcceptor(string seq1, string seq2) {
+        
+        if (intron == NULL || seq1.size() != 2 || seq2.size() != 2)
+            throw "Can't test for valid donor / acceptor when either string are not of length two, or the intron location is not defined";
+        
+        return intron->strand == POSITIVE ?
+            (seq1[0] == 'G' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'G') :
+            (seq1[0] == 'C' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'C') ;
+    }
     
+    
+    uint32_t hammingDistance(const string& s1, const string& s2) {
+    
+        if (s1.size() != s2.size())
+            throw "Can't find hamming distance of strings that are not the same length";
+        
+        string s1u = boost::to_upper_copy(s1);
+        string s2u = boost::to_upper_copy(s2);
+        
+        uint32_t sum = 0;
+        for(size_t i = 0; i < s1u.size(); i++) {
+            if (s1u[i] != s2u[i]) {
+                sum++;
+            }
+        }
+        
+        return sum;
+    }
+    
+    string reverseSeq(string& sequence) {
+        return string(sequence.rbegin(), sequence.rend());
+    }
+
+    string reverseComplement(string sequence) {
+
+        // do complement, in-place
+        size_t seqLength = sequence.length();
+        for ( size_t i = 0; i < seqLength; ++i )
+            sequence.replace(i, 1, 1, REVCOMP_LOOKUP[(int)sequence.at(i) - 65]);
+
+        // reverse it
+        return reverseSeq(sequence);
+    }
     
 public:
     
@@ -177,6 +236,33 @@ public:
         maxMinAnchor = max(maxMinAnchor, otherMinAnchor);
     }
         
+    
+    int32_t processGenomicRegion(GenomeMapper* genomeMapper, RefVector& refs) {
+        
+        if (intron == NULL) throw "Can't find genomic sequence for this junction as no intron is defined";
+                
+        int32_t refid = intron->refId;
+        char* refName = new char[refs[refid].RefName.size() + 1];
+        strcpy(refName, refs[refid].RefName.c_str());
+
+        // Just access the whole junction region
+        int seqLen = -1;
+        string region(genomeMapper->fetch(refName, leftFlankStart, rightFlankEnd+1, &seqLen));        
+        if (seqLen == -1) throw "Can't find genomic region for junction";
+
+        // Process the predicted donor / acceptor regions and update junction
+        string daSeq1 = region.substr(intron->start - leftFlankStart, 2);
+        string daSeq2 = region.substr(intron->end - 2 - leftFlankStart, 2);
+        bool validDA = setDonorAndAcceptorMotif(daSeq1, daSeq2);
+           
+        // Create strings for hamming analysis
+        calcHammingScores(region);
+        
+        // Clean up
+        delete refName;        
+        
+        return validDA;
+    }
     
     /**
      * Call this method to recalculate all junction metrics based on the current location
@@ -316,6 +402,33 @@ public:
             }
         }        
     }
+    
+    void calcHammingScores(string& junctionSeq) {
+        
+        const uint8_t REGION_LENGTH = 10;
+        string intron5p;
+        string intron3p;
+        string anchor5p;
+        string anchor3p;
+        
+        if (intron->strand == POSITIVE) {
+            intron5p = junctionSeq.substr(intron->start - leftFlankStart, REGION_LENGTH);
+            intron3p = junctionSeq.substr(intron->end - REGION_LENGTH - leftFlankStart, REGION_LENGTH);
+            anchor5p = junctionSeq.substr(intron->start - REGION_LENGTH - leftFlankStart, REGION_LENGTH);
+            anchor3p = junctionSeq.substr(intron->end - leftFlankStart, REGION_LENGTH);
+        }
+        else {
+            intron5p = reverseComplement(junctionSeq.substr(intron->end - REGION_LENGTH - leftFlankStart, REGION_LENGTH));
+            intron3p = reverseComplement(junctionSeq.substr(intron->start - leftFlankStart, REGION_LENGTH));
+            anchor5p = reverseComplement(junctionSeq.substr(intron->end - leftFlankStart, REGION_LENGTH));
+            anchor3p = reverseComplement(junctionSeq.substr(intron->start - REGION_LENGTH - leftFlankStart, REGION_LENGTH));
+        }
+        
+        hamming5p = hammingDistance(anchor5p, intron3p);
+        hamming3p = hammingDistance(anchor3p, intron5p);
+        
+    }
+    
     
     double coverage(int32_t a, int32_t b) {
         
@@ -529,18 +642,6 @@ public:
         
     // **** Static methods ****
 
-    /**
-     * Tests whether the two strings could represent valid donor and acceptor sites
-     * @param seq1
-     * @param seq2
-     * @return 
-     */
-    static bool validDonorAcceptor(string seq1, string seq2) {
-        return ((seq1.size() == 2 && seq2.size() == 2) &&
-                ((seq1[0] == 'G' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'G') ||
-                 (seq1[0] == 'C' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'C')));
-    }
-    
     /**
      * Header for table output
      * @return 

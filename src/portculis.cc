@@ -40,6 +40,8 @@ using std::cerr;
 using std::endl;
 using std::exception;
 
+using boost::timer::auto_cpu_timer;
+
 using portculis::Portculis;
 using portculis::GenomeMapper;
 
@@ -175,7 +177,8 @@ int main(int argc, char *argv[]) {
         }
 
         // OK, we're good to do some real work now!
-
+        auto_cpu_timer timer(1, "\nTotal runtime: %ws\n");
+        
         // Create a map of the genome (wrapper for faidx from samtools)
         cout << endl 
              << "Indexing genome" << endl
@@ -198,7 +201,6 @@ int main(int argc, char *argv[]) {
         
         Portculis portculis(sortedBam, &genomeMapper, outputPrefix, threads, verbose);
         portculis.process();
-        cout << endl << "Portculis finished" << endl;
         
         cout.flush();
 

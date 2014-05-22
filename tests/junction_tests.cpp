@@ -35,7 +35,7 @@ BOOST_AUTO_TEST_SUITE(junction)
 
 BOOST_AUTO_TEST_CASE(intron)
 {
-    shared_ptr<Location> l1(new Location(5, 20, 30));
+    shared_ptr<Location> l1(new Location(5, 20, 30, portculis::POSITIVE));
     Junction j1(l1, 10, 40);
     
     int32_t intronSz = j1.getIntronSize();
@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE(intron)
 
 BOOST_AUTO_TEST_CASE(donor_acceptor)
 {
-    shared_ptr<Location> l1(new Location(5, 20, 30));
+    shared_ptr<Location> l1(new Location(5, 20, 30, portculis::POSITIVE));
     Junction j1(l1, 10, 40);
     
     bool res1 = j1.setDonorAndAcceptorMotif("GT", "AG");

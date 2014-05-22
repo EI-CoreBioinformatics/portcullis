@@ -29,31 +29,42 @@ using std::cout;
 using std::endl;
 
 using portculis::Location;
+using portculis::POSITIVE;
+using portculis::NEGATIVE;
 
 BOOST_AUTO_TEST_SUITE(location)
 
 BOOST_AUTO_TEST_CASE(equality1)
 {
-    Location l1(5, 10, 20);
-    Location l2(5, 10, 20);
+    Location l1(5, 10, 20, POSITIVE);
+    Location l2(5, 10, 20, POSITIVE);
     
     BOOST_CHECK(l1 == l2);
 }
 
 BOOST_AUTO_TEST_CASE(equality2)
 {
-    Location l1(2, 20, 30);
-    Location l2(5, 20, 30);
+    Location l1(2, 20, 30, POSITIVE);
+    Location l2(5, 20, 30, POSITIVE);
     
     BOOST_CHECK(l1 != l2);
 }
 
 BOOST_AUTO_TEST_CASE(equality3)
 {
-    Location l1(5, 5, 25);
-    Location l2(5, 10, 20);
+    Location l1(5, 5, 25, POSITIVE);
+    Location l2(5, 10, 20, POSITIVE);
     
     BOOST_CHECK(l1 != l2);
 }
+
+BOOST_AUTO_TEST_CASE(equality4)
+{
+    Location l1(5, 10, 20, POSITIVE);
+    Location l2(5, 10, 20, NEGATIVE);
+    
+    BOOST_CHECK(l1 != l2);
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()

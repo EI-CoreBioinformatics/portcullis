@@ -54,8 +54,6 @@ namespace portculis {
 const string DEFAULT_OUTPUT_PREFIX = "portculis_out";
 const uint16_t DEFAULT_THREADS = 4;
 
-typedef boost::chrono::seconds secs;
-typedef boost::chrono::system_clock SystemClock;
 
 class Portculis {
 private:
@@ -103,7 +101,7 @@ protected:
      */
     void separateSplicedAlignments() {
         
-        auto_cpu_timer timer(1, " = Time taken %ws");
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n");
         
         BamReader reader;
         
@@ -153,17 +151,21 @@ protected:
                 unsplicedCount++;
             }
         }
+        
+        reader.Close();
+        unsplicedWriter.Close();
         cout << "done." << endl;
         
-        double meanQueryLength = (double)sumQueryLengths / (double)(splicedCount + unsplicedCount);
+        // Calculate some stats
+        uint64_t totalAlignments = splicedCount + unsplicedCount;
+        double meanQueryLength = (double)sumQueryLengths / (double)totalAlignments;
         junctionSystem.setMeanQueryLength(meanQueryLength);
         
-        cout << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl;
-        cout << " - Found " << unsplicedCount << " unspliced alignments." << endl;
-        unsplicedWriter.Close();
+        cout << " - Processed " << totalAlignments << " alignments." << endl
+             << " - Mean length of all alignments is " << meanQueryLength << endl
+             << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl
+             << " - Found " << unsplicedCount << " unspliced alignments." << endl;
         
-        // Reset the reader in case anyone else want to use it later
-        reader.Close();
         
         BamReader indexReader;
         if (!reader.Open(unsplicedFile)) {
@@ -211,7 +213,8 @@ public:
 
     void process() {
        
-        
+        // Start the timer
+        auto_cpu_timer timer(1, "Portculis finished.  Wall time taken: %ws\n");
         
         // Collect junctions from BAM file (also outputs unspliced alignments
         // to a separate file)
@@ -220,7 +223,7 @@ public:
         
         // Acquires donor / acceptor info from indexed genome file
         cout << "Stage 2: Scanning reference sequences:" << endl;
-        uint64_t daSites = junctionSystem.findDonorAcceptorSites(genomeMapper, refs);
+        uint64_t daSites = junctionSystem.scanReference(genomeMapper, refs);
         
         // Count the number of alignments found in upstream and downstream flanking 
         // regions for each junction
@@ -229,28 +232,11 @@ public:
         junctionSystem.findFlankingAlignments(unsplicedBamFile);
         
         // Calculate all remaining metrics
-        cout << "Stage 4: Calculating remaining junction metrics ... ";
-        cout.flush();
+        cout << "Stage 4: Calculating remaining junction metrics:" << endl;
         junctionSystem.calcAllMetrics();
-        cout << "done." << endl;
         
-        string junctionReportPath = outputPrefix + ".junctions.txt";
-        string junctionFilePath = outputPrefix + ".junctions.tab";
-        
-        cout << "Stage 5: Outputting junction information" << endl
-             << " - Junction report: " << junctionReportPath << endl
-             << " - Junction table: " << junctionFilePath << endl;
-        
-        // Print descriptive output to file
-        ofstream junctionReportStream(junctionReportPath.c_str());
-        junctionSystem.outputDescription(junctionReportStream);
-        junctionReportStream.close();
-
-        // Print junction stats to file
-        ofstream junctionFileStream(junctionFilePath.c_str());
-        junctionFileStream << junctionSystem << endl;
-        junctionFileStream.close();
-        
+        cout << "Stage 5: Outputting junction information:" << endl;
+        junctionSystem.saveAll(outputPrefix);
     }
 };
 }

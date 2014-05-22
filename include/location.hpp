@@ -28,19 +28,39 @@ using boost::lexical_cast;
 using boost::shared_ptr;
 
 namespace portculis {    
+    
+enum Strand {
+    POSITIVE,
+    NEGATIVE
+};
+    
+static Strand strandFromBool(bool reverseStrand) {
+    return reverseStrand ? NEGATIVE : POSITIVE;
+}
 
+static char strandToChar(Strand strand) {
+    return strand == POSITIVE ? '+' : '-';
+}
+
+static string strandToString(Strand strand) {
+    return strand == POSITIVE ? string("POSITIVE") : string("NEGATIVE");
+}
+    
 class Location {
+    
+    
 public:    
     int32_t refId;
     int32_t start;
     int32_t end;
+    Strand strand;
     
     Location() :
-        refId(-1), start(-1), end(-1) {        
+        refId(-1), start(-1), end(-1), strand(POSITIVE) {        
     }
     
-    Location(int32_t _refId, int32_t _start, int32_t _end) :
-        refId(_refId), start(_start), end(_end) {
+    Location(int32_t _refId, int32_t _start, int32_t _end, Strand _strand) :
+        refId(_refId), start(_start), end(_end), strand(_strand) {
     }
 
     
@@ -54,6 +74,7 @@ public:
         boost::hash_combine(seed, l.refId);
         boost::hash_combine(seed, l.start);
         boost::hash_combine(seed, l.end);
+        boost::hash_combine(seed, l.strand);
 
         // Return the result.
         return seed;
@@ -69,7 +90,8 @@ public:
     { 
         return (refId == other.refId &&
                 start == other.start &&
-                end == other.end);
+                end == other.end &&
+                strand == other.strand);
     }
     
     bool operator!=(const Location &other) const
@@ -86,15 +108,16 @@ public:
     void outputDescription(std::ostream &strm) {
         strm << "RefId: " << refId
              << "; Start: " << start
-             << "; End: " << end;
+             << "; End: " << end
+             << "; Strand: " << strandToString(strand);
     }
     
     friend std::ostream& operator<<(std::ostream &strm, const Location& l) {
-        return strm << l.refId << "\t" << l.start << "\t" << l.end;
+        return strm << l.refId << "\t" << l.start << "\t" << l.end << "\t" << strandToChar(l.strand);
     }
     
     static string locationOutputHeader() {
-        return string("refid\tstart\tend"); 
+        return string("refid\tstart\tend\tstrand"); 
     }
     
 };

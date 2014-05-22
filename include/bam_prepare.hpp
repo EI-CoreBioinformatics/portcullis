@@ -21,12 +21,15 @@
 #include <iostream>
 #include <vector>
 
+#include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
 
 #include "bam_utils.hpp"
 
 using std::string;
 using std::vector;
+
+using boost::timer::auto_cpu_timer;
 
 using portculis::sortBam;
 using portculis::mergeBams;
@@ -36,6 +39,8 @@ namespace portculis {
     
 std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, bool forcePrep) {
     
+    auto_cpu_timer timer(1, "Wall time taken: %ws\n");        
+        
     string indexedBamFile;
     string sortedBamFile;
     if (bamFiles.size() > 1) {

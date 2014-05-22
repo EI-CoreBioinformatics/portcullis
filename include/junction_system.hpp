@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <fstream>
 #include <vector>
 
 #include <boost/shared_ptr.hpp>
@@ -27,6 +28,8 @@
 #include "junction.hpp"
 #include "genome_mapper.hpp"
 
+using std::ofstream;
+
 using boost::lexical_cast;
 using boost::shared_ptr;
 using boost::timer::auto_cpu_timer;
@@ -36,6 +39,7 @@ using portculis::Junction;
 
 typedef boost::unordered_map<Location, shared_ptr<Junction> > DistinctJunctions;
 typedef boost::unordered_map<Location, shared_ptr<Junction> >::iterator JunctionMapIterator;
+
 typedef std::pair<const Location, shared_ptr<Junction> > JunctionMapType;
 typedef std::vector<shared_ptr<Junction> > JunctionList;
 
@@ -124,7 +128,7 @@ public:
                     }
                 }
                 
-                shared_ptr<Location> location(new Location(refId, lEnd, rStart-1));
+                shared_ptr<Location> location(new Location(refId, lEnd, rStart-1, strandFromBool(al.IsReverseStrand())));
                 
                 // We should now have the complete junction location information
                 JunctionMapIterator it = distinctJunctions.find(*location);
@@ -169,11 +173,19 @@ public:
         return foundJunction;        
     }
     
-    uint64_t findDonorAcceptorSites(GenomeMapper* genomeMapper, RefVector& refs) {
+    /**
+     * This will look for donor acceptor sites and find hamming distances around
+     * the junctions.  In both cases we need to consult the genome, so both
+     * parts of the junction analysis are handled in this function
+     * @param genomeMapper
+     * @param refs
+     * @return 
+     */
+    uint64_t scanReference(GenomeMapper* genomeMapper, RefVector& refs) {
         
-        auto_cpu_timer timer(1, " = Time taken: %ws");        
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n");        
         
-        cout << " - Acquiring junction donor / acceptor sites from genome ... ";
+        cout << " - Acquiring junction sequence sites from genome ... ";
         cout.flush();
         
         uint64_t daSites = 0;
@@ -184,30 +196,36 @@ public:
             if (loc != NULL) {
                 int32_t refid = loc->refId;
                 
+                int seqLen = -1;
+                
+                int32_t start = j->getLeftFlankStart();
+                int32_t end = j->getRightFlankEnd();
+
                 char* refName = new char[refs[refid].RefName.size() + 1];
                 strcpy(refName, refs[refid].RefName.c_str());
-                int seq1Len = -1;
-                int seq2Len = -1;
-
-                char* seq1 = genomeMapper->fetch(refName, loc->start, loc->start+1, &seq1Len);
-                char* seq2 = genomeMapper->fetch(refName, loc->end-1, loc->end, &seq2Len);
                 
-                if (j->setDonorAndAcceptorMotif(string(seq1), string(seq2))) {
-                   daSites++; 
+                // Just access the whole junction region
+                string region(genomeMapper->fetch(refName, start, end+1, &seqLen));                
+                
+                if (j->processRegion(region)) {
+                    daSites++;
                 }
                 
-                delete refName;
+                
+                // Clean up
+                delete refName;                            
             }
         }
         
         cout << "done." << endl
-             << " - Found " << daSites << " valid donor / acceptor sites." << endl;
+             << " - Found " << daSites << " valid donor / acceptor sites from " << junctionList.size() << " junctions." << endl;
         
         return daSites;
     }
     
     void findFlankingAlignments(string unsplicedAlignmentsFile) {
         
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n");    
         
         cout << " - Acquiring unspliced alignments from junction flanking windows ... ";
         cout.flush();
@@ -237,6 +255,7 @@ public:
             int32_t lEnd = intron->start;
             int32_t rStart = intron->end;
             int32_t rEnd = j->getRightFlankEnd();
+            Strand strand = intron->strand;
             
             uint32_t nbLeftFlankingAlignments = 0, nbRightFlankingAlignments = 0;
             
@@ -250,7 +269,9 @@ public:
                 throw "Could not set region";
             }
             while(reader.GetNextAlignment(ba)) {
-                if (lEnd > ba.Position && lStart < ba.Position + ba.AlignedBases.size()) {
+                if (    lEnd > ba.Position && 
+                        lStart < ba.Position + ba.AlignedBases.size() &&
+                        strand == strandFromBool(ba.IsReverseStrand())) {
                     nbLeftFlankingAlignments++;
                 }
             }            
@@ -259,7 +280,9 @@ public:
                throw "Could not set region"; 
             }            
             while(reader.GetNextAlignment(ba)) {
-                if (rEnd > ba.Position && rStart < ba.Position + ba.AlignedBases.size()) {
+                if (    rEnd > ba.Position && 
+                        rStart < ba.Position + ba.AlignedBases.size() &&
+                        strand == strandFromBool(ba.IsReverseStrand())) {
                     nbRightFlankingAlignments++;
                 }
             }
@@ -270,7 +293,7 @@ public:
         // Reset the reader for future use.
         reader.Close();
         
-        cout << "done.";
+        cout << "done." << endl;
     }
     
     /**
@@ -279,9 +302,43 @@ public:
      */
     void calcAllMetrics() {
        
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n"); 
+        
+        cout << " - Calculating ... ";
+        cout.flush();
+        
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
             j->calcAllMetrics();
         }
+        
+        cout << "done." << endl;
+    }
+    
+    void saveAll(string outputPrefix) {
+        
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n"); 
+        
+        string junctionReportPath = outputPrefix + ".junctions.txt";
+        string junctionFilePath = outputPrefix + ".junctions.tab";
+        
+        cout << " - Saving junction report to: " << junctionReportPath << " ... ";
+        cout.flush();
+        
+        // Print descriptive output to file
+        ofstream junctionReportStream(junctionReportPath.c_str());
+        outputDescription(junctionReportStream);
+        junctionReportStream.close();
+
+        cout << "done." << endl
+             << " - Saving junction table to: " << junctionFilePath << " ... ";
+        cout.flush();
+        
+        // Print junction stats to file
+        ofstream junctionFileStream(junctionFilePath.c_str());
+        junctionFileStream << (*this) << endl;
+        junctionFileStream.close();
+        
+        cout << "done." << endl;
     }
     
     void outputDescription(std::ostream &strm) {
