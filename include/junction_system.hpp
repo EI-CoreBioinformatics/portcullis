@@ -20,6 +20,7 @@
 #include <fstream>
 #include <vector>
 
+#include <boost/exception/all.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/unordered_map.hpp>
@@ -212,7 +213,8 @@ public:
         BamReader reader;
         
         if (!reader.Open(unsplicedAlignmentsFile)) {
-            throw "Could not open bam reader for unspliced alignments file";
+            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                    "Could not open bam reader for unspliced alignments file: ") + unsplicedAlignmentsFile));
         }
         // Sam header and refs info from the input bam
         SamHeader header = reader.GetHeader();
@@ -222,7 +224,8 @@ public:
         string indexFile = unsplicedAlignmentsFile + ".bti";
         if ( !reader.OpenIndex(indexFile) ) {            
             if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
-                throw "Error creating BAM index for unspliced alignments file";
+                BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                        "Error creating BAM index for unspliced alignments file: ") + indexFile));
             }            
         }
         
@@ -245,7 +248,7 @@ public:
             
             // Count left flanking alignments
             if (!reader.SetRegion(leftFlank)) {
-                throw "Could not set region";
+                BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string("Could not set region for left flank")));
             }
             while(reader.GetNextAlignment(ba)) {
                 if (    lEnd > ba.Position && 
@@ -256,7 +259,7 @@ public:
             }            
             
             if (!reader.SetRegion(rightFlank)) {
-               throw "Could not set region"; 
+               BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string("Could not set region for right flank"))); 
             }            
             while(reader.GetNextAlignment(ba)) {
                 if (    rEnd > ba.Position && 

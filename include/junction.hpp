@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/exception/all.hpp>
 #include <boost/foreach.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/lexical_cast.hpp>
@@ -57,6 +58,9 @@ const char REVCOMP_LOOKUP[] = {'T',  0,  'G', 'H',
                                 0,  'Y', 'W', 'A',
                                'A', 'B', 'S', 'X',
                                'R',  0 };
+
+typedef boost::error_info<struct JunctionError,string> JunctionErrorInfo;
+struct JunctionException: virtual boost::exception, virtual std::exception { };
 
 class Junction {
 private:
@@ -137,7 +141,8 @@ protected:
     bool validDonorAcceptor(string seq1, string seq2) {
         
         if (intron == NULL || seq1.size() != 2 || seq2.size() != 2)
-            throw "Can't test for valid donor / acceptor when either string are not of length two, or the intron location is not defined";
+            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                    "Can't test for valid donor / acceptor when either string are not of length two, or the intron location is not defined")));
         
         return intron->strand == POSITIVE ?
             (seq1 == "GT" && seq2 == "AG") :
@@ -148,7 +153,8 @@ protected:
     uint32_t hammingDistance(const string& s1, const string& s2) {
     
         if (s1.size() != s2.size())
-            throw "Can't find hamming distance of strings that are not the same length";
+            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                    "Can't find hamming distance of strings that are not the same length")));
         
         string s1u = boost::to_upper_copy(s1);
         string s2u = boost::to_upper_copy(s2);
@@ -247,7 +253,9 @@ public:
     
     int32_t processGenomicRegion(GenomeMapper* genomeMapper, RefVector& refs) {
         
-        if (intron == NULL) throw "Can't find genomic sequence for this junction as no intron is defined";
+        if (intron == NULL) 
+            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                    "Can't find genomic sequence for this junction as no intron is defined")));
                 
         int32_t refid = intron->refId;
         char* refName = new char[refs[refid].RefName.size() + 1];
@@ -257,9 +265,11 @@ public:
         int seqLen = -1;
         string region(genomeMapper->fetch(refName, leftFlankStart, rightFlankEnd, &seqLen));        
         if (seqLen == -1) 
-            throw "Can't find genomic region for junction";
+            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                    "Can't find genomic region for junction")));
         if (seqLen != rightFlankEnd - leftFlankStart + 1)
-            throw "Retrieved sequence is not of the expected length";
+            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                    "Retrieved sequence is not of the expected length")));
             
 
         // Process the predicted donor / acceptor regions and update junction
@@ -433,7 +443,9 @@ public:
         
         // This test might be revisiting in the future.  It's possible that we could
         // just get a larger flanking region to calculate the many cases
-        if (intron->size() < REGION_LENGTH || intronStartOffset < 0 || intronEndOffset + REGION_LENGTH >= rightFlankEnd - leftFlankStart) {
+        if (intron->size() < REGION_LENGTH 
+                || intronStartOffset - REGION_LENGTH < 0 
+                || intronEndOffset + REGION_LENGTH >= rightFlankEnd - leftFlankStart) {
             hammingDistance5p = 0;
             hammingDistance3p = 0;
         }

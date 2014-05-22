@@ -21,6 +21,7 @@
 #include <iostream>
 #include <vector>
 
+#include <boost/exception/all.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/unordered_map.hpp>
@@ -54,6 +55,8 @@ namespace portculis {
 const string DEFAULT_OUTPUT_PREFIX = "portculis_out";
 const uint16_t DEFAULT_THREADS = 4;
 
+typedef boost::error_info<struct PortculisError,string> PortculisErrorInfo;
+struct PortculisException: virtual boost::exception, virtual std::exception { };
 
 class Portculis {
 private:
@@ -106,7 +109,7 @@ protected:
         BamReader reader;
         
         if (!reader.Open(sortedBamFile)) {
-            throw "Could not open BAM reader for input";
+            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string("Could not open BAM reader for input: ") + sortedBamFile));
         }
         // Sam header and refs info from the input bam
         header = reader.GetHeader();
@@ -119,7 +122,7 @@ protected:
         
         // Opens the index for this BAM file
         if ( !reader.OpenIndex(indexFile) ) {            
-            throw "Could not open index for BAM";             
+            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string("Could not open index for BAM: ") + indexFile));             
         }
         
         cout << " - Using BAM index: " << indexFile << endl;
@@ -128,7 +131,7 @@ protected:
         string unsplicedFile = getUnsplicedBamFile();
 
         if (!unsplicedWriter.Open(unsplicedFile, header, refs)) {
-            throw "Could not open BAM writer for non-spliced file";
+            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string("Could not open BAM writer for non-spliced file: ") + unsplicedFile));
         }
 
         cout << " - Saving unspliced alignments to: " << unsplicedFile << endl;
@@ -169,7 +172,7 @@ protected:
         
         BamReader indexReader;
         if (!reader.Open(unsplicedFile)) {
-            throw "Could not open bam reader for unspliced alignments file";
+            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string("Could not open bam reader for unspliced alignments file: ") + unsplicedFile));
         }
         // Sam header and refs info from the input bam
         SamHeader header = reader.GetHeader();
@@ -179,7 +182,7 @@ protected:
         string unsplicedIndexFile = getAssociatedIndexFile(unsplicedFile);
         if ( !reader.OpenIndex(unsplicedIndexFile) ) {            
             if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
-                throw "Error creating BAM index for unspliced alignments file";
+                BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string("Error creating BAM index for unspliced alignments file: ") + unsplicedIndexFile));
             }            
         }
     }
@@ -228,8 +231,7 @@ public:
         // Count the number of alignments found in upstream and downstream flanking 
         // regions for each junction
         cout << "Stage 3: Lookup unspliced alignments:" << endl;
-        string unsplicedBamFile = getUnsplicedBamFile();
-        junctionSystem.findFlankingAlignments(unsplicedBamFile);
+        junctionSystem.findFlankingAlignments(getUnsplicedBamFile());
         
         // Calculate all remaining metrics
         cout << "Stage 4: Calculating remaining junction metrics:" << endl;
