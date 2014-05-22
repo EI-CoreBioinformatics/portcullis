@@ -726,7 +726,8 @@ public:
      * @return 
      */
     static string junctionOutputHeader() {
-        return string(Location::locationOutputHeader()) + string("\tleft\tright\tM1\tM2\tM3\tM4\tM5\tM6\tM7\tM8\tM9\tM10\tM11"); 
+        return string(Location::locationOutputHeader()) + string(
+                "\tleft\tright\tM1_nbreads\tM2_damotif\tM3_intronsize\tM4_maxminanc\tM5_diffanc\tM6_entropy\tM7_distanc\tM8_distaln\tM9_relaln\tM10_upaln\tM11_downaln\tM12_maxmmes\tM13_hamming5p\tM14_hamming3p\tM15_coverage"); 
     }
 
 };
