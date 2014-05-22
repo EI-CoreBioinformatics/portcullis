@@ -21,6 +21,8 @@
 #include <string>
 #include <vector>
 
+#include <boost/exception/all.hpp>
+
 #include <api/algorithms/Sort.h>
 #include <api/BamMultiReader.h>
 #include <api/BamReader.h>
@@ -32,12 +34,15 @@ using namespace::std;
 using namespace BamTools;
 
 namespace portculis {
+
+    typedef boost::error_info<struct BamError,string> BamErrorInfo;
+    struct BamException: virtual boost::exception, virtual std::exception { };
     
     void mergeBams(vector<string>& bamFiles, string bamOut) {
         
         BamMultiReader reader;
         if (!reader.Open(bamFiles)) {
-            throw "Could not open input BAM files";
+            BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo("Could not open input BAM files"));
         }
 
         const SamHeader header = reader.GetHeader();
@@ -45,7 +50,7 @@ namespace portculis {
         
         BamWriter writer;
         if (!writer.Open(bamOut, header, refs)) {
-            throw "Could not open output BAM file for merged results";
+            BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string("Could not open output BAM file for merged results: ") + bamOut));
         }
         
         BamAlignment al;
@@ -62,7 +67,7 @@ namespace portculis {
         BamReader reader;
         
         if (!reader.Open(bamFile)) {
-            throw "Could not open input BAM files";
+            BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string("Could not open input BAM files: ") + bamFile));
         }
 
         const SamHeader header = reader.GetHeader();
@@ -88,7 +93,7 @@ namespace portculis {
         BamReader reader;
         
         if (!reader.Open(sortedBam)) {
-            throw "Could not open BAM file to index";
+            BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string("Could not open BAM file to index: ") + sortedBam));
         }
         
         reader.CreateIndex(BamIndex::BAMTOOLS);        

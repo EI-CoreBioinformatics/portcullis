@@ -28,9 +28,9 @@
 #include <boost/shared_ptr.hpp>
 
 #include <api/BamAlignment.h>
-#include <utils/bamtools_utilities.h>
 
 #include "location.hpp"
+#include "genome_mapper.hpp"
 
 using std::endl;
 using std::min;
@@ -70,14 +70,18 @@ private:
                                                 // Metric 1 (nbReads) derived from size of junction alignment vector
     bool donorAndAcceptorMotif;                 // Metric 2 calculated from 
                                                 // Metric 3 (intron size) calculated via location properties
-    int32_t maxMinAnchor;                       // Metric 4
-    int32_t diffAnchor;                         // Metric 5
-    double entropy;                             // Metric 6
+    int32_t  maxMinAnchor;                      // Metric 4
+    int32_t  diffAnchor;                        // Metric 5
+    double   entropy;                           // Metric 6
     uint32_t nbDistinctAnchors;                 // Metric 7
     uint32_t nbDistinctAlignments;              // Metric 8
-    uint32_t nbReliableAlignments;                // Metric 9
+    uint32_t nbReliableAlignments;              // Metric 9
     uint32_t nbUpstreamFlankingAlignments;      // Metric 10
     uint32_t nbDownstreamFlankingAlignments;    // Metric 11
+    uint32_t maxMMES;                           // Metric 12
+    uint32_t hammingDistance5p;                 // Metric 13
+    uint32_t hammingDistance3p;                 // Metric 14
+    double   coverage;                          // Metric 15
     
     
     
@@ -102,6 +106,10 @@ private:
         nbReliableAlignments = 0;
         nbUpstreamFlankingAlignments = 0;
         nbDownstreamFlankingAlignments = 0;
+        maxMMES = 0;
+        hammingDistance5p = 0;
+        hammingDistance3p = 0;
+        coverage = 0.0;
     }
     
     int32_t minAnchor(int32_t otherStart, int32_t otherEnd) {
@@ -132,8 +140,8 @@ protected:
             throw "Can't test for valid donor / acceptor when either string are not of length two, or the intron location is not defined";
         
         return intron->strand == POSITIVE ?
-            (seq1[0] == 'G' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'G') :
-            (seq1[0] == 'C' && seq1[1] == 'T' && seq2[0] == 'A' && seq2[1] == 'C') ;
+            (seq1 == "GT" && seq2 == "AG") :
+            (seq1 == "CT" && seq2 == "AC") ;
     }
     
     
@@ -247,8 +255,12 @@ public:
 
         // Just access the whole junction region
         int seqLen = -1;
-        string region(genomeMapper->fetch(refName, leftFlankStart, rightFlankEnd+1, &seqLen));        
-        if (seqLen == -1) throw "Can't find genomic region for junction";
+        string region(genomeMapper->fetch(refName, leftFlankStart, rightFlankEnd, &seqLen));        
+        if (seqLen == -1) 
+            throw "Can't find genomic region for junction";
+        if (seqLen != rightFlankEnd - leftFlankStart + 1)
+            throw "Retrieved sequence is not of the expected length";
+            
 
         // Process the predicted donor / acceptor regions and update junction
         string daSeq1 = region.substr(intron->start - leftFlankStart, 2);
@@ -403,6 +415,11 @@ public:
         }        
     }
     
+    /**
+     * Metric 12 and 13: Calculates the 5' and 3' hamming distances from a genomic
+     * region represented by this junction
+     * @param junctionSeq The DNA sequence representing this junction on the genome
+     */
     void calcHammingScores(string& junctionSeq) {
         
         const uint8_t REGION_LENGTH = 10;
@@ -411,26 +428,37 @@ public:
         string anchor5p;
         string anchor3p;
         
-        if (intron->strand == POSITIVE) {
-            intron5p = junctionSeq.substr(intron->start - leftFlankStart, REGION_LENGTH);
-            intron3p = junctionSeq.substr(intron->end - REGION_LENGTH - leftFlankStart, REGION_LENGTH);
-            anchor5p = junctionSeq.substr(intron->start - REGION_LENGTH - leftFlankStart, REGION_LENGTH);
-            anchor3p = junctionSeq.substr(intron->end - leftFlankStart, REGION_LENGTH);
+        int32_t intronStartOffset = intron->start - leftFlankStart;
+        int32_t intronEndOffset = intron->end - leftFlankStart;
+        
+        // This test might be revisiting in the future.  It's possible that we could
+        // just get a larger flanking region to calculate the many cases
+        if (intron->size() < REGION_LENGTH || intronStartOffset < 0 || intronEndOffset + REGION_LENGTH >= rightFlankEnd - leftFlankStart) {
+            hammingDistance5p = 0;
+            hammingDistance3p = 0;
         }
         else {
-            intron5p = reverseComplement(junctionSeq.substr(intron->end - REGION_LENGTH - leftFlankStart, REGION_LENGTH));
-            intron3p = reverseComplement(junctionSeq.substr(intron->start - leftFlankStart, REGION_LENGTH));
-            anchor5p = reverseComplement(junctionSeq.substr(intron->end - leftFlankStart, REGION_LENGTH));
-            anchor3p = reverseComplement(junctionSeq.substr(intron->start - REGION_LENGTH - leftFlankStart, REGION_LENGTH));
+
+            if (intron->strand == POSITIVE) {
+                intron5p = junctionSeq.substr(intronStartOffset, REGION_LENGTH);
+                intron3p = junctionSeq.substr(intronEndOffset - REGION_LENGTH, REGION_LENGTH);
+                anchor5p = junctionSeq.substr(intronStartOffset - REGION_LENGTH, REGION_LENGTH);
+                anchor3p = junctionSeq.substr(intronEndOffset, REGION_LENGTH);
+            }
+            else {
+                intron5p = reverseComplement(junctionSeq.substr(intronEndOffset - REGION_LENGTH, REGION_LENGTH));
+                intron3p = reverseComplement(junctionSeq.substr(intronStartOffset, REGION_LENGTH));
+                anchor5p = reverseComplement(junctionSeq.substr(intronEndOffset, REGION_LENGTH));
+                anchor3p = reverseComplement(junctionSeq.substr(intronStartOffset - REGION_LENGTH, REGION_LENGTH));
+            }
+
+            hammingDistance5p = hammingDistance(anchor5p, intron3p);
+            hammingDistance3p = hammingDistance(anchor3p, intron5p);  
         }
-        
-        hamming5p = hammingDistance(anchor5p, intron3p);
-        hamming3p = hammingDistance(anchor3p, intron5p);
-        
     }
     
     
-    double coverage(int32_t a, int32_t b) {
+    double calcCoverage(int32_t a, int32_t b) {
         
         double multiplier = 1.0 / (b - a);
         uint32_t readCount = 0.0;
@@ -443,12 +471,12 @@ public:
     void calcCoverage() {
         
         int32_t readLength = 0;
-        uint32_t donorCoverage = coverage(intron->start - 2 * readLength, intron->start - readLength) -
-                coverage(intron->start - readLength, intron->start);
-        uint32_t acceptorCoverage = coverage(intron->end, intron->end + readLength) -
-                coverage(intron->end - readLength, intron->end);
+        double donorCoverage = calcCoverage(intron->start - 2 * readLength, intron->start - readLength) -
+                calcCoverage(intron->start - readLength, intron->start);
+        double acceptorCoverage = calcCoverage(intron->end, intron->end + readLength) -
+                calcCoverage(intron->end - readLength, intron->end);
         
-        uint32_t coverage = donorCoverage + acceptorCoverage;
+        coverage = donorCoverage + acceptorCoverage;
     }
     
     
@@ -579,7 +607,38 @@ public:
         return nbDownstreamFlankingAlignments;
     }
 
+    /**
+     * Metric 12: The maximum of the minimum mmm exon sequences
+     * @return 
+     */
+    uint32_t getMaxMMES() const {
+        return maxMMES;
+    }
     
+    /**
+     * Metric 13: Hamming distance between the 
+     * @return 
+     */
+    uint32_t getHammingDistance3p() const {
+        return hammingDistance3p;
+    }
+
+    /**
+     * Metric 14:
+     * @return 
+     */
+    uint32_t getHammingDistance5p() const {
+        return hammingDistance5p;
+    }
+
+    /**
+     * Metric 15:
+     * @return 
+     */
+    uint32_t getCoverage() const {
+        return coverage;
+    }
+
     
     // **** Output methods ****
     
@@ -611,6 +670,10 @@ public:
              << "9:  # Reliable (MP >=" << MAP_QUALITY_THRESHOLD << ") Alignments: " << nbReliableAlignments << endl
              << "10: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << endl
              << "11: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << endl
+             << "12: MaxMMES: " << maxMMES << endl
+             << "13: Hamming Distance 5': " << hammingDistance5p << endl
+             << "14: Hamming Distance 3': " << hammingDistance3p << endl
+             << "15: Coverage: " << coverage << endl
              << endl;
                 
     }
@@ -636,7 +699,11 @@ public:
                     << j.nbDistinctAlignments << "\t"
                     << j.nbReliableAlignments << "\t"
                     << j.nbUpstreamFlankingAlignments << "\t"
-                    << j.nbDownstreamFlankingAlignments;
+                    << j.nbDownstreamFlankingAlignments << "\t"
+                    << j.maxMMES << "\t"
+                    << j.hammingDistance5p << "\t"
+                    << j.hammingDistance3p << "\t"
+                    << j.coverage;
     }
     
         

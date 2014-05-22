@@ -128,7 +128,7 @@ public:
                     }
                 }
                 
-                shared_ptr<Location> location(new Location(refId, lEnd, rStart-1, strandFromBool(al.IsReverseStrand())));
+                shared_ptr<Location> location(new Location(refId, lEnd, rStart, strandFromBool(al.IsReverseStrand())));
                 
                 // We should now have the complete junction location information
                 JunctionMapIterator it = distinctJunctions.find(*location);
@@ -191,30 +191,9 @@ public:
         uint64_t daSites = 0;
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
             
-            shared_ptr<Location> loc = j->getLocation();
-            
-            if (loc != NULL) {
-                int32_t refid = loc->refId;
-                
-                int seqLen = -1;
-                
-                int32_t start = j->getLeftFlankStart();
-                int32_t end = j->getRightFlankEnd();
-
-                char* refName = new char[refs[refid].RefName.size() + 1];
-                strcpy(refName, refs[refid].RefName.c_str());
-                
-                // Just access the whole junction region
-                string region(genomeMapper->fetch(refName, start, end+1, &seqLen));                
-                
-                if (j->processRegion(region)) {
-                    daSites++;
-                }
-                
-                
-                // Clean up
-                delete refName;                            
-            }
+            if (j->processGenomicRegion(genomeMapper, refs)) {
+                daSites++;
+            }            
         }
         
         cout << "done." << endl

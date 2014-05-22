@@ -23,6 +23,7 @@
 #include <iostream>
 #include <fstream>
 
+#include <boost/exception/all.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/timer/timer.hpp>
@@ -60,6 +61,7 @@ const uint32_t DEFAULT_GAP_SIZE = 100;
  * Start point for portculis.
  */
 int main(int argc, char *argv[]) {
+    
     try {
         // Portculis args
         vector<string> bamFiles;
@@ -204,15 +206,18 @@ int main(int argc, char *argv[]) {
         
         cout.flush();
 
+    } catch (boost::exception &e) { 
+        std::cerr << boost::diagnostic_information(e); 
+        return 4;
     } catch (exception& e) {
         cerr << "Error: " << e.what() << endl;
-        return 4;
+        return 5;
     } catch (const char* msg) {
         cerr << "Error: " << msg << endl;
-        return 5;
+        return 6;
     } catch (...) {
         cerr << "Error: Exception of unknown type!" << endl;
-        return 6;
+        return 7;
     }
 
     return 0;
