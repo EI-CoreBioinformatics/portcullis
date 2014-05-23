@@ -111,11 +111,18 @@ public:
     }
     
     static bool opFollowsReference(char type) {
-        return  type == 'M' || // Alignment match (= or X)
-                type == 'D' || // Deletion from reference
-                //type == 'S' || // Soft clip
-                type == '=' || // Sequence match
-                type == 'X';   // Sequence mismatch 
+        
+        switch (type) {
+            // increase end position on CIGAR chars [DMXN=]
+            case Constants::BAM_CIGAR_DEL_CHAR      :
+            case Constants::BAM_CIGAR_MATCH_CHAR    :
+            case Constants::BAM_CIGAR_MISMATCH_CHAR :
+            case Constants::BAM_CIGAR_REFSKIP_CHAR  :
+            case Constants::BAM_CIGAR_SEQMATCH_CHAR :
+                return true;
+            default:
+                return false;
+        }
     }
 };
 }    

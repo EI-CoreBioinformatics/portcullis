@@ -298,6 +298,7 @@ public:
         calcEntropy();          // Metric 6
         calcAlignmentStats();   // Metrics 8 and 9
         calcMaxMMES();          // Metric 12
+        calcJunctionStats();    // Metric 16 and 17
     }
     
     /**
@@ -541,6 +542,10 @@ public:
                 calcCoverage(intron->end - readLength, intron->end);
         
         coverage = donorCoverage + acceptorCoverage;
+    }
+    
+    void calcJunctionStats() {
+        
     }
     
     

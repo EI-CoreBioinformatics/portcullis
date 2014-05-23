@@ -115,7 +115,8 @@ public:
                     }
                 }
                 
-                shared_ptr<Location> location(new Location(refId, lEnd, rStart, strandFromBool(al.IsReverseStrand())));
+                shared_ptr<Location> location(new Location(refId, lEnd, rStart, 
+                        strandFromBool(al.IsReverseStrand())));
                 
                 // We should now have the complete junction location information
                 JunctionMapIterator it = distinctJunctions.find(*location);
@@ -139,8 +140,7 @@ public:
                 // Check if we have fully processed the cigar or not.  If not, then
                 // that means that this cigar contains additional junctions, so 
                 // process those using recursion
-                if (j < nbOps) {
-                    
+                if (j < nbOps) {                    
                     addJunctions(al, i+1, rStart);
                     break;
                 }                

@@ -99,7 +99,7 @@ public:
     
     
     int32_t size() const {
-        return end - start;
+        return end - start + 1;
     }
     
     

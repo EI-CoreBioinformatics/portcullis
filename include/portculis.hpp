@@ -107,7 +107,8 @@ protected:
         BamReader reader;
         
         if (!reader.Open(sortedBamFile)) {
-            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string("Could not open BAM reader for input: ") + sortedBamFile));
+            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
+                    "Could not open BAM reader for input: ") + sortedBamFile));
         }
         // Sam header and refs info from the input bam
         header = reader.GetHeader();
@@ -120,7 +121,8 @@ protected:
         
         // Opens the index for this BAM file
         if ( !reader.OpenIndex(indexFile) ) {            
-            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string("Could not open index for BAM: ") + indexFile));             
+            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
+                    "Could not open index for BAM: ") + indexFile));             
         }
         
         cout << " - Using BAM index: " << indexFile << endl;
@@ -129,7 +131,8 @@ protected:
         string unsplicedFile = getUnsplicedBamFile();
 
         if (!unsplicedWriter.Open(unsplicedFile, header, refs)) {
-            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string("Could not open BAM writer for non-spliced file: ") + unsplicedFile));
+            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
+                    "Could not open BAM writer for non-spliced file: ") + unsplicedFile));
         }
 
         cout << " - Saving unspliced alignments to: " << unsplicedFile << endl;
@@ -170,7 +173,8 @@ protected:
         
         BamReader indexReader;
         if (!reader.Open(unsplicedFile)) {
-            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string("Could not open bam reader for unspliced alignments file: ") + unsplicedFile));
+            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
+                    "Could not open bam reader for unspliced alignments file: ") + unsplicedFile));
         }
         // Sam header and refs info from the input bam
         SamHeader header = reader.GetHeader();
@@ -180,7 +184,8 @@ protected:
         string unsplicedIndexFile = getAssociatedIndexFile(unsplicedFile);
         if ( !reader.OpenIndex(unsplicedIndexFile) ) {            
             if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
-                BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string("Error creating BAM index for unspliced alignments file: ") + unsplicedIndexFile));
+                BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
+                        "Error creating BAM index for unspliced alignments file: ") + unsplicedIndexFile));
             }            
         }
     }
