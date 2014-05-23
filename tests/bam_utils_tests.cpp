@@ -24,22 +24,23 @@
 #include <boost/filesystem.hpp>
 
 #include <bam_utils.hpp>
-#include <bamtools_sort.cpp>
 
 using std::cout;
 using std::endl;
 
+using portculis::bamtools::BamUtils;
+
 BOOST_AUTO_TEST_SUITE(bam_utils)
 
-BOOST_AUTO_TEST_CASE(merge)
-{
+BOOST_AUTO_TEST_CASE(merge) {
+    
     // Merge a couple of BAMs together
     vector<string> bamFiles;
     bamFiles.push_back("resources/bam1.bam");
     bamFiles.push_back("resources/bam2.bam");
     
     string mergedBam = "resources/merged.bam";
-    portculis::mergeBams(bamFiles, mergedBam);
+    BamUtils::mergeBams(bamFiles, mergedBam);
     
     // Check the merged bam file exists
     BOOST_CHECK(boost::filesystem::exists(mergedBam));
@@ -48,17 +49,17 @@ BOOST_AUTO_TEST_CASE(merge)
     boost::filesystem::remove(mergedBam);
 }
 
-BOOST_AUTO_TEST_CASE(sort)
-{
+BOOST_AUTO_TEST_CASE(sort) {
+    
     string unsortedBam = "resources/unsorted.bam";
     string sortedBam = "resources/sorted.test.bam";
-    portculis::sortBam(unsortedBam, sortedBam, false);
+    BamUtils::sortBam(unsortedBam, sortedBam, false);
     
     // Check the sorted bam file exists
     BOOST_CHECK(boost::filesystem::exists(sortedBam));
     
     // Check the sorted bam file is actually sorted
-    BOOST_CHECK(portculis::isSortedBam(sortedBam)); 
+    BOOST_CHECK(BamUtils::isSortedBam(sortedBam)); 
     
     // Delete the sorted bam file
     boost::filesystem::remove(sortedBam);
@@ -67,7 +68,7 @@ BOOST_AUTO_TEST_CASE(sort)
 BOOST_AUTO_TEST_CASE(is_sorted1)
 {
     string unsortedBam = "resources/unsorted.bam";
-    bool sorted = portculis::isSortedBam(unsortedBam);
+    bool sorted = BamUtils::isSortedBam(unsortedBam);
     
     // Check the merged bam file exists
     //BOOST_CHECK(!sorted);    
@@ -77,7 +78,7 @@ BOOST_AUTO_TEST_CASE(is_sorted1)
 BOOST_AUTO_TEST_CASE(is_sorted2)
 {
     string sortedBam = "resources/sorted.bam";
-    bool sorted = portculis::isSortedBam(sortedBam);
+    bool sorted = BamUtils::isSortedBam(sortedBam);
     
     // Check the merged bam file exists
     BOOST_CHECK(sorted);    
@@ -88,7 +89,7 @@ BOOST_AUTO_TEST_CASE(index)
 {
     string sortedBam = "resources/sorted.bam";
     string indexedBam = "resources/sorted.bam.bti";
-    portculis::indexBam(sortedBam);
+    BamUtils::indexBam(sortedBam);
     
     // Check the indexed bam file exists
     BOOST_CHECK(boost::filesystem::exists(indexedBam));

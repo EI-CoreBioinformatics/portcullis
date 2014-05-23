@@ -19,18 +19,16 @@
 
 #include <string>
 #include <iostream>
-
-#include <boost/timer/timer.hpp>
-#include <boost/filesystem.hpp>
-
-#include <faidx.h>
-
 using std::cout;
 using std::endl;
 using std::ifstream;
 using std::string;
 
+#include <boost/timer/timer.hpp>
+#include <boost/filesystem.hpp>
 using boost::timer::auto_cpu_timer;
+
+#include <faidx.h>
 
 namespace portculis {
 

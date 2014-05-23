@@ -20,19 +20,6 @@
 #include <math.h>
 #include <string>
 #include <vector>
-
-#include <boost/algorithm/string.hpp>
-#include <boost/exception/all.hpp>
-#include <boost/foreach.hpp>
-#include <boost/functional/hash.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/shared_ptr.hpp>
-
-#include <api/BamAlignment.h>
-
-#include "location.hpp"
-#include "genome_mapper.hpp"
-
 using std::endl;
 using std::min;
 using std::max;
@@ -40,12 +27,23 @@ using std::string;
 using std::size_t;
 using std::vector;
 
+#include <boost/algorithm/string.hpp>
+#include <boost/exception/all.hpp>
+#include <boost/foreach.hpp>
+#include <boost/functional/hash.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/shared_ptr.hpp>
 using boost::lexical_cast;
 using boost::shared_ptr;
 
+#include <api/BamAlignment.h>
 using namespace BamTools;
 
+#include "location.hpp"
+#include "genome_mapper.hpp"
+#include "bam_utils.hpp"
 using portculis::Location;
+using portculis::bamtools::BamUtils;
 
 namespace portculis {    
 
@@ -86,6 +84,8 @@ private:
     uint32_t hammingDistance5p;                 // Metric 13
     uint32_t hammingDistance3p;                 // Metric 14
     double   coverage;                          // Metric 15
+    bool     uniqueJunction;                    // Metric 16
+    bool     primaryJunction;                   // Metric 17
     
     
     
@@ -114,6 +114,8 @@ private:
         hammingDistance5p = 0;
         hammingDistance3p = 0;
         coverage = 0.0;
+        uniqueJunction = false;
+        primaryJunction = false;
     }
     
     int32_t minAnchor(int32_t otherStart, int32_t otherEnd) {
@@ -295,6 +297,7 @@ public:
         calcAnchorStats();      // Metrics 5 and 7
         calcEntropy();          // Metric 6
         calcAlignmentStats();   // Metrics 8 and 9
+        calcMaxMMES();          // Metric 12
     }
     
     /**
@@ -426,7 +429,7 @@ public:
     }
     
     /**
-     * Metric 12 and 13: Calculates the 5' and 3' hamming distances from a genomic
+     * Metric 13 and 14: Calculates the 5' and 3' hamming distances from a genomic
      * region represented by this junction
      * @param junctionSeq The DNA sequence representing this junction on the genome
      */
@@ -469,6 +472,55 @@ public:
         }
     }
     
+    /**
+     * Calculates metric 12.  MaxMMES.
+     * @param junctionSeq
+     */
+    void calcMaxMMES() {
+        
+        uint16_t maxmmes = 0;
+        
+        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+            
+            uint16_t leftMM = calcMinimalMatchInCigarDataSubset(ba, leftFlankStart, intron->start);
+            uint16_t rightMM = calcMinimalMatchInCigarDataSubset(ba, intron->end, rightFlankEnd);
+            
+            uint16_t mmes = min(leftMM, rightMM);
+
+            maxmmes = max(maxmmes, mmes);
+        }
+        
+        this->maxMMES = maxmmes;
+    }
+    
+    uint16_t calcMinimalMatchInCigarDataSubset(BamAlignment& ba, int32_t start, int32_t end) {
+        
+        if (start > ba.Position + ba.AlignedBases.size() || end < ba.Position)
+            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                    "Found an alignment that does not have a presence in the requested region")));
+        
+        int32_t pos = ba.Position;
+        uint16_t mismatches = 0;
+        int32_t length = 0;
+        
+        BOOST_FOREACH(CigarOp op, ba.CigarData) {
+           
+            if (pos > end) {
+                break;
+            }
+            
+            if (BamUtils::opFollowsReference(op.Type)) {
+                pos += op.Length;
+                length += op.Length;
+            }
+            
+            if (op.Type == 'X') {
+                mismatches++;
+            }
+        } 
+        
+        return length - mismatches;
+    }
     
     double calcCoverage(int32_t a, int32_t b) {
         
@@ -647,9 +699,27 @@ public:
      * Metric 15:
      * @return 
      */
-    uint32_t getCoverage() const {
+    double getCoverage() const {
         return coverage;
     }
+    
+    /**
+     * Metric 16:
+     * @return 
+     */
+    bool isUniqueJunction() const {
+        return uniqueJunction;
+    }
+
+    /**
+     * Metric 17:
+     * @return 
+     */
+    bool isPrimaryJunction() const {
+        return primaryJunction;
+    }
+
+    
 
     
     // **** Output methods ****
@@ -686,6 +756,8 @@ public:
              << "13: Hamming Distance 5': " << hammingDistance5p << endl
              << "14: Hamming Distance 3': " << hammingDistance3p << endl
              << "15: Coverage: " << coverage << endl
+             << "16: Unique Junction: " << uniqueJunction << endl
+             << "17: Primary Junction: " << primaryJunction << endl
              << endl;
                 
     }
@@ -715,7 +787,9 @@ public:
                     << j.maxMMES << "\t"
                     << j.hammingDistance5p << "\t"
                     << j.hammingDistance3p << "\t"
-                    << j.coverage;
+                    << j.coverage << "\t"
+                    << j.uniqueJunction << "\t"
+                    << j.primaryJunction;
     }
     
         
@@ -727,7 +801,7 @@ public:
      */
     static string junctionOutputHeader() {
         return string(Location::locationOutputHeader()) + string(
-                "\tleft\tright\tM1_nbreads\tM2_damotif\tM3_intronsize\tM4_maxminanc\tM5_diffanc\tM6_entropy\tM7_distanc\tM8_distaln\tM9_relaln\tM10_upaln\tM11_downaln\tM12_maxmmes\tM13_hamming5p\tM14_hamming3p\tM15_coverage"); 
+                "\tleft\tright\tM1_nbreads\tM2_damotif\tM3_intronsize\tM4_maxminanc\tM5_diffanc\tM6_entropy\tM7_distanc\tM8_distaln\tM9_relaln\tM10_upaln\tM11_downaln\tM12_maxmmes\tM13_hamming5p\tM14_hamming3p\tM15_coverage\tM16_uniquejunc\tM17_primarujunc"); 
     }
 
 };

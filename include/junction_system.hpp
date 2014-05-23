@@ -17,30 +17,25 @@
 
 #pragma once
 
-#include <fstream>
-#include <vector>
+#include "location.hpp"
+#include "junction.hpp"
+#include "genome_mapper.hpp"
+using portculis::Location;
+using portculis::Junction;
 
 #include <boost/exception/all.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/unordered_map.hpp>
-
-#include "location.hpp"
-#include "junction.hpp"
-#include "genome_mapper.hpp"
-
-using std::ofstream;
-
 using boost::lexical_cast;
 using boost::shared_ptr;
 using boost::timer::auto_cpu_timer;
-
-using portculis::Location;
-using portculis::Junction;
-
 typedef boost::unordered_map<Location, shared_ptr<Junction> > DistinctJunctions;
 typedef boost::unordered_map<Location, shared_ptr<Junction> >::iterator JunctionMapIterator;
 
+#include <fstream>
+#include <vector>
+using std::ofstream;
 typedef std::pair<const Location, shared_ptr<Junction> > JunctionMapType;
 typedef std::vector<shared_ptr<Junction> > JunctionList;
 
@@ -54,15 +49,6 @@ private:
     double meanQueryLength;
     
     
-protected:
-    
-    bool opFollowsReference(char type) {
-        return  type == 'M' || // Alignment match (= or X)
-                type == 'D' || // Deletion from reference
-                //type == 'S' || // Soft clip
-                type == '=' || // Sequence match
-                type == 'X';   // Sequence mismatch 
-    }
     
 public:
     
@@ -124,7 +110,7 @@ public:
                 while (j < nbOps && al.CigarData[j].Type != 'N') {
                     
                     CigarOp rOp = al.CigarData[j++];
-                    if (opFollowsReference(rOp.Type)) {
+                    if (BamUtils::opFollowsReference(rOp.Type)) {
                         rEnd += rOp.Length;
                     }
                 }
@@ -159,7 +145,7 @@ public:
                     break;
                 }                
             }
-            else if (opFollowsReference(op.Type)) {
+            else if (BamUtils::opFollowsReference(op.Type)) {
                 lEnd += op.Length;                
             }
             else {

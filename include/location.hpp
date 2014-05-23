@@ -18,12 +18,10 @@
 #pragma once
 
 #include <string>
+using std::string;
 
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
-
-using std::string;
-
 using boost::lexical_cast;
 using boost::shared_ptr;
 

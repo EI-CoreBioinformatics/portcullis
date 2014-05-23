@@ -20,25 +20,30 @@
 #include <sstream>
 #include <string>
 #include <vector>
+using namespace::std;
 
 #include <boost/exception/all.hpp>
+#include <boost/foreach.hpp>
 
 #include <api/algorithms/Sort.h>
 #include <api/BamMultiReader.h>
 #include <api/BamReader.h>
 #include <api/BamWriter.h>
-
-#include <bamtools_sort.h>
-
-using namespace::std;
 using namespace BamTools;
 
-namespace portculis {
+#include <bamtools_sort.h>
+       
 
-    typedef boost::error_info<struct BamError,string> BamErrorInfo;
-    struct BamException: virtual boost::exception, virtual std::exception { };
+namespace portculis {
+namespace bamtools {
+
+typedef boost::error_info<struct BamError,string> BamErrorInfo;
+struct BamException: virtual boost::exception, virtual std::exception { };
+
+class BamUtils {
+public:
     
-    void mergeBams(vector<string>& bamFiles, string bamOut) {
+    static void mergeBams(vector<string>& bamFiles, string bamOut) {
         
         BamMultiReader reader;
         if (!reader.Open(bamFiles)) {
@@ -62,7 +67,7 @@ namespace portculis {
         writer.Close();
     }
     
-    bool isSortedBam(string bamFile) {
+    static bool isSortedBam(string bamFile) {
         
         BamReader reader;
         
@@ -77,26 +82,41 @@ namespace portculis {
         return header.HasSortOrder();
     }
     
-    void sortBam(string unsortedFile, string sortedFile, bool sortByName) {
+    static void sortBam(string unsortedFile, string sortedFile, bool sortByName) {
         
         SortSettings settings;
-        settings.InputBamFilename = unsortedFile;
-        settings.OutputBamFilename = sortedFile;
-        settings.IsSortingByName = sortByName;
+        settings.inputBamFilename = unsortedFile;
+        settings.outputBamFilename = sortedFile;
+        settings.isSortingByName = sortByName;
         
         SortTool sorter(&settings);
-        sorter.Run();        
+        
+        if (!sorter.run()) {
+            BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                    "Failed to successfully sort: ") + unsortedFile));
+        }  
     }
     
-    void indexBam(string sortedBam) {
+    static void indexBam(string sortedBam) {
         
         BamReader reader;
         
         if (!reader.Open(sortedBam)) {
-            BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string("Could not open BAM file to index: ") + sortedBam));
+            BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                    "Could not open BAM file to index: ") + sortedBam));
         }
         
         reader.CreateIndex(BamIndex::BAMTOOLS);        
         reader.Close();
     }
+    
+    static bool opFollowsReference(char type) {
+        return  type == 'M' || // Alignment match (= or X)
+                type == 'D' || // Deletion from reference
+                //type == 'S' || // Soft clip
+                type == '=' || // Sequence match
+                type == 'X';   // Sequence mismatch 
+    }
+};
+}    
 }

@@ -20,22 +20,19 @@
 #include <string>
 #include <iostream>
 #include <vector>
-
-#include <boost/timer/timer.hpp>
-#include <boost/filesystem.hpp>
-
-#include "bam_utils.hpp"
-
 using std::string;
 using std::vector;
 
+#include <boost/timer/timer.hpp>
+#include <boost/filesystem.hpp>
 using boost::timer::auto_cpu_timer;
 
-using portculis::sortBam;
-using portculis::mergeBams;
-using portculis::indexBam;
+#include "bam_utils.hpp"
+using portculis::bamtools::BamUtils;
+
 
 namespace portculis {
+namespace bamtools {
     
 std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, bool forcePrep) {
     
@@ -62,7 +59,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
             cout << "Found " << bamFiles.size() << " BAM files." << endl 
                  << "Merging BAMS...";
             cout.flush();
-            mergeBams(bamFiles, mergedBam);
+            BamUtils::mergeBams(bamFiles, mergedBam);
             cout << "done." << endl;
         }
 
@@ -79,7 +76,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
         if (!mergedAndSortedBamExists || forcePrep) {
             cout << "Sorting " << mergedBam << " ... ";
             cout.flush();
-            sortBam(mergedBam, sortedBam, false);
+            BamUtils::sortBam(mergedBam, sortedBam, false);
             cout << "done." << endl;        
         }
 
@@ -96,7 +93,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
         if (!indexedBamExists || forcePrep) {
             cout << "Indexing " << sortedBam << " ... ";
             cout.flush();
-            indexBam(sortedBam);
+            BamUtils::indexBam(sortedBam);
             cout << "done." << endl;
         }
 
@@ -109,7 +106,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
         string bamFileToIndex = bamFile;
 
         // Sort the BAM file if necessary
-        bool bamIsSorted = portculis::isSortedBam(bamFile);
+        bool bamIsSorted = BamUtils::isSortedBam(bamFile);
 
         if (bamIsSorted) {
             cout << "Pre-sorted BAM detected: " << bamFile << endl;
@@ -124,7 +121,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
 
             cout << "Sorting " << bamFile << " ... ";
             cout.flush();
-            sortBam(bamFile, sortedBam, false);
+            BamUtils::sortBam(bamFile, sortedBam, false);
             cout << "done" << endl;
 
             bamFileToIndex = sortedBam;
@@ -146,7 +143,7 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
         if (!bamIsIndexed || forcePrep) {
             cout << "Indexing " << bamFileToIndex << " ... ";
             cout.flush();
-            indexBam(bamFileToIndex);
+            BamUtils::indexBam(bamFileToIndex);
             cout << "done." << endl;
         }
         indexedBamFile = indexedBam;
@@ -156,4 +153,5 @@ std::pair<string, string> bamPrep(vector<string> bamFiles, string outputPrefix, 
     return std::pair<string, string>(sortedBamFile, indexedBamFile);
 }
     
+}
 }

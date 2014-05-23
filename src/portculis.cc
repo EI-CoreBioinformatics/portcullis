@@ -22,11 +22,18 @@
 #include <string.h>
 #include <iostream>
 #include <fstream>
+using std::string;
+using std::cout;
+using std::cerr;
+using std::endl;
+using std::exception;
 
 #include <boost/exception/all.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/timer/timer.hpp>
+using boost::timer::auto_cpu_timer;
+namespace po = boost::program_options;
 
 #include <api/BamReader.h>
 #include <api/BamWriter.h>
@@ -34,20 +41,9 @@
 #include "portculis.hpp"
 #include "genome_mapper.hpp"
 #include "bam_prepare.hpp"
-
-using std::string;
-using std::cout;
-using std::cerr;
-using std::endl;
-using std::exception;
-
-using boost::timer::auto_cpu_timer;
-
 using portculis::Portculis;
 using portculis::GenomeMapper;
 
-
-namespace po = boost::program_options;
 
 
 // Default values for arguments
@@ -191,7 +187,7 @@ int main(int argc, char *argv[]) {
         cout << endl
              << "Preparing BAM(s)" << endl
              << "----------------" << endl;
-        std::pair<string, string> bamPrepResult = portculis::bamPrep(bamFiles, outputPrefix, forcePrep);
+        std::pair<string, string> bamPrepResult = portculis::bamtools::bamPrep(bamFiles, outputPrefix, forcePrep);
         
         // First job is to collect seeds (i.e. alignments containing an 'N' in their cigar)
         string sortedBam = bamPrepResult.first;

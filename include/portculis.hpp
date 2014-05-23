@@ -20,35 +20,33 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
-
-#include <boost/exception/all.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/timer/timer.hpp>
-#include <boost/unordered_map.hpp>
-
-#include <api/BamReader.h>
-#include <api/BamWriter.h>
-
-#include "genome_mapper.hpp"
-#include "location.hpp"
-#include "junction.hpp"
-#include "junction_system.hpp"
-
 using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
 using std::ofstream;
 
+#include <boost/exception/all.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/timer/timer.hpp>
+#include <boost/unordered_map.hpp>
 using boost::timer::auto_cpu_timer;
 using boost::lexical_cast;
 
+#include <api/BamReader.h>
+#include <api/BamWriter.h>
+using namespace BamTools;
+
+#include "genome_mapper.hpp"
+#include "location.hpp"
+#include "junction.hpp"
+#include "junction_system.hpp"
 using portculis::GenomeMapper;
 using portculis::Location;
 using portculis::Junction;
 using portculis::JunctionSystem;
 
-using namespace BamTools;
+
 
 namespace portculis {
 

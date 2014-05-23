@@ -15,6 +15,23 @@
 //  along with Portculis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+#define BOOST_TEST_MAIN
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE PORTCULIS
 #include <boost/test/unit_test.hpp>
+#include <boost/test/unit_test_log.hpp>
+#include <boost/filesystem/fstream.hpp>
+
+#include <iostream>
+
+using namespace boost::unit_test;
+using namespace std;
+
+BOOST_AUTO_TEST_SUITE(master)
+
+BOOST_AUTO_TEST_CASE(test)
+{
+    BOOST_CHECK(0==0);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
