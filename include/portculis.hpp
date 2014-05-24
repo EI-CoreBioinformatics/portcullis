@@ -38,11 +38,11 @@ using boost::lexical_cast;
 using namespace BamTools;
 
 #include "genome_mapper.hpp"
-#include "location.hpp"
+#include "intron.hpp"
 #include "junction.hpp"
 #include "junction_system.hpp"
 using portculis::GenomeMapper;
-using portculis::Location;
+using portculis::Intron;
 using portculis::Junction;
 using portculis::JunctionSystem;
 
@@ -236,11 +236,14 @@ public:
         cout << "Stage 3: Lookup unspliced alignments:" << endl;
         junctionSystem.findFlankingAlignments(getUnsplicedBamFile());
         
-        // Calculate all remaining metrics
-        cout << "Stage 4: Calculating remaining junction metrics:" << endl;
-        junctionSystem.calcAllMetrics();
+        cout << "Stage 4: Calculating junction status flags:" << endl;
+        junctionSystem.calcJunctionStats();
         
-        cout << "Stage 5: Outputting junction information:" << endl;
+        // Calculate all remaining metrics
+        cout << "Stage 5: Calculating remaining junction metrics:" << endl;
+        junctionSystem.calcAllRemainingMetrics();
+        
+        cout << "Stage 6: Outputting junction information:" << endl;
         junctionSystem.saveAll(outputPrefix);
     }
 };

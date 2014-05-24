@@ -44,25 +44,31 @@ static string strandToString(Strand strand) {
     return strand == POSITIVE ? string("POSITIVE") : string("NEGATIVE");
 }
     
-class Location {
+class Intron {
     
     
 public:    
-    int32_t refId;
-    int32_t start;
-    int32_t end;
-    Strand strand;
+    int32_t refId;      // The reference sequence this location comes from
+    int32_t start;      // The index of the base of the intron
+    int32_t end;        // The index of the last base of the intron
+    Strand strand;      // The strand the intron is on
     
-    Location() :
+    Intron() :
         refId(-1), start(-1), end(-1), strand(POSITIVE) {        
     }
     
-    Location(int32_t _refId, int32_t _start, int32_t _end, Strand _strand) :
+    Intron(int32_t _refId, int32_t _start, int32_t _end, Strand _strand) :
         refId(_refId), start(_start), end(_end), strand(_strand) {
     }
 
-    
-    friend size_t hash_value(const Location& l)
+    /**
+     * Overload hash_value with Location so that boost know how to use this class
+     * as a key in some kind of hash table
+     * 
+     * @param other
+     * @return 
+     */
+    friend size_t hash_value(const Intron& l)
     {
         // Start with a hash value of 0    .
         std::size_t seed = 0;
@@ -84,7 +90,7 @@ public:
      * @param other
      * @return 
      */
-    bool operator==(const Location &other) const
+    bool operator==(const Intron &other) const
     { 
         return (refId == other.refId &&
                 start == other.start &&
@@ -92,7 +98,7 @@ public:
                 strand == other.strand);
     }
     
-    bool operator!=(const Location &other) const
+    bool operator!=(const Intron &other) const
     { 
         return !((*this)==other);
     }
@@ -100,6 +106,21 @@ public:
     
     int32_t size() const {
         return end - start + 1;
+    }
+    
+    /**
+     * We probably need to double check this logic.  We say this intron shares a
+     * donor or acceptor with another intron, if the ref id is the same and we
+     * find either the start or end position is the same. 
+     *  
+     * Note: We ignore the strand!  Is this right?
+     * 
+     * @param other
+     * @return 
+     */
+    bool sharesDonorOrAcceptor(const Intron& other) {
+        return refId == other.refId && 
+                (start == other.start || end == other.end);
     }
     
     
@@ -110,7 +131,7 @@ public:
              << "; Strand: " << strandToString(strand);
     }
     
-    friend std::ostream& operator<<(std::ostream &strm, const Location& l) {
+    friend std::ostream& operator<<(std::ostream &strm, const Intron& l) {
         return strm << l.refId << "\t" << l.start << "\t" << l.end << "\t" << strandToChar(l.strand);
     }
     

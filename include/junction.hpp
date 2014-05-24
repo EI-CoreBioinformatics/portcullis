@@ -39,10 +39,10 @@ using boost::shared_ptr;
 #include <api/BamAlignment.h>
 using namespace BamTools;
 
-#include "location.hpp"
+#include "intron.hpp"
 #include "genome_mapper.hpp"
 #include "bam_utils.hpp"
-using portculis::Location;
+using portculis::Intron;
 using portculis::bamtools::BamUtils;
 
 namespace portculis {    
@@ -64,7 +64,7 @@ class Junction {
 private:
     
     // **** Properties that describe where the junction is ****
-    shared_ptr<Location> intron;
+    shared_ptr<Intron> intron;
     vector<BamAlignment> junctionAlignments;
     
     
@@ -194,7 +194,7 @@ public:
         init(0, 0);
     }
     
-    Junction(shared_ptr<Location> _location, int32_t _leftFlankStart, int32_t _rightFlankEnd) :
+    Junction(shared_ptr<Intron> _location, int32_t _leftFlankStart, int32_t _rightFlankEnd) :
         intron(_location) {
         init(_leftFlankStart, _rightFlankEnd);
     }
@@ -205,11 +205,11 @@ public:
     }
     
    
-    shared_ptr<Location> getLocation() const {
+    shared_ptr<Intron> getLocation() const {
         return intron;
     }
 
-    void setLocation(shared_ptr<Location> location) {
+    void setLocation(shared_ptr<Intron> location) {
         this->intron = location;
     }
 
@@ -233,6 +233,19 @@ public:
     void setFlankingAlignmentCounts(uint32_t nbUpstream, uint32_t nbDownstream) {
         this->nbUpstreamFlankingAlignments = nbUpstream;
         this->nbDownstreamFlankingAlignments = nbDownstream;
+    }
+    
+    void setPrimaryJunction(bool primaryJunction) {
+        this->primaryJunction = primaryJunction;
+    }
+
+    void setUniqueJunction(bool uniqueJunction) {
+        this->uniqueJunction = uniqueJunction;
+    }
+
+    
+    bool sharesDonorOrAcceptor(shared_ptr<Junction> other) {
+        return this->intron->sharesDonorOrAcceptor(*(other->intron));
     }
 
     
@@ -298,7 +311,6 @@ public:
         calcEntropy();          // Metric 6
         calcAlignmentStats();   // Metrics 8 and 9
         calcMaxMMES();          // Metric 12
-        calcJunctionStats();    // Metric 16 and 17
     }
     
     /**
@@ -544,14 +556,11 @@ public:
         coverage = donorCoverage + acceptorCoverage;
     }
     
-    void calcJunctionStats() {
-        
-    }
     
     
     // **** Core property getters ****
     
-    shared_ptr<Location> getIntron() const {
+    shared_ptr<Intron> getIntron() const {
         return intron;
     }
 
@@ -805,7 +814,7 @@ public:
      * @return 
      */
     static string junctionOutputHeader() {
-        return string(Location::locationOutputHeader()) + string(
+        return string(Intron::locationOutputHeader()) + string(
                 "\tleft\tright\tM1_nbreads\tM2_damotif\tM3_intronsize\tM4_maxminanc\tM5_diffanc\tM6_entropy\tM7_distanc\tM8_distaln\tM9_relaln\tM10_upaln\tM11_downaln\tM12_maxmmes\tM13_hamming5p\tM14_hamming3p\tM15_coverage\tM16_uniquejunc\tM17_primarujunc"); 
     }
 

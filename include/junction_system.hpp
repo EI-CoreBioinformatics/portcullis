@@ -17,10 +17,10 @@
 
 #pragma once
 
-#include "location.hpp"
+#include "intron.hpp"
 #include "junction.hpp"
 #include "genome_mapper.hpp"
-using portculis::Location;
+using portculis::Intron;
 using portculis::Junction;
 
 #include <boost/exception/all.hpp>
@@ -30,13 +30,13 @@ using portculis::Junction;
 using boost::lexical_cast;
 using boost::shared_ptr;
 using boost::timer::auto_cpu_timer;
-typedef boost::unordered_map<Location, shared_ptr<Junction> > DistinctJunctions;
-typedef boost::unordered_map<Location, shared_ptr<Junction> >::iterator JunctionMapIterator;
+typedef boost::unordered_map<Intron, shared_ptr<Junction> > DistinctJunctions;
+typedef boost::unordered_map<Intron, shared_ptr<Junction> >::iterator JunctionMapIterator;
 
 #include <fstream>
 #include <vector>
 using std::ofstream;
-typedef std::pair<const Location, shared_ptr<Junction> > JunctionMapType;
+typedef std::pair<const Intron, shared_ptr<Junction> > JunctionMapType;
 typedef std::vector<shared_ptr<Junction> > JunctionList;
 
 namespace portculis {
@@ -48,6 +48,28 @@ private:
     
     double meanQueryLength;
     
+    
+    size_t createJunctionGroup(size_t index, vector<shared_ptr<Junction> >& group) {
+        
+        shared_ptr<Junction> junc = junctionList[index];        
+        group.push_back(junc);
+        
+        bool foundMore = false;
+        for(size_t j = index + 1; j < junctionList.size(); j++) {
+
+            shared_ptr<Junction> next = junctionList[j];
+
+            if (junc->sharesDonorOrAcceptor(next)) {
+                group.push_back(next);                    
+                junc = next;                    
+            }
+            else {
+                return j-1;                
+            }
+        }
+        
+        return foundMore ? index : junctionList.size()-1;
+    }
     
     
 public:
@@ -115,7 +137,7 @@ public:
                     }
                 }
                 
-                shared_ptr<Location> location(new Location(refId, lEnd, rStart, 
+                shared_ptr<Intron> location(new Intron(refId, lEnd, rStart, 
                         strandFromBool(al.IsReverseStrand())));
                 
                 // We should now have the complete junction location information
@@ -217,7 +239,7 @@ public:
         
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
             
-            shared_ptr<Location> intron = j->getIntron();
+            shared_ptr<Intron> intron = j->getIntron();
             int32_t refId = intron->refId;
             int32_t lStart = j->getLeftFlankStart();
             int32_t lEnd = intron->start;
@@ -264,11 +286,40 @@ public:
         cout << "done." << endl;
     }
     
+    void calcJunctionStats() {
+        
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n");    
+        
+        cout << " - Grouping junctions ... ";
+        cout.flush();
+        
+        for(size_t i = 0; i < junctionList.size(); i++) {
+        
+            vector<shared_ptr<Junction> > junctionGroup;
+            i = createJunctionGroup(i, junctionGroup);            
+                        
+            uint32_t maxReads = 0;
+            size_t maxIndex = 0;
+            bool uniqueJunction = junctionGroup.size() == 1;
+            for(size_t j = 0; j < junctionGroup.size(); j++) {                    
+                shared_ptr<Junction> junc = junctionGroup[j];
+                if (maxReads < junc->getNbJunctionAlignments()) {
+                    maxReads = junc->getNbJunctionAlignments();
+                    maxIndex = j;
+                }
+                junc->setUniqueJunction(uniqueJunction);
+            }
+            junctionGroup[maxIndex]->setPrimaryJunction(true);
+        }
+        
+        cout << "done." << endl;        
+    }
+    
     /**
      * Call this method to recalculate all junction metrics based on the current location
      * and alignment information present in this junction
      */
-    void calcAllMetrics() {
+    void calcAllRemainingMetrics() {
        
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n"); 
         
