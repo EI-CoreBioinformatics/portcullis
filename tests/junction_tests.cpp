@@ -30,6 +30,9 @@ using std::endl;
 
 using portculis::Location;
 using portculis::Junction;
+using portculis::JunctionException;
+
+bool is_critical( JunctionException const& ex ) { return true; }
 
 BOOST_AUTO_TEST_SUITE(junction)
 
@@ -39,7 +42,7 @@ BOOST_AUTO_TEST_CASE(intron)
     Junction j1(l1, 10, 40);
     
     int32_t intronSz = j1.getIntronSize();
-    BOOST_CHECK(intronSz == 10);
+    BOOST_CHECK(intronSz == 11);
 }
 
 BOOST_AUTO_TEST_CASE(donor_acceptor)
@@ -47,14 +50,16 @@ BOOST_AUTO_TEST_CASE(donor_acceptor)
     shared_ptr<Location> l1(new Location(5, 20, 30, portculis::POSITIVE));
     Junction j1(l1, 10, 40);
     
+    shared_ptr<Location> l2(new Location(5, 20, 30, portculis::NEGATIVE));
+    Junction j2(l2, 10, 40);
+    
     bool res1 = j1.setDonorAndAcceptorMotif("GT", "AG");
     BOOST_CHECK(res1);
     
-    bool res2 = j1.setDonorAndAcceptorMotif("CT", "AC");
+    bool res2 = j2.setDonorAndAcceptorMotif("CT", "AC");
     BOOST_CHECK(res2);
     
-    bool res3 = j1.setDonorAndAcceptorMotif("GTA", "AG");
-    BOOST_CHECK(!res3);
+    BOOST_CHECK_EXCEPTION(j1.setDonorAndAcceptorMotif("GTA", "AG"), JunctionException, is_critical);
     
     bool res4 = j1.setDonorAndAcceptorMotif("CT", "AG");
     BOOST_CHECK(!res4);
@@ -62,8 +67,8 @@ BOOST_AUTO_TEST_CASE(donor_acceptor)
     bool res5 = j1.setDonorAndAcceptorMotif("GT", "AC");
     BOOST_CHECK(!res5);
     
-    bool res6 = j1.setDonorAndAcceptorMotif("", "");
-    BOOST_CHECK(!res6);        
+    BOOST_CHECK_EXCEPTION(j1.setDonorAndAcceptorMotif("", ""), JunctionException, is_critical);
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

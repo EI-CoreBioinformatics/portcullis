@@ -178,7 +178,7 @@ public:
         uint64_t daSites = 0;
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
             
-            if (j->processGenomicRegion(genomeMapper, refs)) {
+            if (j->processJunctionWindow(genomeMapper, refs)) {
                 daSites++;
             }            
         }

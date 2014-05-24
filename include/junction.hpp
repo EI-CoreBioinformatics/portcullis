@@ -253,7 +253,7 @@ public:
     }
         
     
-    int32_t processGenomicRegion(GenomeMapper* genomeMapper, RefVector& refs) {
+    int32_t processJunctionWindow(GenomeMapper* genomeMapper, RefVector& refs) {
         
         if (intron == NULL) 
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
