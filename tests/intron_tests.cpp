@@ -21,18 +21,13 @@
 #endif
 #include <boost/test/unit_test.hpp>
 
-#include <boost/filesystem.hpp>
-
 #include <intron.hpp>
-
-using std::cout;
-using std::endl;
 
 using portculis::Intron;
 using portculis::POSITIVE;
 using portculis::NEGATIVE;
 
-BOOST_AUTO_TEST_SUITE(location)
+BOOST_AUTO_TEST_SUITE(intron)
 
 BOOST_AUTO_TEST_CASE(equality1)
 {
@@ -66,5 +61,11 @@ BOOST_AUTO_TEST_CASE(equality4)
     BOOST_CHECK(l1 != l2);
 }
 
+BOOST_AUTO_TEST_CASE(min_anchor) {
+    
+    Intron intron(5, 10, 20, portculis::POSITIVE);
+    
+    BOOST_CHECK(intron.minAnchorLength(4, 40) == 6);    
+}
 
 BOOST_AUTO_TEST_SUITE_END()

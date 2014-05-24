@@ -27,7 +27,6 @@ using std::string;
 using std::size_t;
 using std::vector;
 
-#include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/foreach.hpp>
 #include <boost/functional/hash.hpp>
@@ -42,6 +41,7 @@ using namespace BamTools;
 #include "intron.hpp"
 #include "genome_mapper.hpp"
 #include "bam_utils.hpp"
+#include "seq_utils.hpp"
 using portculis::Intron;
 using portculis::bamtools::BamUtils;
 
@@ -49,18 +49,33 @@ namespace portculis {
 
 const uint16_t MAP_QUALITY_THRESHOLD = 30;    
     
-const char REVCOMP_LOOKUP[] = {'T',  0,  'G', 'H',
-                                0,   0,  'C', 'D',
-                                0,   0,   0,   0,
-                               'K', 'N',  0,   0,
-                                0,  'Y', 'W', 'A',
-                               'A', 'B', 'S', 'X',
-                               'R',  0 };
 
 typedef boost::error_info<struct JunctionError,string> JunctionErrorInfo;
 struct JunctionException: virtual boost::exception, virtual std::exception { };
 
+const string METRIC_NAMES[17] = {
+        "M1-nb_reads",
+        "M2-da_motif",
+        "M3-intron_size",
+        "M4-max_min_anc",
+        "M5-dif_anc",
+        "M6-entropy",
+        "M7-dist_anc",
+        "M8-nb_dist_aln",
+        "M9-nb_rel_aln",
+        "M10-up_aln",
+        "M11-down_aln",
+        "M12-maxmmes",
+        "M13-hamming5p",
+        "M14-hamming3p",
+        "M15-coverage",
+        "M16-uniq_junc",
+        "M17-primary_junc"
+    }; 
+
 class Junction {
+    
+    
 private:
     
     // **** Properties that describe where the junction is ****
@@ -102,7 +117,7 @@ private:
         leftFlankStart = _leftFlankStart;
         rightFlankEnd = _rightFlankEnd;
         donorAndAcceptorMotif = false;
-        maxMinAnchor = minAnchor(_leftFlankStart, _rightFlankEnd);
+        maxMinAnchor = intron->minAnchorLength(_leftFlankStart, _rightFlankEnd);
         diffAnchor = 0;
         entropy = 0;
         nbDistinctAnchors = 0;
@@ -116,18 +131,6 @@ private:
         coverage = 0.0;
         uniqueJunction = false;
         primaryJunction = false;
-    }
-    
-    int32_t minAnchor(int32_t otherStart, int32_t otherEnd) {
-        
-        if (intron != NULL) {
-            int32_t lAnchor = intron->start - 1 - otherStart;
-            int32_t rAnchor = otherEnd - intron->end - 1;
-
-            return min(lAnchor, rAnchor);
-        }
-        
-        return 0;
     }
     
     
@@ -152,47 +155,11 @@ protected:
     }
     
     
-    uint32_t hammingDistance(const string& s1, const string& s2) {
     
-        if (s1.size() != s2.size())
-            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                    "Can't find hamming distance of strings that are not the same length")));
-        
-        string s1u = boost::to_upper_copy(s1);
-        string s2u = boost::to_upper_copy(s2);
-        
-        uint32_t sum = 0;
-        for(size_t i = 0; i < s1u.size(); i++) {
-            if (s1u[i] != s2u[i]) {
-                sum++;
-            }
-        }
-        
-        return sum;
-    }
-    
-    string reverseSeq(string& sequence) {
-        return string(sequence.rbegin(), sequence.rend());
-    }
-
-    string reverseComplement(string sequence) {
-
-        // do complement, in-place
-        size_t seqLength = sequence.length();
-        for ( size_t i = 0; i < seqLength; ++i )
-            sequence.replace(i, 1, 1, REVCOMP_LOOKUP[(int)sequence.at(i) - 65]);
-
-        // reverse it
-        return reverseSeq(sequence);
-    }
     
 public:
     
     // **** Constructors ****
-    
-    Junction() {
-        init(0, 0);
-    }
     
     Junction(shared_ptr<Intron> _location, int32_t _leftFlankStart, int32_t _rightFlankEnd) :
         intron(_location) {
@@ -260,7 +227,7 @@ public:
         leftFlankStart = min(leftFlankStart, otherStart);
         rightFlankEnd = max(rightFlankEnd, otherEnd);
         
-        int32_t otherMinAnchor = minAnchor(otherStart, otherEnd);
+        int32_t otherMinAnchor = intron->minAnchorLength(otherStart, otherEnd);
         
         maxMinAnchor = max(maxMinAnchor, otherMinAnchor);
     }
@@ -474,14 +441,14 @@ public:
                 anchor3p = junctionSeq.substr(intronEndOffset, REGION_LENGTH);
             }
             else {
-                intron5p = reverseComplement(junctionSeq.substr(intronEndOffset - REGION_LENGTH, REGION_LENGTH));
-                intron3p = reverseComplement(junctionSeq.substr(intronStartOffset, REGION_LENGTH));
-                anchor5p = reverseComplement(junctionSeq.substr(intronEndOffset, REGION_LENGTH));
-                anchor3p = reverseComplement(junctionSeq.substr(intronStartOffset - REGION_LENGTH, REGION_LENGTH));
+                intron5p = SeqUtils::reverseComplement(junctionSeq.substr(intronEndOffset - REGION_LENGTH, REGION_LENGTH));
+                intron3p = SeqUtils::reverseComplement(junctionSeq.substr(intronStartOffset, REGION_LENGTH));
+                anchor5p = SeqUtils::reverseComplement(junctionSeq.substr(intronEndOffset, REGION_LENGTH));
+                anchor3p = SeqUtils::reverseComplement(junctionSeq.substr(intronStartOffset - REGION_LENGTH, REGION_LENGTH));
             }
 
-            hammingDistance5p = hammingDistance(anchor5p, intron3p);
-            hammingDistance3p = hammingDistance(anchor3p, intron5p);  
+            hammingDistance5p = SeqUtils::hammingDistance(anchor5p, intron3p);
+            hammingDistance3p = SeqUtils::hammingDistance(anchor3p, intron5p);  
         }
     }
     
@@ -814,8 +781,8 @@ public:
      * @return 
      */
     static string junctionOutputHeader() {
-        return string(Intron::locationOutputHeader()) + string(
-                "\tleft\tright\tM1_nbreads\tM2_damotif\tM3_intronsize\tM4_maxminanc\tM5_diffanc\tM6_entropy\tM7_distanc\tM8_distaln\tM9_relaln\tM10_upaln\tM11_downaln\tM12_maxmmes\tM13_hamming5p\tM14_hamming3p\tM15_coverage\tM16_uniquejunc\tM17_primarujunc"); 
+        return string(Intron::locationOutputHeader()) + "\tleft\tright\t" + 
+                boost::algorithm::join(METRIC_NAMES, "\t");
     }
 
 };

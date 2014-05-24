@@ -17,9 +17,12 @@
 
 #pragma once
 
+#include <math.h>
 #include <string>
+using std::min;
 using std::string;
 
+#include <boost/exception/all.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
 using boost::lexical_cast;
@@ -44,6 +47,9 @@ static string strandToString(Strand strand) {
     return strand == POSITIVE ? string("POSITIVE") : string("NEGATIVE");
 }
     
+typedef boost::error_info<struct IntronError,string> IntronErrorInfo;
+struct IntronException: virtual boost::exception, virtual std::exception { };
+
 class Intron {
     
     
@@ -121,6 +127,29 @@ public:
     bool sharesDonorOrAcceptor(const Intron& other) {
         return refId == other.refId && 
                 (start == other.start || end == other.end);
+    }
+    
+    /**
+     * Calculates the length of both anchors, based on the provided start and end
+     * flanking regions and then returns the minimum of the two
+     * @param leftAnchorStart The start position of the left anchor
+     * @param rightAnchorEnd The end position of the right anchor (inclusive)
+     * @return The minimum of the left anchor length and the right anchor length
+     */
+    int32_t minAnchorLength(int32_t leftAnchorStart, int32_t rightAnchorEnd) {
+        
+        if (leftAnchorStart >= start)
+            BOOST_THROW_EXCEPTION(IntronException() << IntronErrorInfo(string(
+                    "The intron start position must be greater than the left anchor start position")));
+        
+        if (rightAnchorEnd <= end)
+            BOOST_THROW_EXCEPTION(IntronException() << IntronErrorInfo(string(
+                    "The intron end position must be less than the right anchor end position")));
+        
+        int32_t lAnchor = start - leftAnchorStart;
+        int32_t rAnchor = rightAnchorEnd - end;
+
+        return min(lAnchor, rAnchor);        
     }
     
     

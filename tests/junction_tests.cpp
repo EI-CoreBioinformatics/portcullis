@@ -36,8 +36,8 @@ bool is_critical( JunctionException const& ex ) { return true; }
 
 BOOST_AUTO_TEST_SUITE(junction)
 
-BOOST_AUTO_TEST_CASE(intron)
-{
+BOOST_AUTO_TEST_CASE(intron) {
+    
     shared_ptr<Intron> l1(new Intron(5, 20, 30, portculis::POSITIVE));
     Junction j1(l1, 10, 40);
     
@@ -45,8 +45,8 @@ BOOST_AUTO_TEST_CASE(intron)
     BOOST_CHECK(intronSz == 11);
 }
 
-BOOST_AUTO_TEST_CASE(donor_acceptor)
-{
+BOOST_AUTO_TEST_CASE(donor_acceptor) {
+    
     shared_ptr<Intron> l1(new Intron(5, 20, 30, portculis::POSITIVE));
     Junction j1(l1, 10, 40);
     
@@ -68,7 +68,6 @@ BOOST_AUTO_TEST_CASE(donor_acceptor)
     BOOST_CHECK(!res5);
     
     BOOST_CHECK_EXCEPTION(j1.setDonorAndAcceptorMotif("", ""), JunctionException, is_critical);
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()
