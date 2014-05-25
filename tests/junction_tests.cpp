@@ -70,4 +70,23 @@ BOOST_AUTO_TEST_CASE(donor_acceptor) {
     BOOST_CHECK_EXCEPTION(j1.setDonorAndAcceptorMotif("", ""), JunctionException, is_critical);
 }
 
+BOOST_AUTO_TEST_CASE(entropy) {
+    
+    shared_ptr<Intron> l(new Intron(5, 20, 30, portculis::POSITIVE));
+    Junction j(l, 10, 40);
+    
+    int32_t ints1[] = {13, 15, 17, 19};
+    vector<int32_t> juncPos1(ints1, ints1 + sizeof(ints1) / sizeof(int32_t)); 
+    
+    int32_t ints2[] = {16, 16, 16, 16};
+    vector<int32_t> juncPos2(ints2, ints2 + sizeof(ints2) / sizeof(int32_t)); 
+    
+    double e1 = j.calcEntropy(juncPos1);
+    double e2 = j.calcEntropy(juncPos2);
+    
+    // Actually I don't know what the entropy scores should be exactly... but e1 
+    // should definitely have a higher entropy than e2
+    BOOST_CHECK(e1 > e2);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

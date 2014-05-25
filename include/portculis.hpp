@@ -141,11 +141,17 @@ protected:
         uint64_t splicedCount = 0;
         uint64_t unsplicedCount = 0;
         uint64_t sumQueryLengths = 0;
+        int32_t minQueryLength = 0;
+        int32_t maxQueryLength = 100000;
         cout << " - Processing alignments ... ";
         cout.flush();
         while(reader.GetNextAlignment(al))
         {
-            sumQueryLengths += al.Length;
+            int32_t len = al.Length;
+            minQueryLength = min(minQueryLength, len);
+            maxQueryLength = max(maxQueryLength, len);
+            
+            sumQueryLengths += len;
             
             if (junctionSystem.addJunctions(al)) {
                 splicedCount++;
@@ -163,10 +169,10 @@ protected:
         // Calculate some stats
         uint64_t totalAlignments = splicedCount + unsplicedCount;
         double meanQueryLength = (double)sumQueryLengths / (double)totalAlignments;
-        junctionSystem.setMeanQueryLength(meanQueryLength);
+        junctionSystem.setQueryLengthStats(minQueryLength, meanQueryLength, maxQueryLength);
         
         cout << " - Processed " << totalAlignments << " alignments." << endl
-             << " - Mean length of all alignments is " << meanQueryLength << endl
+             << " - Alignment query length statistics: min: " << minQueryLength << "; mean: " << meanQueryLength << "; max: " << maxQueryLength << ";" << endl
              << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl
              << " - Found " << unsplicedCount << " unspliced alignments." << endl;
         

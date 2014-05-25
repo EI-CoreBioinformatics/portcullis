@@ -46,7 +46,9 @@ private:
     DistinctJunctions distinctJunctions;
     JunctionList junctionList;
     
+    int32_t minQueryLength;
     double meanQueryLength;
+    int32_t maxQueryLength;
     
     
     size_t createJunctionGroup(size_t index, vector<shared_ptr<Junction> >& group) {
@@ -76,7 +78,7 @@ public:
     
     
     JunctionSystem() :
-        meanQueryLength(0) {        
+        minQueryLength(0), meanQueryLength(0.0), maxQueryLength(0) {        
     }
     
     virtual ~JunctionSystem() {
@@ -95,7 +97,28 @@ public:
     void setMeanQueryLength(double meanQueryLength) {
         this->meanQueryLength = meanQueryLength;
     }
+    
+    int32_t getMaxQueryLength() const {
+        return maxQueryLength;
+    }
 
+    void setMaxQueryLength(int32_t maxQueryLength) {
+        this->maxQueryLength = maxQueryLength;
+    }
+
+    int32_t getMinQueryLength() const {
+        return minQueryLength;
+    }
+
+    void setMinQueryLength(int32_t minQueryLength) {
+        this->minQueryLength = minQueryLength;
+    }
+
+    void setQueryLengthStats(int32_t min, double mean, int32_t max) {
+        this->minQueryLength = min;
+        this->meanQueryLength = mean;
+        this->maxQueryLength = max;
+    }
     
     /**
      * Adds any new junctions found from the given alignment to the set managed 
@@ -256,7 +279,8 @@ public:
             
             // Count left flanking alignments
             if (!reader.SetRegion(leftFlank)) {
-                BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string("Could not set region for left flank")));
+                BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                        "Could not set region for left flank")));
             }
             while(reader.GetNextAlignment(ba)) {
                 if (    lEnd > ba.Position && 
@@ -267,7 +291,8 @@ public:
             }            
             
             if (!reader.SetRegion(rightFlank)) {
-               BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string("Could not set region for right flank"))); 
+               BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                       "Could not set region for right flank"))); 
             }            
             while(reader.GetNextAlignment(ba)) {
                 if (    rEnd > ba.Position && 
@@ -327,7 +352,7 @@ public:
         cout.flush();
         
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
-            j->calcAllMetrics();
+            j->calcAllMetrics(meanQueryLength);
         }
         
         cout << "done." << endl;

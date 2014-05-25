@@ -271,13 +271,16 @@ public:
     /**
      * Call this method to recalculate all junction metrics based on the current location
      * and alignment information present in this junction
+     * 
+     * @param readLength
      */
-    void calcAllMetrics() {
+    void calcAllMetrics(double readLength) {
        
         calcAnchorStats();      // Metrics 5 and 7
         calcEntropy();          // Metric 6
         calcAlignmentStats();   // Metrics 8 and 9
         calcMaxMMES();          // Metric 12
+        calcCoverage(readLength); // Metric 15  
     }
     
     /**
@@ -327,39 +330,69 @@ public:
      * Metric 6: Entropy (definition from "Graveley et al, The developmental 
      * transcriptome of Drosophila melanogaster, Nature, 2011")
      * 
+     * Calculates the entropy score for this junction.  Higher entropy is generally
+     * more indicative of a genuine junction than a lower score.
+     *
+     * This version of the function collects BamAlignment start positions and passes
+     * them to an overloaded version of this function.
+     * 
+     * @return The entropy of this junction
+     */
+    double calcEntropy() {
+        
+        vector<int32_t> junctionPositions;
+        
+        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+            junctionPositions.push_back(ba.Position);
+        }
+        
+        return calcEntropy(junctionPositions);        
+    }
+    
+    /**
+     * Metric 6: Entropy (definition from "Graveley et al, The developmental 
+     * transcriptome of Drosophila melanogaster, Nature, 2011")
+     *
+     * Calculates the entropy score for this junction.  Higher entropy is generally
+     * more indicative of a genuine junction than a lower score.
+     * 
+     * This overridden version of the calcEntropy method, allows us to calculate
+     * the entropy, without using BamAlignment objects that model the junction.
+     * All we need are the alignment start positions instead.
+     * 
      * We measured the entropy of the reads that mapped to the splice junction. 
      * The entropy score is a function of both the total number of reads 
      * that map to a given junction and the number of different offsets to which 
      * those reads map and the number that map at each offset. Thus, junctions 
      * with multiple reads mapping at each of the possible windows across the junction 
      * will be assigned a higher entropy score, than junctions where many reads 
-     * map to only one or two positions. For this analysis we required that a junction 
-     * have an entropy score of two or greater in at least two biological samples 
-     * for junctions with canonical splice sites, and an entropy score of three 
-     * or greater in at least three biological samples for junctions with non-canonical 
-     * splice sites. Entropy was calculated using the following equations: 
+     * map to only one or two positions. 
      * 
-     * pi = reads at offset i / total reads to junction window 
+     * Entropy was calculated using the following equations: 
      * 
-     * Entopy = - sumi(pi * log(pi) / log2) 
+     * p_i = nb_reads_at_offset_i / total_reads_in_junction_window 
+     * 
+     * Entropy = - sum_i(p_i * log(pi) / log2) 
+     * 
+     * @param junctionPositions start index positions of each junction alignment
      * 
      * @return The entropy of this junction
      */
-    double calcEntropy() {
-        size_t nbJunctionAlignments = junctionAlignments.size();
+    double calcEntropy(vector<int32_t>& junctionPositions) {
+        
+        size_t nbJunctionAlignments = junctionPositions.size();
         
         if (nbJunctionAlignments <= 1)
             return 0;
         
         double sum = 0.0;
         
-        int32_t lastOffset = max(junctionAlignments[0].Position, leftFlankStart);
+        int32_t lastOffset = max(junctionPositions[0], leftFlankStart);
         uint32_t readsAtOffset = 0;
         
         for(size_t i = 0; i < nbJunctionAlignments; i++) {
             
-            const BamAlignment* ba = &(junctionAlignments[i]);
-            int32_t pos = max(ba->Position, leftFlankStart);
+            int32_t pos = max(junctionPositions[i], leftFlankStart);
             
             readsAtOffset++;
             
@@ -512,9 +545,8 @@ public:
         return multiplier * (double)readCount;
     }
     
-    void calcCoverage() {
+    void calcCoverage(int32_t readLength) {
         
-        int32_t readLength = 0;
         double donorCoverage = calcCoverage(intron->start - 2 * readLength, intron->start - readLength) -
                 calcCoverage(intron->start - readLength, intron->start);
         double acceptorCoverage = calcCoverage(intron->end, intron->end + readLength) -
