@@ -141,8 +141,8 @@ protected:
         uint64_t splicedCount = 0;
         uint64_t unsplicedCount = 0;
         uint64_t sumQueryLengths = 0;
-        int32_t minQueryLength = 0;
-        int32_t maxQueryLength = 100000;
+        int32_t minQueryLength = 100000;
+        int32_t maxQueryLength = 0;
         cout << " - Processing alignments ... ";
         cout.flush();
         while(reader.GetNextAlignment(al))
