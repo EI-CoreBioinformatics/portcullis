@@ -68,4 +68,11 @@ BOOST_AUTO_TEST_CASE(min_anchor) {
     BOOST_CHECK(intron.minAnchorLength(4, 40) == 6);    
 }
 
+BOOST_AUTO_TEST_CASE(size) {
+    
+    Intron intron(5, 10, 20, portculis::POSITIVE);
+    
+    BOOST_CHECK(intron.size() == 11);    
+}
+
 BOOST_AUTO_TEST_SUITE_END()

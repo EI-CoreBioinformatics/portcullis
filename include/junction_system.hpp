@@ -234,75 +234,43 @@ public:
         return daSites;
     }
     
-    void findFlankingAlignments(string unsplicedAlignmentsFile) {
+    void findFlankingAlignments(string alignmentsFile) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n");    
         
-        cout << " - Acquiring unspliced alignments from junction flanking windows ... ";
+        cout << " - Acquiring all alignments in each junction's vicinity ... ";
         cout.flush();
                 
         BamReader reader;
         
-        if (!reader.Open(unsplicedAlignmentsFile)) {
+        if (!reader.Open(alignmentsFile)) {
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                    "Could not open bam reader for unspliced alignments file: ") + unsplicedAlignmentsFile));
+                    "Could not open bam reader for alignments file: ") + alignmentsFile));
         }
         // Sam header and refs info from the input bam
         SamHeader header = reader.GetHeader();
         RefVector refs = reader.GetReferenceData();
 
         // Opens the index for this BAM file
-        string indexFile = unsplicedAlignmentsFile + ".bti";
+        string indexFile = alignmentsFile + ".bti";
         if ( !reader.OpenIndex(indexFile) ) {            
             if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
                 BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                        "Error creating BAM index for unspliced alignments file: ") + indexFile));
+                        "Error creating BAM index for alignments file: ") + indexFile));
             }            
         }
         
-        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
+        // Read the alignments around every junction and set appropriate metrics
+        size_t count = 0;
+        cout << endl;
+        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {            
+            j->processJunctionVicinity(
+                    reader, 
+                    refs[j->getIntron()->refId].RefLength, 
+                    meanQueryLength, 
+                    maxQueryLength);
             
-            shared_ptr<Intron> intron = j->getIntron();
-            int32_t refId = intron->refId;
-            int32_t lStart = j->getLeftFlankStart();
-            int32_t lEnd = intron->start;
-            int32_t rStart = intron->end;
-            int32_t rEnd = j->getRightFlankEnd();
-            Strand strand = intron->strand;
-            
-            uint32_t nbLeftFlankingAlignments = 0, nbRightFlankingAlignments = 0;
-            
-            BamRegion leftFlank(refId, lStart - (2*meanQueryLength), refId, lEnd + (2*meanQueryLength));
-            BamRegion rightFlank(refId, rStart - (2*meanQueryLength), refId, rEnd + (2*meanQueryLength));
-            
-            BamAlignment ba;
-            
-            // Count left flanking alignments
-            if (!reader.SetRegion(leftFlank)) {
-                BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                        "Could not set region for left flank")));
-            }
-            while(reader.GetNextAlignment(ba)) {
-                if (    lEnd > ba.Position && 
-                        lStart < ba.Position + ba.AlignedBases.size() &&
-                        strand == strandFromBool(ba.IsReverseStrand())) {
-                    nbLeftFlankingAlignments++;
-                }
-            }            
-            
-            if (!reader.SetRegion(rightFlank)) {
-               BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                       "Could not set region for right flank"))); 
-            }            
-            while(reader.GetNextAlignment(ba)) {
-                if (    rEnd > ba.Position && 
-                        rStart < ba.Position + ba.AlignedBases.size() &&
-                        strand == strandFromBool(ba.IsReverseStrand())) {
-                    nbRightFlankingAlignments++;
-                }
-            }
-
-            j->setFlankingAlignmentCounts(nbLeftFlankingAlignments, nbRightFlankingAlignments);            
+            cout << count++ << endl;
         }
         
         // Reset the reader for future use.
@@ -352,7 +320,7 @@ public:
         cout.flush();
         
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
-            j->calcAllMetrics(meanQueryLength);
+            j->calcAllRemainingMetrics(meanQueryLength);
         }
         
         cout << "done." << endl;

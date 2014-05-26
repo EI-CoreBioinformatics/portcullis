@@ -53,8 +53,8 @@ public:
      * uses Samtools to create a fasta index for the genome file and then
      * manages the data structure returned after loading the index.
      */
-    GenomeMapper(string _genomeFile, bool _forcePrep, bool _verbose) : 
-        genomeFile(_genomeFile), forcePrep(_forcePrep), verbose(_verbose) {
+    GenomeMapper(string _genomeFile, bool _forcePrep) : 
+        genomeFile(_genomeFile), forcePrep(_forcePrep) {
         
         auto_cpu_timer timer(1, "Wall time taken: %ws\n");        
             
@@ -62,7 +62,7 @@ public:
                 
         bool indexExists = boost::filesystem::exists(indexFile);
         
-        if (verbose && indexExists) {
+        if (indexExists) {
             cout << "Indexed genome detected: " << indexFile << endl;
             
             if (forcePrep) {
@@ -79,7 +79,7 @@ public:
         
         index = fai_load(genomeFile.c_str());
         
-        if (verbose) cout << "Genome index acquired" << endl;
+        cout << "Genome index acquired for: " << genomeFile << endl;
     }
     
     virtual ~GenomeMapper() {        

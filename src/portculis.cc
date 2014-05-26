@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
         cout << endl 
              << "Indexing genome" << endl
              << "---------------" << endl;
-        GenomeMapper genomeMapper(genomeFile, forcePrep, true);
+        GenomeMapper genomeMapper(genomeFile, forcePrep);
         
         // Prep the BAM input to produce a usable sorted bam plus bamtools bti index
         cout << endl
