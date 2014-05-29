@@ -64,6 +64,7 @@ private:
     GenomeMapper* genomeMapper;
     string outputPrefix;
     uint16_t threads;
+    bool strandSpecific;
     bool verbose;
     
     // Sam header and refs info from the input bam
@@ -74,12 +75,13 @@ private:
     JunctionSystem junctionSystem;
     
     void init(  string _sortedBamFile, GenomeMapper* _genomeMapper, string _outputPrefix, 
-                uint16_t _threads, bool _verbose) {
+                uint16_t _threads, bool _strandSpecific, bool _verbose) {
         
         sortedBamFile = _sortedBamFile;
         genomeMapper = _genomeMapper;
         outputPrefix = _outputPrefix;
         threads = _threads;
+        strandSpecific = _strandSpecific;
         verbose = _verbose;
         
         
@@ -153,7 +155,7 @@ protected:
             
             sumQueryLengths += len;
             
-            if (junctionSystem.addJunctions(al)) {
+            if (junctionSystem.addJunctions(al, strandSpecific)) {
                 splicedCount++;
             }
             else {
@@ -204,14 +206,15 @@ public:
                 NULL, 
                 DEFAULT_OUTPUT_PREFIX, 
                 DEFAULT_THREADS,
+                false,
                 false
                 );
     }
     Portculis(  string _sortedBam, GenomeMapper* _genomeMapper, 
-                string _outputPrefix, uint16_t _threads, 
+                string _outputPrefix, uint16_t _threads, bool _strandSpecific,
                 bool _verbose) {
         init(  _sortedBam, _genomeMapper, _outputPrefix, 
-                _threads, _verbose);
+                _threads, _strandSpecific, _verbose);
     }
     
     virtual ~Portculis() {        
@@ -240,7 +243,7 @@ public:
         // Count the number of alignments found in upstream and downstream flanking 
         // regions for each junction
         cout << "Stage 3: Analyse alignments around junctions:" << endl;
-        junctionSystem.findFlankingAlignments(sortedBamFile);
+        junctionSystem.findFlankingAlignments(sortedBamFile, strandSpecific);
         
         cout << "Stage 4: Calculating junction status flags:" << endl;
         junctionSystem.calcJunctionStats();

@@ -126,11 +126,11 @@ public:
      * @param al The alignment to search for junctions
      * @return Whether a junction was found in this alignment or not
      */
-    bool addJunctions(const BamAlignment& al) {
-        return addJunctions(al, 0, al.Position);
+    bool addJunctions(const BamAlignment& al, bool strandSpecific) {
+        return addJunctions(al, 0, al.Position, strandSpecific);
     }
     
-    bool addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset) {
+    bool addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset, bool strandSpecific) {
         
         bool foundJunction = false;
         
@@ -161,7 +161,7 @@ public:
                 }
                 
                 shared_ptr<Intron> location(new Intron(refId, lEnd, rStart, 
-                        strandFromBool(al.IsReverseStrand())));
+                        strandSpecific ? strandFromBool(al.IsReverseStrand()) : POSITIVE));
                 
                 // We should now have the complete junction location information
                 JunctionMapIterator it = distinctJunctions.find(*location);
@@ -186,7 +186,7 @@ public:
                 // that means that this cigar contains additional junctions, so 
                 // process those using recursion
                 if (j < nbOps) {                    
-                    addJunctions(al, i+1, rStart);
+                    addJunctions(al, i+1, rStart, strandSpecific);
                     break;
                 }                
             }
@@ -234,7 +234,7 @@ public:
         return daSites;
     }
     
-    void findFlankingAlignments(string alignmentsFile) {
+    void findFlankingAlignments(string alignmentsFile, bool strandSpecific) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n");    
         
@@ -268,7 +268,8 @@ public:
                     reader, 
                     refs[j->getIntron()->refId].RefLength, 
                     meanQueryLength, 
-                    maxQueryLength);
+                    maxQueryLength,
+                    strandSpecific);
             
             cout << count++ << endl;
         }

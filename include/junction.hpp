@@ -105,14 +105,20 @@ class CoverageVisitor : public PileupVisitor {
             
             int32_t pos = pileupData.Position - startOffset + 1;
             
-            if (pos < 0 || pos >= coverageLevels->size()) {
-                BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                        "Error occurred retrieving coverage counts.  ") + 
+            if (pos < 0) { // || pos >= coverageLevels->size()) {
+                // Just ignore for now ...
+                /* BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                        "Error occurred trying to set coverage counts.  ") + 
                         "Pos: " + lexical_cast<string>(pileupData.Position) + 
                         "; Offset pos: " + lexical_cast<string>(pos) + 
-                        "; Size of window: " + lexical_cast<string>(coverageLevels->size())));
+                        "; Size of window: " + lexical_cast<string>(coverageLevels->size())));*/
             }
-            (*coverageLevels)[pos] = count;
+            else if (pos >= coverageLevels->size()) {
+                // Just ignore for now...
+            }
+            else {
+                (*coverageLevels)[pos] = count;
+            }
         }
         
         uint32_t GetCoverageAt(int32_t pos) const {
@@ -341,7 +347,7 @@ public:
         return validDA;
     }
     
-    void processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength) {
+    void processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, bool strandSpecific) {
         
         int32_t refId = intron->refId;
         Strand strand = intron->strand;

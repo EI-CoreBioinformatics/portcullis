@@ -26,6 +26,7 @@ using std::string;
 
 #include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
+using boost::filesystem::exists;
 using boost::timer::auto_cpu_timer;
 
 #include <faidx.h>
@@ -60,7 +61,7 @@ public:
             
         string indexFile = genomeFile + string(".fai");
                 
-        bool indexExists = boost::filesystem::exists(indexFile);
+        bool indexExists = exists(indexFile);
         
         if (indexExists) {
             cout << "Indexed genome detected: " << indexFile << endl;
