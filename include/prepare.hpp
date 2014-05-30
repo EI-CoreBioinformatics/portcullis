@@ -28,11 +28,13 @@ using std::vector;
 #include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
 using boost::timer::auto_cpu_timer;
+using boost::filesystem::absolute;
 using boost::filesystem::copy_file;
 using boost::filesystem::remove;
 using boost::filesystem::exists;
 using boost::filesystem::create_symlink;
 using boost::filesystem::create_directory;
+using boost::filesystem::symbolic_link_exists;
 
 #include "bam_utils.hpp"
 using portculis::bamtools::BamUtils;
@@ -42,6 +44,9 @@ namespace portculis {
     
 typedef boost::error_info<struct PrepareError,string> PrepareErrorInfo;
 struct PrepareException: virtual boost::exception, virtual std::exception { };
+
+
+const string DEFAULT_PREP_OUTPUT_DIR = "portculis_prep_data";
 
 const string PORTCULIS = "portculis";
 const string FASTA_EXTENSION = ".fa";
@@ -70,11 +75,11 @@ public:
     }
 
     string getUnsortedBamPath() const {
-        return PORTCULIS + ".unsorted.alignments" + BAM_EXTENSION;
+        return prepDir + "/" + PORTCULIS + ".unsorted.alignments" + BAM_EXTENSION;
     }
     
     string getSortedBamPath() const {
-        return PORTCULIS + ".sorted.alignments" + BAM_EXTENSION;
+        return prepDir + "/" + PORTCULIS + ".sorted.alignments" + BAM_EXTENSION;
     }
     
     string getBamIndexPath() const {
@@ -86,7 +91,7 @@ public:
     }    
     
     string getGenomeFilePath() const {
-        return PORTCULIS + ".genome" + FASTA_EXTENSION;
+        return prepDir + "/" + PORTCULIS + ".genome" + FASTA_EXTENSION;
     }
     
     string getGenomeIndexPath() const {
@@ -94,7 +99,7 @@ public:
     }
     
     string getSettingsFilePath() const {
-        return PORTCULIS + ".settings";
+        return prepDir + "/" + PORTCULIS + ".settings";
     }
 
     void clean() {
@@ -167,7 +172,7 @@ protected:
         else {
             
             if (useLinks) {
-                create_symlink(originalGenomeFile, genomeFile);            
+                create_symlink(absolute(originalGenomeFile), genomeFile);            
                 if (verbose) cout << "Created genome symlink from " << originalGenomeFile << " to " << genomeFile << endl;
             }
             else {
@@ -180,7 +185,7 @@ protected:
             }
         }
         
-        return exists(genomeFile);
+        return exists(genomeFile) || symbolic_link_exists(genomeFile);
     }
     
     bool genomeIndex() {
@@ -339,7 +344,8 @@ protected:
             if (verbose) cout << "done." << endl;
         }
         
-        return exists(pileupFile);
+        //return exists(pileupFile);
+        return true;    // Just for now.
     }
 
 
@@ -347,7 +353,7 @@ public:
     
     void genomePrepare(string originalGenomeFile) {
         
-        auto_cpu_timer timer(1, "Genome preparation finished - Wall time taken: %ws\n");        
+        auto_cpu_timer timer(1, "Genome preparation finished - Total wall time taken: %ws\n");        
 
         const string genomeFile = output->getGenomeFilePath();
         const string indexFile = output->getGenomeIndexPath();
@@ -413,7 +419,7 @@ public:
             }
             
             if (useLinks) {
-                create_symlink(originalBamFile, outputBam);            
+                create_symlink(absolute(originalBamFile), outputBam);            
                 if (verbose) cout << "Created BAM symlink from " << originalBamFile << " to " << outputBam << endl;
             }
             else {
@@ -460,6 +466,12 @@ public:
     }
 
   
+    static string helpMessage() {
+        return string("\nPortculis Prepare Mode Help.\n\n") +
+                      "Usage: portculis prep [options] <genome-file> (<bam-file>)+ \n\n" +
+                      "Allowed options";
+    }
+    
     static int prepare(int argc, char *argv[]) {
         
         // Portculis args
@@ -473,9 +485,9 @@ public:
         bool help;
 
         // Declare the supported options.
-        po::options_description generic_options("Portculis Help.  Prepare Mode.\nUsage: portculis prepare [options] <genome-file> (<bam-file>)+ \nAllowed options");
+        po::options_description generic_options(helpMessage());
         generic_options.add_options()
-                ("output,o", po::value<string>(&outputDir)->default_value(DEFAULT_OUTPUT_PREFIX), "Output directory for prepared files.")
+                ("output,o", po::value<string>(&outputDir)->default_value(DEFAULT_PREP_OUTPUT_DIR), "Output directory for prepared files.")
                 ("force,f", po::bool_switch(&force)->default_value(false), "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portculis will only do what it thinks it needs to.")
                 ("strand_specific,ss", po::bool_switch(&strandSpecific)->default_value(false), "Whether BAM alignments were generated using a strand specific RNAseq library.")
                 ("use_links,l", po::bool_switch(&useLinks)->default_value(false), "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")

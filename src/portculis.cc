@@ -50,7 +50,6 @@ typedef boost::error_info<struct PortculisError,string> PortculisErrorInfo;
 struct PortculisException: virtual boost::exception, virtual std::exception { };
 
 // Default values for arguments
-const string DEFAULT_OUTPUT_PREFIX = "portculis_out";
 const uint16_t DEFAULT_THREADS = 4;
 const uint32_t DEFAULT_CHUNK_SIZE_PER_THREAD = 10000;
 const uint32_t DEFAULT_GAP_SIZE = 100;
@@ -80,6 +79,17 @@ Mode parseMode(string mode) {
     }
 }
 
+string helpHeader() {
+    return string("\nPortculis Help.\n\n") +
+                  "Portculis is a tool to identify genuine splice junctions using aligned RNAseq reads\n\n" +
+                  "Usage: portculis [options] <mode> <mode_args>\n\n" +
+                  "Available modes:\n" +
+                  " - prep   - Prepares a genome and bam file(s) ready for junction analysis\n" +
+                  " - junc   - Perform junction analysis on prepared data\n" +
+                  " - filter - Discard unlikely junctions and produce BAM containing alignments to genuine junctions\n" +
+                  "\nAvailable options";
+}
+
 /**
  * Start point for portculis.
  */
@@ -88,12 +98,13 @@ int main(int argc, char *argv[]) {
     try {
         // Portculis args
         string modeStr;
+        vector<string> others;
         bool verbose;
         bool version;
         bool help;
 
         // Declare the supported options.
-        po::options_description generic_options("Portculis Help.\nUsage: portculis [options] <mode> <mode_args>\nAllowed options");
+        po::options_description generic_options(helpHeader());
         generic_options.add_options()
                 ("version", po::bool_switch(&version)->default_value(false), "Print version string")
                 ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -104,11 +115,13 @@ int main(int argc, char *argv[]) {
         po::options_description hidden_options("Hidden options");
         hidden_options.add_options()
                 ("mode", po::value<string>(&modeStr), "Portculis mode.")
+                ("others", po::value< vector<string> >(&others), "Other options.")
                 ;
 
         // Positional options
         po::positional_options_description p;
         p.add("mode", 1);
+        p.add("others", 100);
         
         // Combine non-positional options
         po::options_description cmdline_options;
@@ -116,11 +129,11 @@ int main(int argc, char *argv[]) {
 
         // Parse command line
         po::variables_map vm;
-        po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
+        po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).allow_unregistered().run(), vm);
         po::notify(vm);
 
         // Output help information the exit if requested
-        if (help) {
+        if (argc == 1 || argc == 2 && help) {
             cout << generic_options << endl;
             return 1;
         }

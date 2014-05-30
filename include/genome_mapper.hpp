@@ -60,10 +60,14 @@ public:
      */
     GenomeMapper(string _genomeFile, bool _forcePrep, bool _verbose) : 
         genomeFile(_genomeFile), forcePrep(_forcePrep), verbose(_verbose) {
+            index = NULL;
     }
     
     virtual ~GenomeMapper() {        
-        fai_destroy(index);
+        
+        if (index != NULL) {
+            fai_destroy(index);
+        }
     }
     
     
