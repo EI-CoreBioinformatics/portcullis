@@ -56,7 +56,7 @@ const uint16_t DEFAULT_THREADS = 4;
 typedef boost::error_info<struct PortculisError,string> PortculisErrorInfo;
 struct PortculisException: virtual boost::exception, virtual std::exception { };
 
-class Portculis {
+class JunctionBuilder {
 private:
 
     // Can set these from the outside via the constructor
@@ -201,7 +201,7 @@ protected:
 
 public:
 
-    Portculis() {
+    JunctionBuilder() {
         init(   "",
                 NULL, 
                 DEFAULT_OUTPUT_PREFIX, 
@@ -210,14 +210,14 @@ public:
                 false
                 );
     }
-    Portculis(  string _sortedBam, GenomeMapper* _genomeMapper, 
+    JunctionBuilder(  string _sortedBam, GenomeMapper* _genomeMapper, 
                 string _outputPrefix, uint16_t _threads, bool _strandSpecific,
                 bool _verbose) {
         init(  _sortedBam, _genomeMapper, _outputPrefix, 
                 _threads, _strandSpecific, _verbose);
     }
     
-    virtual ~Portculis() {        
+    virtual ~JunctionBuilder() {        
     }
     
     

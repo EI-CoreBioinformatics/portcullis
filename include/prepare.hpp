@@ -17,18 +17,22 @@
 
 #pragma once
 
+#include <fstream>
 #include <string>
 #include <iostream>
 #include <vector>
 using std::string;
 using std::vector;
 
+#include <boost/exception/all.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
 using boost::timer::auto_cpu_timer;
 using boost::filesystem::copy_file;
+using boost::filesystem::remove;
 using boost::filesystem::exists;
 using boost::filesystem::create_symlink;
+using boost::filesystem::create_directory;
 
 #include "bam_utils.hpp"
 using portculis::bamtools::BamUtils;
@@ -39,60 +43,74 @@ namespace portculis {
 typedef boost::error_info<struct PrepareError,string> PrepareErrorInfo;
 struct PrepareException: virtual boost::exception, virtual std::exception { };
 
+const string PORTCULIS = "portculis";
 const string FASTA_EXTENSION = ".fa";
 const string FASTA_INDEX_EXTENSION = ".fai";
 const string BAM_EXTENSION = ".bam";
 const string BAM_INDEX_EXTENSION = ".bti";
+const string BAM_PILEUP_EXTENSION = ".pileup";
     
 
 class PreparedFiles {
-    
-public:
-    static const string PORTCULIS = "portculis";
     
 private:
     string prepDir;
     
 public:
     
-    PreparedFiles(string _prepDir) :
-        prepDir(_prepDir) {
+    PreparedFiles(string _prepDir) : prepDir(_prepDir) {
+        
+        if (!exists(prepDir)) {
+            create_directory(prepDir);
+        }
     }
         
     string getPrepDir() const {
         return prepDir;
     }
 
-        
-    string getBamFile() const {
-        return PORTCULIS + ".alignments" + BAM_EXTENSION;
+    string getUnsortedBamPath() const {
+        return PORTCULIS + ".unsorted.alignments" + BAM_EXTENSION;
     }
     
-    string getBamIndexFile() const {
-        return getBamFile() + BAM_INDEX_EXTENSION;
+    string getSortedBamPath() const {
+        return PORTCULIS + ".sorted.alignments" + BAM_EXTENSION;
     }
     
-    string getGenomeFile() const {
+    string getBamIndexPath() const {
+        return getSortedBamPath() + BAM_INDEX_EXTENSION;
+    }
+    
+    string getPileupPath() const {
+        return getSortedBamPath() + BAM_PILEUP_EXTENSION;
+    }    
+    
+    string getGenomeFilePath() const {
         return PORTCULIS + ".genome" + FASTA_EXTENSION;
     }
     
-    string getGenomeIndexFile() const {
-        return getGenomeFile() + FASTA_INDEX_EXTENSION;
+    string getGenomeIndexPath() const {
+        return getGenomeFilePath() + FASTA_INDEX_EXTENSION;
+    }
+    
+    string getSettingsFilePath() const {
+        return PORTCULIS + ".settings";
     }
 
+    void clean() {
         
-    
+        remove(getUnsortedBamPath());
+        remove(getSortedBamPath());
+        remove(getBamIndexPath());
+        remove(getPileupPath());
+        remove(getGenomeFilePath());
+        remove(getGenomeIndexPath());
+        remove(getSettingsFilePath());
+    }
 };
 
 
 class Prepare {
-
-public:    
-    static const string MERGED_EXTENSION = ".merged";
-    static const string SORTED_EXTENSION = ".sorted";
-    static const string BAM_EXTENSION = ".bam";
-    static const string INDEX_EXTENSION = ".bti";
-    static const string PILEUP_EXTENSION = ".pileup";
 
 private:
     
@@ -102,32 +120,97 @@ private:
     bool verbose;
 
     void init(string _outputDir, bool _force, bool _useLinks, bool _verbose) {
+        
         output = new PreparedFiles(_outputDir);
         force = _force;
         useLinks = _useLinks;
         verbose = _verbose;
+        
+        if (force) {
+            if (verbose) {
+                cout << "Cleaning output dir " << _outputDir << " ... ";
+                cout.flush();
+            }
+            output->clean();
+            if (verbose) cout << "done." << endl;
+        }
     }
     
 public:
     
-    BamPrepare(string _outputPrefix) {
+    Prepare(string _outputPrefix) {
         init(_outputPrefix, false, false, false);
     }
     
-    BamPrepare(string _outputPrefix, bool _force, bool _useLinks, bool _verbose) {
+    Prepare(string _outputPrefix, bool _force, bool _useLinks, bool _verbose) {
         init(_outputPrefix, _force, _useLinks, _verbose);
     }
     
-    virtual ~BamPrepare() {
+    virtual ~Prepare() {
         delete output;
-    }
-    
-    string getMergedBamPath() {
-        return output->getPrepDir() + "temp_merged_alignments" + BAM_EXTENSION;
     }
     
     
 protected:
+    
+    bool genomeCopy(string originalGenomeFile) {
+        
+        auto_cpu_timer timer(1, " - Genome Copy - Wall time taken: %ws\n");
+        
+        const string genomeFile = output->getGenomeFilePath();
+        
+        bool genomeExists = exists(genomeFile);
+        
+        if (genomeExists) {
+            if (verbose) cout << "Prepped genome file detected: " << genomeFile << endl;            
+        }
+        else {
+            
+            if (useLinks) {
+                create_symlink(originalGenomeFile, genomeFile);            
+                if (verbose) cout << "Created genome symlink from " << originalGenomeFile << " to " << genomeFile << endl;
+            }
+            else {
+                if (verbose) {
+                    cout << "Copying genome from " << originalGenomeFile << " to " << genomeFile << " ... ";
+                    cout.flush();
+                }
+                copy_file(originalGenomeFile, genomeFile);
+                if (verbose) cout << "done." << endl;
+            }
+        }
+        
+        return exists(genomeFile);
+    }
+    
+    bool genomeIndex() {
+        
+        auto_cpu_timer timer(1, " - Genome Index - Wall time taken: %ws\n");
+        
+        const string genomeFile = output->getGenomeFilePath();
+        const string indexFile = output->getGenomeIndexPath();
+        
+        bool indexExists = exists(indexFile);
+        
+        if (indexExists) {
+            if (verbose) cout << "Pre-indexed genome detected: " << indexFile << endl;            
+        }
+        else {
+            
+            if (verbose) {
+                cout << "Indexing genome " << genomeFile << " ... ";
+                cout.flush();
+            }
+            
+            // Create the index
+            GenomeMapper(genomeFile, force, verbose).buildIndex();
+            
+            if (verbose) cout << "done." << endl;
+        }
+        
+        return exists(indexFile);
+    }
+    
     
     /**
      * Merge together a set of BAM files, use the output prefix to construct a
@@ -135,21 +218,18 @@ protected:
      * @param bamFiles The set of bam files to merge
      * @return 
      */
-    bool merge(vector<string> bamFiles) {
+    bool bamMerge(vector<string> bamFiles) {
 
-        string mergedBam = getMergedBamPath();        
+        auto_cpu_timer timer(1, " - BAM Merge - Wall time taken: %ws\n");
+        
+        string mergedBam = output->getUnsortedBamPath();        
 
         bool mergedBamExists = exists(mergedBam);
 
-        if (mergedBamExists && verbose) {
-            cout << "Pre-merged BAM detected: " << mergedBam << endl;
-
-            if (force) {
-                cout << "Forcing merge anyway due to user request." << endl;
-            }
+        if (mergedBamExists) {
+            if (verbose) cout << "Pre-merged BAM detected: " << mergedBam << endl;
         }
-
-        if (!mergedBamExists || force) {
+        else {
             
             if (verbose) {
                 cout << "Found " << bamFiles.size() << " BAM files." << endl 
@@ -167,32 +247,38 @@ protected:
     }
 
     /**
-     * Sorts the provided bam file if required or forced
+     * Sorts the unsorted bam file if required or forced
      * @param inputBam
      * @return 
      */
-    bool sort(string inputBam) {
+    bool bamSort() {
         
-        string sortedBam = inputBam + SORTED_EXTENSION + BAM_EXTENSION;
+        auto_cpu_timer timer(1, " - BAM Sort - Wall time taken: %ws\n");
         
-        bool mergedAndSortedBamExists = exists(sortedBam);
+        const string unsortedBam = output->getUnsortedBamPath();
+        const string sortedBam = output->getSortedBamPath();
         
-        if (mergedAndSortedBamExists && verbose) {
-            cout << "Pre-merged and sorted BAM detected: " << sortedBam << endl;
-            
-            if (force) {
-                cout << "Forcing sort anyway due to user request." << endl;
-            }
+        bool sortedBamExists = exists(sortedBam);
+        
+        if (sortedBamExists) {            
+            if (verbose) cout << "Pre-sorted BAM detected: " << sortedBam << endl;
         }
-        
-        if (!mergedAndSortedBamExists || force) {
+        else {
+            
+            if (BamUtils::isSortedBam(unsortedBam) && !force) {
+                
+                if (verbose) cout << "Provided BAM appears to be sorted already, just creating symlink instead." << endl;
+                create_symlink(unsortedBam, sortedBam);            
+                if (verbose) cout << "Created symlink from " << unsortedBam << " to " << sortedBam << endl;
+            }
+                
             if (verbose) {
-                cout << "Sorting " << mergedBam << " ... ";
+                cout << "Sorting " << unsortedBam << " ... ";
                 cout.flush();
             }
             
             // Sort the BAM file by coordinate
-            BamUtils::sortBam(inputBam, sortedBam, false);
+            BamUtils::sortBam(unsortedBam, sortedBam, false);
             
             if (verbose) cout << "done." << endl;        
         }
@@ -201,127 +287,186 @@ protected:
         return exists(sortedBam);        
     }
     
-    bool index(string sortedBam) {
+    bool bamIndex() {
         
-        string indexedBam = sortedBam + INDEX_EXTENSION;
+        auto_cpu_timer timer(1, " - BAM Index - Wall time taken: %ws\n");
         
-        bool indexedBamExists = exists(indexedBam);
+        const string sortedBam = output->getSortedBamPath();
+        const string indexedFile = output->getBamIndexPath();
         
-        if (indexedBamExists && verbose) {
-            cout << "Pre-merged and sorted BAM index detected: " << indexedBam << endl;
-            
-            if (force) {
-                cout << "Forcing index creation anyway due to user request." << endl;
-            }
+        bool indexedBamExists = exists(indexedFile);
+        
+        if (indexedBamExists) {
+            if (verbose) cout << "Pre-indexed BAM detected: " << indexedFile << endl;
         }
-        
-        if (!indexedBamExists || force) {
-            
+        else {
             if (verbose) {
                 cout << "Indexing " << sortedBam << " ... ";
                 cout.flush();
             }
             
-            // Index the BAM
+            // Create BAM index
             BamUtils::indexBam(sortedBam);
             
             if (verbose) cout << "done." << endl;
         }
         
-        return exists(indexedBam);
+        return exists(indexedFile);
     }
     
-    bool index(string sortedBam) {
+    bool bamPileup() {
         
-        string indexedBam = sortedBam + INDEX_EXTENSION;
+        auto_cpu_timer timer(1, " - BAM Pileup - Wall time taken: %ws\n");
         
-        bool indexedBamExists = exists(indexedBam);
+        const string sortedBam = output->getSortedBamPath();
+        string pileupFile = output->getPileupPath();
         
-        if (indexedBamExists && verbose) {
-            cout << "BAM index detected: " << indexedBam << endl;
-            
-            if (force) {
-                cout << "Forcing indexing anyway due to user request." << endl;
-            }
+        bool pileupFileExists = exists(pileupFile);
+        
+        if (pileupFileExists) {
+            if (verbose) cout << "Pre-piled-up file detected: " << pileupFile << endl;            
         }
-        
-        if (!indexedBamExists || force) {
+        else {
             
             if (verbose) {
-                cout << "Indexing " << sortedBam << " ... ";
+                cout << "Piling up alignments from " << sortedBam << " ... ";
                 cout.flush();
             }
             
-            // Index the BAM
-            BamUtils::indexBam(sortedBam);
+            // Create BAM pileup
+            //BamUtils::pileupBam(sortedBam);
             
             if (verbose) cout << "done." << endl;
         }
         
-        return exists(indexedBam);
+        return exists(pileupFile);
     }
 
 
 public:
     
-    bool indexGenome(string genomeFile) {
+    void genomePrepare(string originalGenomeFile) {
         
-        if (useLinks) {
-            create_symb
+        auto_cpu_timer timer(1, "Genome preparation finished - Wall time taken: %ws\n");        
+
+        const string genomeFile = output->getGenomeFilePath();
+        const string indexFile = output->getGenomeIndexPath();
+        
+        cout << endl 
+             << "Preparing genome" << endl
+             << "----------------" << endl;
+        
+        // Test if provided genome exists
+        if (!exists(originalGenomeFile)) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "Could not find genome file at: ") + genomeFile));
         }
-        GenomeMapper genomeMapper(genomeFile);
+        
+        // Copy / Symlink the file to the output dir
+        if (!genomeCopy(originalGenomeFile)) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "Could not copy/symlink genome file to: ") + genomeFile));
+        }
+        
+        // Test if index exists
+        if (!genomeIndex()) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "Could not find genome index file at: ") + indexFile));
+        }
         
     }
     
-    bool prepare(vector<string> bamFiles) {
+    
+    void bamPrepare(vector<string> bamFiles) {
 
-        const bool doMerge = bamFiles.size() > 1;
+        auto_cpu_timer timer(1, "Bam preparation finished - Total wall time taken: %ws\n");        
+
+        cout << endl
+             << "Preparing BAM(s)" << endl
+             << "----------------" << endl;        
         
-        auto_cpu_timer timer(1, "Wall time taken: %ws\n");        
-
+        const bool doMerge = bamFiles.size() > 1;        
         
         if (bamFiles.empty()) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                         "No BAM files to process")));
         }
 
-        string mergedBamFile = doMerge ? getMergedBamPath() : bamFiles[0];
+        string mergedBamFile = doMerge ? output->getUnsortedBamPath() : bamFiles[0];
         
-        // .. but if there is more than one file then actually do the merging
+        // Merge the bams to output unsorted bam file if required, otherwise just
+        // copy / symlink the file provided
         if (doMerge) {
-            if (!merge(bamFiles)) {
+            if (!bamMerge(bamFiles)) {
                 BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                         "Could not merge BAM files")));
             }
         }
+        else {
+            
+            string originalBamFile = bamFiles[0];
+            string outputBam = output->getUnsortedBamPath();
+            
+            if (!exists(originalBamFile)) {
+                BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                            "Could not find BAM file at: ") + originalBamFile));
+            }
+            
+            if (useLinks) {
+                create_symlink(originalBamFile, outputBam);            
+                if (verbose) cout << "Created BAM symlink from " << originalBamFile << " to " << outputBam << endl;
+            }
+            else {
+                if (verbose) {
+                    cout << "Copying BAM from " << originalBamFile << " to " << outputBam << " ... ";
+                    cout.flush();
+                }
+                copy_file(originalBamFile, outputBam);
+                if (verbose) cout << "done." << endl;
+            }
+        }
 
         // Sort the file
-        if (!sort(mergedBamFile)) {
+        if (!bamSort()) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                    "Could not sort: ") + mergedBam));
+                    "Could not sort: ") + output->getUnsortedBamPath()));
         }
 
         // Index the sorted file
-        if (!index(output->getBamFile())) {
+        if (!bamIndex()) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                    "Failed to index: ") + mergedBam));
+                    "Failed to index: ") + output->getSortedBamPath()));
         }
         
         // Create pileups
-        if (!pileup(output->getBamFile())) {
+        if (!bamPileup()) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                    "Could not sort: ") + mergedBam));
+                    "Could not pileup: ") + output->getSortedBamPath()));
+        }
+    }
+
+    bool outputDetails(bool strandSpecific) {
+        
+        const string settingsFile = output->getSettingsFilePath();
+        
+        std::ofstream outfile(settingsFile.c_str());
+        if(!outfile.is_open()) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                    "Could not open settings file for writing: ") + settingsFile));
         }
 
-    }    
+        outfile << "SS=" << (strandSpecific ? "true" : "false") << endl;
+        outfile.close();
+    }
 
   
-    static int main(int argc, char *argv[]) {
+    static int prepare(int argc, char *argv[]) {
         
         // Portculis args
         vector<string> bamFiles;
         string genomeFile;
         string outputDir;
+        bool force;
         bool strandSpecific;
         bool useLinks;
         bool verbose;
@@ -331,6 +476,7 @@ public:
         po::options_description generic_options("Portculis Help.  Prepare Mode.\nUsage: portculis prepare [options] <genome-file> (<bam-file>)+ \nAllowed options");
         generic_options.add_options()
                 ("output,o", po::value<string>(&outputDir)->default_value(DEFAULT_OUTPUT_PREFIX), "Output directory for prepared files.")
+                ("force,f", po::bool_switch(&force)->default_value(false), "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portculis will only do what it thinks it needs to.")
                 ("strand_specific,ss", po::bool_switch(&strandSpecific)->default_value(false), "Whether BAM alignments were generated using a strand specific RNAseq library.")
                 ("use_links,l", po::bool_switch(&useLinks)->default_value(false), "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
                 ("verbose,v", po::bool_switch(&verbose)->default_value(false), "Print extra information")
@@ -375,47 +521,20 @@ public:
             genomeFile = vm["genome-file"].as<string>();
         }
 
-        // Test to see if genome file exists
-        if (genomeFile == "") {
-            cerr << endl << "ERROR: You must specify a genome file!" << endl;
-            cerr << endl << generic_options << endl;
-            return 2;
-        } else if (!boost::filesystem::exists(genomeFile)) {
-            cerr << "ERROR: Specified genome file " << genomeFile << " does not exist!" << endl;
-            return 2;
-        }
-
-        // Test to see if all bam files exists
-        if (bamFiles.empty()) {
-            cerr << endl << "ERROR: You must specify at least one bam file to process" << endl;
-            cout << endl << generic_options << endl;
-            return 3;
-        } else {
-
-            BOOST_FOREACH(string bamFile, bamFiles) {
-                if (!boost::filesystem::exists(bamFile)) {
-                    cerr << "ERROR: Specified BAM file " << bamFile << " does not exist!" << endl;
-                    return 3;
-                }
-            }
-        }
-
         // OK, we're good to do some real work now!
         auto_cpu_timer timer(1, "\nTotal runtime: %ws\n");
         
-        Prepare prep(outputDir, true, useLinks, verbose);
+        // Create the prepare class
+        Prepare prep(outputDir, force, useLinks, verbose);
         
         // Create a map of the genome (wrapper for faidx from samtools)
-        cout << endl 
-             << "Indexing genome" << endl
-             << "---------------" << endl;
-        prep.indexGenome(genomeFile);
+        prep.genomePrepare(genomeFile);
         
         // Prep the BAM input to produce a usable sorted bam plus bamtools bti index
-        cout << endl
-             << "Preparing BAM(s)" << endl
-             << "----------------" << endl;
-        prep.prepare(bamFiles);
+        prep.bamPrepare(bamFiles);
+        
+        // Output any remaining details
+        prep.outputDetails(strandSpecific);
     }
 };
 }

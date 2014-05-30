@@ -27,22 +27,23 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::exception;
-using std::toUpper;
 
+#include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/timer/timer.hpp>
+using boost::to_upper_copy;
 using boost::timer::auto_cpu_timer;
 namespace po = boost::program_options;
 
 #include <api/BamReader.h>
 #include <api/BamWriter.h>
 
-#include "portculis.hpp"
+#include "junction_builder.hpp"
 #include "genome_mapper.hpp"
 #include "prepare.hpp"
-using portculis::Portculis;
+using portculis::JunctionBuilder;
 using portculis::Prepare;
 
 typedef boost::error_info<struct PortculisError,string> PortculisErrorInfo;
@@ -62,7 +63,7 @@ enum Mode {
 
 Mode parseMode(string mode) {
     
-    string upperMode = toupper(mode);
+    string upperMode = boost::to_upper_copy(mode);
     
     if (upperMode == string("PREP")) {
         return PREP;                
@@ -144,31 +145,22 @@ int main(int argc, char *argv[]) {
         Mode mode = parseMode(modeStr);
         
         const int modeArgC = argc-1;
-        const char* modeArgV = argv+1;
+        char** modeArgV = argv+1;
         
         if (mode == PREP) {
-            Prepare::main(modeArgC, modeArgV);
+            Prepare::prepare(modeArgC, modeArgV);
         }
         else if(mode == JUNC) {
-            JunctionBuilder::main(modeArgC, modeArgV)
+            //JunctionBuilder::main(modeArgC, modeArgV)
         }
         else if (mode == FILTER) {
             
         }
         else {
             BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
-                    "Unrecognised portculis mode: ") + mode));
+                    "Unrecognised portculis mode: ") + modeStr));
         }
-        
-        
-        
-        cout << endl 
-             << "Portculis" << endl
-             << "---------" << endl;
-        
-        Portculis portculis(sortedBam, &genomeMapper, outputPrefix, threads, strandSpecific, verbose);
-        portculis.process();
-        
+                
     } catch (boost::exception &e) { 
         std::cerr << boost::diagnostic_information(e); 
         return 4;

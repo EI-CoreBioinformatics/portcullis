@@ -21,9 +21,9 @@
 #endif
 #include <boost/test/unit_test.hpp>
 
-#include <portculis.hpp>
+#include <junction_builder.hpp>
 
-BOOST_AUTO_TEST_SUITE(portculis)
+BOOST_AUTO_TEST_SUITE(junction_builder)
 
 BOOST_AUTO_TEST_CASE(constructor)
 {

@@ -33,7 +33,9 @@ BOOST_AUTO_TEST_SUITE(genome_mapper)
 BOOST_AUTO_TEST_CASE(ecoli)
 {
     // Create a new faidx
-    portculis::GenomeMapper genomeMapper("resources/ecoli.fa", false);
+    portculis::GenomeMapper genomeMapper("resources/ecoli.fa", true, false);
+    genomeMapper.buildIndex();
+    genomeMapper.loadIndex();
     
     // Check faidx file exists
     string faidxFile = genomeMapper.getFaidxPath();    

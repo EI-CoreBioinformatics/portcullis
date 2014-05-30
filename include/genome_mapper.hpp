@@ -24,6 +24,7 @@ using std::endl;
 using std::ifstream;
 using std::string;
 
+#include <boost/exception/all.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
 using boost::filesystem::exists;
@@ -33,6 +34,9 @@ using boost::timer::auto_cpu_timer;
 
 namespace portculis {
 
+typedef boost::error_info<struct GenomeMapperError,string> GenomeMapperErrorInfo;
+struct GenomeMapperException: virtual boost::exception, virtual std::exception { };
+    
 class GenomeMapper {
 private:
  
@@ -54,37 +58,50 @@ public:
      * uses Samtools to create a fasta index for the genome file and then
      * manages the data structure returned after loading the index.
      */
-    GenomeMapper(string _genomeFile, bool _forcePrep) : 
-        genomeFile(_genomeFile), forcePrep(_forcePrep) {
-        
-        auto_cpu_timer timer(1, "Wall time taken: %ws\n");        
-            
-        string indexFile = genomeFile + string(".fai");
-                
-        bool indexExists = exists(indexFile);
-        
-        if (indexExists) {
-            cout << "Indexed genome detected: " << indexFile << endl;
-            
-            if (forcePrep) {
-                cout << "Forcing index build anyway due to user request." << endl;
-            }
-        }
-        
-        if (!indexExists || forcePrep) {
-            int res = fai_build(genomeFile.c_str());
-
-            if (res != 0)
-                throw "Could not build the fasta index for the genome file.";
-        }
-        
-        index = fai_load(genomeFile.c_str());
-        
-        cout << "Genome index acquired for: " << genomeFile << endl;
+    GenomeMapper(string _genomeFile, bool _forcePrep, bool _verbose) : 
+        genomeFile(_genomeFile), forcePrep(_forcePrep), verbose(_verbose) {
     }
     
     virtual ~GenomeMapper() {        
         fai_destroy(index);
+    }
+    
+    
+    string getIndexFile() const {
+        return genomeFile + ".fai";
+    }
+    
+    /**
+     * Constructs the index for this fasta genome file
+     */
+    void buildIndex() {
+        
+        int res = fai_build(genomeFile.c_str());
+
+        if (res != 0) {
+            BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
+                    "Genome indexing failed: ") + genomeFile));
+        }
+    }
+    
+    /**
+     * Loads the index for this genome file.  This must be done before using any
+     * of the fetch commands.
+     */
+    void loadIndex() {
+        
+        if (!exists(genomeFile)) {
+           BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
+                    "Genome file does not exist: ") + genomeFile)); 
+        }
+        
+        string indexFile = getFaidxPath();
+        if (!exists(indexFile)) {
+           BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
+                    "Genome index file does not exist: ") + indexFile)); 
+        }
+        
+        index = fai_load(genomeFile.c_str());
     }
     
     /**
