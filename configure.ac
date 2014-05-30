@@ -111,6 +111,7 @@ AC_ARG_WITH([bamtools],
 if test ${SAMTOOLS_PATH} != 0; then
         SAMTOOLS_CPPFLAGS="-I${SAMTOOLS_PATH}/include"
         SAMTOOLS_LDFLAGS="-L${SAMTOOLS_PATH}/lib"
+        SAMTOOLS_PATH="${SAMTOOLS_PATH}/bin"
 fi
 
 # Update vars for samtools if required
@@ -137,6 +138,11 @@ AC_CHECK_HEADER([api/BamMultiReader.h], [], [
 AC_CHECK_LIB(bam, fai_build, [], [
     AC_MSG_ERROR([Samtools not found. Please ensure that the Samtools include directory can be found on the CPPFLAGS env var. Also check that the Samtools lib directory can be found on the LDFLAGS env var.  Alternatively, you can try the --with-samtools option, which assumes you have an include and lib dir under a samtools build directory.])
 ])
+
+AC_CHECK_LIB(bcf, bcf_idx_build, [], [
+    AC_MSG_ERROR([bcftools not found. Please ensure that the Samtools include directory can be found on the CPPFLAGS env var. Also check that the Samtools lib directory can be found on the LDFLAGS env var.  Alternatively, you can try the --with-samtools option, which assumes you have an include and lib dir under a samtools build directory.])
+])
+
 
 # Restore the previous CPPFLAGS
 CPPFLAGS=${OLD_CPPFLAGS}

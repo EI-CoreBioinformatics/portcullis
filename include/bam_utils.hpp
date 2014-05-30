@@ -24,6 +24,9 @@ using namespace::std;
 
 #include <boost/exception/all.hpp>
 #include <boost/foreach.hpp>
+#include <boost/lexical_cast.hpp>
+using boost::filesystem::exists;
+using boost::lexical_cast;
 
 #include <api/algorithms/Sort.h>
 #include <api/BamMultiReader.h>
@@ -31,7 +34,8 @@ using namespace::std;
 #include <api/BamWriter.h>
 using namespace BamTools;
 
-#include <bamtools_sort.h>
+#include "bamtools_sort.h"
+#include "bamtools_pileup.hpp"
        
 
 namespace portculis {
@@ -82,19 +86,30 @@ public:
         return header.HasSortOrder();
     }
     
-    static void sortBam(string unsortedFile, string sortedFile, bool sortByName) {
+    static void sortBam(string unsortedFile, string sortedFile) {
+        sortBam(unsortedFile, sortedFile, false, 1, string("1G"));
+    }
+    
+    static void sortBam(string unsortedFile, string sortedFile, bool sortByName, uint16_t threads, string memory) {
         
-        SortSettings settings;
-        settings.inputBamFilename = unsortedFile;
-        settings.outputBamFilename = sortedFile;
-        settings.isSortingByName = sortByName;
+        string cmd = string("samtools sort -@ ") + lexical_cast<string>(threads) + 
+                " -m " + memory + " " + (sortByName ? "-n " : "") + unsortedFile + 
+                " " + sortedFile;
         
-        SortTool sorter(&settings);
+        cout << "Executing: \"" << cmd << "\" ... " << endl;
         
-        if (!sorter.run()) {
+        system(cmd.c_str());
+        
+        string badNameMergeFile = sortedFile + ".bam";
+        
+        if (exists(badNameMergeFile)) {
+            boost::filesystem::rename(badNameMergeFile, sortedFile);
+        }
+        
+        if (!exists(sortedFile) || !isSortedBam(sortedFile)) {
             BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
                     "Failed to successfully sort: ") + unsortedFile));
-        }  
+        }        
     }
     
     static void indexBam(string sortedBam) {
@@ -108,6 +123,17 @@ public:
         
         reader.CreateIndex(BamIndex::BAMTOOLS);        
         reader.Close();
+    }
+    
+    static void pileupBam(string sortedBam, string indexedGenomeFile, string outputFile) {
+        
+        string cmd = string("samtools mpileup -f ") + indexedGenomeFile + 
+                " " + sortedBam + " > " + outputFile;
+        
+        cout << "Executing: \"" << cmd << "\" ... " << endl;
+        cout.flush();
+        
+        system(cmd.c_str());        
     }
     
     static bool opFollowsReference(char type) {

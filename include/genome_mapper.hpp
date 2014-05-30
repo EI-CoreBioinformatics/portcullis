@@ -31,6 +31,7 @@ using boost::filesystem::exists;
 using boost::timer::auto_cpu_timer;
 
 #include <faidx.h>
+#include <bcf.h>
 
 namespace portculis {
 
@@ -42,11 +43,13 @@ private:
  
     // Path to the original genome file in fasta format
     string genomeFile;
+    string bcfFile;
     bool forcePrep;
     bool verbose;
     
     // Handle to genome map.  Created by constructor.
-    faidx_t* index;
+    faidx_t* fastaIndex;
+    bcf_idx_t* bcfIndex;
     
 protected:
     
@@ -58,54 +61,90 @@ public:
      * uses Samtools to create a fasta index for the genome file and then
      * manages the data structure returned after loading the index.
      */
-    GenomeMapper(string _genomeFile, bool _forcePrep, bool _verbose) : 
-        genomeFile(_genomeFile), forcePrep(_forcePrep), verbose(_verbose) {
-            index = NULL;
+    GenomeMapper(string _genomeFile, string _bcfFile, bool _forcePrep, bool _verbose) : 
+        genomeFile(_genomeFile), bcfFile(_bcfFile), forcePrep(_forcePrep), verbose(_verbose) {
+            fastaIndex = NULL;
+            bcfIndex = NULL;
     }
     
     virtual ~GenomeMapper() {        
         
-        if (index != NULL) {
-            fai_destroy(index);
+        if (fastaIndex != NULL) {
+            fai_destroy(fastaIndex);
+        }
+        
+        if (bcfIndex != NULL) {
+            bcf_idx_destroy(bcfIndex);
         }
     }
     
     
-    string getIndexFile() const {
+    string getFastaIndexFile() const {
         return genomeFile + ".fai";
     }
+    
+    string getBcfIndexFile() const {
+        return bcfFile + ".bcfi";
+    }
+    
     
     /**
      * Constructs the index for this fasta genome file
      */
-    void buildIndex() {
+    void buildFastaIndex() {
         
-        int res = fai_build(genomeFile.c_str());
+        int faiRes = fai_build(genomeFile.c_str());
 
-        if (res != 0) {
+        if (faiRes != 0) {
             BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
                     "Genome indexing failed: ") + genomeFile));
         }
+    }
+
+    void buildBcfIndex() {
+        /*int bcfRes = bcf_idx_build(bcfFile.c_str());
+
+        if (bcfRes != 0) {
+            BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
+                    "BCF indexing failed: ") + bcfFile));
+        }*/
     }
     
     /**
      * Loads the index for this genome file.  This must be done before using any
      * of the fetch commands.
      */
-    void loadIndex() {
+    void loadFastaIndex() {
         
         if (!exists(genomeFile)) {
            BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
                     "Genome file does not exist: ") + genomeFile)); 
         }
         
-        string indexFile = getFaidxPath();
-        if (!exists(indexFile)) {
+        string fastaIndexFile = getFastaIndexFile();
+        if (!exists(fastaIndexFile)) {
            BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
-                    "Genome index file does not exist: ") + indexFile)); 
+                    "Genome index file does not exist: ") + fastaIndexFile)); 
         }
         
-        index = fai_load(genomeFile.c_str());
+        fastaIndex = fai_load(genomeFile.c_str());
+    }
+        
+    void loadBcfIndex() {
+        
+        if (!exists(bcfFile)) {
+           BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
+                    "Genome file does not exist: ") + bcfFile)); 
+        }
+        
+        string bcfIndexFile = getBcfIndexFile();
+        if (!exists(bcfIndexFile)) {
+           BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
+                    "BCF index file does not exist: ") + bcfIndexFile)); 
+        }
+        
+        // Load indices
+        bcfIndex = bcf_idx_load(bcfFile.c_str());
     }
     
     /**
@@ -116,8 +155,8 @@ public:
      * @discussion The returned sequence is allocated by malloc family
      * and should be destroyed by end users by calling free() on it.
      */
-    char* fetch(const char* reg, int* len) {
-        return fai_fetch(index, reg, len);        
+    char* fetchBases(const char* reg, int* len) {
+        return fai_fetch(fastaIndex, reg, len);        
     }
     
     /**
@@ -130,18 +169,22 @@ public:
      * @discussion The returned sequence is allocated by malloc family
      * and should be destroyed by end users by calling free() on it.
      */
-    char* fetch(char* name, int start, int end, int* len) {
-        return faidx_fetch_seq(index, name, start, end, len);        
+    char* fetchBases(char* name, int start, int end, int* len) {
+        return faidx_fetch_seq(fastaIndex, name, start, end, len);        
     }
     
+    /**
+     * Get the number of sequences / contigs / scaffolds in the genome
+     * @return 
+     */
     int getNbSeqs() {
-        return faidx_fetch_nseq(index); 
+        return faidx_fetch_nseq(fastaIndex); 
     }
     
-    string getFaidxPath() {
-        return genomeFile + ".fai";
+    uint64_t bcfQuery(int tid, int beg) {
+        return bcf_idx_query(bcfIndex, tid, beg);
     }
-    
+        
 };
 }
 

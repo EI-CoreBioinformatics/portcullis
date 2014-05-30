@@ -152,16 +152,16 @@ int main(int argc, char *argv[]) {
         }
         
         
-        // OK, we're good to do some real work now!
-        auto_cpu_timer timer(1, "\nTotal runtime: %ws\n");
-        
         Mode mode = parseMode(modeStr);
         
         const int modeArgC = argc-1;
         char** modeArgV = argv+1;
         
         if (mode == PREP) {
-            Prepare::prepare(modeArgC, modeArgV);
+            
+            cout << "Running portculis in prepare mode" << endl
+                 << "---------------------------------" << endl << endl;
+            Prepare::main(modeArgC, modeArgV);
         }
         else if(mode == JUNC) {
             //JunctionBuilder::main(modeArgC, modeArgV)

@@ -8,6 +8,6 @@ bin_PROGRAMS = portculis
 portculis_CXXFLAGS = -g3 -Wl,-rpath,@BAMTOOLS_PATH@/lib @AM_CXXFLAGS@
 portculis_CPPFLAGS = -DCPLUSPLUS @BAMTOOLS_CPPFLAGS@ @SAMTOOLS_CPPFLAGS@ @BOOST_CPPFLAGS@ @AM_CPPFLAGS@ -I$(top_srcdir)/include -I$(top_srcdir)/src 
 portculis_LDFLAGS = @BAMTOOLS_LDFLAGS@ @SAMTOOLS_LDFLAGS@ @BOOST_LDFLAGS@ @AM_LDFLAGS@
-portculis_LDADD = -lbam -lbamtools -lbamtools-utils @BOOST_LIBS@ -lpthread -lz
+portculis_LDADD = -lbam -lbcf -lbamtools -lbamtools-utils @BOOST_LIBS@ -lpthread -lz
 portculis_SOURCES = portculis.cc
                 

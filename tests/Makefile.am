@@ -7,7 +7,7 @@ check_portculis_CPPFLAGS = @BAMTOOLS_CPPFLAGS@ @SAMTOOLS_CPPFLAGS@ @BOOST_CPPFLA
 #check_portculis_CXXFLAGS = -g3 -Wall -Werror -Wl,-rpath,@BAMTOOLS_PATH@/lib @AM_CXXFLAGS@
 check_portculis_CXXFLAGS = -g3 -Wl,-rpath,@BAMTOOLS_PATH@/lib @AM_CXXFLAGS@
 check_portculis_LDFLAGS = @BAMTOOLS_LDFLAGS@ @SAMTOOLS_LDFLAGS@ @BOOST_LDFLAGS@ -L$(top_srcdir)/src/.deps @AM_LDFLAGS@
-check_portculis_LDADD = -lboost_unit_test_framework @BOOST_LIBS@ -lbam -lbamtools -lbamtools-utils -lpthread -lz
+check_portculis_LDADD = -lboost_unit_test_framework @BOOST_LIBS@ -lbam -lbcf -lbamtools -lbamtools-utils -lpthread -lz
 check_portculis_SOURCES =   bam_utils_tests.cpp \
 			    seq_utils_tests.cpp \
 			    intron_tests.cpp \

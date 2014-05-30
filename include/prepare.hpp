@@ -37,6 +37,7 @@ using boost::filesystem::create_directory;
 using boost::filesystem::symbolic_link_exists;
 
 #include "bam_utils.hpp"
+#include "genome_mapper.hpp"
 using portculis::bamtools::BamUtils;
 
 
@@ -53,7 +54,7 @@ const string FASTA_EXTENSION = ".fa";
 const string FASTA_INDEX_EXTENSION = ".fai";
 const string BAM_EXTENSION = ".bam";
 const string BAM_INDEX_EXTENSION = ".bti";
-const string BAM_PILEUP_EXTENSION = ".pileup";
+const string BAM_BCF_EXTENSION = ".bcf";
     
 
 class PreparedFiles {
@@ -86,8 +87,8 @@ public:
         return getSortedBamPath() + BAM_INDEX_EXTENSION;
     }
     
-    string getPileupPath() const {
-        return getSortedBamPath() + BAM_PILEUP_EXTENSION;
+    string getBcfFilePath() const {
+        return getSortedBamPath() + BAM_BCF_EXTENSION;
     }    
     
     string getGenomeFilePath() const {
@@ -107,7 +108,7 @@ public:
         remove(getUnsortedBamPath());
         remove(getSortedBamPath());
         remove(getBamIndexPath());
-        remove(getPileupPath());
+        remove(getBcfFilePath());
         remove(getGenomeFilePath());
         remove(getGenomeIndexPath());
         remove(getSettingsFilePath());
@@ -120,13 +121,15 @@ class Prepare {
 private:
     
     PreparedFiles* output;
+    bool strandSpecific;
     bool force;
     bool useLinks;
     bool verbose;
 
-    void init(string _outputDir, bool _force, bool _useLinks, bool _verbose) {
+    void init(string _outputDir, bool _strandSpecific, bool _force, bool _useLinks, bool _verbose) {
         
         output = new PreparedFiles(_outputDir);
+        strandSpecific = _strandSpecific;
         force = _force;
         useLinks = _useLinks;
         verbose = _verbose;
@@ -144,11 +147,11 @@ private:
 public:
     
     Prepare(string _outputPrefix) {
-        init(_outputPrefix, false, false, false);
+        init(_outputPrefix, false, false, false, false);
     }
     
-    Prepare(string _outputPrefix, bool _force, bool _useLinks, bool _verbose) {
-        init(_outputPrefix, _force, _useLinks, _verbose);
+    Prepare(string _outputPrefix, bool _strandSpecific, bool _force, bool _useLinks, bool _verbose) {
+        init(_outputPrefix, _strandSpecific, _force, _useLinks, _verbose);
     }
     
     virtual ~Prepare() {
@@ -193,6 +196,7 @@ protected:
         auto_cpu_timer timer(1, " - Genome Index - Wall time taken: %ws\n");
         
         const string genomeFile = output->getGenomeFilePath();
+        const string bcfFile = output->getBcfFilePath();
         const string indexFile = output->getGenomeIndexPath();
         
         bool indexExists = exists(indexFile);
@@ -208,7 +212,7 @@ protected:
             }
             
             // Create the index
-            GenomeMapper(genomeFile, force, verbose).buildIndex();
+            GenomeMapper(genomeFile, bcfFile, force, verbose).buildFastaIndex();
             
             if (verbose) cout << "done." << endl;
         }
@@ -278,14 +282,12 @@ protected:
             }
                 
             if (verbose) {
-                cout << "Sorting " << unsortedBam << " ... ";
-                cout.flush();
+                cout << "Sorting " << unsortedBam << " ... " << endl;
             }
             
             // Sort the BAM file by coordinate
-            BamUtils::sortBam(unsortedBam, sortedBam, false);
+            BamUtils::sortBam(unsortedBam, sortedBam, false, 4, "1G");
             
-            if (verbose) cout << "done." << endl;        
         }
         
         // Return true if the sorted BAM exists now, which is should do
@@ -324,7 +326,8 @@ protected:
         auto_cpu_timer timer(1, " - BAM Pileup - Wall time taken: %ws\n");
         
         const string sortedBam = output->getSortedBamPath();
-        string pileupFile = output->getPileupPath();
+        const string genomeFile = output->getGenomeFilePath();
+        string pileupFile = output->getBcfFilePath();
         
         bool pileupFileExists = exists(pileupFile);
         
@@ -334,62 +337,26 @@ protected:
         else {
             
             if (verbose) {
-                cout << "Piling up alignments from " << sortedBam << " ... ";
-                cout.flush();
+                cout << "Piling up alignments from " << sortedBam << " ... " << endl;
             }
             
             // Create BAM pileup
-            //BamUtils::pileupBam(sortedBam);
+            BamUtils::pileupBam(sortedBam, genomeFile, pileupFile);
             
-            if (verbose) cout << "done." << endl;
         }
         
-        //return exists(pileupFile);
-        return true;    // Just for now.
+        return exists(pileupFile);
     }
 
 
 public:
     
-    void genomePrepare(string originalGenomeFile) {
-        
-        auto_cpu_timer timer(1, "Genome preparation finished - Total wall time taken: %ws\n");        
-
-        const string genomeFile = output->getGenomeFilePath();
-        const string indexFile = output->getGenomeIndexPath();
-        
-        cout << endl 
-             << "Preparing genome" << endl
-             << "----------------" << endl;
-        
-        // Test if provided genome exists
-        if (!exists(originalGenomeFile)) {
-            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                        "Could not find genome file at: ") + genomeFile));
-        }
-        
-        // Copy / Symlink the file to the output dir
-        if (!genomeCopy(originalGenomeFile)) {
-            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                        "Could not copy/symlink genome file to: ") + genomeFile));
-        }
-        
-        // Test if index exists
-        if (!genomeIndex()) {
-            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                        "Could not find genome index file at: ") + indexFile));
-        }
-        
-    }
     
-    
-    void bamPrepare(vector<string> bamFiles) {
-
-        auto_cpu_timer timer(1, "Bam preparation finished - Total wall time taken: %ws\n");        
+    void prepare(vector<string> bamFiles, string originalGenomeFile) {
 
         cout << endl
-             << "Preparing BAM(s)" << endl
-             << "----------------" << endl;        
+             << "Preparing input" << endl
+             << "---------------" << endl;        
         
         const bool doMerge = bamFiles.size() > 1;        
         
@@ -444,6 +411,18 @@ public:
                     "Failed to index: ") + output->getSortedBamPath()));
         }
         
+        // Copy / Symlink the file to the output dir
+        if (!genomeCopy(originalGenomeFile)) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "Could not copy/symlink genome file to: ") + output->getGenomeFilePath()));
+        }
+        
+        // Test if index exists
+        if (!genomeIndex()) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "Could not create genome map")));
+        }
+        
         // Create pileups
         if (!bamPileup()) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
@@ -451,7 +430,7 @@ public:
         }
     }
 
-    bool outputDetails(bool strandSpecific) {
+    bool outputDetails() {
         
         const string settingsFile = output->getSettingsFilePath();
         
@@ -472,7 +451,7 @@ public:
                       "Allowed options";
     }
     
-    static int prepare(int argc, char *argv[]) {
+    static int main(int argc, char *argv[]) {
         
         // Portculis args
         vector<string> bamFiles;
@@ -532,21 +511,24 @@ public:
         if (vm.count("genome-file")) {
             genomeFile = vm["genome-file"].as<string>();
         }
+        
+        // Test if provided genome exists
+        if (!exists(genomeFile)) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "Could not find genome file at: ") + genomeFile));
+        }
 
-        // OK, we're good to do some real work now!
-        auto_cpu_timer timer(1, "\nTotal runtime: %ws\n");
-        
+        auto_cpu_timer timer(1, "\nTotal runtime: %ws\n");        
+
         // Create the prepare class
-        Prepare prep(outputDir, force, useLinks, verbose);
+        Prepare prep(outputDir, strandSpecific, force, useLinks, verbose);
         
-        // Create a map of the genome (wrapper for faidx from samtools)
-        prep.genomePrepare(genomeFile);
-        
-        // Prep the BAM input to produce a usable sorted bam plus bamtools bti index
-        prep.bamPrepare(bamFiles);
+        // Prep the input to produce a usable indexed and sorted bam plus, indexed
+        // genome and queryable coverage information
+        prep.prepare(bamFiles, genomeFile);
         
         // Output any remaining details
-        prep.outputDetails(strandSpecific);
+        prep.outputDetails();
     }
 };
 }

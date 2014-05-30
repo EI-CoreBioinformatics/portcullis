@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE(sort) {
     
     string unsortedBam = "resources/unsorted.bam";
     string sortedBam = "resources/sorted.test.bam";
-    BamUtils::sortBam(unsortedBam, sortedBam, false);
+    BamUtils::sortBam(unsortedBam, sortedBam);
     
     // Check the sorted bam file exists
     BOOST_CHECK(boost::filesystem::exists(sortedBam));

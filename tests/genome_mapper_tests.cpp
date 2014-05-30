@@ -33,12 +33,12 @@ BOOST_AUTO_TEST_SUITE(genome_mapper)
 BOOST_AUTO_TEST_CASE(ecoli)
 {
     // Create a new faidx
-    portculis::GenomeMapper genomeMapper("resources/ecoli.fa", true, false);
-    genomeMapper.buildIndex();
-    genomeMapper.loadIndex();
+    portculis::GenomeMapper genomeMapper("resources/ecoli.fa", "", true, false);
+    genomeMapper.buildFastaIndex();
+    genomeMapper.loadFastaIndex();
     
     // Check faidx file exists
-    string faidxFile = genomeMapper.getFaidxPath();    
+    string faidxFile = genomeMapper.getFastaIndexFile();    
     BOOST_CHECK(boost::filesystem::exists(faidxFile));
     
     // Check number of seqs is what we expect
@@ -48,19 +48,19 @@ BOOST_AUTO_TEST_CASE(ecoli)
     // Get seq
     string name = "gi|556503834|ref|NC_000913.3|";
     int len = -1;
-    char* fullSeq = genomeMapper.fetch(name.c_str(), &len);    
+    char* fullSeq = genomeMapper.fetchBases(name.c_str(), &len);    
     BOOST_CHECK(len == 4641652);
     BOOST_CHECK(fullSeq != NULL);
     
     string partialSeqExpected = "TCTGACTGCA";
     
     // Get partial seq (method 1 - 1 based)
-    char* partialSeq1 = genomeMapper.fetch((name + ":11-20").c_str(), &len);
+    char* partialSeq1 = genomeMapper.fetchBases((name + ":11-20").c_str(), &len);
     BOOST_CHECK(partialSeqExpected.compare(partialSeq1) == 0);
     BOOST_CHECK(len == 10);
     
     // Get partial seq (method 2 - 0 based)
-    char* partialSeq2 = genomeMapper.fetch((char*)name.c_str(), 10, 19, &len);
+    char* partialSeq2 = genomeMapper.fetchBases((char*)name.c_str(), 10, 19, &len);
     BOOST_CHECK(partialSeqExpected.compare(partialSeq2) == 0);
     BOOST_CHECK(len == 10);
     

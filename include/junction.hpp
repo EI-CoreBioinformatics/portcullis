@@ -39,10 +39,12 @@ using boost::shared_ptr;
 #include <utils/bamtools_pileup_engine.h>
 using namespace BamTools;
 
+#include "bamtools_pileup.hpp"
 #include "intron.hpp"
 #include "genome_mapper.hpp"
 #include "bam_utils.hpp"
 #include "seq_utils.hpp"
+using portculis::bamtools::CoverageLevels;
 using portculis::Intron;
 using portculis::Strand;
 using portculis::bamtools::BamUtils;
@@ -76,81 +78,6 @@ const string METRIC_NAMES[17] = {
     };
 
 
-class CoverageVisitor : public PileupVisitor {
-  
-    public:
-        CoverageVisitor(vector<uint32_t>* _coverageLevels, int32_t _startOffset, Strand _strand)
-            : PileupVisitor()
-            , coverageLevels(_coverageLevels)
-            , startOffset(_startOffset)
-            , strand(_strand)
-                    
-        { }
-        ~CoverageVisitor(void) { }
-  
-    // PileupVisitor interface implementation
-    public:
-	// prints coverage results ( tab-delimited )
-        void Visit(const PileupPosition& pileupData) {
-            
-            //cout << "CVG: " << pileupData.Position << "/" << coverageLevels->size() << "," << pileupData.PileupAlignments.size() << endl;
-            
-            // Only count alignments piled up on the strand of interest
-            uint32_t count = 0;
-            BOOST_FOREACH(PileupAlignment pa, pileupData.PileupAlignments) {
-                if (strandFromBool(pa.Alignment.IsReverseStrand()) == strand) {
-                    count++;
-                }
-            }
-            
-            int32_t pos = pileupData.Position - startOffset + 1;
-            
-            if (pos < 0) { // || pos >= coverageLevels->size()) {
-                // Just ignore for now ...
-                /* BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                        "Error occurred trying to set coverage counts.  ") + 
-                        "Pos: " + lexical_cast<string>(pileupData.Position) + 
-                        "; Offset pos: " + lexical_cast<string>(pos) + 
-                        "; Size of window: " + lexical_cast<string>(coverageLevels->size())));*/
-            }
-            else if (pos >= coverageLevels->size()) {
-                // Just ignore for now...
-            }
-            else {
-                (*coverageLevels)[pos] = count;
-            }
-        }
-        
-        uint32_t GetCoverageAt(int32_t pos) const {
-            
-            int32_t posOffset = pos - startOffset;
-            
-            //cout << "ACQ CVG: Pos: " << pos << "; Offset pos: " << posOffset << endl; 
-            
-            if (posOffset < 0 || posOffset >= coverageLevels->size()) {
-                BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                        "Trying to acquire the coverage at a position outside the defined region for this junction.  ") + 
-                        "Pos: " + lexical_cast<string>(pos) + 
-                        "; Offset pos: " + lexical_cast<string>(posOffset) + 
-                        "; Size of window: " + lexical_cast<string>(coverageLevels->size())));
-            }
-            return (*coverageLevels)[posOffset];            
-        }
-        
-        vector<uint32_t>* GetCoverageLevels() const {
-            return coverageLevels;
-        }
-
-        int32_t GetStartOffset() const {
-            return startOffset;
-        }
-
-        
-    private:
-        vector<uint32_t>* coverageLevels;
-        int32_t startOffset;
-        Strand strand;
-};
 
 class Junction {
     
@@ -324,7 +251,7 @@ public:
 
         // Just access the whole junction region
         int seqLen = -1;
-        string region(genomeMapper->fetch(refName, leftFlankStart, rightFlankEnd, &seqLen));        
+        string region(genomeMapper->fetchBases(refName, leftFlankStart, rightFlankEnd, &seqLen));        
         if (seqLen == -1) 
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Can't find genomic region for junction")));
@@ -360,11 +287,6 @@ public:
         
         BamAlignment ba;
         
-        vector<uint32_t>* cvgLevels = new vector<uint32_t>(regionEnd-regionStart+1, 0);
-        CoverageVisitor* cvgVisitor = new CoverageVisitor(cvgLevels, regionStart, strand);
-        PileupEngine pileup;
-        pileup.AddVisitor(cvgVisitor);
-
         // Focus only on the (expanded... to be safe...) region of interest
         if (!reader.SetRegion(region)) {
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -376,28 +298,21 @@ public:
             // Look for left flanking alignments
             if (    intron->start > ba.Position && 
                     leftFlankStart <= ba.Position + ba.AlignedBases.size() &&
-                    strand == strandFromBool(ba.IsReverseStrand())) {
+                    (!strandSpecific || strand == strandFromBool(ba.IsReverseStrand()))) {
                 nbLeftFlankingAlignments++;
             }
             
             // Look for right flanking alignments
             if (    rightFlankEnd >= ba.Position && 
                     intron->end < ba.Position &&
-                    strand == strandFromBool(ba.IsReverseStrand())) {
+                    (!strandSpecific || strand == strandFromBool(ba.IsReverseStrand()))) {
                 nbRightFlankingAlignments++;
             }
-            
-            // Add this alignment to the pileup engine
-            pileup.AddAlignment(ba);
         }
-        pileup.Flush();
         
         this->setFlankingAlignmentCounts(nbLeftFlankingAlignments, nbRightFlankingAlignments);
         
-        this->calcCoverage(meanQueryLength, *cvgVisitor);
-                
-        delete cvgVisitor;
-        delete cvgLevels;
+        //this->calcCoverage(meanQueryLength, *cvgVisitor);        
     }
     
     /**
@@ -666,18 +581,20 @@ public:
         return length - mismatches;
     }
     
-    double calcCoverage(int32_t a, int32_t b, CoverageVisitor& coverageVisitor) {
+    double calcCoverage(int32_t a, int32_t b, CoverageLevels& coverageLevels) {
         
         double multiplier = 1.0 / (b - a);
-        uint32_t readCount = 0.0;
+        uint32_t readCount = 0;
         
         for (int32_t i = a; i <= b; i++) {
-            readCount += coverageVisitor.GetCoverageAt(i);
+            
+            int32_t pos = intron->strand == NEGATIVE ? i*2+1 : i*2;
+            readCount += coverageLevels[pos];
         }
         return multiplier * (double)readCount;
     }
     
-    void calcCoverage(int32_t meanReadLength, CoverageVisitor& cvgVisitor) {
+    void calcCoverage(int32_t meanReadLength, CoverageLevels& coverageLevels) {
         
         int32_t donorStart = intron->start - 2 * meanReadLength; donorStart = donorStart < 0 ? 0 : donorStart;
         int32_t donorMid = intron->start - meanReadLength;  // This one should be fine
@@ -696,12 +613,12 @@ public:
         else {
             
             double donorCoverage = 
-                    calcCoverage(donorStart, donorMid-1, cvgVisitor) -
-                    calcCoverage(donorMid, donorEnd, cvgVisitor);
+                    calcCoverage(donorStart, donorMid-1, coverageLevels) -
+                    calcCoverage(donorMid, donorEnd, coverageLevels);
 
             double acceptorCoverage = 
-                    calcCoverage(acceptorMid, acceptorEnd, cvgVisitor) -
-                    calcCoverage(acceptorStart, acceptorMid-1, cvgVisitor);
+                    calcCoverage(acceptorMid, acceptorEnd, coverageLevels) -
+                    calcCoverage(acceptorStart, acceptorMid-1, coverageLevels);
 
             coverage = donorCoverage + acceptorCoverage;
         }

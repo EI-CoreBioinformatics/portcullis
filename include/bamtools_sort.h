@@ -1,5 +1,5 @@
 // ***************************************************************************
-// bamtools_sort.h (c) 2010 Derek Barnett, Erik Garrison
+// Adapted from bamtools_sort.cpp/h (c) 2010 Derek Barnett, Erik Garrison
 // Marth Lab, Department of Biology, Boston College
 // ---------------------------------------------------------------------------
 // Last modified: 7 April 2011 (DB)
@@ -19,6 +19,8 @@
 #include <vector>
 using namespace std;
 
+#include <boost/exception/all.hpp>
+
 #include <api/SamConstants.h>
 #include <api/BamMultiReader.h>
 #include <api/BamWriter.h>
@@ -29,6 +31,9 @@ using namespace BamTools::Algorithms;
 namespace portculis {
 namespace bamtools {
 
+typedef boost::error_info<struct BamToolsSortError,string> BamToolsSortErrorInfo;
+struct BamToolsSortException: virtual boost::exception, virtual std::exception { };
+    
 // defaults
 //
 // ** These defaults should be tweaked & 'optimized' per testing ** //
@@ -136,9 +141,8 @@ protected:
         // open input BAM file
         BamReader reader;
         if ( !reader.Open(m_settings->inputBamFilename) ) {
-            cerr << "bamtools sort ERROR: could not open " << m_settings->inputBamFilename
-                 << " for reading... Aborting." << endl;
-            return false;
+            BOOST_THROW_EXCEPTION(BamToolsSortException() << BamToolsSortErrorInfo(string(
+                    "bamtools sort ERROR: could not open for reading: ") + m_settings->inputBamFilename));            
         }
 
         // get basic data that will be shared by all temp/output files 
@@ -220,18 +224,16 @@ protected:
         // this might get broken up if we do a multi-pass system later ??
         BamMultiReader multiReader;
         if ( !multiReader.Open(m_tempFilenames) ) {
-            cerr << "bamtools sort ERROR: could not open BamMultiReader for merging temp files... Aborting."
-                 << endl;
-            return false;
+            BOOST_THROW_EXCEPTION(BamToolsSortException() << BamToolsSortErrorInfo(string(
+                    "bamtools sort ERROR: could not open BamMultiReader for merging temp files")));               
         }
 
         // open writer for our completely sorted output BAM file
         BamWriter mergedWriter;
         if ( !mergedWriter.Open(m_settings->outputBamFilename, m_headerText, m_references) ) {
-            cerr << "bamtools sort ERROR: could not open " << m_settings->outputBamFilename
-                 << " for writing... Aborting." << endl;
+            BOOST_THROW_EXCEPTION(BamToolsSortException() << BamToolsSortErrorInfo(string(
+                    "bamtools sort ERROR: could not open for writing: ") + m_settings->outputBamFilename));             
             multiReader.Close();
-            return false;
         }
 
         // while data available in temp files
@@ -259,9 +261,8 @@ protected:
         // open temp file for writing
         BamWriter tempWriter;
         if ( !tempWriter.Open(tempFilename, m_headerText, m_references) ) {
-            cerr << "bamtools sort ERROR: could not open " << tempFilename
-                 << " for writing." << endl;
-            return false;
+            BOOST_THROW_EXCEPTION(BamToolsSortException() << BamToolsSortErrorInfo(string(
+                    "bamtools sort ERROR: could not open for writing: ") + tempFilename));              
         }
 
         // write data
