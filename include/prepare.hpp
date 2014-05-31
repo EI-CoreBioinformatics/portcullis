@@ -21,6 +21,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+using std::boolalpha;
 using std::string;
 using std::vector;
 
@@ -28,6 +29,7 @@ using std::vector;
 #include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
 using boost::timer::auto_cpu_timer;
+using boost::lexical_cast;
 using boost::filesystem::absolute;
 using boost::filesystem::copy_file;
 using boost::filesystem::remove;
@@ -48,6 +50,7 @@ struct PrepareException: virtual boost::exception, virtual std::exception { };
 
 
 const string DEFAULT_PREP_OUTPUT_DIR = "portculis_prep_data";
+const uint16_t DEFAULT_PREP_THREADS = 1;
 
 const string PORTCULIS = "portculis";
 const string FASTA_EXTENSION = ".fa";
@@ -138,11 +141,11 @@ private:
         
         if (verbose) {
             cout << "Configured portculis prep to use the following settings: " << endl
-                 << " - Output directory: " << output << endl
-                 << " - Strand specific library: " << strandSpecific << endl
-                 << " - Force prep (cleans output directory): " << force << endl
-                 << " - Use symbolic links instead of copy where possible: " << useLinks << endl
-                 << " - Threads (for BAM sorting): << " << threads << endl;
+                 << " - Output directory: " << output->getPrepDir() << endl
+                 << " - Strand specific library: " << boolalpha << strandSpecific << endl
+                 << " - Force prep (cleans output directory): " << boolalpha << force << endl
+                 << " - Use symbolic links instead of copy where possible: " << boolalpha << useLinks << endl
+                 << " - Threads (for sorting BAM): " << threads << endl;
         }
         
         if (force) {
@@ -469,12 +472,18 @@ public:
         // Declare the supported options.
         po::options_description generic_options(helpMessage());
         generic_options.add_options()
-                ("output,o", po::value<string>(&outputDir)->default_value(DEFAULT_PREP_OUTPUT_DIR), (string("Output directory for prepared files. Default: ") + DEFAULT_PREP_OUTPUT_DIR).c_str())
-                ("force,f", po::bool_switch(&force)->default_value(false), "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portculis will only do what it thinks it needs to.")
-                ("strand_specific,ss", po::bool_switch(&strandSpecific)->default_value(false), "Whether BAM alignments were generated using a strand specific RNAseq library.")
-                ("use_links,l", po::bool_switch(&useLinks)->default_value(false), "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
-                ("threads,t", po::value<uint16_t>(&threads)->default_value(1), "The number of threads to used to sort the BAM file (if required).  Default: 1")
-                ("verbose,v", po::bool_switch(&verbose)->default_value(false), "Print extra information")
+                ("output,o", po::value<string>(&outputDir)->default_value(DEFAULT_PREP_OUTPUT_DIR), 
+                    (string("Output directory for prepared files. Default: ") + DEFAULT_PREP_OUTPUT_DIR).c_str())
+                ("force,f", po::bool_switch(&force)->default_value(false), 
+                    "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portculis will only do what it thinks it needs to.")
+                ("strand_specific,ss", po::bool_switch(&strandSpecific)->default_value(false), 
+                    "Whether BAM alignments were generated using a strand specific RNAseq library.")
+                ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
+                    "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
+                ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_PREP_THREADS),
+                    (string("The number of threads to used to sort the BAM file (if required).  Default: ") + lexical_cast<string>(DEFAULT_PREP_THREADS)).c_str())
+                ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
+                    "Print extra information")
                 ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
                 ;
 
@@ -524,6 +533,9 @@ public:
 
         auto_cpu_timer timer(1, "\nTotal runtime: %ws\n\n");        
 
+        cout << "Running portculis in prepare mode" << endl
+             << "---------------------------------" << endl << endl;
+        
         // Create the prepare class
         Prepare prep(outputDir, strandSpecific, force, useLinks, threads, verbose);
         

@@ -158,9 +158,6 @@ int main(int argc, char *argv[]) {
         char** modeArgV = argv+1;
         
         if (mode == PREP) {
-            
-            cout << "Running portculis in prepare mode" << endl
-                 << "---------------------------------" << endl << endl;
             Prepare::main(modeArgC, modeArgV);
         }
         else if(mode == JUNC) {
