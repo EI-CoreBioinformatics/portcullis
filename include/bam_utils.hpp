@@ -125,9 +125,19 @@ public:
         reader.Close();
     }
     
+    static void depth(string sortedBam, string outputFile) {
+        
+        string cmd = string("samtools depth ") + sortedBam + " > " + outputFile;
+        
+        cout << "Executing: \"" << cmd << "\" ... " << endl;
+        cout.flush();
+        
+        system(cmd.c_str());        
+    }
+    
     static void pileupBam(string sortedBam, string indexedGenomeFile, string outputFile) {
         
-        string cmd = string("samtools mpileup -f ") + indexedGenomeFile + 
+        string cmd = string("samtools mpileup -D -f ") + indexedGenomeFile + 
                 " " + sortedBam + " > " + outputFile;
         
         cout << "Executing: \"" << cmd << "\" ... " << endl;

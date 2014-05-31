@@ -53,11 +53,14 @@ const string DEFAULT_PREP_OUTPUT_DIR = "portculis_prep_data";
 const uint16_t DEFAULT_PREP_THREADS = 1;
 
 const string PORTCULIS = "portculis";
+
 const string FASTA_EXTENSION = ".fa";
 const string FASTA_INDEX_EXTENSION = ".fai";
 const string BAM_EXTENSION = ".bam";
 const string BAM_INDEX_EXTENSION = ".bti";
-const string BAM_BCF_EXTENSION = ".bcf";
+const string BCF_EXTENSION = ".bcf";
+const string BCF_INDEX_EXTENSION = ".bci";
+const string BAM_DEPTH_EXTENSION = ".bdp";
     
 
 class PreparedFiles {
@@ -78,42 +81,53 @@ public:
         return prepDir;
     }
 
-    string getUnsortedBamPath() const {
+    string getUnsortedBamFilePath() const {
         return prepDir + "/" + PORTCULIS + ".unsorted.alignments" + BAM_EXTENSION;
     }
     
-    string getSortedBamPath() const {
+    string getSortedBamFilePath() const {
         return prepDir + "/" + PORTCULIS + ".sorted.alignments" + BAM_EXTENSION;
     }
     
-    string getBamIndexPath() const {
-        return getSortedBamPath() + BAM_INDEX_EXTENSION;
+    string getBamIndexFilePath() const {
+        return getSortedBamFilePath() + BAM_INDEX_EXTENSION;
     }
     
+    string getBamDepthFilePath() const {
+        return getSortedBamFilePath() + BAM_DEPTH_EXTENSION;
+    }
+
     string getBcfFilePath() const {
-        return getSortedBamPath() + BAM_BCF_EXTENSION;
+        return getSortedBamFilePath() + BCF_EXTENSION;
+    }    
+    
+    string getBcfIndexFilePath() const {
+        return getBcfFilePath() + BCF_INDEX_EXTENSION;
     }    
     
     string getGenomeFilePath() const {
         return prepDir + "/" + PORTCULIS + ".genome" + FASTA_EXTENSION;
     }
     
-    string getGenomeIndexPath() const {
+    string getGenomeIndexFilePath() const {
         return getGenomeFilePath() + FASTA_INDEX_EXTENSION;
     }
     
     string getSettingsFilePath() const {
         return prepDir + "/" + PORTCULIS + ".settings";
     }
-
+    
+    
     void clean() {
         
-        remove(getUnsortedBamPath());
-        remove(getSortedBamPath());
-        remove(getBamIndexPath());
-        remove(getBcfFilePath());
+        remove(getUnsortedBamFilePath());
+        remove(getSortedBamFilePath());
+        remove(getBamIndexFilePath());
+        remove(getBamDepthFilePath());
         remove(getGenomeFilePath());
-        remove(getGenomeIndexPath());
+        remove(getGenomeIndexFilePath());
+        remove(getBcfFilePath());
+        remove(getBcfIndexFilePath());
         remove(getSettingsFilePath());
     }
 };
@@ -145,7 +159,7 @@ private:
                  << " - Strand specific library: " << boolalpha << strandSpecific << endl
                  << " - Force prep (cleans output directory): " << boolalpha << force << endl
                  << " - Use symbolic links instead of copy where possible: " << boolalpha << useLinks << endl
-                 << " - Threads (for sorting BAM): " << threads << endl;
+                 << " - Threads (for sorting BAM): " << threads << endl << endl;
         }
         
         if (force) {
@@ -209,7 +223,7 @@ protected:
         
         const string genomeFile = output->getGenomeFilePath();
         const string bcfFile = output->getBcfFilePath();
-        const string indexFile = output->getGenomeIndexPath();
+        const string indexFile = output->getGenomeIndexFilePath();
         
         bool indexExists = exists(indexFile);
         
@@ -228,7 +242,7 @@ protected:
             
             if (verbose) {
                 cout << "done." << endl
-                     << "Genome index file created at: " << output->getGenomeIndexPath() << endl;                
+                     << "Genome index file created at: " << output->getGenomeIndexFilePath() << endl;                
             }
         }
         
@@ -246,7 +260,7 @@ protected:
 
         auto_cpu_timer timer(1, " - BAM Merge - Wall time taken: %ws\n\n");
         
-        string mergedBam = output->getUnsortedBamPath();        
+        string mergedBam = output->getUnsortedBamFilePath();        
 
         bool mergedBamExists = exists(mergedBam);
 
@@ -279,8 +293,8 @@ protected:
         
         auto_cpu_timer timer(1, " - BAM Sort - Wall time taken: %ws\n\n");
         
-        const string unsortedBam = output->getUnsortedBamPath();
-        const string sortedBam = output->getSortedBamPath();
+        const string unsortedBam = output->getUnsortedBamFilePath();
+        const string sortedBam = output->getSortedBamFilePath();
         
         bool sortedBamExists = exists(sortedBam);
         
@@ -315,8 +329,8 @@ protected:
         
         auto_cpu_timer timer(1, " - BAM Index - Wall time taken: %ws\n\n");
         
-        const string sortedBam = output->getSortedBamPath();
-        const string indexedFile = output->getBamIndexPath();
+        const string sortedBam = output->getSortedBamFilePath();
+        const string indexedFile = output->getBamIndexFilePath();
         
         bool indexedBamExists = exists(indexedFile);
         
@@ -334,18 +348,42 @@ protected:
             
             if (verbose) {
                 cout << "done." << endl
-                     << "BAM index created at: " << output->getBamIndexPath() << endl;
+                     << "BAM index created at: " << output->getBamIndexFilePath() << endl;
             }
         }
         
         return exists(indexedFile);
     }
     
+    bool bamDepth() {
+        
+        auto_cpu_timer timer(1, " - BAM Depth - Wall time taken: %ws\n\n");
+        
+        const string sortedBam = output->getSortedBamFilePath();
+        const string depthFile = output->getBamDepthFilePath();
+        
+        if (exists(depthFile)) {
+            if (verbose) cout << "Depth file detected: " << depthFile << endl;            
+        }
+        else {
+            
+            if (verbose) {
+                cout << "Calculating per base depth from " << sortedBam << " ... " << endl;
+            }
+            
+            // Create BAM pileup
+            BamUtils::depth(sortedBam, depthFile);
+            
+        }
+        
+        return exists(depthFile);
+    }
+    
     bool bamPileup() {
         
         auto_cpu_timer timer(1, " - BAM Pileup - Wall time taken: %ws\n\n");
         
-        const string sortedBam = output->getSortedBamPath();
+        const string sortedBam = output->getSortedBamFilePath();
         const string genomeFile = output->getGenomeFilePath();
         string pileupFile = output->getBcfFilePath();
         
@@ -368,16 +406,42 @@ protected:
         return exists(pileupFile);
     }
 
+    bool bcfIndex() {
+        
+        auto_cpu_timer timer(1, " - BCF Index - Wall time taken: %ws\n\n");
+        
+        const string bcfPileups = output->getBcfFilePath();
+        const string bcfIndex = output->getBcfIndexFilePath();
+        const string genomeFile = output->getGenomeFilePath();
+        
+        bool bcfIndexExists = exists(bcfIndex);
+        
+        if (bcfIndexExists) {
+            if (verbose) cout << "BCF pileup index file detected: " << bcfIndex << endl;            
+        }
+        else {
+            
+            if (verbose) {
+                cout << "Indexing BCF pileup file " << bcfPileups << " ... " << endl;
+            }
+            
+            // Create BCF index
+            GenomeMapper(genomeFile, bcfPileups, force, verbose).buildBcfIndex();
+            
+            if (verbose) {
+                cout << "done." << endl
+                     << "BCF index created at: " << bcfIndex << endl;
+            }
+        }
+        
+        return exists(bcfIndex);
+    }
 
 public:
     
     
     void prepare(vector<string> bamFiles, string originalGenomeFile) {
 
-        cout << endl << endl
-             << "Preparing input" << endl
-             << "---------------" << endl << endl;        
-        
         const bool doMerge = bamFiles.size() > 1;        
         
         if (bamFiles.empty()) {
@@ -385,7 +449,7 @@ public:
                         "No BAM files to process")));
         }
 
-        string mergedBamFile = doMerge ? output->getUnsortedBamPath() : bamFiles[0];
+        string mergedBamFile = doMerge ? output->getUnsortedBamFilePath() : bamFiles[0];
         
         // Merge the bams to output unsorted bam file if required, otherwise just
         // copy / symlink the file provided
@@ -398,22 +462,28 @@ public:
         else {
             
             // Copy / Symlink the file to the output dir
-            if (!copy(bamFiles[0], output->getUnsortedBamPath(), "BAM")) {
+            if (!copy(bamFiles[0], output->getUnsortedBamFilePath(), "BAM")) {
                 BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                            "Could not copy/symlink BAM file to: ") + output->getUnsortedBamPath()));
+                            "Could not copy/symlink BAM file to: ") + output->getUnsortedBamFilePath()));
             }            
         }
 
         // Sort the file
         if (!bamSort()) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                    "Could not sort: ") + output->getUnsortedBamPath()));
+                    "Could not sort: ") + output->getUnsortedBamFilePath()));
         }
 
         // Index the sorted file
         if (!bamIndex()) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                    "Failed to index: ") + output->getSortedBamPath()));
+                    "Failed to index: ") + output->getSortedBamFilePath()));
+        }
+        
+        // Test if depth exists
+        if (!bamDepth()) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "Could not create depth file")));
         }
         
         // Copy / Symlink the file to the output dir
@@ -428,11 +498,17 @@ public:
                         "Could not create genome map")));
         }
         
-        // Create pileups
+        /*// Create pileups
         if (!bamPileup()) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                     "Could not pileup: ") + output->getSortedBamPath()));
         }
+        
+        // Create pileup index
+        if (!bcfIndex()) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                    "Could not create index for: ") + output->getBcfFilePath()));
+        }*/
     }
 
     bool outputDetails() {
@@ -531,7 +607,7 @@ public:
                         "Could not find genome file at: ") + genomeFile));
         }
 
-        auto_cpu_timer timer(1, "\nTotal runtime: %ws\n\n");        
+        auto_cpu_timer timer(1, "\nPortculis prep completed successfully.\nTotal runtime: %ws\n\n");        
 
         cout << "Running portculis in prepare mode" << endl
              << "---------------------------------" << endl << endl;
