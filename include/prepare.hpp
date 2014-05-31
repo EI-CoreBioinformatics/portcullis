@@ -124,15 +124,26 @@ private:
     bool strandSpecific;
     bool force;
     bool useLinks;
+    uint16_t threads;
     bool verbose;
 
-    void init(string _outputDir, bool _strandSpecific, bool _force, bool _useLinks, bool _verbose) {
+    void init(string _outputDir, bool _strandSpecific, bool _force, bool _useLinks, uint16_t _threads, bool _verbose) {
         
         output = new PreparedFiles(_outputDir);
         strandSpecific = _strandSpecific;
         force = _force;
         useLinks = _useLinks;
+        threads = _threads;
         verbose = _verbose;
+        
+        if (verbose) {
+            cout << "Configured portculis prep to use the following settings: " << endl
+                 << " - Output directory: " << output << endl
+                 << " - Strand specific library: " << strandSpecific << endl
+                 << " - Force prep (cleans output directory): " << force << endl
+                 << " - Use symbolic links instead of copy where possible: " << useLinks << endl
+                 << " - Threads (for BAM sorting): << " << threads << endl;
+        }
         
         if (force) {
             if (verbose) {
@@ -140,18 +151,18 @@ private:
                 cout.flush();
             }
             output->clean();
-            if (verbose) cout << "done." << endl;
+            if (verbose) cout << "done." << endl << endl;
         }
     }
     
 public:
     
     Prepare(string _outputPrefix) {
-        init(_outputPrefix, false, false, false, false);
+        init(_outputPrefix, false, false, false, 1, false);
     }
     
-    Prepare(string _outputPrefix, bool _strandSpecific, bool _force, bool _useLinks, bool _verbose) {
-        init(_outputPrefix, _strandSpecific, _force, _useLinks, _verbose);
+    Prepare(string _outputPrefix, bool _strandSpecific, bool _force, bool _useLinks, uint16_t _threads, bool _verbose) {
+        init(_outputPrefix, _strandSpecific, _force, _useLinks, _threads, _verbose);
     }
     
     virtual ~Prepare() {
@@ -288,7 +299,7 @@ protected:
                 }
 
                 // Sort the BAM file by coordinate
-                BamUtils::sortBam(unsortedBam, sortedBam, false, 4, "1G");
+                BamUtils::sortBam(unsortedBam, sortedBam, false, threads, "1G");
             }
             
         }
@@ -451,16 +462,18 @@ public:
         bool force;
         bool strandSpecific;
         bool useLinks;
+        uint16_t threads;
         bool verbose;
         bool help;
-
+        
         // Declare the supported options.
         po::options_description generic_options(helpMessage());
         generic_options.add_options()
-                ("output,o", po::value<string>(&outputDir)->default_value(DEFAULT_PREP_OUTPUT_DIR), "Output directory for prepared files.")
+                ("output,o", po::value<string>(&outputDir)->default_value(DEFAULT_PREP_OUTPUT_DIR), (string("Output directory for prepared files. Default: ") + DEFAULT_PREP_OUTPUT_DIR).c_str())
                 ("force,f", po::bool_switch(&force)->default_value(false), "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portculis will only do what it thinks it needs to.")
                 ("strand_specific,ss", po::bool_switch(&strandSpecific)->default_value(false), "Whether BAM alignments were generated using a strand specific RNAseq library.")
                 ("use_links,l", po::bool_switch(&useLinks)->default_value(false), "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
+                ("threads,t", po::value<uint16_t>(&threads)->default_value(1), "The number of threads to used to sort the BAM file (if required).  Default: 1")
                 ("verbose,v", po::bool_switch(&verbose)->default_value(false), "Print extra information")
                 ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
                 ;
@@ -488,7 +501,7 @@ public:
         po::notify(vm);
 
         // Output help information the exit if requested
-        if (help) {
+        if (help || argc <= 1) {
             cout << generic_options << endl;
             return 1;
         }
@@ -512,7 +525,7 @@ public:
         auto_cpu_timer timer(1, "\nTotal runtime: %ws\n\n");        
 
         // Create the prepare class
-        Prepare prep(outputDir, strandSpecific, force, useLinks, verbose);
+        Prepare prep(outputDir, strandSpecific, force, useLinks, threads, verbose);
         
         // Prep the input to produce a usable indexed and sorted bam plus, indexed
         // genome and queryable coverage information
