@@ -155,8 +155,8 @@ protected:
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Can't test for valid donor / acceptor when either string are not of length two, or the intron location is not defined")));
         
-        return intron->strand == POSITIVE ?
-            (seq1 == "GT" && seq2 == "AG") :
+        return //intron->strand == POSITIVE ?
+            (seq1 == "GT" && seq2 == "AG") ||
             (seq1 == "CT" && seq2 == "AC") ;
     }
     

@@ -147,7 +147,9 @@ public:
         if (!exists(getSettingsFilePath())) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                     "Could not find settings file at: ") + getSettingsFilePath()));
-        }    
+        } 
+        
+        return true;
     }
     
     void clean() {

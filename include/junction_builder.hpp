@@ -53,16 +53,20 @@ using portculis::JunctionSystem;
 
 namespace portculis {
 
+const string DEFAULT_JUNC_OUTPUT_DIR = "portculis_junc_out";
+const string DEFAULT_JUNC_OUTPUT_PREFIX = "portculis";
 const uint16_t DEFAULT_JUNC_THREADS = 1;
 
-typedef boost::error_info<struct PortculisError,string> PortculisErrorInfo;
-struct PortculisException: virtual boost::exception, virtual std::exception { };
+typedef boost::error_info<struct JunctionBuilderError,string> JunctionBuilderErrorInfo;
+struct JunctionBuilderException: virtual boost::exception, virtual std::exception { };
 
 class JunctionBuilder {
 private:
 
     // Can set these from the outside via the constructor
     PreparedFiles* prepData;
+    string outputDir;
+    string outputPrefix;
     uint16_t threads;
     bool verbose;
     
@@ -73,22 +77,57 @@ private:
     // The set of distinct junctions found in the BAM file
     JunctionSystem junctionSystem;
     
-    void init(PreparedFiles* _preparedFiles, uint16_t _threads, bool _verbose) {
+    void init(string _prepDir, string _outputDir, string _outputPrefix, uint16_t _threads, bool _verbose) {
         
-        prepData = _preparedFiles;
+        prepData = new PreparedFiles(_prepDir);
+        outputDir = _outputDir;
+        outputPrefix = _outputPrefix;
         threads = _threads;
-        verbose = _verbose;
-        
+        verbose = _verbose;        
         
         if (verbose) {
-            cerr << "Initialised Portculis instance with settings:" << endl
+            cout << "Initialised Portculis instance with settings:" << endl
                  << " - Prep data dir: " << prepData->getPrepDir() << endl
-                 << " - Threads: " << threads << endl;
+                 << " - Output directory: " << outputDir << endl
+                 << " - Output file name prefix: " << outputPrefix << endl
+                 << " - Threads: " << threads << endl << endl;            
+        }
+        
+        if (verbose) {
+            cout << "Ensuring output directory exists ... ";
+            cout.flush();
+        }
+        
+        if (!exists(outputDir)) {
+            if (!create_directory(outputDir)) {
+                BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                        "Could not create output directory: ") + outputDir));
+            }
+        }
+        
+        if (verbose) {
+            cout << "done." << endl << endl
+                 << "Checking prepared data ... ";
+            cout.flush();
+        }
+        
+        // Test if we have all the requried data
+        if (!prepData->valid()) {
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                        "Prepared data is not complete: ") + prepData->getPrepDir()));
+        }
+        
+        if (verbose) {
+            cout << "done." << endl << endl;
         }
     }
     
 
 protected:
+    
+    string getUnsplicedBamFile() {
+        return outputDir + "/" + outputPrefix + ".unspliced.bam";
+    }
     
     string getAssociatedIndexFile(string bamFile) {
         return string(bamFile) + ".bti";
@@ -101,16 +140,17 @@ protected:
      */
     void separateSplicedAlignments() {
         
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n");
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");
         
         BamReader reader;
         
         const string sortedBamFile = prepData->getSortedBamFilePath();
         
         if (!reader.Open(sortedBamFile)) {
-            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
                     "Could not open BAM reader for input: ") + sortedBamFile));
         }
+        
         // Sam header and refs info from the input bam
         header = reader.GetHeader();
         refs = reader.GetReferenceData();
@@ -122,17 +162,17 @@ protected:
         
         // Opens the index for this BAM file
         if ( !reader.OpenIndex(indexFile) ) {            
-            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
                     "Could not open index for BAM: ") + indexFile));             
         }
         
         cout << " - Using BAM index: " << indexFile << endl;
         
         BamWriter unsplicedWriter;
-        string unsplicedFile = "unspliced.bam";//getUnsplicedBamFile();
+        string unsplicedFile = getUnsplicedBamFile();
 
         if (!unsplicedWriter.Open(unsplicedFile, header, refs)) {
-            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
                     "Could not open BAM writer for non-spliced file: ") + unsplicedFile));
         }
 
@@ -180,7 +220,7 @@ protected:
         
         BamReader indexReader;
         if (!reader.Open(unsplicedFile)) {
-            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
                     "Could not open bam reader for unspliced alignments file: ") + unsplicedFile));
         }
         // Sam header and refs info from the input bam
@@ -191,7 +231,7 @@ protected:
         string unsplicedIndexFile = getAssociatedIndexFile(unsplicedFile);
         if ( !reader.OpenIndex(unsplicedIndexFile) ) {            
             if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
-                BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
+                BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
                         "Error creating BAM index for unspliced alignments file: ") + unsplicedIndexFile));
             }            
         }
@@ -201,11 +241,15 @@ protected:
 public:
 
     
-    JunctionBuilder(PreparedFiles* _preparedFiles, uint16_t _threads, bool _verbose) {
-        init(  _preparedFiles, _threads, _verbose);
+    JunctionBuilder(string _prepDir, string _outputDir, string _outputPrefix, uint16_t _threads, bool _verbose) {
+        init(  _prepDir, _outputDir, _outputPrefix, _threads, _verbose);
     }
     
-    virtual ~JunctionBuilder() {        
+    virtual ~JunctionBuilder() {
+
+        if (prepData != NULL) {
+            delete prepData;
+        }        
     }
     
 
@@ -219,6 +263,7 @@ public:
         // Acquires donor / acceptor info from indexed genome file
         cout << "Stage 2: Scanning reference sequences:" << endl;
         GenomeMapper gmap(prepData->getGenomeFilePath(), "", false, verbose);
+        gmap.loadFastaIndex();
         uint64_t daSites = junctionSystem.scanReference(&gmap, refs);
         
         // Count the number of alignments found in upstream and downstream flanking 
@@ -234,7 +279,7 @@ public:
         junctionSystem.calcAllRemainingMetrics();
         
         cout << "Stage 6: Outputting junction information:" << endl;
-        junctionSystem.saveAll("portculis.out");//outputPrefix);
+        junctionSystem.saveAll(outputDir + "/" + outputPrefix);
     }
     
     static string helpMessage() {
@@ -248,6 +293,8 @@ public:
         
         // Portculis args
         string prepDir;
+        string outputDir;
+        string outputPrefix;
         uint16_t threads;
         bool verbose;
         bool help;
@@ -255,6 +302,8 @@ public:
         // Declare the supported options.
         po::options_description generic_options(helpMessage());
         generic_options.add_options()
+                ("output_dir,o", po::value<string>(&outputDir)->default_value(DEFAULT_JUNC_OUTPUT_DIR), "Output directory for files generated by this program.")
+                ("output_prefix,p", po::value<string>(&outputPrefix)->default_value(DEFAULT_JUNC_OUTPUT_PREFIX), "File name prefix for files generated by this program.")
                 ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_JUNC_THREADS),
                     (string("The number of threads to use.  Default: ") + lexical_cast<string>(DEFAULT_JUNC_THREADS)).c_str())
                 ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
@@ -293,21 +342,14 @@ public:
             prepDir = vm["prep_data_dir"].as<string>();
         }
         
-        PreparedFiles prepData(prepDir);
         
-        // Test if we have all the requried data
-        if (!prepData.valid()) {
-            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                        "Prepared data is not complete: ") + prepDir));
-        }
-
         auto_cpu_timer timer(1, "\nPortculis junc completed.\nTotal runtime: %ws\n\n");        
 
         cout << "Running portculis in junction builder mode" << endl
              << "------------------------------------------" << endl << endl;
         
         // Do the work ...
-        JunctionBuilder(&prepData, threads, verbose).process();
+        JunctionBuilder(prepDir, outputDir, outputPrefix, threads, verbose).process();
         
     }
 };

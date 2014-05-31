@@ -32,7 +32,8 @@ namespace portculis {
     
 enum Strand {
     POSITIVE,
-    NEGATIVE
+    NEGATIVE,
+    UNKNOWN
 };
     
 static Strand strandFromBool(bool reverseStrand) {
@@ -40,11 +41,31 @@ static Strand strandFromBool(bool reverseStrand) {
 }
 
 static char strandToChar(Strand strand) {
-    return strand == POSITIVE ? '+' : '-';
+    
+    switch(strand) {
+        case POSITIVE:
+            return '+';
+        case NEGATIVE:
+            return '-';
+        case UNKNOWN:
+            return '?';
+    }
+
+    return '?';
 }
 
 static string strandToString(Strand strand) {
-    return strand == POSITIVE ? string("POSITIVE") : string("NEGATIVE");
+    
+    switch(strand) {
+        case POSITIVE:
+            return string("POSITIVE");
+        case NEGATIVE:
+            return string("NEGATIVE");
+        case UNKNOWN:
+            return string("UNKNOWN");
+    }
+
+    return string("UNKNOWN");
 }
     
 typedef boost::error_info<struct IntronError,string> IntronErrorInfo;

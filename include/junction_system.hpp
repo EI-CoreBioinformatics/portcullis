@@ -215,7 +215,7 @@ public:
      */
     uint64_t scanReference(GenomeMapper* genomeMapper, RefVector& refs) {
         
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n");        
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");        
         
         cout << " - Acquiring junction sequence sites from genome ... ";
         cout.flush();
@@ -236,7 +236,7 @@ public:
     
     void findFlankingAlignments(string alignmentsFile, bool strandSpecific) {
         
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n");    
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
         cout << " - Acquiring all alignments in each junction's vicinity ... ";
         cout.flush();
@@ -271,7 +271,7 @@ public:
                     maxQueryLength,
                     strandSpecific);
             
-            cout << count++ << endl;
+            //cout << count++ << endl;
         }
         
         // Reset the reader for future use.
@@ -282,7 +282,7 @@ public:
     
     void calcJunctionStats() {
         
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n");    
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
         cout << " - Grouping junctions ... ";
         cout.flush();
@@ -315,7 +315,7 @@ public:
      */
     void calcAllRemainingMetrics() {
        
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n"); 
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n"); 
         
         cout << " - Calculating ... ";
         cout.flush();
@@ -329,7 +329,7 @@ public:
     
     void saveAll(string outputPrefix) {
         
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n"); 
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n"); 
         
         string junctionReportPath = outputPrefix + ".junctions.txt";
         string junctionFilePath = outputPrefix + ".junctions.tab";
