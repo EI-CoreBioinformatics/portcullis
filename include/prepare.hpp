@@ -163,7 +163,7 @@ protected:
     
     bool copy(string from, string to, string msg) {
         
-        auto_cpu_timer timer(1, string(" - Copy ") + msg + " - Wall time taken: %ws\n");
+        auto_cpu_timer timer(1, string(" - Copy ") + msg + " - Wall time taken: %ws\n\n");
         
         bool fileExists = exists(to);
         
@@ -191,7 +191,7 @@ protected:
     
     bool genomeIndex() {
         
-        auto_cpu_timer timer(1, " - Genome Index - Wall time taken: %ws\n");
+        auto_cpu_timer timer(1, " - Genome Index - Wall time taken: %ws\n\n");
         
         const string genomeFile = output->getGenomeFilePath();
         const string bcfFile = output->getBcfFilePath();
@@ -230,7 +230,7 @@ protected:
      */
     bool bamMerge(vector<string> bamFiles) {
 
-        auto_cpu_timer timer(1, " - BAM Merge - Wall time taken: %ws\n");
+        auto_cpu_timer timer(1, " - BAM Merge - Wall time taken: %ws\n\n");
         
         string mergedBam = output->getUnsortedBamPath();        
 
@@ -263,7 +263,7 @@ protected:
      */
     bool bamSort() {
         
-        auto_cpu_timer timer(1, " - BAM Sort - Wall time taken: %ws\n");
+        auto_cpu_timer timer(1, " - BAM Sort - Wall time taken: %ws\n\n");
         
         const string unsortedBam = output->getUnsortedBamPath();
         const string sortedBam = output->getSortedBamPath();
@@ -299,7 +299,7 @@ protected:
     
     bool bamIndex() {
         
-        auto_cpu_timer timer(1, " - BAM Index - Wall time taken: %ws\n");
+        auto_cpu_timer timer(1, " - BAM Index - Wall time taken: %ws\n\n");
         
         const string sortedBam = output->getSortedBamPath();
         const string indexedFile = output->getBamIndexPath();
@@ -329,7 +329,7 @@ protected:
     
     bool bamPileup() {
         
-        auto_cpu_timer timer(1, " - BAM Pileup - Wall time taken: %ws\n");
+        auto_cpu_timer timer(1, " - BAM Pileup - Wall time taken: %ws\n\n");
         
         const string sortedBam = output->getSortedBamPath();
         const string genomeFile = output->getGenomeFilePath();
@@ -360,9 +360,9 @@ public:
     
     void prepare(vector<string> bamFiles, string originalGenomeFile) {
 
-        cout << endl
+        cout << endl << endl
              << "Preparing input" << endl
-             << "---------------" << endl;        
+             << "---------------" << endl << endl;        
         
         const bool doMerge = bamFiles.size() > 1;        
         
@@ -509,7 +509,7 @@ public:
                         "Could not find genome file at: ") + genomeFile));
         }
 
-        auto_cpu_timer timer(1, "\nTotal runtime: %ws\n");        
+        auto_cpu_timer timer(1, "\nTotal runtime: %ws\n\n");        
 
         // Create the prepare class
         Prepare prep(outputDir, strandSpecific, force, useLinks, verbose);
