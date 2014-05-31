@@ -607,7 +607,7 @@ public:
                         "Could not find genome file at: ") + genomeFile));
         }
 
-        auto_cpu_timer timer(1, "\nPortculis prep completed successfully.\nTotal runtime: %ws\n\n");        
+        auto_cpu_timer timer(1, "\nPortculis prep completed.\nTotal runtime: %ws\n\n");        
 
         cout << "Running portculis in prepare mode" << endl
              << "---------------------------------" << endl << endl;
