@@ -161,34 +161,32 @@ public:
     
 protected:
     
-    bool genomeCopy(string originalGenomeFile) {
+    bool copy(string from, string to, string msg) {
         
-        auto_cpu_timer timer(1, " - Genome Copy - Wall time taken: %ws\n");
+        auto_cpu_timer timer(1, string(" - Copy ") + msg + " - Wall time taken: %ws\n");
         
-        const string genomeFile = output->getGenomeFilePath();
+        bool fileExists = exists(to);
         
-        bool genomeExists = exists(genomeFile);
-        
-        if (genomeExists) {
-            if (verbose) cout << "Prepped genome file detected: " << genomeFile << endl;            
+        if (fileExists) {
+            if (verbose) cout << "Prepped " << msg << " file detected: " << to << endl;            
         }
         else {
             
             if (useLinks) {
-                create_symlink(absolute(originalGenomeFile), genomeFile);            
-                if (verbose) cout << "Created genome symlink from " << originalGenomeFile << " to " << genomeFile << endl;
+                create_symlink(absolute(from), to);            
+                if (verbose) cout << "Created symlink from " << from << " to " << to << endl;
             }
             else {
                 if (verbose) {
-                    cout << "Copying genome from " << originalGenomeFile << " to " << genomeFile << " ... ";
+                    cout << "Copying from " << from << " to " << to << " ... ";
                     cout.flush();
                 }
-                copy_file(originalGenomeFile, genomeFile);
+                copy_file(from, to);
                 if (verbose) cout << "done." << endl;
             }
         }
         
-        return exists(genomeFile) || symbolic_link_exists(genomeFile);
+        return exists(to) || symbolic_link_exists(to);
     }
     
     bool genomeIndex() {
@@ -214,7 +212,10 @@ protected:
             // Create the index
             GenomeMapper(genomeFile, bcfFile, force, verbose).buildFastaIndex();
             
-            if (verbose) cout << "done." << endl;
+            if (verbose) {
+                cout << "done." << endl
+                     << "Genome index file created at: " << output->getGenomeIndexPath() << endl;                
+            }
         }
         
         return exists(indexFile);
@@ -280,13 +281,15 @@ protected:
                 create_symlink(unsortedBam, sortedBam);            
                 if (verbose) cout << "Created symlink from " << unsortedBam << " to " << sortedBam << endl;
             }
+            else {
                 
-            if (verbose) {
-                cout << "Sorting " << unsortedBam << " ... " << endl;
+                if (verbose) {
+                    cout << "Sorting " << unsortedBam << " ... " << endl;
+                }
+
+                // Sort the BAM file by coordinate
+                BamUtils::sortBam(unsortedBam, sortedBam, false, 4, "1G");
             }
-            
-            // Sort the BAM file by coordinate
-            BamUtils::sortBam(unsortedBam, sortedBam, false, 4, "1G");
             
         }
         
@@ -315,7 +318,10 @@ protected:
             // Create BAM index
             BamUtils::indexBam(sortedBam);
             
-            if (verbose) cout << "done." << endl;
+            if (verbose) {
+                cout << "done." << endl
+                     << "BAM index created at: " << output->getBamIndexPath() << endl;
+            }
         }
         
         return exists(indexedFile);
@@ -377,26 +383,11 @@ public:
         }
         else {
             
-            string originalBamFile = bamFiles[0];
-            string outputBam = output->getUnsortedBamPath();
-            
-            if (!exists(originalBamFile)) {
+            // Copy / Symlink the file to the output dir
+            if (!copy(bamFiles[0], output->getUnsortedBamPath(), "BAM")) {
                 BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                            "Could not find BAM file at: ") + originalBamFile));
-            }
-            
-            if (useLinks) {
-                create_symlink(absolute(originalBamFile), outputBam);            
-                if (verbose) cout << "Created BAM symlink from " << originalBamFile << " to " << outputBam << endl;
-            }
-            else {
-                if (verbose) {
-                    cout << "Copying BAM from " << originalBamFile << " to " << outputBam << " ... ";
-                    cout.flush();
-                }
-                copy_file(originalBamFile, outputBam);
-                if (verbose) cout << "done." << endl;
-            }
+                            "Could not copy/symlink BAM file to: ") + output->getUnsortedBamPath()));
+            }            
         }
 
         // Sort the file
@@ -412,7 +403,7 @@ public:
         }
         
         // Copy / Symlink the file to the output dir
-        if (!genomeCopy(originalGenomeFile)) {
+        if (!copy(originalGenomeFile, output->getGenomeFilePath(), "genome")) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                         "Could not copy/symlink genome file to: ") + output->getGenomeFilePath()));
         }

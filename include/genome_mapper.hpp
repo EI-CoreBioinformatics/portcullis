@@ -102,12 +102,12 @@ public:
     }
 
     void buildBcfIndex() {
-        /*int bcfRes = bcf_idx_build(bcfFile.c_str());
+        int bcfRes = bcf_idx_build(bcfFile.c_str());
 
         if (bcfRes != 0) {
             BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
                     "BCF indexing failed: ") + bcfFile));
-        }*/
+        }
     }
     
     /**
