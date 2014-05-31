@@ -117,6 +117,38 @@ public:
         return prepDir + "/" + PORTCULIS + ".settings";
     }
     
+    bool valid() {
+        
+        if (!exists(getSortedBamFilePath())) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                    "Could not find sorted BAM files at: ") + getSortedBamFilePath()));
+        }
+
+        if (!exists(getBamIndexFilePath())) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                    "Could not find BAM index at: ") + getBamIndexFilePath()));
+        }
+        
+        if (!exists(getBamDepthFilePath())) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                    "Could not find BAM depth file at: ") + getBamDepthFilePath()));
+        }
+        
+        if (!exists(getGenomeFilePath())) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                    "Could not find genome file at: ") + getGenomeFilePath()));
+        }
+        
+        if (!exists(getGenomeIndexFilePath())) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                    "Could not find genome index at: ") + getGenomeIndexFilePath()));
+        }
+        
+        if (!exists(getSettingsFilePath())) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                    "Could not find settings file at: ") + getSettingsFilePath()));
+        }    
+    }
     
     void clean() {
         
@@ -621,6 +653,7 @@ public:
         
         // Output any remaining details
         prep.outputDetails();
+        
     }
 };
 }

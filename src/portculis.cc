@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
             Prepare::main(modeArgC, modeArgV);
         }
         else if(mode == JUNC) {
-            //JunctionBuilder::main(modeArgC, modeArgV)
+            JunctionBuilder::main(modeArgC, modeArgV);
         }
         else if (mode == FILTER) {
             

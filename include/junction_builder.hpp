@@ -28,10 +28,12 @@ using std::ofstream;
 
 #include <boost/exception/all.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/program_options.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/unordered_map.hpp>
 using boost::timer::auto_cpu_timer;
 using boost::lexical_cast;
+namespace po = boost::program_options;
 
 #include <api/BamReader.h>
 #include <api/BamWriter.h>
@@ -41,6 +43,7 @@ using namespace BamTools;
 #include "intron.hpp"
 #include "junction.hpp"
 #include "junction_system.hpp"
+#include "prepare.hpp"
 using portculis::GenomeMapper;
 using portculis::Intron;
 using portculis::Junction;
@@ -50,8 +53,7 @@ using portculis::JunctionSystem;
 
 namespace portculis {
 
-const string DEFAULT_OUTPUT_PREFIX = "portculis_out";
-const uint16_t DEFAULT_THREADS = 4;
+const uint16_t DEFAULT_JUNC_THREADS = 1;
 
 typedef boost::error_info<struct PortculisError,string> PortculisErrorInfo;
 struct PortculisException: virtual boost::exception, virtual std::exception { };
@@ -60,11 +62,8 @@ class JunctionBuilder {
 private:
 
     // Can set these from the outside via the constructor
-    string sortedBamFile;
-    GenomeMapper* genomeMapper;
-    string outputPrefix;
+    PreparedFiles* prepData;
     uint16_t threads;
-    bool strandSpecific;
     bool verbose;
     
     // Sam header and refs info from the input bam
@@ -74,28 +73,26 @@ private:
     // The set of distinct junctions found in the BAM file
     JunctionSystem junctionSystem;
     
-    void init(  string _sortedBamFile, GenomeMapper* _genomeMapper, string _outputPrefix, 
-                uint16_t _threads, bool _strandSpecific, bool _verbose) {
+    void init(PreparedFiles* _preparedFiles, uint16_t _threads, bool _verbose) {
         
-        sortedBamFile = _sortedBamFile;
-        genomeMapper = _genomeMapper;
-        outputPrefix = _outputPrefix;
+        prepData = _preparedFiles;
         threads = _threads;
-        strandSpecific = _strandSpecific;
         verbose = _verbose;
         
         
-        if (verbose)
-            cerr << "Initialised Portculis instance" << endl;
+        if (verbose) {
+            cerr << "Initialised Portculis instance with settings:" << endl
+                 << " - Prep data dir: " << prepData->getPrepDir() << endl
+                 << " - Threads: " << threads << endl;
+        }
     }
     
 
 protected:
-
+    
     string getAssociatedIndexFile(string bamFile) {
         return string(bamFile) + ".bti";
     }
-       
     
     /**
      * Populates the set of distinct junctions.  
@@ -108,6 +105,8 @@ protected:
         
         BamReader reader;
         
+        const string sortedBamFile = prepData->getSortedBamFilePath();
+        
         if (!reader.Open(sortedBamFile)) {
             BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
                     "Could not open BAM reader for input: ") + sortedBamFile));
@@ -119,7 +118,7 @@ protected:
        
         cout << " - Separating alignments from: " << sortedBamFile << endl;
         
-        string indexFile = getAssociatedIndexFile(sortedBamFile);
+        string indexFile = prepData->getBamIndexFilePath();
         
         // Opens the index for this BAM file
         if ( !reader.OpenIndex(indexFile) ) {            
@@ -130,7 +129,7 @@ protected:
         cout << " - Using BAM index: " << indexFile << endl;
         
         BamWriter unsplicedWriter;
-        string unsplicedFile = getUnsplicedBamFile();
+        string unsplicedFile = "unspliced.bam";//getUnsplicedBamFile();
 
         if (!unsplicedWriter.Open(unsplicedFile, header, refs)) {
             BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
@@ -155,7 +154,7 @@ protected:
             
             sumQueryLengths += len;
             
-            if (junctionSystem.addJunctions(al, strandSpecific)) {
+            if (junctionSystem.addJunctions(al, false)) {//strandSpecific)) {
                 splicedCount++;
             }
             else {
@@ -201,36 +200,17 @@ protected:
 
 public:
 
-    JunctionBuilder() {
-        init(   "",
-                NULL, 
-                DEFAULT_OUTPUT_PREFIX, 
-                DEFAULT_THREADS,
-                false,
-                false
-                );
-    }
-    JunctionBuilder(  string _sortedBam, GenomeMapper* _genomeMapper, 
-                string _outputPrefix, uint16_t _threads, bool _strandSpecific,
-                bool _verbose) {
-        init(  _sortedBam, _genomeMapper, _outputPrefix, 
-                _threads, _strandSpecific, _verbose);
+    
+    JunctionBuilder(PreparedFiles* _preparedFiles, uint16_t _threads, bool _verbose) {
+        init(  _preparedFiles, _threads, _verbose);
     }
     
     virtual ~JunctionBuilder() {        
     }
     
-    
-    string getUnsplicedBamFile() {
-        return outputPrefix + ".unspliced.bam";
-    }
-    
 
     void process() {
        
-        // Start the timer
-        auto_cpu_timer timer(1, "Portculis finished.  Wall time taken: %ws\n");
-        
         // Collect junctions from BAM file (also outputs unspliced alignments
         // to a separate file)
         cout << "Stage 1: Separating spliced alignments:" << endl;
@@ -238,12 +218,13 @@ public:
         
         // Acquires donor / acceptor info from indexed genome file
         cout << "Stage 2: Scanning reference sequences:" << endl;
-        uint64_t daSites = junctionSystem.scanReference(genomeMapper, refs);
+        GenomeMapper gmap(prepData->getGenomeFilePath(), "", false, verbose);
+        uint64_t daSites = junctionSystem.scanReference(&gmap, refs);
         
         // Count the number of alignments found in upstream and downstream flanking 
         // regions for each junction
         cout << "Stage 3: Analyse alignments around junctions:" << endl;
-        junctionSystem.findFlankingAlignments(sortedBamFile, strandSpecific);
+        junctionSystem.findFlankingAlignments(prepData->getSortedBamFilePath(), false); //strandSpecific);
         
         cout << "Stage 4: Calculating junction status flags:" << endl;
         junctionSystem.calcJunctionStats();
@@ -253,7 +234,81 @@ public:
         junctionSystem.calcAllRemainingMetrics();
         
         cout << "Stage 6: Outputting junction information:" << endl;
-        junctionSystem.saveAll(outputPrefix);
+        junctionSystem.saveAll("portculis.out");//outputPrefix);
+    }
+    
+    static string helpMessage() {
+        return string("\nPortculis Junction Builder Mode Help.\n\n") +
+                      "Usage: portculis junc [options] <prep_data_dir> \n\n" +
+                      "Run \"portculis prep ...\" to generate data suitable for junction finding before running \"portculis junc ...\"" +
+                      "Allowed options";
+    }
+    
+    static int main(int argc, char *argv[]) {
+        
+        // Portculis args
+        string prepDir;
+        uint16_t threads;
+        bool verbose;
+        bool help;
+        
+        // Declare the supported options.
+        po::options_description generic_options(helpMessage());
+        generic_options.add_options()
+                ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_JUNC_THREADS),
+                    (string("The number of threads to use.  Default: ") + lexical_cast<string>(DEFAULT_JUNC_THREADS)).c_str())
+                ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
+                    "Print extra information")
+                ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
+                ;
+
+        // Hidden options, will be allowed both on command line and
+        // in config file, but will not be shown to the user.
+        po::options_description hidden_options("Hidden options");
+        hidden_options.add_options()
+                ("prep_data_dir,i", po::value<string>(&prepDir), "Path to directory containing prepared data.")
+                ;
+
+        // Positional option for the input bam file
+        po::positional_options_description p;
+        p.add("prep_data_dir", 1);
+        
+        // Combine non-positional options
+        po::options_description cmdline_options;
+        cmdline_options.add(generic_options).add(hidden_options);
+
+        // Parse command line
+        po::variables_map vm;
+        po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
+        po::notify(vm);
+
+        // Output help information the exit if requested
+        if (help || argc <= 1) {
+            cout << generic_options << endl;
+            return 1;
+        }
+        
+        // Acquire path to genome file
+        if (vm.count("prep_data_dir")) {
+            prepDir = vm["prep_data_dir"].as<string>();
+        }
+        
+        PreparedFiles prepData(prepDir);
+        
+        // Test if we have all the requried data
+        if (!prepData.valid()) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "Prepared data is not complete: ") + prepDir));
+        }
+
+        auto_cpu_timer timer(1, "\nPortculis junc completed.\nTotal runtime: %ws\n\n");        
+
+        cout << "Running portculis in junction builder mode" << endl
+             << "------------------------------------------" << endl << endl;
+        
+        // Do the work ...
+        JunctionBuilder(&prepData, threads, verbose).process();
+        
     }
 };
 }
