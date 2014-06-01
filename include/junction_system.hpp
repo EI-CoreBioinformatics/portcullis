@@ -23,10 +23,12 @@
 using portculis::Intron;
 using portculis::Junction;
 
+#include <boost/algorithm/string/split.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/unordered_map.hpp>
+using boost::split;
 using boost::lexical_cast;
 using boost::shared_ptr;
 using boost::timer::auto_cpu_timer;
@@ -276,6 +278,44 @@ public:
         
         // Reset the reader for future use.
         reader.Close();
+        
+        cout << "done." << endl;
+    }
+    
+    void calcCoverage(string depthFile, bool strandSpecific) {
+        
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
+        
+        cout << " - Loading depth data from file ... ";
+        cout.flush();
+        
+        vector<uint32_t> depthList;
+        
+        ifstream ifs(depthFile.c_str());
+        string line;
+        string lastRef;
+        while ( std::getline(ifs, line) ) {
+            if ( !line.empty() ) {
+                vector<string> parts; // #2: Search for tokens
+                boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
+                
+                if (parts.size() != 3) {
+                    BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                        "Malformed depth file: ") + depthFile));
+                }
+                
+                string ref = parts[0];
+                int32_t pos = lexical_cast<int32_t>(parts[1]);
+                uint32_t depth = lexical_cast<uint32_t>(parts[2]);
+                
+                if (ref == lastRef) {
+                    
+                }
+                else {
+                    
+                }
+            }
+        }
         
         cout << "done." << endl;
     }

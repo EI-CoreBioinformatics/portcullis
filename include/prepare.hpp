@@ -22,6 +22,7 @@
 #include <iostream>
 #include <vector>
 using std::boolalpha;
+using std::ifstream;
 using std::string;
 using std::vector;
 
@@ -40,6 +41,7 @@ using boost::filesystem::symbolic_link_exists;
 
 #include "bam_utils.hpp"
 #include "genome_mapper.hpp"
+#include "variant_mapper.hpp"
 using portculis::bamtools::BamUtils;
 
 
@@ -164,6 +166,28 @@ public:
         remove(getBcfIndexFilePath());
         remove(getSettingsFilePath());
     }
+    
+    bool loadSettings() {
+        ifstream ifs(getSettingsFilePath().c_str());
+        string line;
+        while ( std::getline(ifs, line) ) {
+            if ( !line.empty() ) {
+               if (line.find("SS") == 0) {
+                   size_t eqPos = line.find("=");                   
+                   if (eqPos > 0) {
+                       string val = (line.substr(eqPos)); 
+                       boost::trim(val);
+                       std::istringstream is(val);
+                       bool b;
+                       is >> std::boolalpha >> b;
+                       return b;
+                   }
+               } 
+            }
+        }
+        
+        
+    }
 };
 
 
@@ -256,7 +280,6 @@ protected:
         auto_cpu_timer timer(1, " - Genome Index - Wall time taken: %ws\n\n");
         
         const string genomeFile = output->getGenomeFilePath();
-        const string bcfFile = output->getBcfFilePath();
         const string indexFile = output->getGenomeIndexFilePath();
         
         bool indexExists = exists(indexFile);
@@ -272,7 +295,7 @@ protected:
             }
             
             // Create the index
-            GenomeMapper(genomeFile, bcfFile, force, verbose).buildFastaIndex();
+            GenomeMapper(genomeFile).buildFastaIndex();
             
             if (verbose) {
                 cout << "done." << endl
@@ -446,7 +469,6 @@ protected:
         
         const string bcfPileups = output->getBcfFilePath();
         const string bcfIndex = output->getBcfIndexFilePath();
-        const string genomeFile = output->getGenomeFilePath();
         
         bool bcfIndexExists = exists(bcfIndex);
         
@@ -460,7 +482,7 @@ protected:
             }
             
             // Create BCF index
-            GenomeMapper(genomeFile, bcfPileups, force, verbose).buildBcfIndex();
+            VariantMapper(bcfPileups, force, verbose).buildBcfIndex();
             
             if (verbose) {
                 cout << "done." << endl

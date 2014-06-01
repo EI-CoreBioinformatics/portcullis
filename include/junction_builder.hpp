@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+using std::boolalpha;
 using std::string;
 using std::cout;
 using std::cerr;
@@ -67,6 +68,7 @@ private:
     PreparedFiles* prepData;
     string outputDir;
     string outputPrefix;
+    bool strandSpecific;
     uint16_t threads;
     bool verbose;
     
@@ -118,8 +120,18 @@ private:
         }
         
         if (verbose) {
-            cout << "done." << endl << endl;
+            cout << "done." << endl << endl
+                 << "Loading settings stored in prep data ... ";
         }
+        
+        // Loading settings stored in prep data
+        strandSpecific = prepData->loadSettings();
+        
+        if (verbose) {
+            cout << "done." << endl
+                 << "Strand specific input data: " << boolalpha << strandSpecific << endl << endl;
+        }
+        
     }
     
 
@@ -262,23 +274,26 @@ public:
         
         // Acquires donor / acceptor info from indexed genome file
         cout << "Stage 2: Scanning reference sequences:" << endl;
-        GenomeMapper gmap(prepData->getGenomeFilePath(), "", false, verbose);
+        GenomeMapper gmap(prepData->getGenomeFilePath());
         gmap.loadFastaIndex();
         uint64_t daSites = junctionSystem.scanReference(&gmap, refs);
         
         // Count the number of alignments found in upstream and downstream flanking 
         // regions for each junction
         cout << "Stage 3: Analyse alignments around junctions:" << endl;
-        junctionSystem.findFlankingAlignments(prepData->getSortedBamFilePath(), false); //strandSpecific);
+        junctionSystem.findFlankingAlignments(prepData->getSortedBamFilePath(), strandSpecific);
         
-        cout << "Stage 4: Calculating junction status flags:" << endl;
+        cout << "Stage 4: Calculating junction coverage:" << endl;
+        junctionSystem.calcCoverage(prepData->getBamDepthFilePath(), strandSpecific);
+        
+        cout << "Stage 5: Calculating junction status flags:" << endl;
         junctionSystem.calcJunctionStats();
         
         // Calculate all remaining metrics
-        cout << "Stage 5: Calculating remaining junction metrics:" << endl;
+        cout << "Stage 6: Calculating remaining junction metrics:" << endl;
         junctionSystem.calcAllRemainingMetrics();
         
-        cout << "Stage 6: Outputting junction information:" << endl;
+        cout << "Stage 7: Outputting junction information:" << endl;
         junctionSystem.saveAll(outputDir + "/" + outputPrefix);
     }
     

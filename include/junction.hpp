@@ -311,8 +311,6 @@ public:
         }
         
         this->setFlankingAlignmentCounts(nbLeftFlankingAlignments, nbRightFlankingAlignments);
-        
-        //this->calcCoverage(meanQueryLength, *cvgVisitor);        
     }
     
     /**

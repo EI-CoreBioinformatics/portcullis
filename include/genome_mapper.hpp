@@ -31,7 +31,6 @@ using boost::filesystem::exists;
 using boost::timer::auto_cpu_timer;
 
 #include <faidx.h>
-#include <bcf.h>
 
 namespace portculis {
 
@@ -43,13 +42,9 @@ private:
  
     // Path to the original genome file in fasta format
     string genomeFile;
-    string bcfFile;
-    bool forcePrep;
-    bool verbose;
     
     // Handle to genome map.  Created by constructor.
     faidx_t* fastaIndex;
-    bcf_idx_t* bcfIndex;
     
 protected:
     
@@ -61,10 +56,9 @@ public:
      * uses Samtools to create a fasta index for the genome file and then
      * manages the data structure returned after loading the index.
      */
-    GenomeMapper(string _genomeFile, string _bcfFile, bool _forcePrep, bool _verbose) : 
-        genomeFile(_genomeFile), bcfFile(_bcfFile), forcePrep(_forcePrep), verbose(_verbose) {
+    GenomeMapper(string _genomeFile) : 
+        genomeFile(_genomeFile) {
             fastaIndex = NULL;
-            bcfIndex = NULL;
     }
     
     virtual ~GenomeMapper() {        
@@ -73,18 +67,11 @@ public:
             fai_destroy(fastaIndex);
         }
         
-        if (bcfIndex != NULL) {
-            bcf_idx_destroy(bcfIndex);
-        }
     }
     
     
     string getFastaIndexFile() const {
         return genomeFile + ".fai";
-    }
-    
-    string getBcfIndexFile() const {
-        return bcfFile + ".bcfi";
     }
     
     
@@ -98,15 +85,6 @@ public:
         if (faiRes != 0) {
             BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
                     "Genome indexing failed: ") + genomeFile));
-        }
-    }
-
-    void buildBcfIndex() {
-        int bcfRes = bcf_idx_build(bcfFile.c_str());
-
-        if (bcfRes != 0) {
-            BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
-                    "BCF indexing failed: ") + bcfFile));
         }
     }
     
@@ -129,23 +107,7 @@ public:
         
         fastaIndex = fai_load(genomeFile.c_str());
     }
-        
-    void loadBcfIndex() {
-        
-        if (!exists(bcfFile)) {
-           BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
-                    "Genome file does not exist: ") + bcfFile)); 
-        }
-        
-        string bcfIndexFile = getBcfIndexFile();
-        if (!exists(bcfIndexFile)) {
-           BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
-                    "BCF index file does not exist: ") + bcfIndexFile)); 
-        }
-        
-        // Load indices
-        bcfIndex = bcf_idx_load(bcfFile.c_str());
-    }
+    
     
     /**
      * @abstract    Fetch the sequence in a region.
@@ -181,10 +143,6 @@ public:
         return faidx_fetch_nseq(fastaIndex); 
     }
     
-    uint64_t bcfQuery(int tid, int beg) {
-        return bcf_idx_query(bcfIndex, tid, beg);
-    }
-        
 };
 }
 
