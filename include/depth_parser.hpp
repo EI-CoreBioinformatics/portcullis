@@ -24,7 +24,7 @@ using std::vector;
 
 #include <boost/exception/all.hpp>
 
-#include <api/BamReader.h>;
+#include <api/BamReader.h>
 using namespace BamTools;
 
 namespace portculis {
@@ -53,7 +53,7 @@ private:
     
 protected:
    
-    DepthLine parseLine(string& line) {
+    void parseLine(string& line, DepthLine& dp) {
         if ( !line.empty() ) {
             vector<string> parts; // #2: Search for tokens
             boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
@@ -63,12 +63,19 @@ protected:
                     "Malformed depth file: ") + depthFile));
             }
 
-            return DepthLine(parts[0], lexical_cast<int32_t>(parts[1]), lexical_cast<uint32_t>(parts[2]));
+            dp.ref = parts[0];
+            dp.pos = lexical_cast<int32_t>(parts[1]);
+            dp.depth = lexical_cast<uint32_t>(parts[2]);            
         }
     }
     
-    size_t findSize(string& refName) {
+    int32_t findSize(string& refName) {
         
+        BOOST_FOREACH(RefData ref, *refs) {
+            if (refName == ref.RefName) {
+                return ref.RefLength;
+            }
+        }
     }
     
 public:
@@ -88,17 +95,23 @@ public:
     
     bool loadNextBatch(vector<uint32_t>& depths) {
         
+        if (ifs->eof()) {
+            return false;
+        }
+        
         depths.clear();
         
         string line;
         string thisRef;
         string lastRef;
-        if (first) {
-            std::getline(ifs, line);
+        if (start) {
+            std::getline(*ifs, line);
             
-            DepthLine dl = parseLine(line);
+            DepthLine dl;
+            parseLine(line, dl);
             
             last = dl;
+            start = false;
         }
         
         // Create the vector
@@ -109,9 +122,10 @@ public:
         
         
         // Loop through until end of file or we move onto the next ref seq
-        while ( std::getline(ifs, line) ) {
+        while ( std::getline(*ifs, line) ) {
             
-            DepthLine dl = parseLine(line);
+            DepthLine dl;
+            parseLine(line, dl);
             
             if (last.ref == dl.ref) {
                 depths[dl.pos] = dl.depth;
@@ -121,6 +135,12 @@ public:
                 break;
             }
         }
+        
+        return true;
+    }
+    
+    string getCurrentRefName() const {
+        return last.ref;
     }
     
 };

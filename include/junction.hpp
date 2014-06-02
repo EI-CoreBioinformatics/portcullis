@@ -39,12 +39,10 @@ using boost::shared_ptr;
 #include <utils/bamtools_pileup_engine.h>
 using namespace BamTools;
 
-#include "bamtools_pileup.hpp"
 #include "intron.hpp"
 #include "genome_mapper.hpp"
 #include "bam_utils.hpp"
 #include "seq_utils.hpp"
-using portculis::bamtools::CoverageLevels;
 using portculis::Intron;
 using portculis::Strand;
 using portculis::bamtools::BamUtils;
@@ -579,20 +577,20 @@ public:
         return length - mismatches;
     }
     
-    double calcCoverage(int32_t a, int32_t b, CoverageLevels& coverageLevels) {
+    double calcCoverage(int32_t a, int32_t b, const vector<uint32_t>& coverageLevels) {
         
         double multiplier = 1.0 / (b - a);
         uint32_t readCount = 0;
         
         for (int32_t i = a; i <= b; i++) {
             
-            int32_t pos = intron->strand == NEGATIVE ? i*2+1 : i*2;
-            readCount += coverageLevels[pos];
+            //int32_t pos = intron->strand == NEGATIVE ? i*2+1 : i*2;
+            readCount += coverageLevels[i];
         }
         return multiplier * (double)readCount;
     }
     
-    void calcCoverage(int32_t meanReadLength, CoverageLevels& coverageLevels) {
+    void calcCoverage(int32_t meanReadLength, const vector<uint32_t>& coverageLevels) {
         
         int32_t donorStart = intron->start - 2 * meanReadLength; donorStart = donorStart < 0 ? 0 : donorStart;
         int32_t donorMid = intron->start - meanReadLength;  // This one should be fine

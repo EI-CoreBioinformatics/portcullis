@@ -81,7 +81,7 @@ public:
     Strand strand;      // The strand the intron is on
     
     Intron() :
-        refId(-1), start(-1), end(-1), strand(POSITIVE) {        
+        refId(-1), start(-1), end(-1), strand(UNKNOWN) {        
     }
     
     Intron(int32_t _refId, int32_t _start, int32_t _end, Strand _strand) :

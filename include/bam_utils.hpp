@@ -35,7 +35,6 @@ using boost::lexical_cast;
 using namespace BamTools;
 
 #include "bamtools_sort.h"
-#include "bamtools_pileup.hpp"
        
 
 namespace portculis {

@@ -20,6 +20,8 @@
 #include "intron.hpp"
 #include "junction.hpp"
 #include "genome_mapper.hpp"
+#include "depth_parser.hpp"
+using portculis::DepthParser;
 using portculis::Intron;
 using portculis::Junction;
 
@@ -73,6 +75,16 @@ private:
         }
         
         return foundMore ? index : junctionList.size()-1;
+    }
+   
+    void findJunctions(string seqName, RefVector& refs, JunctionList& subset) {
+        
+        subset.clear();
+        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
+            if (refs[j->getIntron()->refId].RefName == seqName) {
+                subset.push_back(j);
+            }    
+        }        
     }
     
     
@@ -163,7 +175,7 @@ public:
                 }
                 
                 shared_ptr<Intron> location(new Intron(refId, lEnd, rStart, 
-                        strandSpecific ? strandFromBool(al.IsReverseStrand()) : POSITIVE));
+                        strandSpecific ? strandFromBool(al.IsReverseStrand()) : UNKNOWN));
                 
                 // We should now have the complete junction location information
                 JunctionMapIterator it = distinctJunctions.find(*location);
@@ -264,7 +276,7 @@ public:
         
         // Read the alignments around every junction and set appropriate metrics
         size_t count = 0;
-        cout << endl;
+        //cout << endl;
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {            
             j->processJunctionVicinity(
                     reader, 
@@ -282,41 +294,39 @@ public:
         cout << "done." << endl;
     }
     
-    void calcCoverage(string depthFile, bool strandSpecific) {
+    void calcCoverage(string depthFile, string alignmentsFile, bool strandSpecific) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
         cout << " - Loading depth data from file ... ";
         cout.flush();
         
-        vector<uint32_t> depthList;
+        BamReader reader;
         
-        ifstream ifs(depthFile.c_str());
-        string line;
-        string lastRef;
-        while ( std::getline(ifs, line) ) {
-            if ( !line.empty() ) {
-                vector<string> parts; // #2: Search for tokens
-                boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
-                
-                if (parts.size() != 3) {
-                    BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                        "Malformed depth file: ") + depthFile));
-                }
-                
-                string ref = parts[0];
-                int32_t pos = lexical_cast<int32_t>(parts[1]);
-                uint32_t depth = lexical_cast<uint32_t>(parts[2]);
-                
-                if (ref == lastRef) {
-                    
-                }
-                else {
-                    
-                }
-            }
+        if (!reader.Open(alignmentsFile)) {
+            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                    "Could not open bam reader for alignments file: ") + alignmentsFile));
+        }
+        // Sam header and refs info from the input bam
+        SamHeader header = reader.GetHeader();
+        RefVector refs = reader.GetReferenceData();
+        
+        DepthParser dp(depthFile, &refs);
+        
+        vector<uint32_t> batch;
+        
+        size_t i = 0;
+        while(dp.loadNextBatch(batch)) {
+            
+            JunctionList subset;
+            findJunctions(dp.getCurrentRefName(), refs, subset);
+            
+            BOOST_FOREACH(shared_ptr<Junction> j, subset) {
+                j->calcCoverage(meanQueryLength, batch);
+            }            
         }
         
+        reader.Close();
         cout << "done." << endl;
     }
     

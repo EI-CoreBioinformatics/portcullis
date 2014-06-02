@@ -70,6 +70,7 @@ private:
     string outputPrefix;
     bool strandSpecific;
     uint16_t threads;
+    bool fast;
     bool verbose;
     
     // Sam header and refs info from the input bam
@@ -79,12 +80,13 @@ private:
     // The set of distinct junctions found in the BAM file
     JunctionSystem junctionSystem;
     
-    void init(string _prepDir, string _outputDir, string _outputPrefix, uint16_t _threads, bool _verbose) {
+    void init(string _prepDir, string _outputDir, string _outputPrefix, uint16_t _threads, bool _fast, bool _verbose) {
         
         prepData = new PreparedFiles(_prepDir);
         outputDir = _outputDir;
         outputPrefix = _outputPrefix;
         threads = _threads;
+        fast = _fast;
         verbose = _verbose;        
         
         if (verbose) {
@@ -92,7 +94,8 @@ private:
                  << " - Prep data dir: " << prepData->getPrepDir() << endl
                  << " - Output directory: " << outputDir << endl
                  << " - Output file name prefix: " << outputPrefix << endl
-                 << " - Threads: " << threads << endl << endl;            
+                 << " - Threads: " << threads << endl 
+                 << " - Fast mode: " << boolalpha << fast << endl << endl;            
         }
         
         if (verbose) {
@@ -168,7 +171,7 @@ protected:
         refs = reader.GetReferenceData();
 
        
-        cout << " - Separating alignments from: " << sortedBamFile << endl;
+        cout << " - Reading alignments from: " << sortedBamFile << endl;
         
         string indexFile = prepData->getBamIndexFilePath();
         
@@ -180,7 +183,7 @@ protected:
         
         cout << " - Using BAM index: " << indexFile << endl;
         
-        BamWriter unsplicedWriter;
+        /*BamWriter unsplicedWriter;
         string unsplicedFile = getUnsplicedBamFile();
 
         if (!unsplicedWriter.Open(unsplicedFile, header, refs)) {
@@ -188,7 +191,7 @@ protected:
                     "Could not open BAM writer for non-spliced file: ") + unsplicedFile));
         }
 
-        cout << " - Saving unspliced alignments to: " << unsplicedFile << endl;
+        cout << " - Saving unspliced alignments to: " << unsplicedFile << endl;*/
         
         BamAlignment al;
         uint64_t splicedCount = 0;
@@ -210,13 +213,13 @@ protected:
                 splicedCount++;
             }
             else {
-                unsplicedWriter.SaveAlignment(al);
+                //unsplicedWriter.SaveAlignment(al);
                 unsplicedCount++;
             }
         }
         
         reader.Close();
-        unsplicedWriter.Close();
+        //unsplicedWriter.Close();
         cout << "done." << endl;
         
         // Calculate some stats
@@ -230,7 +233,7 @@ protected:
              << " - Found " << unsplicedCount << " unspliced alignments." << endl;
         
         
-        BamReader indexReader;
+        /*BamReader indexReader;
         if (!reader.Open(unsplicedFile)) {
             BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
                     "Could not open bam reader for unspliced alignments file: ") + unsplicedFile));
@@ -246,15 +249,15 @@ protected:
                 BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
                         "Error creating BAM index for unspliced alignments file: ") + unsplicedIndexFile));
             }            
-        }
+        }*/
     }
     
 
 public:
 
     
-    JunctionBuilder(string _prepDir, string _outputDir, string _outputPrefix, uint16_t _threads, bool _verbose) {
-        init(  _prepDir, _outputDir, _outputPrefix, _threads, _verbose);
+    JunctionBuilder(string _prepDir, string _outputDir, string _outputPrefix, uint16_t _threads, bool _fast, bool _verbose) {
+        init(  _prepDir, _outputDir, _outputPrefix, _threads, _fast, _verbose);
     }
     
     virtual ~JunctionBuilder() {
@@ -278,13 +281,20 @@ public:
         gmap.loadFastaIndex();
         uint64_t daSites = junctionSystem.scanReference(&gmap, refs);
         
-        // Count the number of alignments found in upstream and downstream flanking 
-        // regions for each junction
-        cout << "Stage 3: Analyse alignments around junctions:" << endl;
-        junctionSystem.findFlankingAlignments(prepData->getSortedBamFilePath(), strandSpecific);
+        if (fast) {
+            cout << "Stage 3: skipped due to user request to run in fast mode" << endl << endl
+                 << "Stage 4: skipped due to user request to run in fast mode" << endl << endl;
+        }
+        else {
         
-        cout << "Stage 4: Calculating junction coverage:" << endl;
-        junctionSystem.calcCoverage(prepData->getBamDepthFilePath(), strandSpecific);
+            // Count the number of alignments found in upstream and downstream flanking 
+            // regions for each junction
+            cout << "Stage 3: Analyse alignments around junctions:" << endl;
+            junctionSystem.findFlankingAlignments(prepData->getSortedBamFilePath(), strandSpecific);
+
+            cout << "Stage 4: Calculating junction coverage:" << endl;
+            junctionSystem.calcCoverage(prepData->getBamDepthFilePath(), prepData->getSortedBamFilePath(), strandSpecific);
+        }
         
         cout << "Stage 5: Calculating junction status flags:" << endl;
         junctionSystem.calcJunctionStats();
@@ -311,16 +321,21 @@ public:
         string outputDir;
         string outputPrefix;
         uint16_t threads;
+        bool fast;
         bool verbose;
         bool help;
         
         // Declare the supported options.
         po::options_description generic_options(helpMessage());
         generic_options.add_options()
-                ("output_dir,o", po::value<string>(&outputDir)->default_value(DEFAULT_JUNC_OUTPUT_DIR), "Output directory for files generated by this program.")
-                ("output_prefix,p", po::value<string>(&outputPrefix)->default_value(DEFAULT_JUNC_OUTPUT_PREFIX), "File name prefix for files generated by this program.")
+                ("output_dir,o", po::value<string>(&outputDir)->default_value(DEFAULT_JUNC_OUTPUT_DIR), 
+                    "Output directory for files generated by this program.")
+                ("output_prefix,p", po::value<string>(&outputPrefix)->default_value(DEFAULT_JUNC_OUTPUT_PREFIX), 
+                    "File name prefix for files generated by this program.")
                 ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_JUNC_THREADS),
                     (string("The number of threads to use.  Default: ") + lexical_cast<string>(DEFAULT_JUNC_THREADS)).c_str())
+                ("fast,f", po::bool_switch(&fast)->default_value(false),
+                    "If running in fast mode then metrics 10 (up), 11 (down) and 15 (coverage) are not calculated")
                 ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                     "Print extra information")
                 ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -364,7 +379,7 @@ public:
              << "------------------------------------------" << endl << endl;
         
         // Do the work ...
-        JunctionBuilder(prepDir, outputDir, outputPrefix, threads, verbose).process();
+        JunctionBuilder(prepDir, outputDir, outputPrefix, threads, fast, verbose).process();
         
     }
 };
