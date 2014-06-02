@@ -88,6 +88,8 @@ public:
     
     virtual ~DepthParser() {
         
+        ifs->close();
+        
         if (ifs != NULL) {
             delete ifs;
         }

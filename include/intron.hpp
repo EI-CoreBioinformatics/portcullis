@@ -40,6 +40,19 @@ static Strand strandFromBool(bool reverseStrand) {
     return reverseStrand ? NEGATIVE : POSITIVE;
 }
 
+static Strand strandFromChar(char strand) {
+    switch(strand) {
+        case '+':
+            return POSITIVE;
+        case '-':
+            return NEGATIVE;
+        case '?':
+            return UNKNOWN;
+    }
+
+    return UNKNOWN;
+}
+
 static char strandToChar(Strand strand) {
     
     switch(strand) {

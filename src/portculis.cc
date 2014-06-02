@@ -57,7 +57,8 @@ const uint32_t DEFAULT_GAP_SIZE = 100;
 enum Mode {
     PREP,
     JUNC,
-    FILTER
+    FILTER,
+    FULL
 };
 
 Mode parseMode(string mode) {
@@ -73,6 +74,9 @@ Mode parseMode(string mode) {
     else if (upperMode == string("PREP")) {
         return FILTER;
     }
+    else if (upperMode == string("FULL")) {
+        return FULL;
+    }
     else {
         BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
                     "Could not recognise mode string: ") + mode));
@@ -87,6 +91,7 @@ string helpHeader() {
                   " - prep   - Prepares a genome and bam file(s) ready for junction analysis\n" +
                   " - junc   - Perform junction analysis on prepared data\n" +
                   " - filter - Discard unlikely junctions and produce BAM containing alignments to genuine junctions\n" +
+                  " - full   - Runs prep, junc, filter as a complete pipeline\n" +
                   "\nAvailable options";
 }
 
@@ -164,6 +169,9 @@ int main(int argc, char *argv[]) {
             JunctionBuilder::main(modeArgC, modeArgV);
         }
         else if (mode == FILTER) {
+            
+        }
+        else if (mode == FULL) {
             
         }
         else {

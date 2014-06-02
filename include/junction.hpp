@@ -798,6 +798,56 @@ public:
     }
 
     
+        void setCoverage(double coverage) {
+            this->coverage = coverage;
+        }
+
+        void setDiffAnchor(int32_t diffAnchor) {
+            this->diffAnchor = diffAnchor;
+        }
+
+        void setEntropy(double entropy) {
+            this->entropy = entropy;
+        }
+
+        void setHammingDistance3p(uint32_t hammingDistance3p) {
+            this->hammingDistance3p = hammingDistance3p;
+        }
+
+        void setHammingDistance5p(uint32_t hammingDistance5p) {
+            this->hammingDistance5p = hammingDistance5p;
+        }
+
+        void setMaxMMES(uint32_t maxMMES) {
+            this->maxMMES = maxMMES;
+        }
+
+        void setMaxMinAnchor(int32_t maxMinAnchor) {
+            this->maxMinAnchor = maxMinAnchor;
+        }
+
+        void setNbDistinctAlignments(uint32_t nbDistinctAlignments) {
+            this->nbDistinctAlignments = nbDistinctAlignments;
+        }
+
+        void setNbDistinctAnchors(uint32_t nbDistinctAnchors) {
+            this->nbDistinctAnchors = nbDistinctAnchors;
+        }
+
+        void setNbDownstreamFlankingAlignments(uint32_t nbDownstreamFlankingAlignments) {
+            this->nbDownstreamFlankingAlignments = nbDownstreamFlankingAlignments;
+        }
+
+        void setNbReliableAlignments(uint32_t nbReliableAlignments) {
+            this->nbReliableAlignments = nbReliableAlignments;
+        }
+
+        void setNbUpstreamFlankingAlignments(uint32_t nbUpstreamFlankingAlignments) {
+            this->nbUpstreamFlankingAlignments = nbUpstreamFlankingAlignments;
+        }
+
+    
+    
 
     
     // **** Output methods ****
@@ -820,7 +870,7 @@ public:
              << "Flank limits: (" << leftFlankStart << ", " << rightFlankEnd << ")" << endl
              << "Junction Metrics:" << endl
              << "1:  # Junction Alignments: " << getNbJunctionAlignments() << endl
-             << "2:  Has Donor + Acceptor Motif: " << donorAndAcceptorMotif << "; Sequences: (" << da1 << " " << da2 << ")" << endl
+             << "2:  Has Donor + Acceptor Motif: " << boolalpha << donorAndAcceptorMotif << "; Sequences: (" << da1 << " " << da2 << ")" << endl
              << "3:  Intron Size: " << getIntronSize() << endl
              << "4:  MaxMinAnchor: " << maxMinAnchor << endl
              << "5:  DiffAnchor: " << diffAnchor << endl
@@ -834,8 +884,8 @@ public:
              << "13: Hamming Distance 5': " << hammingDistance5p << endl
              << "14: Hamming Distance 3': " << hammingDistance3p << endl
              << "15: Coverage: " << coverage << endl
-             << "16: Unique Junction: " << uniqueJunction << endl
-             << "17: Primary Junction: " << primaryJunction << endl
+             << "16: Unique Junction: " << boolalpha << uniqueJunction << endl
+             << "17: Primary Junction: " << boolalpha << primaryJunction << endl
              << endl;
                 
     }

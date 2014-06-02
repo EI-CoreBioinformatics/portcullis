@@ -24,7 +24,18 @@ The Makefile for portculis can take several goals.  Full details of common make 
 
 ##Operating Instructions:
 
-After portculis has been installed, the following tools should be available:
+After portculis has been installed, the `portculis` executable should be available.
+
+Typing `portculis` or `portculis --help` at the command line will present you with the portculis help message.
+
+There are 4 modes available:
+
+    - prep   - Prepares input data so that it is suitable for junction analysis
+    - junc   - Calculates junction metrics for the prepared data
+    - filter - Separates alignments based on whether they are likely to represent genuine splice junctions or not
+    - full   - Runs prep, junc and filter mode using commonly used settings
+
+
 
 
 ##Licensing:

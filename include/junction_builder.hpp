@@ -310,7 +310,7 @@ public:
     static string helpMessage() {
         return string("\nPortculis Junction Builder Mode Help.\n\n") +
                       "Usage: portculis junc [options] <prep_data_dir> \n\n" +
-                      "Run \"portculis prep ...\" to generate data suitable for junction finding before running \"portculis junc ...\"" +
+                      "Run \"portculis prep ...\" to generate data suitable for junction finding before running \"portculis junc ...\"\n\n" +
                       "Allowed options";
     }
     
