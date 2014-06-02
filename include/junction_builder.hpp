@@ -381,6 +381,7 @@ public:
         // Do the work ...
         JunctionBuilder(prepDir, outputDir, outputPrefix, threads, fast, verbose).process();
         
+        return 0;
     }
 };
 }

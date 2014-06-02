@@ -251,7 +251,7 @@ protected:
         
         auto_cpu_timer timer(1, string(" - Copy ") + msg + " - Wall time taken: %ws\n\n");
         
-        bool fileExists = exists(to);
+        bool fileExists = exists(to) || symbolic_link_exists(to);
         
         if (fileExists) {
             if (verbose) cout << "Prepped " << msg << " file detected: " << to << endl;            
@@ -353,7 +353,7 @@ protected:
         const string unsortedBam = output->getUnsortedBamFilePath();
         const string sortedBam = output->getSortedBamFilePath();
         
-        bool sortedBamExists = exists(sortedBam);
+        bool sortedBamExists = exists(sortedBam) || symbolic_link_exists(sortedBam);
         
         if (sortedBamExists) {            
             if (verbose) cout << "Pre-sorted BAM detected: " << sortedBam << endl;
@@ -363,8 +363,8 @@ protected:
             if (BamUtils::isSortedBam(unsortedBam) && !force) {
                 
                 if (verbose) cout << "Provided BAM appears to be sorted already, just creating symlink instead." << endl;
-                create_symlink(unsortedBam, sortedBam);            
-                if (verbose) cout << "Created symlink from " << unsortedBam << " to " << sortedBam << endl;
+                create_symlink(absolute(unsortedBam), sortedBam);            
+                if (verbose) cout << "Created symlink from " << absolute(unsortedBam) << " to " << sortedBam << endl;
             }
             else {
                 
@@ -379,7 +379,7 @@ protected:
         }
         
         // Return true if the sorted BAM exists now, which is should do
-        return exists(sortedBam);        
+        return exists(sortedBam) || symbolic_link_exists(sortedBam);        
     }
     
     bool bamIndex() {
@@ -678,6 +678,7 @@ public:
         // Output any remaining details
         prep.outputDetails();
         
+        return 0;
     }
 };
 }
