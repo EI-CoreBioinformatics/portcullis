@@ -55,7 +55,7 @@ const uint16_t MAP_QUALITY_THRESHOLD = 30;
 typedef boost::error_info<struct JunctionError,string> JunctionErrorInfo;
 struct JunctionException: virtual boost::exception, virtual std::exception { };
 
-const string METRIC_NAMES[17] = {
+const string METRIC_NAMES[18] = {
         "M1-nb_reads",
         "M2-canonical_ss",
         "M3-intron_size",
@@ -72,7 +72,8 @@ const string METRIC_NAMES[17] = {
         "M14-hamming3p",
         "M15-coverage",
         "M16-uniq_junc",
-        "M17-primary_junc"
+        "M17-primary_junc",
+        "M18-mm_score"
     };
 
 const string PREDICTION_NAMES[1] = {
@@ -307,8 +308,8 @@ public:
 
         uint32_t nbLeftFlankingAlignments = 0, nbRightFlankingAlignments = 0;
 
-        int32_t regionStart = leftFlankStart - (2*maxQueryLength) - 1; regionStart < 0 ? 0 : regionStart;
-        int32_t regionEnd = rightFlankEnd + (2*maxQueryLength) + 1; regionEnd >= refLength ? refLength - 1 : regionEnd;
+        int32_t regionStart = leftFlankStart - maxQueryLength - 1; regionStart < 0 ? 0 : regionStart;
+        int32_t regionEnd = rightFlankEnd + maxQueryLength + 1; regionEnd >= refLength ? refLength - 1 : regionEnd;
         BamRegion region(refId, regionStart, refId, regionEnd);
         
         BamAlignment ba;
@@ -848,7 +849,23 @@ public:
     bool isPrimaryJunction() const {
         return primaryJunction;
     }
+    
+    double getMultipleMappingScore() const {
+        return multipleMappingScore;
+    }
 
+    Strand getPredictedStrand() const {
+        return predictedStrand;
+    }
+
+
+    void setDa1(string da1) {
+        this->da1 = da1;
+    }
+
+    void setDa2(string da2) {
+        this->da2 = da2;
+    }
     
     void setCoverage(double coverage) {
         this->coverage = coverage;
@@ -897,6 +914,15 @@ public:
     void setNbUpstreamFlankingAlignments(uint32_t nbUpstreamFlankingAlignments) {
         this->nbUpstreamFlankingAlignments = nbUpstreamFlankingAlignments;
     }
+    
+    void setMultipleMappingScore(double multipleMappingScore) {
+        this->multipleMappingScore = multipleMappingScore;
+    }
+
+    void setPredictedStrand(Strand predictedStrand) {
+        this->predictedStrand = predictedStrand;
+    }
+
 
     
     // **** Output methods ****
@@ -917,6 +943,8 @@ public:
         
         strm << endl
              << "Flank limits: (" << leftFlankStart << ", " << rightFlankEnd << ")" << endl
+             << "Junction Predictions:" << endl
+             << "1:  Strand: " << strandToString(predictedStrand) << endl
              << "Junction Metrics:" << endl
              << "1:  # Junction Alignments: " << getNbJunctionAlignments() << endl
              << "2:  Has Canonical Splice Sites: " << boolalpha << canonicalSpliceSites << "; Sequences: (" << da1 << " " << da2 << ")" << endl
@@ -935,8 +963,7 @@ public:
              << "15: Coverage: " << coverage << endl
              << "16: Unique Junction: " << boolalpha << uniqueJunction << endl
              << "17: Primary Junction: " << boolalpha << primaryJunction << endl
-             << "Junction Predictions:" << endl
-             << "1:  Strand: " << strandToString(predictedStrand) << endl
+             << "18: Multiple mapping score: " << multipleMappingScore << endl
              << endl;                
     }
     
@@ -953,6 +980,7 @@ public:
                     << j.rightFlankEnd << "\t"
                     << j.da1 << "\t"
                     << j.da2 << "\t"
+                    << strandToChar(j.predictedStrand) << "\t"
                     << j.getNbJunctionAlignments() << "\t"
                     << j.canonicalSpliceSites << "\t"
                     << j.getIntronSize() << "\t"
@@ -970,8 +998,7 @@ public:
                     << j.coverage << "\t"
                     << j.uniqueJunction << "\t"
                     << j.primaryJunction << "\t"
-                    << j.multipleMappingScore << "\t"
-                    << j.predictedStrand;
+                    << j.multipleMappingScore;
     }
     
         
@@ -983,10 +1010,63 @@ public:
      */
     static string junctionOutputHeader() {
         return string(Intron::locationOutputHeader()) + "\tleft\tright\tss1\tss2\t" + 
-                boost::algorithm::join(METRIC_NAMES, "\t") + "\t" +
-                boost::algorithm::join(PREDICTION_NAMES, "\t");
+                boost::algorithm::join(PREDICTION_NAMES, "\t") + "\t" +
+                boost::algorithm::join(METRIC_NAMES, "\t");
     }
 
+    static shared_ptr<Junction> parse(const string& line) {
+        
+        vector<string> parts; // #2: Search for tokens
+        boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
+
+        if (parts.size() != 24) {
+            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Could not parse line due to incorrect number of columns. Expected 24 columns: ") + line));
+        }
+
+        // Create intron
+        shared_ptr<Intron> i(new Intron(
+            lexical_cast<int32_t>(parts[1]),
+            lexical_cast<int32_t>(parts[2]),
+            lexical_cast<int32_t>(parts[3]),
+            strandFromChar(parts[4][0])
+        ));
+
+        // Create basic junction
+        shared_ptr<Junction> j(new Junction(
+            i,
+            lexical_cast<int32_t>(parts[5]),
+            lexical_cast<int32_t>(parts[6])
+        ));
+
+        // Splice site strings
+        j->setDa1(parts[7]);
+        j->setDa2(parts[8]);
+
+        // Set predictions to junction
+        j->setPredictedStrand(strandFromChar(parts[9][0]));
+                
+        // Add metrics to junction
+        j->setDonorAndAcceptorMotif(lexical_cast<bool>(parts[11]));
+        j->setMaxMinAnchor(lexical_cast<int32_t>(parts[13]));
+        j->setDiffAnchor(lexical_cast<int32_t>(parts[14]));
+        j->setEntropy(lexical_cast<double>(parts[15]));
+        j->setNbDistinctAnchors(lexical_cast<uint32_t>(parts[16]));
+        j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[17]));
+        j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[18]));
+        j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[19]));
+        j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[20]));
+        j->setMaxMMES(lexical_cast<uint32_t>(parts[21]));
+        j->setHammingDistance5p(lexical_cast<uint32_t>(parts[22]));
+        j->setHammingDistance3p(lexical_cast<uint32_t>(parts[23]));
+        j->setCoverage(lexical_cast<double>(parts[24]));
+        j->setUniqueJunction(lexical_cast<bool>(parts[25]));
+        j->setPrimaryJunction(lexical_cast<bool>(parts[26]));
+        j->setMultipleMappingScore(lexical_cast<double>(parts[27]));
+
+        
+        return j;
+    }
 };
 
 }

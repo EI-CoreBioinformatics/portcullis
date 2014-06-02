@@ -60,6 +60,19 @@ private:
     bool start;
     int res;
     
+protected:
+    
+    // This function reads a BAM alignment from one BAM file.
+    static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
+    {
+        aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
+        int ret = aux->iter? bam_iter_read(aux->fp, aux->iter, b) : bam_read1(aux->fp, b);
+        if (!(b->core.flag&BAM_FUNMAP)) {
+                if ((int)b->core.qual < aux->min_mapQ) b->core.flag |= BAM_FUNMAP;
+                else if (aux->min_len && bam_cigar2qlen(&b->core, bam1_cigar(b)) < aux->min_len) b->core.flag |= BAM_FUNMAP;
+        }
+        return ret;
+    }
     
     
 public:
@@ -97,22 +110,13 @@ public:
         return string(header->target_name[last.ref]);
     }
     
-    // This function reads a BAM alignment from one BAM file.
-    static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
-    {
-        aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
-        int ret = aux->iter? bam_iter_read(aux->fp, aux->iter, b) : bam_read1(aux->fp, b);
-        if (!(b->core.flag&BAM_FUNMAP)) {
-                if ((int)b->core.qual < aux->min_mapQ) b->core.flag |= BAM_FUNMAP;
-                else if (aux->min_len && bam_cigar2qlen(&b->core, bam1_cigar(b)) < aux->min_len) b->core.flag |= BAM_FUNMAP;
-        }
-        return ret;
+    int32_t getCurrentRefIndex() const {
+        return last.ref;
     }
+    
+    
 
     bool loadNextBatch(vector<uint32_t>& depths) {
-        
-        int pos = 0;
-	int tid = -1;  // set the default region
         
         if (res == 0 && !start) {
             return false;
@@ -120,8 +124,11 @@ public:
         
         depths.clear();
         
-        // the core multi-pileup loop
+        int pos = 0;
+	int tid = -1;
         int n_plp = 0; // n_plp is the number of covering reads from the i-th BAM
+        
+        // the core multi-pileup loop
         const bam_pileup1_t** plp = (const bam_pileup1_t**)calloc(1, sizeof(void*)); // plp points to the array of covering reads (internal in mplp)
         
         if (start) {
@@ -131,8 +138,8 @@ public:
                 
                 int m = 0;
                 for (int j = 0; j < n_plp; ++j) {
-                    const bam_pileup1_t *p = plp[0] + j; // DON'T modfity plp[][] unless you really know
-                    if (p->is_del || p->is_refskip) ++m; // having dels or refskips at tid:pos
+                    const bam_pileup1_t *p = plp[0] + j;
+                    if (p->is_del || p->is_refskip) ++m;
                 }
                 last.ref = tid;
                 last.pos = pos+1;
@@ -150,12 +157,12 @@ public:
         // Use the details from the last run
         depths[last.pos] = last.depth;
         
-        while ((res = bam_mplp_auto(mplp, &tid, &pos, &n_plp, plp)) > 0) { // come to the next covered position
+        while ((res = bam_mplp_auto(mplp, &tid, &pos, &n_plp, plp)) > 0) {
             
             int m = 0;
             for (int j = 0; j < n_plp; ++j) {
-                const bam_pileup1_t *p = plp[0] + j; // DON'T modfity plp[][] unless you really know
-                if (p->is_del || p->is_refskip) ++m; // having dels or refskips at tid:pos
+                const bam_pileup1_t *p = plp[0] + j;
+                if (p->is_del || p->is_refskip) ++m;
             }
 
             int32_t rpos = pos+1;

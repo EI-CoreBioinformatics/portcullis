@@ -77,11 +77,11 @@ private:
         return foundMore ? index : junctionList.size()-1;
     }
    
-    void findJunctions(string seqName, RefVector& refs, JunctionList& subset) {
+    void findJunctions(const int32_t refId, JunctionList& subset) {
         
         subset.clear();
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
-            if (refs[j->getIntron()->refId].RefName == seqName) {
+            if (j->getIntron()->refId == refId) {
                 subset.push_back(j);
             }    
         }        
@@ -294,22 +294,13 @@ public:
         cout << "done." << endl;
     }
     
-    void calcCoverage(string depthFile, string alignmentsFile, bool strandSpecific) {
+    void calcCoverage(string alignmentsFile, bool strandSpecific) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
-        cout << " - Loading depth data from file ... ";
+        cout << " - Using unspliced alignments from: " << alignmentsFile << endl
+             << " - Calculating per base depth and junction coverage ... ";
         cout.flush();
-        
-        BamReader reader;
-        
-        if (!reader.Open(alignmentsFile)) {
-            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                    "Could not open bam reader for alignments file: ") + alignmentsFile));
-        }
-        // Sam header and refs info from the input bam
-        SamHeader header = reader.GetHeader();
-        RefVector refs = reader.GetReferenceData();
         
         DepthParser dp(alignmentsFile);
         
@@ -319,14 +310,13 @@ public:
         while(dp.loadNextBatch(batch)) {
             
             JunctionList subset;
-            findJunctions(dp.getCurrentRefName(), refs, subset);
+            findJunctions(dp.getCurrentRefIndex(), subset);
             
             BOOST_FOREACH(shared_ptr<Junction> j, subset) {
                 j->calcCoverage(meanQueryLength, batch);
             }            
         }
         
-        reader.Close();
         cout << "done." << endl;
     }
     
@@ -426,6 +416,18 @@ public:
         return strm;
     }
     
+    void outputGFF(std::ostream &strm) {
+        
+    }
+    
+    void outputGTF(std::ostream &strm) {
+        
+    }
+    
+    void outputBED(std::ostream &strm) {
+        
+    }
+    
     void load(string junctionTabFile) {
         
         ifstream ifs(junctionTabFile.c_str());
@@ -434,45 +436,7 @@ public:
         // Loop through until end of file or we move onto the next ref seq
         while ( std::getline(ifs, line) ) {
             if ( !line.empty() ) {
-                vector<string> parts; // #2: Search for tokens
-                boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
-
-                if (parts.size() != 24) {
-                    BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                        "Could not junctions table file: ") + junctionTabFile));
-                }
-
-                // Create intron
-                shared_ptr<Intron> i(new Intron(
-                    lexical_cast<int32_t>(parts[1]),
-                    lexical_cast<int32_t>(parts[2]),
-                    lexical_cast<int32_t>(parts[3]),
-                    strandFromChar(parts[4][0])
-                ));
-                
-                // Create basic junction
-                shared_ptr<Junction> j(new Junction(
-                    i,
-                    lexical_cast<int32_t>(parts[5]),
-                    lexical_cast<int32_t>(parts[6])
-                ));
-                
-                // Add metrics to junction
-                j->setDonorAndAcceptorMotif(lexical_cast<bool>(parts[8]));
-                j->setMaxMinAnchor(lexical_cast<int32_t>(parts[10]));
-                j->setDiffAnchor(lexical_cast<int32_t>(parts[11]));
-                j->setEntropy(lexical_cast<double>(parts[12]));
-                j->setNbDistinctAnchors(lexical_cast<uint32_t>(parts[13]));
-                j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[14]));
-                j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[15]));
-                j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[16]));
-                j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[17]));
-                j->setMaxMMES(lexical_cast<uint32_t>(parts[18]));
-                j->setHammingDistance5p(lexical_cast<uint32_t>(parts[19]));
-                j->setHammingDistance3p(lexical_cast<uint32_t>(parts[20]));
-                j->setCoverage(lexical_cast<double>(parts[21]));
-                j->setUniqueJunction(lexical_cast<bool>(parts[22]));
-                j->setPrimaryJunction(lexical_cast<bool>(parts[23]));
+                shared_ptr<Junction> j = Junction::parse(line);
             }
         }
         

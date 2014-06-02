@@ -292,7 +292,7 @@ public:
         }
 
         cout << "Stage 4: Calculating junction coverage:" << endl;
-        junctionSystem.calcCoverage(prepData->getBamDepthFilePath(), prepData->getSortedBamFilePath(), strandSpecific);
+        junctionSystem.calcCoverage(prepData->getSortedBamFilePath(), strandSpecific);
             
         cout << "Stage 5: Calculating junction status flags:" << endl;
         junctionSystem.calcJunctionStats();

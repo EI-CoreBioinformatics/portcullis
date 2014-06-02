@@ -95,10 +95,6 @@ public:
         return getSortedBamFilePath() + BAM_INDEX_EXTENSION;
     }
     
-    string getBamDepthFilePath() const {
-        return getSortedBamFilePath() + BAM_DEPTH_EXTENSION;
-    }
-
     string getBcfFilePath() const {
         return getSortedBamFilePath() + BCF_EXTENSION;
     }    
@@ -131,11 +127,6 @@ public:
                     "Could not find BAM index at: ") + getBamIndexFilePath()));
         }
         
-        if (!exists(getBamDepthFilePath())) {
-            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                    "Could not find BAM depth file at: ") + getBamDepthFilePath()));
-        }
-        
         if (!exists(getGenomeFilePath())) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                     "Could not find genome file at: ") + getGenomeFilePath()));
@@ -159,7 +150,6 @@ public:
         remove(getUnsortedBamFilePath());
         remove(getSortedBamFilePath());
         remove(getBamIndexFilePath());
-        remove(getBamDepthFilePath());
         remove(getGenomeFilePath());
         remove(getGenomeIndexFilePath());
         remove(getBcfFilePath());
@@ -412,29 +402,6 @@ protected:
         return exists(indexedFile);
     }
     
-    bool bamDepth() {
-        
-        auto_cpu_timer timer(1, " - BAM Depth - Wall time taken: %ws\n\n");
-        
-        const string sortedBam = output->getSortedBamFilePath();
-        const string depthFile = output->getBamDepthFilePath();
-        
-        if (exists(depthFile)) {
-            if (verbose) cout << "Depth file detected: " << depthFile << endl;            
-        }
-        else {
-            
-            if (verbose) {
-                cout << "Calculating per base depth from " << sortedBam << " ... " << endl;
-            }
-            
-            // Create BAM pileup
-            BamUtils::depth(sortedBam, depthFile);
-            
-        }
-        
-        return exists(depthFile);
-    }
     
     bool bamPileup() {
         
@@ -535,13 +502,7 @@ public:
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                     "Failed to index: ") + output->getSortedBamFilePath()));
         }
-        
-        // Test if depth exists
-        /*if (!bamDepth()) {
-            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                        "Could not create depth file")));
-        }*/
-        
+                
         // Copy / Symlink the file to the output dir
         if (!copy(originalGenomeFile, output->getGenomeFilePath(), "genome")) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
