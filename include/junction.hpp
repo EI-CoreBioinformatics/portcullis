@@ -57,7 +57,7 @@ struct JunctionException: virtual boost::exception, virtual std::exception { };
 
 const string METRIC_NAMES[17] = {
         "M1-nb_reads",
-        "M2-da_motif",
+        "M2-canonical_ss",
         "M3-intron_size",
         "M4-max_min_anc",
         "M5-dif_anc",
@@ -75,6 +75,9 @@ const string METRIC_NAMES[17] = {
         "M17-primary_junc"
     };
 
+const string PREDICTION_NAMES[1] = {
+        "P1-strand"
+    };
 
 
 class Junction {
@@ -89,7 +92,7 @@ private:
     
     // **** Junction metrics ****
                                                 // Metric 1 (nbReads) derived from size of junction alignment vector
-    bool donorAndAcceptorMotif;                 // Metric 2 calculated from 
+    bool canonicalSpliceSites;                   // Metric 2
                                                 // Metric 3 (intron size) calculated via location properties
     int32_t  maxMinAnchor;                      // Metric 4
     int32_t  diffAnchor;                        // Metric 5
@@ -100,11 +103,17 @@ private:
     uint32_t nbUpstreamFlankingAlignments;      // Metric 10
     uint32_t nbDownstreamFlankingAlignments;    // Metric 11
     uint32_t maxMMES;                           // Metric 12
-    uint32_t hammingDistance5p;                 // Metric 13
-    uint32_t hammingDistance3p;                 // Metric 14
+    int16_t  hammingDistance5p;                 // Metric 13
+    int16_t  hammingDistance3p;                 // Metric 14
     double   coverage;                          // Metric 15
     bool     uniqueJunction;                    // Metric 16
     bool     primaryJunction;                   // Metric 17
+    double   multipleMappingScore;              // Metric 18
+    
+    
+    // **** Predictions ****
+    
+    Strand predictedStrand;
     
     
     
@@ -120,7 +129,7 @@ private:
         
         leftFlankStart = _leftFlankStart;
         rightFlankEnd = _rightFlankEnd;
-        donorAndAcceptorMotif = false;
+        canonicalSpliceSites = false;
         maxMinAnchor = intron->minAnchorLength(_leftFlankStart, _rightFlankEnd);
         diffAnchor = 0;
         entropy = 0;
@@ -130,11 +139,14 @@ private:
         nbUpstreamFlankingAlignments = 0;
         nbDownstreamFlankingAlignments = 0;
         maxMMES = 0;
-        hammingDistance5p = 0;
-        hammingDistance3p = 0;
+        hammingDistance5p = -1;
+        hammingDistance3p = -1;
         coverage = 0.0;
         uniqueJunction = false;
         primaryJunction = false;
+        multipleMappingScore = 0.0;
+        
+        predictedStrand = UNKNOWN;
     }
     
     
@@ -147,7 +159,7 @@ protected:
      * @param seq2
      * @return 
      */
-    bool validDonorAcceptor(string seq1, string seq2) {
+    bool hasCanonicalSpliceSites(const string& seq1, const string& seq2) {
         
         if (intron == NULL || seq1.size() != 2 || seq2.size() != 2)
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -158,7 +170,22 @@ protected:
             (seq1 == "CT" && seq2 == "AC") ;
     }
     
-    
+    Strand predictedStrandFromSpliceSites(const string& seq1, const string& seq2) {
+        
+        if (seq1.size() != 2 || seq2.size() != 2)
+            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                    "Can't test donor / acceptor when either string are not of length two")));
+        
+        if (seq1 == "GT" && seq2 == "AG") {
+            return POSITIVE;
+        }
+        else if (seq1 == "CT" && seq2 == "AC") {
+            return NEGATIVE;
+        }
+        else {
+            return UNKNOWN;
+        }
+    }
     
     
 public:
@@ -191,14 +218,15 @@ public:
     }
     
     void setDonorAndAcceptorMotif(bool donorAndAcceptorMotif) {
-        this->donorAndAcceptorMotif = donorAndAcceptorMotif;
+        this->canonicalSpliceSites = donorAndAcceptorMotif;
     }
     
     bool setDonorAndAcceptorMotif(string seq1, string seq2) {
         this->da1 = seq1;
         this->da2 = seq2;
-        this->donorAndAcceptorMotif = validDonorAcceptor(seq1, seq2);
-        return this->donorAndAcceptorMotif;
+        this->canonicalSpliceSites = hasCanonicalSpliceSites(seq1, seq2);
+        this->predictedStrand = predictedStrandFromSpliceSites(seq1, seq2);
+        return this->canonicalSpliceSites;
     }
     
     void setFlankingAlignmentCounts(uint32_t nbUpstream, uint32_t nbDownstream) {
@@ -323,6 +351,7 @@ public:
         calcEntropy();          // Metric 6
         calcAlignmentStats();   // Metrics 8 and 9
         calcMaxMMES();          // Metric 12
+        calcMultipleMappingScore(); // Metric 18
     }
     
     /**
@@ -504,24 +533,32 @@ public:
         if (intron->size() < REGION_LENGTH 
                 || intronStartOffset - REGION_LENGTH < 0 
                 || intronEndOffset + REGION_LENGTH >= rightFlankEnd - leftFlankStart) {
-            hammingDistance5p = 0;
-            hammingDistance3p = 0;
+            hammingDistance5p = -1;
+            hammingDistance3p = -1;
         }
         else {
 
-            if (intron->strand == POSITIVE) {
-                intron5p = junctionSeq.substr(intronStartOffset, REGION_LENGTH);
-                intron3p = junctionSeq.substr(intronEndOffset - REGION_LENGTH, REGION_LENGTH);
-                anchor5p = junctionSeq.substr(intronStartOffset - REGION_LENGTH, REGION_LENGTH);
-                anchor3p = junctionSeq.substr(intronEndOffset, REGION_LENGTH);
+            Strand s = intron->strand != UNKNOWN ? intron->strand : predictedStrand;                
+            
+            switch(s) {
+                case POSITIVE:
+                    intron5p = junctionSeq.substr(intronStartOffset, REGION_LENGTH);
+                    intron3p = junctionSeq.substr(intronEndOffset - REGION_LENGTH, REGION_LENGTH);
+                    anchor5p = junctionSeq.substr(intronStartOffset - REGION_LENGTH, REGION_LENGTH);
+                    anchor3p = junctionSeq.substr(intronEndOffset, REGION_LENGTH);
+                    break;
+                case NEGATIVE:
+                    intron5p = SeqUtils::reverseComplement(junctionSeq.substr(intronEndOffset - REGION_LENGTH, REGION_LENGTH));
+                    intron3p = SeqUtils::reverseComplement(junctionSeq.substr(intronStartOffset, REGION_LENGTH));
+                    anchor5p = SeqUtils::reverseComplement(junctionSeq.substr(intronEndOffset, REGION_LENGTH));
+                    anchor3p = SeqUtils::reverseComplement(junctionSeq.substr(intronStartOffset - REGION_LENGTH, REGION_LENGTH));
+                    break;
+                default:
+                    hammingDistance5p = -1;
+                    hammingDistance3p = -1;
+                    return;
             }
-            else {
-                intron5p = SeqUtils::reverseComplement(junctionSeq.substr(intronEndOffset - REGION_LENGTH, REGION_LENGTH));
-                intron3p = SeqUtils::reverseComplement(junctionSeq.substr(intronStartOffset, REGION_LENGTH));
-                anchor5p = SeqUtils::reverseComplement(junctionSeq.substr(intronEndOffset, REGION_LENGTH));
-                anchor3p = SeqUtils::reverseComplement(junctionSeq.substr(intronStartOffset - REGION_LENGTH, REGION_LENGTH));
-            }
-
+            
             hammingDistance5p = SeqUtils::hammingDistance(anchor5p, intron3p);
             hammingDistance3p = SeqUtils::hammingDistance(anchor3p, intron5p);  
         }
@@ -529,7 +566,6 @@ public:
     
     /**
      * Calculates metric 12.  MaxMMES.
-     * @param junctionSeq
      */
     void calcMaxMMES() {
         
@@ -546,6 +582,22 @@ public:
         }
         
         this->maxMMES = maxmmes;
+    }
+    
+    /**
+     * Calculates metric 18.  Multiple mapping score
+     */
+    void calcMultipleMappingScore() {
+        
+        size_t N = this->getNbJunctionAlignments();
+        
+        uint32_t M = 0;
+        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+            
+            M += 1;  // Number of multiple splitting patterns
+        }
+        
+        this->multipleMappingScore = (double)N / (double)M;
     }
     
     uint16_t calcMinimalMatchInCigarDataSubset(BamAlignment& ba, int32_t start, int32_t end) {
@@ -653,8 +705,8 @@ public:
      * pairs at the start and end of the junction / intron
      * @return 
      */
-    bool hasDonorAndAcceptorMotif() const {
-        return this->donorAndAcceptorMotif;
+    bool hasCanonicalSpliceSites() const {
+        return this->canonicalSpliceSites;
     }
     
     /**
@@ -761,7 +813,7 @@ public:
      * Metric 13: Hamming distance between the 
      * @return 
      */
-    uint32_t getHammingDistance3p() const {
+    int16_t getHammingDistance3p() const {
         return hammingDistance3p;
     }
 
@@ -769,7 +821,7 @@ public:
      * Metric 14:
      * @return 
      */
-    uint32_t getHammingDistance5p() const {
+    int16_t getHammingDistance5p() const {
         return hammingDistance5p;
     }
 
@@ -798,56 +850,53 @@ public:
     }
 
     
-        void setCoverage(double coverage) {
-            this->coverage = coverage;
-        }
+    void setCoverage(double coverage) {
+        this->coverage = coverage;
+    }
 
-        void setDiffAnchor(int32_t diffAnchor) {
-            this->diffAnchor = diffAnchor;
-        }
+    void setDiffAnchor(int32_t diffAnchor) {
+        this->diffAnchor = diffAnchor;
+    }
 
-        void setEntropy(double entropy) {
-            this->entropy = entropy;
-        }
+    void setEntropy(double entropy) {
+        this->entropy = entropy;
+    }
 
-        void setHammingDistance3p(uint32_t hammingDistance3p) {
-            this->hammingDistance3p = hammingDistance3p;
-        }
+    void setHammingDistance3p(int16_t hammingDistance3p) {
+        this->hammingDistance3p = hammingDistance3p;
+    }
 
-        void setHammingDistance5p(uint32_t hammingDistance5p) {
-            this->hammingDistance5p = hammingDistance5p;
-        }
+    void setHammingDistance5p(int16_t hammingDistance5p) {
+        this->hammingDistance5p = hammingDistance5p;
+    }
 
-        void setMaxMMES(uint32_t maxMMES) {
-            this->maxMMES = maxMMES;
-        }
+    void setMaxMMES(uint32_t maxMMES) {
+        this->maxMMES = maxMMES;
+    }
 
-        void setMaxMinAnchor(int32_t maxMinAnchor) {
-            this->maxMinAnchor = maxMinAnchor;
-        }
+    void setMaxMinAnchor(int32_t maxMinAnchor) {
+        this->maxMinAnchor = maxMinAnchor;
+    }
 
-        void setNbDistinctAlignments(uint32_t nbDistinctAlignments) {
-            this->nbDistinctAlignments = nbDistinctAlignments;
-        }
+    void setNbDistinctAlignments(uint32_t nbDistinctAlignments) {
+        this->nbDistinctAlignments = nbDistinctAlignments;
+    }
 
-        void setNbDistinctAnchors(uint32_t nbDistinctAnchors) {
-            this->nbDistinctAnchors = nbDistinctAnchors;
-        }
+    void setNbDistinctAnchors(uint32_t nbDistinctAnchors) {
+        this->nbDistinctAnchors = nbDistinctAnchors;
+    }
 
-        void setNbDownstreamFlankingAlignments(uint32_t nbDownstreamFlankingAlignments) {
-            this->nbDownstreamFlankingAlignments = nbDownstreamFlankingAlignments;
-        }
+    void setNbDownstreamFlankingAlignments(uint32_t nbDownstreamFlankingAlignments) {
+        this->nbDownstreamFlankingAlignments = nbDownstreamFlankingAlignments;
+    }
 
-        void setNbReliableAlignments(uint32_t nbReliableAlignments) {
-            this->nbReliableAlignments = nbReliableAlignments;
-        }
+    void setNbReliableAlignments(uint32_t nbReliableAlignments) {
+        this->nbReliableAlignments = nbReliableAlignments;
+    }
 
-        void setNbUpstreamFlankingAlignments(uint32_t nbUpstreamFlankingAlignments) {
-            this->nbUpstreamFlankingAlignments = nbUpstreamFlankingAlignments;
-        }
-
-    
-    
+    void setNbUpstreamFlankingAlignments(uint32_t nbUpstreamFlankingAlignments) {
+        this->nbUpstreamFlankingAlignments = nbUpstreamFlankingAlignments;
+    }
 
     
     // **** Output methods ****
@@ -870,7 +919,7 @@ public:
              << "Flank limits: (" << leftFlankStart << ", " << rightFlankEnd << ")" << endl
              << "Junction Metrics:" << endl
              << "1:  # Junction Alignments: " << getNbJunctionAlignments() << endl
-             << "2:  Has Donor + Acceptor Motif: " << boolalpha << donorAndAcceptorMotif << "; Sequences: (" << da1 << " " << da2 << ")" << endl
+             << "2:  Has Canonical Splice Sites: " << boolalpha << canonicalSpliceSites << "; Sequences: (" << da1 << " " << da2 << ")" << endl
              << "3:  Intron Size: " << getIntronSize() << endl
              << "4:  MaxMinAnchor: " << maxMinAnchor << endl
              << "5:  DiffAnchor: " << diffAnchor << endl
@@ -886,8 +935,9 @@ public:
              << "15: Coverage: " << coverage << endl
              << "16: Unique Junction: " << boolalpha << uniqueJunction << endl
              << "17: Primary Junction: " << boolalpha << primaryJunction << endl
-             << endl;
-                
+             << "Junction Predictions:" << endl
+             << "1:  Strand: " << strandToString(predictedStrand) << endl
+             << endl;                
     }
     
     
@@ -901,8 +951,10 @@ public:
         return strm << *(j.intron) << "\t"
                     << j.leftFlankStart << "\t"
                     << j.rightFlankEnd << "\t"
+                    << j.da1 << "\t"
+                    << j.da2 << "\t"
                     << j.getNbJunctionAlignments() << "\t"
-                    << j.donorAndAcceptorMotif << "\t"
+                    << j.canonicalSpliceSites << "\t"
                     << j.getIntronSize() << "\t"
                     << j.maxMinAnchor << "\t"
                     << j.diffAnchor << "\t"
@@ -917,7 +969,9 @@ public:
                     << j.hammingDistance3p << "\t"
                     << j.coverage << "\t"
                     << j.uniqueJunction << "\t"
-                    << j.primaryJunction;
+                    << j.primaryJunction << "\t"
+                    << j.multipleMappingScore << "\t"
+                    << j.predictedStrand;
     }
     
         
@@ -928,8 +982,9 @@ public:
      * @return 
      */
     static string junctionOutputHeader() {
-        return string(Intron::locationOutputHeader()) + "\tleft\tright\t" + 
-                boost::algorithm::join(METRIC_NAMES, "\t");
+        return string(Intron::locationOutputHeader()) + "\tleft\tright\tss1\tss2\t" + 
+                boost::algorithm::join(METRIC_NAMES, "\t") + "\t" +
+                boost::algorithm::join(PREDICTION_NAMES, "\t");
     }
 
 };

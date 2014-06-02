@@ -537,10 +537,10 @@ public:
         }
         
         // Test if depth exists
-        if (!bamDepth()) {
+        /*if (!bamDepth()) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                         "Could not create depth file")));
-        }
+        }*/
         
         // Copy / Symlink the file to the output dir
         if (!copy(originalGenomeFile, output->getGenomeFilePath(), "genome")) {

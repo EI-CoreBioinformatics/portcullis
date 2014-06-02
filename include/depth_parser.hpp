@@ -27,122 +27,156 @@ using std::vector;
 #include <api/BamReader.h>
 using namespace BamTools;
 
+#include "bam.h"
+
 namespace portculis {
 
 typedef boost::error_info<struct DepthParserError,string> DepthParserErrorInfo;
 struct DepthParserException: virtual boost::exception, virtual std::exception { };
     
-struct DepthLine {
-    string ref;
+typedef struct {     // auxiliary data structure
+	bamFile fp;      // the file handler
+	bam_iter_t iter; // NULL if a region not specified
+	int min_mapQ, min_len; // mapQ filter; length filter
+} aux_t;
+
+typedef struct {
+    int ref;
     int32_t pos;
-    uint32_t depth;
-};
+    uint32_t depth;    
+} depth;
 
 class DepthParser {
 private:
  
     // Path to the original genome file in fasta format
-    string depthFile;
+    string bamFile;
     
-    ifstream* ifs;
-    RefVector* refs;
-    
-    DepthLine last;
-    bool start;
-    
-    
-protected:
-   
-    void parseLine(string& line, DepthLine& dp) {
-        if ( !line.empty() ) {
-            vector<string> parts; // #2: Search for tokens
-            boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
-
-            if (parts.size() != 3) {
-                BOOST_THROW_EXCEPTION(DepthParserException() << DepthParserErrorInfo(string(
-                    "Malformed depth file: ") + depthFile));
-            }
-
-            dp.ref = parts[0];
-            dp.pos = lexical_cast<int32_t>(parts[1]);
-            dp.depth = lexical_cast<uint32_t>(parts[2]);            
-        }
-    }
-    
-    int32_t findSize(string& refName) {
+    bam_header_t *header;
+    aux_t** data;
+    bam_mplp_t mplp;
         
-        BOOST_FOREACH(RefData ref, *refs) {
-            if (refName == ref.RefName) {
-                return ref.RefLength;
-            }
-        }
-    }
+    depth last;
+    bool start;
+    int res;
+    
+    
     
 public:
     
-    DepthParser(string _depthFile, RefVector* _refs) : depthFile(_depthFile), refs(_refs) {
+    DepthParser(string _bamFile) : bamFile(_bamFile) {
     
-        ifs = new ifstream(depthFile.c_str());
+        data = (aux_t**)calloc(1, sizeof(aux_t**));
+        data[0] = (aux_t*)calloc(1, sizeof(aux_t));
+        data[0]->fp = bam_open(bamFile.c_str(), "r");
+        data[0]->min_mapQ = 0;                    
+        data[0]->min_len  = 0;                 
+             
+        header = bam_header_read(data[0]->fp);
+        mplp = bam_mplp_init(1, read_bam, (void**)data);
+        
+        res = 0;
         start = true;
     }
     
     virtual ~DepthParser() {
         
-        ifs->close();
-        
-        if (ifs != NULL) {
-            delete ifs;
+        bam_mplp_destroy(mplp);
+
+        bam_header_destroy(header);
+            
+        bam_close(data[0]->fp);
+        if (data[0]->iter) { 
+            bam_iter_destroy(data[0]->iter);
         }
+        free(data);
     }
     
+     
+    string getCurrentRefName() const {
+        return string(header->target_name[last.ref]);
+    }
+    
+    // This function reads a BAM alignment from one BAM file.
+    static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
+    {
+        aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
+        int ret = aux->iter? bam_iter_read(aux->fp, aux->iter, b) : bam_read1(aux->fp, b);
+        if (!(b->core.flag&BAM_FUNMAP)) {
+                if ((int)b->core.qual < aux->min_mapQ) b->core.flag |= BAM_FUNMAP;
+                else if (aux->min_len && bam_cigar2qlen(&b->core, bam1_cigar(b)) < aux->min_len) b->core.flag |= BAM_FUNMAP;
+        }
+        return ret;
+    }
+
     bool loadNextBatch(vector<uint32_t>& depths) {
         
-        if (ifs->eof()) {
+        int pos = 0;
+	int tid = -1;  // set the default region
+        
+        if (res == 0 && !start) {
             return false;
         }
         
         depths.clear();
         
-        string line;
-        string thisRef;
-        string lastRef;
+        // the core multi-pileup loop
+        int n_plp = 0; // n_plp is the number of covering reads from the i-th BAM
+        const bam_pileup1_t** plp = (const bam_pileup1_t**)calloc(1, sizeof(void*)); // plp points to the array of covering reads (internal in mplp)
+        
         if (start) {
-            std::getline(*ifs, line);
-            
-            DepthLine dl;
-            parseLine(line, dl);
-            
-            last = dl;
             start = false;
+            
+            if ((res = bam_mplp_auto(mplp, &tid, &pos, &n_plp, plp)) > 0) {
+                
+                int m = 0;
+                for (int j = 0; j < n_plp; ++j) {
+                    const bam_pileup1_t *p = plp[0] + j; // DON'T modfity plp[][] unless you really know
+                    if (p->is_del || p->is_refskip) ++m; // having dels or refskips at tid:pos
+                }
+                last.ref = tid;
+                last.pos = pos+1;
+                last.depth = n_plp - m; 
+            }
+            else {
+                free(plp);
+                return false;
+            }
         }
         
         // Create the vector
-        depths.resize(findSize(last.ref), 0);
+        depths.resize(header->target_len[last.ref], 0);
         
         // Use the details from the last run
         depths[last.pos] = last.depth;
         
-        
-        // Loop through until end of file or we move onto the next ref seq
-        while ( std::getline(*ifs, line) ) {
+        while ((res = bam_mplp_auto(mplp, &tid, &pos, &n_plp, plp)) > 0) { // come to the next covered position
             
-            DepthLine dl;
-            parseLine(line, dl);
-            
-            if (last.ref == dl.ref) {
-                depths[dl.pos] = dl.depth;
+            int m = 0;
+            for (int j = 0; j < n_plp; ++j) {
+                const bam_pileup1_t *p = plp[0] + j; // DON'T modfity plp[][] unless you really know
+                if (p->is_del || p->is_refskip) ++m; // having dels or refskips at tid:pos
+            }
+
+            int32_t rpos = pos+1;
+            uint32_t cnt = n_plp - m;
+
+            if (last.ref == tid) {
+                // Set the depth
+                depths[rpos] = cnt;
             }
             else {
-                last = dl;
+
+                last.ref = tid;
+                last.pos = rpos;
+                last.depth = cnt;
                 break;
             }
         }
         
+        free(plp);
+        
         return true;
-    }
-    
-    string getCurrentRefName() const {
-        return last.ref;
     }
     
 };

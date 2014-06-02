@@ -311,7 +311,7 @@ public:
         SamHeader header = reader.GetHeader();
         RefVector refs = reader.GetReferenceData();
         
-        DepthParser dp(depthFile, &refs);
+        DepthParser dp(alignmentsFile);
         
         vector<uint32_t> batch;
         
