@@ -54,6 +54,8 @@ private:
     double meanQueryLength;
     int32_t maxQueryLength;
     
+    RefVector refs;
+    
     
     size_t createJunctionGroup(size_t index, vector<shared_ptr<Junction> >& group) {
         
@@ -132,6 +134,10 @@ public:
         this->minQueryLength = min;
         this->meanQueryLength = mean;
         this->maxQueryLength = max;
+    }
+    
+    void setRefs(RefVector refs) {
+        this->refs = refs;
     }
     
     /**
@@ -302,7 +308,7 @@ public:
              << " - Calculating per base depth and junction coverage ... ";
         cout.flush();
         
-        DepthParser dp(alignmentsFile);
+        DepthParser dp(alignmentsFile, strandSpecific);
         
         vector<uint32_t> batch;
         
@@ -373,6 +379,8 @@ public:
         
         string junctionReportPath = outputPrefix + ".junctions.txt";
         string junctionFilePath = outputPrefix + ".junctions.tab";
+        string junctionGFFPath = outputPrefix + ".junctions.gff3";
+        string junctionBEDPath = outputPrefix + ".junctions.bed";
         
         cout << " - Saving junction report to: " << junctionReportPath << " ... ";
         cout.flush();
@@ -390,6 +398,24 @@ public:
         ofstream junctionFileStream(junctionFilePath.c_str());
         junctionFileStream << (*this) << endl;
         junctionFileStream.close();
+        
+        cout << "done." << endl
+             << " - Saving GFF file to: " << junctionGFFPath << " ... ";
+        cout.flush();
+        
+        // Print junction stats to file
+        ofstream junctionGFFStream(junctionGFFPath.c_str());
+        outputGFF(junctionGFFStream);
+        junctionGFFStream.close();
+        
+        cout << "done." << endl
+             << " - Saving BED file to: " << junctionBEDPath << " ... ";
+        cout.flush();
+        
+        // Print junction stats to file
+        ofstream junctionBEDStream(junctionBEDPath.c_str());
+        outputBED(junctionBEDStream);
+        junctionBEDStream.close();
         
         cout << "done." << endl;
     }
@@ -418,6 +444,10 @@ public:
     
     void outputGFF(std::ostream &strm) {
         
+        uint64_t i = 0;
+        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
+            j->outputGFF(strm, i++, refs);
+        }
     }
     
     void outputGTF(std::ostream &strm) {
@@ -425,7 +455,11 @@ public:
     }
     
     void outputBED(std::ostream &strm) {
-        
+        strm << "track name=\"junctions\"" << endl;
+        uint64_t i = 0;
+        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
+            j->outputBED(strm, i++, refs);
+        }
     }
     
     void load(string junctionTabFile) {

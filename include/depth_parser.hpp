@@ -51,6 +51,7 @@ private:
  
     // Path to the original genome file in fasta format
     string bamFile;
+    bool strandSpecific;
     
     bam_header_t *header;
     aux_t** data;
@@ -77,7 +78,7 @@ protected:
     
 public:
     
-    DepthParser(string _bamFile) : bamFile(_bamFile) {
+    DepthParser(string _bamFile, bool _strandSpecific) : bamFile(_bamFile), strandSpecific(_strandSpecific) {
     
         data = (aux_t**)calloc(1, sizeof(aux_t**));
         data[0] = (aux_t*)calloc(1, sizeof(aux_t));

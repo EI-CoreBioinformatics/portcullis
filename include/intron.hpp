@@ -186,7 +186,6 @@ public:
         return min(lAnchor, rAnchor);        
     }
     
-    
     void outputDescription(std::ostream &strm) {
         strm << "RefId: " << refId
              << "; Start: " << start

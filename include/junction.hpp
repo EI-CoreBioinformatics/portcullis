@@ -610,6 +610,7 @@ public:
         int32_t pos = ba.Position;
         uint16_t mismatches = 0;
         int32_t length = 0;
+        bool inRegion = false;
         
         BOOST_FOREACH(CigarOp op, ba.CigarData) {
            
@@ -617,12 +618,17 @@ public:
                 break;
             }
             
+            inRegion = pos >= start;                
+            
             if (BamUtils::opFollowsReference(op.Type)) {
+                
+                if (inRegion)
+                    length += op.Length;
+
                 pos += op.Length;
-                length += op.Length;
             }
             
-            if (op.Type == 'X') {
+            if (inRegion && op.Type == 'X') {
                 mismatches++;
             }
         } 
@@ -932,6 +938,13 @@ public:
      * @param strm
      */
     void outputDescription(std::ostream &strm) {
+        outputDescription(strm, "\n");
+    }
+    /**
+     * Complete human readable description of this junction
+     * @param strm
+     */
+    void outputDescription(std::ostream &strm, string delimiter) {
         strm << "Location: ";
         
         if (intron != NULL) {
@@ -941,30 +954,122 @@ public:
             strm << "No location set";
         }
         
-        strm << endl
-             << "Flank limits: (" << leftFlankStart << ", " << rightFlankEnd << ")" << endl
-             << "Junction Predictions:" << endl
-             << "1:  Strand: " << strandToString(predictedStrand) << endl
-             << "Junction Metrics:" << endl
-             << "1:  # Junction Alignments: " << getNbJunctionAlignments() << endl
-             << "2:  Has Canonical Splice Sites: " << boolalpha << canonicalSpliceSites << "; Sequences: (" << da1 << " " << da2 << ")" << endl
-             << "3:  Intron Size: " << getIntronSize() << endl
-             << "4:  MaxMinAnchor: " << maxMinAnchor << endl
-             << "5:  DiffAnchor: " << diffAnchor << endl
-             << "6:  Entropy: " << entropy << endl
-             << "7:  # Distinct Anchors: " << nbDistinctAnchors << endl
-             << "8:  # Distinct Alignments: " << nbDistinctAlignments << endl
-             << "9:  # Reliable (MP >=" << MAP_QUALITY_THRESHOLD << ") Alignments: " << nbReliableAlignments << endl
-             << "10: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << endl
-             << "11: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << endl
-             << "12: MaxMMES: " << maxMMES << endl
-             << "13: Hamming Distance 5': " << hammingDistance5p << endl
-             << "14: Hamming Distance 3': " << hammingDistance3p << endl
-             << "15: Coverage: " << coverage << endl
-             << "16: Unique Junction: " << boolalpha << uniqueJunction << endl
-             << "17: Primary Junction: " << boolalpha << primaryJunction << endl
-             << "18: Multiple mapping score: " << multipleMappingScore << endl
-             << endl;                
+        strm << delimiter
+             << "Flank limits: (" << leftFlankStart << ", " << rightFlankEnd << ")" << delimiter
+             << "Junction Predictions:" << delimiter
+             << "1:  Strand: " << strandToString(predictedStrand) << delimiter
+             << "Junction Metrics:" << delimiter
+             << "1:  # Junction Alignments: " << getNbJunctionAlignments() << delimiter
+             << "2:  Has Canonical Splice Sites: " << boolalpha << canonicalSpliceSites << "; Sequences: (" << da1 << " " << da2 << ")" << delimiter
+             << "3:  Intron Size: " << getIntronSize() << delimiter
+             << "4:  MaxMinAnchor: " << maxMinAnchor << delimiter
+             << "5:  DiffAnchor: " << diffAnchor << delimiter
+             << "6:  Entropy: " << entropy << delimiter
+             << "7:  # Distinct Anchors: " << nbDistinctAnchors << delimiter
+             << "8:  # Distinct Alignments: " << nbDistinctAlignments << delimiter
+             << "9:  # Reliable (MP >=" << MAP_QUALITY_THRESHOLD << ") Alignments: " << nbReliableAlignments << delimiter
+             << "10: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
+             << "11: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
+             << "12: MaxMMES: " << maxMMES << delimiter
+             << "13: Hamming Distance 5': " << hammingDistance5p << delimiter
+             << "14: Hamming Distance 3': " << hammingDistance3p << delimiter
+             << "15: Coverage: " << coverage << delimiter
+             << "16: Unique Junction: " << boolalpha << uniqueJunction << delimiter
+             << "17: Primary Junction: " << boolalpha << primaryJunction << delimiter
+             << "18: Multiple mapping score: " << multipleMappingScore << delimiter;
+    }
+    
+    /**
+     * Complete human readable description of this junction
+     * @param strm
+     */
+    void outputGFF(std::ostream &strm, uint32_t id, RefVector& refs) {
+        
+        // Use intron strand if known, otherwise use the predicted strand,
+        // if predicted strand is also unknown then use "." to indicated unstranded
+        const char strand = (intron->strand == UNKNOWN ?
+                                predictedStrand == UNKNOWN ?
+                                    '.' :
+                                    strandToChar(predictedStrand) :
+                                strandToChar(intron->strand));
+        
+        string juncId = string("junc_") + lexical_cast<string>(id);
+        string refName = refs[intron->refId].RefName;
+        
+        // Output junction parent
+        strm << refName << "\t"
+             << "portculis" << "\t"     // source
+             << "junction" << "\t"      // type (may change later)
+             << leftFlankStart << "\t"  // start
+             << rightFlankEnd << "\t"   // end
+             << "0.0" << "\t"           // No score for the moment
+             << strand << "\t"          // strand
+             << "." << "\t"             // Just put "." for the phase
+             << "ID=" << juncId << ";"
+             << "Note=";
+        outputDescription(strm, "%0A");
+        strm << endl;
+
+        // Output left exonic region
+        strm << refName << "\t"
+             << "portculis" << "\t"
+             << "partial_exon" << "\t"
+             << leftFlankStart << "\t"
+             << (intron->start - 1) << "\t"
+             << "0.0" << "\t"
+             << strand << "\t"
+             << "." << "\t"
+             << "ID=" << juncId << "_left" << ";"
+             << "Parent=" << juncId << endl;
+                
+        // Output right exonic region
+        strm << refName << "\t"
+             << "portculis" << "\t"
+             << "partial_exon" << "\t"
+             << (intron->end + 1) << "\t"
+             << rightFlankEnd << "\t"
+             << "0.0" << "\t"
+             << strand << "\t"
+             << "." << "\t"
+             << "ID=" << juncId << "_right" << ";"
+             << "Parent=" << juncId << endl;
+    }
+    
+    /**
+     * Complete human readable description of this junction
+     * @param strm
+     */
+    void outputBED(std::ostream &strm, uint32_t id, RefVector& refs) {
+        
+        // Use intron strand if known, otherwise use the predicted strand,
+        // if predicted strand is also unknown then use "." to indicated unstranded
+        const char strand = (intron->strand == UNKNOWN ?
+                                predictedStrand == UNKNOWN ?
+                                    '.' :
+                                    strandToChar(predictedStrand) :
+                                strandToChar(intron->strand));
+        
+        string juncId = string("junc_") + lexical_cast<string>(id);
+        string refName = refs[intron->refId].RefName;
+        
+        int32_t sz1 = intron->start - leftFlankStart;
+        int32_t sz2 = rightFlankEnd - intron->end;
+        string blockSizes = lexical_cast<string>(sz1) + "," + lexical_cast<string>(sz2);
+        string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end+1 - leftFlankStart);
+        
+        // Output junction parent
+        strm << refName << "\t"         // chrom
+             << leftFlankStart << "\t"  // chromstart
+             << rightFlankEnd << "\t"   // chromend
+             << juncId << "\t"          // name
+             << "0.0" << "\t"           // No score for the moment
+             << strand << "\t"          // strand
+             << intron->start << "\t"   // thickstart
+             << intron->end << "\t"     // thickend
+             << "255,0,0" << "\t"       // Just use red for the moment
+             << "2" << "\t"             // 2 blocks: Left and right block
+             << blockSizes << "\t"
+             << blockStarts << endl;        
     }
     
     

@@ -170,6 +170,7 @@ protected:
         header = reader.GetHeader();
         refs = reader.GetReferenceData();
 
+        junctionSystem.setRefs(refs);
        
         cout << " - Reading alignments from: " << sortedBamFile << endl;
         
@@ -288,11 +289,11 @@ public:
             // Count the number of alignments found in upstream and downstream flanking 
             // regions for each junction
             cout << "Stage 3: Analyse alignments around junctions:" << endl;
-            junctionSystem.findFlankingAlignments(prepData->getSortedBamFilePath(), strandSpecific);
+            junctionSystem.findFlankingAlignments(getUnsplicedBamFile(), strandSpecific);
         }
 
         cout << "Stage 4: Calculating junction coverage:" << endl;
-        junctionSystem.calcCoverage(prepData->getSortedBamFilePath(), strandSpecific);
+        junctionSystem.calcCoverage(getUnsplicedBamFile(), strandSpecific);
             
         cout << "Stage 5: Calculating junction status flags:" << endl;
         junctionSystem.calcJunctionStats();
