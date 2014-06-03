@@ -280,7 +280,7 @@ public:
         cout << "Stage 2: Scanning reference sequences:" << endl;
         GenomeMapper gmap(prepData->getGenomeFilePath());
         gmap.loadFastaIndex();
-        uint64_t daSites = junctionSystem.scanReference(&gmap, refs);
+        junctionSystem.scanReference(&gmap, refs);
         
         if (fast) {
             cout << "Stage 3: skipped due to user request to run in fast mode" << endl << endl;

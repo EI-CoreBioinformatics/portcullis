@@ -233,32 +233,46 @@ public:
      * @param refs
      * @return 
      */
-    uint64_t scanReference(GenomeMapper* genomeMapper, RefVector& refs) {
+    void scanReference(GenomeMapper* genomeMapper, RefVector& refs) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");        
         
         cout << " - Acquiring junction sequence sites from genome ... ";
         cout.flush();
         
-        uint64_t daSites = 0;
+        uint64_t canonicalSites = 0;
+        uint64_t semiCanonicalSites = 0;
+        uint64_t nonCanonicalSites = 0;
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
             
-            if (j->processJunctionWindow(genomeMapper, refs)) {
-                daSites++;
-            }            
+            CanonicalSS css = j->processJunctionWindow(genomeMapper, refs);
+            
+            switch(css) {
+                case CANONICAL:
+                    canonicalSites++;
+                    break;
+                case SEMI_CANONICAL:
+                    semiCanonicalSites++;
+                    break;
+                case NO:
+                    nonCanonicalSites++;
+                    break;
+            }
+                     
         }
         
         cout << "done." << endl
-             << " - Found " << daSites << " valid donor / acceptor sites from " << junctionList.size() << " junctions." << endl;
-        
-        return daSites;
+             << " - Found " << canonicalSites << " canonical splice sites." << endl
+             << " - Found " << semiCanonicalSites << " semi-canonical splice sites." << endl
+             << " - Found " << nonCanonicalSites << " non-canonical splice sites." << endl;
     }
     
     void findFlankingAlignments(string alignmentsFile, bool strandSpecific) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
-        cout << " - Acquiring all alignments in each junction's vicinity ... ";
+        cout << " - Using unspliced alignments file: " << alignmentsFile << endl
+             << " - Acquiring all alignments in each junction's vicinity ... ";
         cout.flush();
                 
         BamReader reader;

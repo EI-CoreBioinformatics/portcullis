@@ -338,7 +338,7 @@ public:
     }
         
     
-    int32_t processJunctionWindow(GenomeMapper* genomeMapper, RefVector& refs) {
+    CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper, RefVector& refs) {
         
         if (intron == NULL) 
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -362,7 +362,7 @@ public:
         // Process the predicted donor / acceptor regions and update junction
         string daSeq1 = region.substr(intron->start - leftFlankStart, 2);
         string daSeq2 = region.substr(intron->end - 2 - leftFlankStart, 2);
-        bool validDA = setDonorAndAcceptorMotif(daSeq1, daSeq2);
+        CanonicalSS validDA = setDonorAndAcceptorMotif(daSeq1, daSeq2);
            
         // Create strings for hamming analysis
         calcHammingScores(region);
