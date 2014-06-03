@@ -17,10 +17,12 @@
 
 #pragma once
 
+#include "bam_utils.hpp"
 #include "intron.hpp"
 #include "junction.hpp"
 #include "genome_mapper.hpp"
 #include "depth_parser.hpp"
+using portculis::bamtools::BamUtils;
 using portculis::DepthParser;
 using portculis::Intron;
 using portculis::Junction;
@@ -55,6 +57,7 @@ private:
     int32_t maxQueryLength;
     
     RefVector refs;
+    SplicedAlignmentMap splicedAlignmentMap;
     
     
     size_t createJunctionGroup(size_t index, vector<shared_ptr<Junction> >& group) {
@@ -222,6 +225,13 @@ public:
             }
         }
         
+        // Record alignment name in map
+        if (foundJunction) {            
+            
+            string name = BamUtils::deriveName(al);
+            splicedAlignmentMap[name]++;
+        }
+        
         return foundJunction;        
     }
     
@@ -381,7 +391,7 @@ public:
         cout.flush();
         
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
-            j->calcAllRemainingMetrics(meanQueryLength);
+            j->calcAllRemainingMetrics(splicedAlignmentMap);
         }
         
         cout << "done." << endl;

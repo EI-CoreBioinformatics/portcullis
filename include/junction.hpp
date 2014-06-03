@@ -32,8 +32,10 @@ using std::vector;
 #include <boost/functional/hash.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/unordered_map.hpp>
 using boost::lexical_cast;
 using boost::shared_ptr;
+typedef boost::unordered_map<string, uint16_t> SplicedAlignmentMap;
 
 #include <api/BamAlignment.h>
 #include <utils/bamtools_pileup_engine.h>
@@ -415,16 +417,14 @@ public:
     /**
      * Call this method to recalculate all junction metrics based on the current location
      * and alignment information present in this junction
-     * 
-     * @param readLength
      */
-    void calcAllRemainingMetrics(double readLength) {
+    void calcAllRemainingMetrics(SplicedAlignmentMap& map) {
        
         calcAnchorStats();      // Metrics 5 and 7
         calcEntropy();          // Metric 6
         calcAlignmentStats();   // Metrics 8 and 9
         calcMaxMMES();          // Metric 12
-        calcMultipleMappingScore(); // Metric 18
+        calcMultipleMappingScore(map); // Metric 18
     }
     
     /**
@@ -660,14 +660,16 @@ public:
     /**
      * Calculates metric 18.  Multiple mapping score
      */
-    void calcMultipleMappingScore() {
+    void calcMultipleMappingScore(SplicedAlignmentMap& map) {
         
         size_t N = this->getNbJunctionAlignments();
         
         uint32_t M = 0;
         BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
             
-            M += 1;  // Number of multiple splitting patterns
+            string name = BamUtils::deriveName(ba);
+            
+            M += map[name];  // Number of multiple splitting patterns
         }
         
         this->multipleMappingScore = (double)N / (double)M;
@@ -1017,10 +1019,9 @@ public:
      * @param strm
      */
     void outputDescription(std::ostream &strm, string delimiter) {
-        strm << "Location: ";
         
         if (intron != NULL) {
-            intron->outputDescription(strm);
+            intron->outputDescription(strm, delimiter);
         }
         else {
             strm << "No location set";
@@ -1077,9 +1078,8 @@ public:
              << "0.0" << "\t"           // No score for the moment
              << strand << "\t"          // strand
              << "." << "\t"             // Just put "." for the phase
-             << "ID=" << juncId << ";"
-             << "Note=";
-        outputDescription(strm, "%0A");
+             << "ID=" << juncId << ";";
+        outputDescription(strm, ";");
         strm << endl;
 
         // Output left exonic region

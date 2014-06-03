@@ -159,6 +159,17 @@ public:
                 return false;
         }
     }
+    
+    static string deriveName(const BamAlignment& al) {
+        
+        return al.IsPaired() ? 
+                al.Name + (al.IsFirstMate() ? 
+                            "_R1" :
+                            al.IsSecondMate() ? 
+                                "_R2" :
+                                "_R?") :
+                al.Name;
+    }
 };
 }    
 }

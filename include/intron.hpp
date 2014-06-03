@@ -187,10 +187,14 @@ public:
     }
     
     void outputDescription(std::ostream &strm) {
-        strm << "RefId: " << refId
-             << "; Start: " << start
-             << "; End: " << end
-             << "; Strand: " << strandToString(strand);
+        outputDescription(strm, "; ");
+    }
+    
+    void outputDescription(std::ostream &strm, string delimiter) {
+        strm << "RefId: " << refId << delimiter
+             << "Start: " << start << delimiter
+             << "End: " << end << delimiter
+             << "Strand: " << strandToString(strand);
     }
     
     friend std::ostream& operator<<(std::ostream &strm, const Intron& l) {
