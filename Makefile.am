@@ -8,7 +8,6 @@ EXTRA_DIST = README.md COPYING AUTHORS
 # FILES NOT TO INSTALL
 dist_noinst_SCRIPTS = autogen.sh clean.sh
 
-
 # SRC DIRS
 SUBDIRS = src tests
 

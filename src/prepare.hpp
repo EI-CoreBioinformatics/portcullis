@@ -41,7 +41,6 @@ using boost::filesystem::symbolic_link_exists;
 
 #include "bam_utils.hpp"
 #include "genome_mapper.hpp"
-#include "variant_mapper.hpp"
 using portculis::bamtools::BamUtils;
 
 
@@ -402,63 +401,6 @@ protected:
         return exists(indexedFile);
     }
     
-    
-    bool bamPileup() {
-        
-        auto_cpu_timer timer(1, " - BAM Pileup - Wall time taken: %ws\n\n");
-        
-        const string sortedBam = output->getSortedBamFilePath();
-        const string genomeFile = output->getGenomeFilePath();
-        string pileupFile = output->getBcfFilePath();
-        
-        bool pileupFileExists = exists(pileupFile);
-        
-        if (pileupFileExists) {
-            if (verbose) cout << "Pre-piled-up file detected: " << pileupFile << endl;            
-        }
-        else {
-            
-            if (verbose) {
-                cout << "Piling up alignments from " << sortedBam << " ... " << endl;
-            }
-            
-            // Create BAM pileup
-            BamUtils::pileupBam(sortedBam, genomeFile, pileupFile);
-            
-        }
-        
-        return exists(pileupFile);
-    }
-
-    bool bcfIndex() {
-        
-        auto_cpu_timer timer(1, " - BCF Index - Wall time taken: %ws\n\n");
-        
-        const string bcfPileups = output->getBcfFilePath();
-        const string bcfIndex = output->getBcfIndexFilePath();
-        
-        bool bcfIndexExists = exists(bcfIndex);
-        
-        if (bcfIndexExists) {
-            if (verbose) cout << "BCF pileup index file detected: " << bcfIndex << endl;            
-        }
-        else {
-            
-            if (verbose) {
-                cout << "Indexing BCF pileup file " << bcfPileups << " ... " << endl;
-            }
-            
-            // Create BCF index
-            VariantMapper(bcfPileups, force, verbose).buildBcfIndex();
-            
-            if (verbose) {
-                cout << "done." << endl
-                     << "BCF index created at: " << bcfIndex << endl;
-            }
-        }
-        
-        return exists(bcfIndex);
-    }
 
 public:
     
@@ -515,17 +457,6 @@ public:
                         "Could not create genome map")));
         }
         
-        /*// Create pileups
-        if (!bamPileup()) {
-            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                    "Could not pileup: ") + output->getSortedBamPath()));
-        }
-        
-        // Create pileup index
-        if (!bcfIndex()) {
-            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                    "Could not create index for: ") + output->getBcfFilePath()));
-        }*/
     }
 
     bool outputDetails() {
