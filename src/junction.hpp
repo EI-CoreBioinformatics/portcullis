@@ -38,7 +38,6 @@ using boost::shared_ptr;
 typedef boost::unordered_map<string, uint16_t> SplicedAlignmentMap;
 
 #include <api/BamAlignment.h>
-#include <utils/bamtools_pileup_engine.h>
 using namespace BamTools;
 
 #include "intron.hpp"

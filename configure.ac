@@ -18,6 +18,9 @@ AC_CONFIG_AUX_DIR([build-aux])
 # Set the macro directory
 AC_CONFIG_MACRO_DIR([m4])
 
+# Add the include directory
+AC_CONFIG_SUBDIRS([include])
+
 # Automake initialisation.  Sets some default flags.  We use 'foreign' because we have a markdown README file.
 # I've only tried this with automake 1.11 and above, so you require at least that version installed on your machine if you want to regenerate 'the Makefile.in's.  If you're looking at this comment in the 'configure' script then this the am__api_version, will be set to whatever I used to create this file.  Or it might be whatever you used if you made it yourself with autoconf (or autoreconf, or the autogen.sh script)
 AM_INIT_AUTOMAKE([1.11 foreign -Wall no-define])
@@ -109,15 +112,15 @@ AC_ARG_WITH([bamtools],
 
 # Update vars for samtools if required
 if test ${SAMTOOLS_PATH} != 0; then
-        SAMTOOLS_CPPFLAGS="-I${SAMTOOLS_PATH}/include"
-        SAMTOOLS_LDFLAGS="-L${SAMTOOLS_PATH}/lib"
+        SAMTOOLS_CPPFLAGS="-I${SAMTOOLS_PATH}/include -I${SAMTOOLS_PATH}/include/bam"
+        SAMTOOLS_LDFLAGS="-L${SAMTOOLS_PATH}/lib -L${SAMTOOLS_PATH}/lib64"
         SAMTOOLS_PATH="${SAMTOOLS_PATH}/bin"
 fi
 
 # Update vars for samtools if required
 if test ${BAMTOOLS_PATH} != 0; then
         BAMTOOLS_CPPFLAGS="-I${BAMTOOLS_PATH}/include"
-        BAMTOOLS_LDFLAGS="-L${BAMTOOLS_PATH}/lib"
+        BAMTOOLS_LDFLAGS="-L${BAMTOOLS_PATH}/lib -L${BAMTOOLS_PATH}/lib64"
 fi
 
 
@@ -137,10 +140,6 @@ AC_CHECK_HEADER([api/BamMultiReader.h], [], [
 
 AC_CHECK_LIB(bam, fai_build, [], [
     AC_MSG_ERROR([Samtools not found. Please ensure that the Samtools include directory can be found on the CPPFLAGS env var. Also check that the Samtools lib directory can be found on the LDFLAGS env var.  Alternatively, you can try the --with-samtools option, which assumes you have an include and lib dir under a samtools build directory.])
-])
-
-AC_CHECK_LIB(bcf, bcf_idx_build, [], [
-    AC_MSG_ERROR([bcftools not found. Please ensure that the Samtools include directory can be found on the CPPFLAGS env var. Also check that the Samtools lib directory can be found on the LDFLAGS env var.  Alternatively, you can try the --with-samtools option, which assumes you have an include and lib dir under a samtools build directory.])
 ])
 
 
