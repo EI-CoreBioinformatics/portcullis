@@ -24,6 +24,7 @@
 #include <boost/filesystem.hpp>
 
 #include <junction.hpp>
+using portculis::CanonicalSS;
 
 using std::cout;
 using std::endl;
@@ -53,19 +54,19 @@ BOOST_AUTO_TEST_CASE(donor_acceptor) {
     shared_ptr<Intron> l2(new Intron(5, 20, 30, portculis::NEGATIVE));
     Junction j2(l2, 10, 40);
     
-    bool res1 = j1.setDonorAndAcceptorMotif("GT", "AG");
-    BOOST_CHECK(res1);
+    CanonicalSS res1 = j1.setDonorAndAcceptorMotif("GT", "AG");
+    BOOST_CHECK(res1 == portculis::CANONICAL);
     
-    bool res2 = j2.setDonorAndAcceptorMotif("CT", "AC");
-    BOOST_CHECK(res2);
+    CanonicalSS res2 = j2.setDonorAndAcceptorMotif("CT", "AC");
+    BOOST_CHECK(res2 == portculis::CANONICAL);
     
     BOOST_CHECK_EXCEPTION(j1.setDonorAndAcceptorMotif("GTA", "AG"), JunctionException, is_critical);
     
-    bool res4 = j1.setDonorAndAcceptorMotif("CT", "AG");
-    BOOST_CHECK(!res4);
+    CanonicalSS res4 = j1.setDonorAndAcceptorMotif("CT", "AG");
+    BOOST_CHECK(res4 != portculis::CANONICAL);
     
-    bool res5 = j1.setDonorAndAcceptorMotif("GT", "AC");
-    BOOST_CHECK(!res5);
+    CanonicalSS res5 = j1.setDonorAndAcceptorMotif("GT", "AC");
+    BOOST_CHECK(res5 != portculis::CANONICAL);
     
     BOOST_CHECK_EXCEPTION(j1.setDonorAndAcceptorMotif("", ""), JunctionException, is_critical);
 }

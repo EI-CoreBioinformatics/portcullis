@@ -80,6 +80,60 @@ const string PREDICTION_NAMES[1] = {
         "P1-strand"
     };
 
+const string CANONICAL_SEQ = "GTAG";
+const string SEMI_CANONICAL_SEQ1 = "ATAC";
+const string SEMI_CANONICAL_SEQ2 = "GCAG";
+
+const string CANONICAL_SEQ_RC = SeqUtils::reverseComplement(CANONICAL_SEQ);
+const string SEMI_CANONICAL_SEQ1_RC = SeqUtils::reverseComplement(SEMI_CANONICAL_SEQ1);
+const string SEMI_CANONICAL_SEQ2_RC = SeqUtils::reverseComplement(SEMI_CANONICAL_SEQ2);
+
+enum CanonicalSS {
+    CANONICAL,
+    SEMI_CANONICAL,
+    NO
+};
+
+static CanonicalSS cssFromChar(char css) {
+    switch(css) {
+        case 'C':
+            return CANONICAL;
+        case 'S':
+            return SEMI_CANONICAL;
+        case 'N':
+            return NO;
+    }
+
+    return NO;
+}
+
+static char cssToChar(CanonicalSS css) {
+    
+    switch(css) {
+        case CANONICAL:
+            return 'C';
+        case SEMI_CANONICAL:
+            return 'S';
+        case NO:
+            return 'N';
+    }
+
+    return 'N';
+}
+
+static string cssToString(CanonicalSS css) {
+    
+    switch(css) {
+        case CANONICAL:
+            return "Canonical";
+        case SEMI_CANONICAL:
+            return "Semi-canonical";
+        case NO:
+            return "No";
+    }
+
+    return string("No");
+}
 
 class Junction {
     
@@ -93,7 +147,7 @@ private:
     
     // **** Junction metrics ****
                                                 // Metric 1 (nbReads) derived from size of junction alignment vector
-    bool canonicalSpliceSites;                   // Metric 2
+    CanonicalSS canonicalSpliceSites;           // Metric 2
                                                 // Metric 3 (intron size) calculated via location properties
     int32_t  maxMinAnchor;                      // Metric 4
     int32_t  diffAnchor;                        // Metric 5
@@ -130,7 +184,7 @@ private:
         
         leftFlankStart = _leftFlankStart;
         rightFlankEnd = _rightFlankEnd;
-        canonicalSpliceSites = false;
+        canonicalSpliceSites = NO;
         maxMinAnchor = intron->minAnchorLength(_leftFlankStart, _rightFlankEnd);
         diffAnchor = 0;
         entropy = 0;
@@ -160,15 +214,24 @@ protected:
      * @param seq2
      * @return 
      */
-    bool hasCanonicalSpliceSites(const string& seq1, const string& seq2) {
+    CanonicalSS hasCanonicalSpliceSites(const string& seq1, const string& seq2) {
         
         if (intron == NULL || seq1.size() != 2 || seq2.size() != 2)
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Can't test for valid donor / acceptor when either string are not of length two, or the intron location is not defined")));
         
-        return //intron->strand == POSITIVE ?
-            (seq1 == "GT" && seq2 == "AG") ||
-            (seq1 == "CT" && seq2 == "AC") ;
+        const string seq = string(seq1 + seq2);
+        
+        if (seq == CANONICAL_SEQ || seq == CANONICAL_SEQ_RC) {
+            return CANONICAL;
+        }
+        else if (seq == SEMI_CANONICAL_SEQ1 || seq == SEMI_CANONICAL_SEQ1_RC ||
+                 seq == SEMI_CANONICAL_SEQ2 || seq == SEMI_CANONICAL_SEQ2_RC) {
+            return SEMI_CANONICAL;
+        }
+        else {
+            return NO;
+        }
     }
     
     Strand predictedStrandFromSpliceSites(const string& seq1, const string& seq2) {
@@ -177,10 +240,19 @@ protected:
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Can't test donor / acceptor when either string are not of length two")));
         
-        if (seq1 == "GT" && seq2 == "AG") {
+        const string seq = string(seq1 + seq2);
+        
+        if (seq == CANONICAL_SEQ) {
             return POSITIVE;
         }
-        else if (seq1 == "CT" && seq2 == "AC") {
+        else if (seq == CANONICAL_SEQ_RC) {
+            return NEGATIVE;
+        }
+        // Check for these after canonicals for performance reasons
+        else if (seq == SEMI_CANONICAL_SEQ1 || seq == SEMI_CANONICAL_SEQ2) {
+            return POSITIVE;
+        }
+        else if (seq == SEMI_CANONICAL_SEQ1_RC || seq == SEMI_CANONICAL_SEQ2_RC) {
             return NEGATIVE;
         }
         else {
@@ -218,11 +290,11 @@ public:
         this->junctionAlignments.push_back(al);                        
     }
     
-    void setDonorAndAcceptorMotif(bool donorAndAcceptorMotif) {
-        this->canonicalSpliceSites = donorAndAcceptorMotif;
+    void setDonorAndAcceptorMotif(CanonicalSS canonicalSS) {
+        this->canonicalSpliceSites = canonicalSS;
     }
     
-    bool setDonorAndAcceptorMotif(string seq1, string seq2) {
+    CanonicalSS setDonorAndAcceptorMotif(string seq1, string seq2) {
         this->da1 = seq1;
         this->da2 = seq2;
         this->canonicalSpliceSites = hasCanonicalSpliceSites(seq1, seq2);
@@ -960,7 +1032,7 @@ public:
              << "1:  Strand: " << strandToString(predictedStrand) << delimiter
              << "Junction Metrics:" << delimiter
              << "1:  # Junction Alignments: " << getNbJunctionAlignments() << delimiter
-             << "2:  Has Canonical Splice Sites: " << boolalpha << canonicalSpliceSites << "; Sequences: (" << da1 << " " << da2 << ")" << delimiter
+             << "2:  Canonical?: " << boolalpha << cssToString(canonicalSpliceSites) << "; Sequences: (" << da1 << " " << da2 << ")" << delimiter
              << "3:  Intron Size: " << getIntronSize() << delimiter
              << "4:  MaxMinAnchor: " << maxMinAnchor << delimiter
              << "5:  DiffAnchor: " << diffAnchor << delimiter
@@ -1087,7 +1159,7 @@ public:
                     << j.da2 << "\t"
                     << strandToChar(j.predictedStrand) << "\t"
                     << j.getNbJunctionAlignments() << "\t"
-                    << j.canonicalSpliceSites << "\t"
+                    << cssToChar(j.canonicalSpliceSites) << "\t"
                     << j.getIntronSize() << "\t"
                     << j.maxMinAnchor << "\t"
                     << j.diffAnchor << "\t"
@@ -1152,7 +1224,7 @@ public:
         j->setPredictedStrand(strandFromChar(parts[9][0]));
                 
         // Add metrics to junction
-        j->setDonorAndAcceptorMotif(lexical_cast<bool>(parts[11]));
+        j->setDonorAndAcceptorMotif(cssFromChar(parts[11][0]));
         j->setMaxMinAnchor(lexical_cast<int32_t>(parts[13]));
         j->setDiffAnchor(lexical_cast<int32_t>(parts[14]));
         j->setEntropy(lexical_cast<double>(parts[15]));

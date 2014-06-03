@@ -288,11 +288,11 @@ public:
         else {
             // Count the number of alignments found in upstream and downstream flanking 
             // regions for each junction
-            cout << "Stage 3: Analyse alignments around junctions:" << endl;
+            cout << "Stage 3: Analysing unspliced alignments around junctions:" << endl;
             junctionSystem.findFlankingAlignments(getUnsplicedBamFile(), strandSpecific);
         }
 
-        cout << "Stage 4: Calculating junction coverage:" << endl;
+        cout << "Stage 4: Calculating unspliced alignment coverage around junctions:" << endl;
         junctionSystem.calcCoverage(getUnsplicedBamFile(), strandSpecific);
             
         cout << "Stage 5: Calculating junction status flags:" << endl;
