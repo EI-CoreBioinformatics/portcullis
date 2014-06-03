@@ -21,21 +21,37 @@
 #endif
 #include <boost/test/unit_test.hpp>
 
-#include <junction_builder.hpp>
+#include <boost/filesystem.hpp>
 
-BOOST_AUTO_TEST_SUITE(junction_builder)
+#include <bam_utils.hpp>
 
-BOOST_AUTO_TEST_CASE(constructor)
-{
-    /*portculis::Portculis portculis(
-                        "tests/resources/ecoli.bam",
-                        "tests/resources/ecoli.fa",
-                        "tests/tmp/portculis/constructor1",
-                        1,
-                        false,
-                        false);*/
+#include "seq_utils.hpp"
 
-    BOOST_CHECK(true);
+using std::cout;
+using std::endl;
+
+using portculis::SeqUtils;
+
+BOOST_AUTO_TEST_SUITE(seq_utils)
+
+BOOST_AUTO_TEST_CASE(hamming) {
+    
+    BOOST_CHECK(SeqUtils::hammingDistance("ATGC", "ATGC") == 0);
+    BOOST_CHECK(SeqUtils::hammingDistance("ATGC", "ATGG") == 1);
+    BOOST_CHECK(SeqUtils::hammingDistance("ATGC", "CGTA") == 4);
 }
+
+
+BOOST_AUTO_TEST_CASE(rev) {
+    
+    string seq("ATGC");
+    BOOST_CHECK(SeqUtils::reverseSeq(seq) == "CGTA");
+}
+
+BOOST_AUTO_TEST_CASE(rev_comp) {
+    
+    BOOST_CHECK(SeqUtils::reverseComplement("ATGC") == "GCAT");    
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
