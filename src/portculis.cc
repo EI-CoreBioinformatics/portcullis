@@ -43,8 +43,10 @@ namespace po = boost::program_options;
 #include "junction_builder.hpp"
 #include "genome_mapper.hpp"
 #include "prepare.hpp"
+#include "filter.hpp"
 using portculis::JunctionBuilder;
 using portculis::Prepare;
+using portculis::Filter;
 
 typedef boost::error_info<struct PortculisError,string> PortculisErrorInfo;
 struct PortculisException: virtual boost::exception, virtual std::exception { };
@@ -169,7 +171,7 @@ int main(int argc, char *argv[]) {
             JunctionBuilder::main(modeArgC, modeArgV);
         }
         else if (mode == FILTER) {
-            
+            Filter::main(modeArgC, modeArgV);
         }
         else if (mode == FULL) {
             

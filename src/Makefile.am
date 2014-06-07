@@ -17,6 +17,7 @@ portculis_SOURCES =	bam_utils.hpp \
 			junction_builder.hpp \
 			junction_system.hpp \
 			prepare.hpp \
+			filter.hpp \
 			seq_utils.hpp \
 			portculis.cc
                 
