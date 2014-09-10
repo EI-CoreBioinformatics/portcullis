@@ -1126,7 +1126,7 @@ public:
         int32_t sz1 = intron->start - leftFlankStart;
         int32_t sz2 = rightFlankEnd - intron->end;
         string blockSizes = lexical_cast<string>(sz1) + "," + lexical_cast<string>(sz2);
-        string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end+1 - leftFlankStart);
+        string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end - leftFlankStart);
         
         // Output junction parent
         strm << refName << "\t"         // chrom
