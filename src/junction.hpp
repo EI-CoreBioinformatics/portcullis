@@ -1133,7 +1133,7 @@ public:
              << leftFlankStart << "\t"  // chromstart
              << rightFlankEnd << "\t"   // chromend
              << juncId << "\t"          // name
-             << "0.0" << "\t"           // No score for the moment
+             << this->getNbJunctionAlignments() << "\t"           // Use the depth as the score for the moment
              << strand << "\t"          // strand
              << intron->start << "\t"   // thickstart
              << intron->end << "\t"     // thickend
