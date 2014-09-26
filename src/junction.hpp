@@ -92,7 +92,8 @@ const string SEMI_CANONICAL_SEQ2_RC = SeqUtils::reverseComplement(SEMI_CANONICAL
 enum CanonicalSS {
     CANONICAL,
     SEMI_CANONICAL,
-    NO
+    NO,
+    ALL
 };
 
 static CanonicalSS cssFromChar(char css) {
@@ -786,6 +787,10 @@ public:
      * @return 
      */
     bool hasCanonicalSpliceSites() const {
+        return this->canonicalSpliceSites;
+    }
+    
+    CanonicalSS getSpliceSiteType() const {
         return this->canonicalSpliceSites;
     }
     

@@ -404,7 +404,10 @@ public:
         string junctionReportPath = outputPrefix + ".junctions.txt";
         string junctionFilePath = outputPrefix + ".junctions.tab";
         string junctionGFFPath = outputPrefix + ".junctions.gff3";
-        string junctionBEDPath = outputPrefix + ".junctions.bed";
+        string junctionBEDAllPath = outputPrefix + ".junctions.all.bed";
+        string junctionBEDCanonicalPath = outputPrefix + ".junctions.canonical.bed";
+        string junctionBEDSemiCanonicalPath = outputPrefix + ".junctions.semicanonical.bed";
+        string junctionBEDNovelPath = outputPrefix + ".junctions.novel.bed";
         
         cout << " - Saving junction report to: " << junctionReportPath << " ... ";
         cout.flush();
@@ -432,14 +435,32 @@ public:
         outputGFF(junctionGFFStream);
         junctionGFFStream.close();
         
+        // Output BED files
+        
         cout << "done." << endl
-             << " - Saving BED file to: " << junctionBEDPath << " ... ";
+             << " - Saving BED file with all junctions to: " << junctionBEDAllPath << " ... ";
         cout.flush();
         
-        // Print junction stats to file
-        ofstream junctionBEDStream(junctionBEDPath.c_str());
-        outputBED(junctionBEDStream);
-        junctionBEDStream.close();
+        // Print junctions in BED format to file
+        outputBED(junctionBEDAllPath, ALL);
+        
+        cout << "done." << endl
+             << " - Saving BED file with canonical junctions to: " << junctionBEDCanonicalPath << " ... ";
+        cout.flush();
+        
+        outputBED(junctionBEDCanonicalPath, CANONICAL);
+        
+        cout << "done." << endl
+             << " - Saving BED file with semi canonical junctions to: " << junctionBEDSemiCanonicalPath << " ... ";
+        cout.flush();
+        
+        outputBED(junctionBEDSemiCanonicalPath, SEMI_CANONICAL);
+        
+        cout << "done." << endl
+             << " - Saving BED file with non-canonical (novel) junctions to: " << junctionBEDNovelPath << " ... ";
+        cout.flush();
+        
+        outputBED(junctionBEDNovelPath, NO);
         
         cout << "done." << endl;
     }
@@ -478,11 +499,20 @@ public:
         
     }
     
-    void outputBED(std::ostream &strm) {
+    void outputBED(string& path, CanonicalSS type) {
+        
+        ofstream junctionBEDStream(path.c_str());
+        outputBED(junctionBEDStream, type);
+        junctionBEDStream.close();
+    }
+    
+    void outputBED(std::ostream &strm, CanonicalSS type) {
         strm << "track name=\"junctions\"" << endl;
         uint64_t i = 0;
         BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
-            j->outputBED(strm, i++, refs);
+            if (type == ALL || j->getSpliceSiteType() == type) {
+                j->outputBED(strm, i++, refs);
+            }
         }
     }
     
