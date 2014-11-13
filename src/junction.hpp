@@ -20,22 +20,21 @@
 #include <math.h>
 #include <string>
 #include <vector>
+#include <memory>
+#include <unordered_map>
 using std::endl;
 using std::min;
 using std::max;
 using std::string;
 using std::size_t;
 using std::vector;
+using std::shared_ptr;
+
+typedef std::unordered_map<string, uint16_t> SplicedAlignmentMap;
 
 #include <boost/exception/all.hpp>
-#include <boost/foreach.hpp>
-#include <boost/functional/hash.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/unordered_map.hpp>
 using boost::lexical_cast;
-using boost::shared_ptr;
-typedef boost::unordered_map<string, uint16_t> SplicedAlignmentMap;
 
 #include <api/BamAlignment.h>
 using namespace BamTools;
@@ -218,7 +217,7 @@ protected:
      */
     CanonicalSS hasCanonicalSpliceSites(const string& seq1, const string& seq2) {
         
-        if (intron == NULL || seq1.size() != 2 || seq2.size() != 2)
+        if (intron == nullptr || seq1.size() != 2 || seq2.size() != 2)
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Can't test for valid donor / acceptor when either string are not of length two, or the intron location is not defined")));
         
@@ -342,7 +341,7 @@ public:
     
     CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper, RefVector& refs) {
         
-        if (intron == NULL) 
+        if (intron == nullptr) 
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Can't find genomic sequence for this junction as no intron is defined")));
                 
@@ -442,7 +441,7 @@ public:
         uint32_t nbDistinctLeftAnchors = 0, nbDistinctRightAnchors = 0;
         int32_t lastLStart = -1, lastREnd = -1;
                 
-        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+        for(BamAlignment ba : junctionAlignments) {
             
             int32_t lStart = max(ba.Position, leftFlankStart);
             int32_t rEnd = min(ba.Position + (int32_t)ba.AlignedBases.size(), rightFlankEnd);
@@ -486,7 +485,7 @@ public:
         
         vector<int32_t> junctionPositions;
         
-        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+        for(BamAlignment ba : junctionAlignments) {
             junctionPositions.push_back(ba.Position);
         }
         
@@ -564,7 +563,7 @@ public:
         nbDistinctAlignments = 0;
         nbReliableAlignments = 0;
         
-        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+        for(BamAlignment ba : junctionAlignments) {
             
             int32_t start = ba.Position;
             int32_t end = ba.Position + ba.AlignedBases.size();
@@ -644,7 +643,7 @@ public:
         
         uint16_t maxmmes = 0;
         
-        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+        for(BamAlignment ba : junctionAlignments) {
             
             uint16_t leftMM = calcMinimalMatchInCigarDataSubset(ba, leftFlankStart, intron->start);
             uint16_t rightMM = calcMinimalMatchInCigarDataSubset(ba, intron->end, rightFlankEnd);
@@ -665,7 +664,7 @@ public:
         size_t N = this->getNbJunctionAlignments();
         
         uint32_t M = 0;
-        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+        for(BamAlignment ba : junctionAlignments) {
             
             string name = BamUtils::deriveName(ba);
             
@@ -686,7 +685,7 @@ public:
         int32_t length = 0;
         bool inRegion = false;
         
-        BOOST_FOREACH(CigarOp op, ba.CigarData) {
+        for(CigarOp op : ba.CigarData) {
            
             if (pos > end) {
                 break;
@@ -799,7 +798,7 @@ public:
      * @return 
      */
     int32_t getIntronSize() const {
-        return intron != NULL ? intron->size() : 0;
+        return intron != nullptr ? intron->size() : 0;
     }
     
     /**
@@ -1024,7 +1023,7 @@ public:
      */
     void outputDescription(std::ostream &strm, string delimiter) {
         
-        if (intron != NULL) {
+        if (intron != nullptr) {
             intron->outputDescription(strm, delimiter);
         }
         else {
@@ -1249,5 +1248,8 @@ public:
         return j;
     }
 };
+
+typedef shared_ptr<Junction> JunctionPtr;
+typedef std::vector<shared_ptr<Junction> > JunctionList;
 
 }

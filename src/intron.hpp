@@ -19,14 +19,16 @@
 
 #include <math.h>
 #include <string>
+#include <memory>
+
 using std::min;
 using std::string;
+using std::shared_ptr;
 
 #include <boost/exception/all.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/shared_ptr.hpp>
+#include <boost/functional/hash.hpp>
 using boost::lexical_cast;
-using boost::shared_ptr;
 
 namespace portculis {    
     
@@ -84,6 +86,7 @@ static string strandToString(Strand strand) {
 typedef boost::error_info<struct IntronError,string> IntronErrorInfo;
 struct IntronException: virtual boost::exception, virtual std::exception { };
 
+
 class Intron {
     
     
@@ -101,28 +104,6 @@ public:
         refId(_refId), start(_start), end(_end), strand(_strand) {
     }
 
-    /**
-     * Overload hash_value with Location so that boost know how to use this class
-     * as a key in some kind of hash table
-     * 
-     * @param other
-     * @return 
-     */
-    friend size_t hash_value(const Intron& l)
-    {
-        // Start with a hash value of 0    .
-        std::size_t seed = 0;
-
-        // Modify 'seed' by XORing and bit-shifting in
-        // one member of 'Key' after the other:
-        boost::hash_combine(seed, l.refId);
-        boost::hash_combine(seed, l.start);
-        boost::hash_combine(seed, l.end);
-        boost::hash_combine(seed, l.strand);
-
-        // Return the result.
-        return seed;
-    }
     
     /**
      * Note that equality is determined purely on the ref id and the junction's
@@ -207,4 +188,32 @@ public:
     
 };
 
+/**
+    * Overload hash_value with Location so that boost know how to use this class
+    * as a key in some kind of hash table
+    * 
+    * @param other
+    * @return 
+    */
+struct IntronHasher {
+    
+    size_t operator()(const Intron& l) const
+    {
+       using boost::hash_value;
+       using boost::hash_combine;
+
+       // Start with a hash value of 0    .
+       size_t seed = 0;
+
+       // Modify 'seed' by XORing and bit-shifting in
+       // one member of 'Key' after the other:
+       hash_combine(seed, hash_value(l.refId));
+       hash_combine(seed, hash_value(l.start));
+       hash_combine(seed, hash_value(l.end));
+       hash_combine(seed, hash_value(l.strand));
+
+       // Return the result.
+       return seed;
+    }
+};
 }

@@ -31,7 +31,6 @@ using std::ofstream;
 #include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
 #include <boost/timer/timer.hpp>
-#include <boost/unordered_map.hpp>
 using boost::timer::auto_cpu_timer;
 using boost::lexical_cast;
 namespace po = boost::program_options;
@@ -263,7 +262,7 @@ public:
     
     virtual ~JunctionBuilder() {
 
-        if (prepData != NULL) {
+        if (prepData != nullptr) {
             delete prepData;
         }        
     }

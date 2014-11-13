@@ -256,7 +256,7 @@ protected:
                     cout << "Copying from " << from << " to " << to << " ... ";
                     cout.flush();
                 }
-                copy_file(from, to);
+                //copy_file(from, to, boost::filesystem::copy_option::overwrite_if_exists);
                 if (verbose) cout << "done." << endl;
             }
         }

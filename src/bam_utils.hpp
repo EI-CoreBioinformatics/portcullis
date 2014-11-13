@@ -23,7 +23,6 @@
 using namespace::std;
 
 #include <boost/exception/all.hpp>
-#include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
 using boost::filesystem::exists;
 using boost::lexical_cast;

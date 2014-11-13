@@ -58,12 +58,12 @@ public:
      */
     GenomeMapper(string _genomeFile) : 
         genomeFile(_genomeFile) {
-            fastaIndex = NULL;
+            fastaIndex = nullptr;
     }
     
     virtual ~GenomeMapper() {        
         
-        if (fastaIndex != NULL) {
+        if (fastaIndex != nullptr) {
             fai_destroy(fastaIndex);
         }
         
