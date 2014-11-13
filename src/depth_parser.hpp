@@ -22,17 +22,12 @@
 using std::string;
 using std::vector;
 
-#include <boost/exception/all.hpp>
-
 #include <api/BamReader.h>
 using namespace BamTools;
 
 #include "bam.h"
 
 namespace portculis {
-
-typedef boost::error_info<struct DepthParserError,string> DepthParserErrorInfo;
-struct DepthParserException: virtual boost::exception, virtual std::exception { };
     
 typedef struct {     // auxiliary data structure
 	bamFile fp;      // the file handler
