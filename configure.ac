@@ -96,60 +96,10 @@ AX_BOOST_UNIT_TEST_FRAMEWORK
 BOOST_X_LDFLAGS="${BOOST_FILESYSTEM_LDFLAGS} ${BOOST_PROGRAM_OPTIONS_LDFLAGS} ${BOOST_SYSTEM_LDFLAGS} ${BOOST_TIMER_LDFLAGS}"
 BOOST_LIBS="${BOOST_FILESYSTEM_LIB} ${BOOST_PROGRAM_OPTIONS_LIB} ${BOOST_SYSTEM_LIB} ${BOOST_TIMER_LIB}"
 
-
-
-# Allow users to specify custom directories for samtools and bamtools.  
-# This might save some users from having to set the environment variables manually.
-
-AC_ARG_WITH([samtools],
-        [AS_HELP_STRING([--with-samtools=PREFIX],
-                [Use this if your samtools installation prefix was set to a non-standard location.])],
-        [SAMTOOLS_PATH=$withval], [SAMTOOLS_PATH=0])
-
-AC_ARG_WITH([bamtools],
-        [AS_HELP_STRING([--with-bamtools=PREFIX],
-                [Use this if your bamtools installation prefix was set to a non-standard location.])],
-        [BAMTOOLS_PATH=$withval], [BAMTOOLS_PATH=0])
-
-
-# Update vars for samtools if required
-if test ${SAMTOOLS_PATH} != 0; then
-        SAMTOOLS_CPPFLAGS="-I${SAMTOOLS_PATH}/include -I${SAMTOOLS_PATH}/include/bam"
-        SAMTOOLS_LDFLAGS="-L${SAMTOOLS_PATH}/lib -L${SAMTOOLS_PATH}/lib64"
-        SAMTOOLS_PATH="${SAMTOOLS_PATH}/bin"
-fi
-
-# Update vars for samtools if required
-if test ${BAMTOOLS_PATH} != 0; then
-        BAMTOOLS_CPPFLAGS="-I${BAMTOOLS_PATH}/include"
-        BAMTOOLS_LDFLAGS="-L${BAMTOOLS_PATH}/lib -L${BAMTOOLS_PATH}/lib64"
-fi
-
-
-######### Header checks (need to use the actual command line vars here so we need to store and restore these)
-
-OLD_CPPFLAGS=${CPPFLAGS}
-OLD_LDFLAGS=${LDFLAGS}
-CPPFLAGS="${BAMTOOLS_CPPFLAGS} ${SAMTOOLS_CPPFLAGS} ${SEQAN_CPPFLAGS} ${AM_CPPFLAGS} ${CPPFLAGS}"
-LDFLAGS="${BAMTOOLS_LDFLAGS} ${SAMTOOLS_LDFLAGS} ${AM_LDFLAGS} ${LDFLAGS}"
-
-
-#### Put any header or lib checks here ####
-
-AC_CHECK_HEADER([api/BamMultiReader.h], [], [
-    AC_MSG_ERROR([Bamtools not found. Please ensure that the bamtools include directory can be found on the CPPFLAGS env var. Also check that the Bamtools lib directory can be found on the LDFLAGS env var.  Alternatively, you can try the --with-bamtools option, which assumes you have an include and lib dir under a bamtools build directory.])
-])
-
-AC_CHECK_LIB(bam, fai_build, [], [
-    AC_MSG_ERROR([Samtools not found. Please ensure that the Samtools include directory can be found on the CPPFLAGS env var. Also check that the Samtools lib directory can be found on the LDFLAGS env var.  Alternatively, you can try the --with-samtools option, which assumes you have an include and lib dir under a samtools build directory.])
-])
-
-
-# Restore the previous CPPFLAGS
-CPPFLAGS=${OLD_CPPFLAGS}
-LDFLAGS=${OLD_LDFLAGS}
-
-
+# Check for sam/bamtools and dlib
+SAMTOOLS
+BAMTOOLS
+DLIB
 
 #########
 
@@ -159,14 +109,6 @@ AC_SUBST([AM_CFLAGS])
 AC_SUBST([AM_LDFLAGS])
 AC_SUBST([AM_PATH])
 AC_SUBST([AM_LIBS])
-AC_SUBST([SAMTOOLS_CPPFLAGS])
-AC_SUBST([SAMTOOLS_LDFLAGS])
-AC_SUBST([BAMTOOLS_PATH])
-AC_SUBST([BAMTOOLS_CPPFLAGS])
-AC_SUBST([BAMTOOLS_LDFLAGS])
-AC_SUBST([SEQAN_CPPFLAGS])
-AC_SUBST([BOOST_CPPFLAGS])
-AC_SUBST([BOOST_LDFLAGS])
 AC_SUBST([BOOST_X_LDFLAGS])
 AC_SUBST([BOOST_LIBS])
 

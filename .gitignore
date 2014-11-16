@@ -19,3 +19,7 @@
 /1
 /make.log
 *.1.2.tar.gz
+!/m4/samtools.m4
+!/m4/ax_cxx_compile_stdcxx_11.m4
+!/m4/bamtools.m4
+!/m4/dlib.m4
