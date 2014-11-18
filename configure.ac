@@ -78,11 +78,20 @@ AC_CHECK_HEADERS([stdio.h])
 AC_CHECK_HEADERS([fstream])
 AC_CHECK_HEADERS([vector])
 
+# Save libs (restore as and when needed)
+SAVED_LIBS="${LIBS}"
 
 # Check pthreads and zlib exist and are available
 AC_CHECK_LIB(pthread, pthread_exit)
 AC_CHECK_LIB(z, gzread)
 
+# Check for sam/bamtools and dlib
+LIBS="${SAVED_LIBS}"
+AX_HTSLIB
+AX_LIB_SAMTOOLS
+LIBS="${SAVED_LIBS}"
+AX_LIB_BAMTOOLS
+AX_DLIB
 
 ## Check for boost
 AX_BOOST_BASE([1.52],, [AC_MSG_ERROR([Boost not found.  Please ensure that boost is properly built and the BOOST_ROOT environment variable is set.  Alternatively you can override BOOST_ROOT with the --with-boost option.])])
@@ -95,22 +104,22 @@ AX_BOOST_UNIT_TEST_FRAMEWORK
 # Combine BOOST variables (apart for BOOST_TEST)
 BOOST_X_LDFLAGS="${BOOST_FILESYSTEM_LDFLAGS} ${BOOST_PROGRAM_OPTIONS_LDFLAGS} ${BOOST_SYSTEM_LDFLAGS} ${BOOST_TIMER_LDFLAGS}"
 BOOST_LIBS="${BOOST_FILESYSTEM_LIB} ${BOOST_PROGRAM_OPTIONS_LIB} ${BOOST_SYSTEM_LIB} ${BOOST_TIMER_LIB}"
+AC_SUBST([BOOST_X_LDFLAGS])
+AC_SUBST([BOOST_LIBS])
 
-# Check for sam/bamtools and dlib
-SAMTOOLS
-BAMTOOLS
-DLIB
+LIBS="${SAVED_LIBS}"
+
 
 #########
 
+AM_CPPFLAGS="-DCPLUSPLUS ${BAMTOOLS_CPPFLAGS} ${SAMTOOLS_CPPFLAGS} ${HTSLIB_CPPFLAGS} ${DLIB_CPPFLAGS} ${BOOST_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
-AC_SUBST([AM_CXXFLAGS])
-AC_SUBST([AM_CFLAGS])
+
+AM_LDFLAGS="${BAMTOOLS_LDFLAGS} ${SAMTOOLS_LDFLAGS} ${HTSLIB_LDFLAGS} ${BOOST_LDFLAGS}"
 AC_SUBST([AM_LDFLAGS])
-AC_SUBST([AM_PATH])
+
+AM_LIBS="${BAMTOOLS_LIB} ${SAMTOOLS_LIB} ${HTSLIB_LIB} ${BOOST_LIBS} -lpthread -lz"
 AC_SUBST([AM_LIBS])
-AC_SUBST([BOOST_X_LDFLAGS])
-AC_SUBST([BOOST_LIBS])
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile])

@@ -44,9 +44,11 @@ namespace po = boost::program_options;
 #include "genome_mapper.hpp"
 #include "prepare.hpp"
 #include "filter.hpp"
+#include "cluster.hpp"
 using portculis::JunctionBuilder;
 using portculis::Prepare;
 using portculis::Filter;
+using portculis::Cluster;
 
 typedef boost::error_info<struct PortculisError,string> PortculisErrorInfo;
 struct PortculisException: virtual boost::exception, virtual std::exception { };
@@ -60,7 +62,8 @@ enum Mode {
     PREP,
     JUNC,
     FILTER,
-    FULL
+    FULL,
+    CLUSTER
 };
 
 Mode parseMode(string mode) {
@@ -73,11 +76,14 @@ Mode parseMode(string mode) {
     else if (upperMode == string("JUNC")) {
         return JUNC;
     }
-    else if (upperMode == string("PREP")) {
+    else if (upperMode == string("FILTER")) {
         return FILTER;
     }
     else if (upperMode == string("FULL")) {
         return FULL;
+    }
+    else if (upperMode == string("CLUSTER")) {
+        return CLUSTER;
     }
     else {
         BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
@@ -90,10 +96,11 @@ string helpHeader() {
                   "Portculis is a tool to identify genuine splice junctions using aligned RNAseq reads\n\n" +
                   "Usage: portculis [options] <mode> <mode_args>\n\n" +
                   "Available modes:\n" +
-                  " - prep   - Prepares a genome and bam file(s) ready for junction analysis\n" +
-                  " - junc   - Perform junction analysis on prepared data\n" +
-                  " - filter - Discard unlikely junctions and produce BAM containing alignments to genuine junctions\n" +
-                  " - full   - Runs prep, junc, filter as a complete pipeline\n" +
+                  " - prep    - Prepares a genome and bam file(s) ready for junction analysis\n" +
+                  " - junc    - Perform junction analysis on prepared data\n" +
+                  " - filter  - Discard unlikely junctions and produce BAM containing alignments to genuine junctions\n" +
+                  " - full    - Runs prep, junc, filter as a complete pipeline\n" +
+                  " - cluster - Clusters potential junctions to help distinguish real junctions for false\n\n" +
                   "\nAvailable options";
 }
 
@@ -152,7 +159,7 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.1.0"
+#define PACKAGE_VERSION "0.2.0"
 #endif
             cout << PACKAGE_NAME << " V" << PACKAGE_VERSION << endl;
             return 0;
@@ -175,6 +182,9 @@ int main(int argc, char *argv[]) {
         }
         else if (mode == FULL) {
             
+        }
+        else if (mode == CLUSTER) {
+            Cluster::main(modeArgC, modeArgV);            
         }
         else {
             BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(

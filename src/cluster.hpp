@@ -43,24 +43,22 @@ namespace po = boost::program_options;
 
 namespace portculis {
     
-typedef boost::error_info<struct FilterError,string> FilterErrorInfo;
-struct FilterException: virtual boost::exception, virtual std::exception { };
+typedef boost::error_info<struct ClusterError,string> ClusterErrorInfo;
+struct ClusterException: virtual boost::exception, virtual std::exception { };
 
-class Filter {
+class Cluster {
 
 private:
     
     string junctionFile;
-    string bamFile;
     bool verbose;
     
 public:
     
-    Filter() : Filter("", "", false) {}
+    Cluster() : Cluster("", false) {}
     
-    Filter(const string& _junctionFile, const string& _bamFile, bool _verbose) {
+    Cluster(const string& _junctionFile, bool _verbose) {
         junctionFile = _junctionFile;
-        bamFile = _bamFile;
         verbose = _verbose;
         
         // Test if provided genome exists
@@ -68,15 +66,9 @@ public:
             BOOST_THROW_EXCEPTION(FilterException() << FilterErrorInfo(string(
                         "Could not find junction file at: ") + junctionFile));
         }
-        
-        // Test if provided genome exists
-        if (!exists(bamFile)) {
-            BOOST_THROW_EXCEPTION(FilterException() << FilterErrorInfo(string(
-                        "Could not find BAM file at: ") + bamFile));
-        }
     }
     
-    virtual ~Filter() {
+    virtual ~Cluster() {
     }
     
        
@@ -84,13 +76,13 @@ public:
 public:
     
     
-    void filter() {
+    void cluster() {
 
     }
   
     static string helpMessage() {
-        return string("\nPortculis Filter Mode Help.\n\n") +
-                      "Usage: portculis filter [options] <junction-file> <bam-file> \n\n" +
+        return string("\nPortculis Cluster Mode Help.\n\n") +
+                      "Usage: portculis cluster [options] <junction-file>\n\n" +
                       "Allowed options";
     }
     
@@ -115,13 +107,11 @@ public:
         po::options_description hidden_options("Hidden options");
         hidden_options.add_options()
                 ("junction-file,g", po::value<string>(&junctionFile), "Path to the junction file to process.")
-                ("bam-file,g", po::value<string>(&bamFile), "Path to the BAM file to filter.")
                 ;
 
         // Positional option for the input bam file
         po::positional_options_description p;
         p.add("junction-file", 1);
-        p.add("bam-file", 1);
         
         
         // Combine non-positional options
@@ -141,14 +131,14 @@ public:
         
         
 
-        auto_cpu_timer timer(1, "\nPortculis filter completed.\nTotal runtime: %ws\n\n");        
+        auto_cpu_timer timer(1, "\nPortculis cluster completed.\nTotal runtime: %ws\n\n");        
 
-        cout << "Running portculis in filter mode" << endl
+        cout << "Running portculis in cluster mode" << endl
              << "--------------------------------" << endl << endl;
         
         // Create the prepare class
-        Filter filter(junctionFile, bamFile, verbose);
-        filter.filter();
+        Cluster cluster(junctionFile, verbose);
+        cluster.cluster();
         
         return 0;
     }

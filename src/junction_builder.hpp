@@ -79,63 +79,6 @@ private:
     // The set of distinct junctions found in the BAM file
     JunctionSystem junctionSystem;
     
-    void init(string _prepDir, string _outputDir, string _outputPrefix, uint16_t _threads, bool _fast, bool _verbose) {
-        
-        prepData = new PreparedFiles(_prepDir);
-        outputDir = _outputDir;
-        outputPrefix = _outputPrefix;
-        threads = _threads;
-        fast = _fast;
-        verbose = _verbose;        
-        
-        if (verbose) {
-            cout << "Initialised Portculis instance with settings:" << endl
-                 << " - Prep data dir: " << prepData->getPrepDir() << endl
-                 << " - Output directory: " << outputDir << endl
-                 << " - Output file name prefix: " << outputPrefix << endl
-                 << " - Threads: " << threads << endl 
-                 << " - Fast mode: " << boolalpha << fast << endl << endl;            
-        }
-        
-        if (verbose) {
-            cout << "Ensuring output directory exists ... ";
-            cout.flush();
-        }
-        
-        if (!exists(outputDir)) {
-            if (!create_directory(outputDir)) {
-                BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                        "Could not create output directory: ") + outputDir));
-            }
-        }
-        
-        if (verbose) {
-            cout << "done." << endl << endl
-                 << "Checking prepared data ... ";
-            cout.flush();
-        }
-        
-        // Test if we have all the requried data
-        if (!prepData->valid()) {
-            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                        "Prepared data is not complete: ") + prepData->getPrepDir()));
-        }
-        
-        if (verbose) {
-            cout << "done." << endl << endl
-                 << "Loading settings stored in prep data ... ";
-        }
-        
-        // Loading settings stored in prep data
-        strandSpecific = prepData->loadSettings();
-        
-        if (verbose) {
-            cout << "done." << endl
-                 << "Strand specific input data: " << boolalpha << strandSpecific << endl << endl;
-        }
-        
-    }
-    
 
 protected:
     
@@ -257,7 +200,58 @@ public:
 
     
     JunctionBuilder(string _prepDir, string _outputDir, string _outputPrefix, uint16_t _threads, bool _fast, bool _verbose) {
-        init(  _prepDir, _outputDir, _outputPrefix, _threads, _fast, _verbose);
+        prepData = new PreparedFiles(_prepDir);
+        outputDir = _outputDir;
+        outputPrefix = _outputPrefix;
+        threads = _threads;
+        fast = _fast;
+        verbose = _verbose;        
+        
+        if (verbose) {
+            cout << "Initialised Portculis instance with settings:" << endl
+                 << " - Prep data dir: " << prepData->getPrepDir() << endl
+                 << " - Output directory: " << outputDir << endl
+                 << " - Output file name prefix: " << outputPrefix << endl
+                 << " - Threads: " << threads << endl 
+                 << " - Fast mode: " << boolalpha << fast << endl << endl;            
+        }
+        
+        if (verbose) {
+            cout << "Ensuring output directory exists ... ";
+            cout.flush();
+        }
+        
+        if (!exists(outputDir)) {
+            if (!create_directory(outputDir)) {
+                BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                        "Could not create output directory: ") + outputDir));
+            }
+        }
+        
+        if (verbose) {
+            cout << "done." << endl << endl
+                 << "Checking prepared data ... ";
+            cout.flush();
+        }
+        
+        // Test if we have all the requried data
+        if (!prepData->valid()) {
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                        "Prepared data is not complete: ") + prepData->getPrepDir()));
+        }
+        
+        if (verbose) {
+            cout << "done." << endl << endl
+                 << "Loading settings stored in prep data ... ";
+        }
+        
+        // Loading settings stored in prep data
+        strandSpecific = prepData->loadSettings();
+        
+        if (verbose) {
+            cout << "done." << endl
+                 << "Strand specific input data: " << boolalpha << strandSpecific << endl << endl;
+        }
     }
     
     virtual ~JunctionBuilder() {

@@ -23,3 +23,7 @@
 !/m4/ax_cxx_compile_stdcxx_11.m4
 !/m4/bamtools.m4
 !/m4/dlib.m4
+!/m4/cpp_check_lib.m4
+!/m4/ax_lib_samtools.m4
+!/m4/ax_cpp_lib_check.m4
+*.configure.swp

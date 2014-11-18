@@ -96,9 +96,7 @@ public:
     int32_t end;        // The index of the last base of the intron
     Strand strand;      // The strand the intron is on
     
-    Intron() :
-        refId(-1), start(-1), end(-1), strand(UNKNOWN) {        
-    }
+    Intron() : Intron(-1, -1, -1, UNKNOWN) {}
     
     Intron(int32_t _refId, int32_t _start, int32_t _end, Strand _strand) :
         refId(_refId), start(_start), end(_end), strand(_strand) {

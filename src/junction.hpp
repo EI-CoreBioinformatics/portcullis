@@ -180,32 +180,6 @@ private:
     string da1, da2;                    // These store the nucleotides found at the predicted donor / acceptor sites in the intron
     
     
-    
-    void init(int32_t _leftFlankStart, int32_t _rightFlankEnd) {
-        
-        leftFlankStart = _leftFlankStart;
-        rightFlankEnd = _rightFlankEnd;
-        canonicalSpliceSites = NO;
-        maxMinAnchor = intron->minAnchorLength(_leftFlankStart, _rightFlankEnd);
-        diffAnchor = 0;
-        entropy = 0;
-        nbDistinctAnchors = 0;
-        nbDistinctAlignments = 0;
-        nbReliableAlignments = 0;
-        nbUpstreamFlankingAlignments = 0;
-        nbDownstreamFlankingAlignments = 0;
-        maxMMES = 0;
-        hammingDistance5p = -1;
-        hammingDistance3p = -1;
-        coverage = 0.0;
-        uniqueJunction = false;
-        primaryJunction = false;
-        multipleMappingScore = 0.0;
-        
-        predictedStrand = UNKNOWN;
-    }
-    
-    
 protected:
     
     /**
@@ -268,7 +242,26 @@ public:
     
     Junction(shared_ptr<Intron> _location, int32_t _leftFlankStart, int32_t _rightFlankEnd) :
         intron(_location) {
-        init(_leftFlankStart, _rightFlankEnd);
+        leftFlankStart = _leftFlankStart;
+        rightFlankEnd = _rightFlankEnd;
+        canonicalSpliceSites = NO;
+        maxMinAnchor = intron->minAnchorLength(_leftFlankStart, _rightFlankEnd);
+        diffAnchor = 0;
+        entropy = 0;
+        nbDistinctAnchors = 0;
+        nbDistinctAlignments = 0;
+        nbReliableAlignments = 0;
+        nbUpstreamFlankingAlignments = 0;
+        nbDownstreamFlankingAlignments = 0;
+        maxMMES = 0;
+        hammingDistance5p = -1;
+        hammingDistance3p = -1;
+        coverage = 0.0;
+        uniqueJunction = false;
+        primaryJunction = false;
+        multipleMappingScore = 0.0;
+        
+        predictedStrand = UNKNOWN;
     }
     
     // **** Destructor ****

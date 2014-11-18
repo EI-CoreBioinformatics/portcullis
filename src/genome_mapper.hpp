@@ -30,7 +30,7 @@ using std::string;
 using boost::filesystem::exists;
 using boost::timer::auto_cpu_timer;
 
-#include <faidx.h>
+#include <htslib/faidx.h>
 
 namespace portculis {
 
@@ -140,7 +140,7 @@ public:
      * @return 
      */
     int getNbSeqs() {
-        return faidx_fetch_nseq(fastaIndex); 
+        return faidx_nseq(fastaIndex); 
     }
     
 };

@@ -25,7 +25,7 @@ using std::vector;
 #include <api/BamReader.h>
 using namespace BamTools;
 
-#include "bam.h"
+#include <bam.h>
 
 namespace portculis {
     
