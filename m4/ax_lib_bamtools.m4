@@ -80,6 +80,7 @@ AC_DEFUN([AX_LIB_BAMTOOLS],
         AC_LANG_POP(C++)
         
         BAMTOOLS_LIB="-lbamtools"
+        AC_DEFINE(HAVE_BAMTOOLS,,[define if the bamtools library is available])
 
         # Restore the previous environment variables if required
         CPPFLAGS=${OLD_CPPFLAGS}

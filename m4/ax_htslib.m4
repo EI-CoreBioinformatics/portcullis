@@ -51,6 +51,8 @@ AC_DEFUN([AX_HTSLIB],
     ])
 
     AC_LANG_POP([C])
+
+    AC_DEFINE(HAVE_HTSLIB,,[define if the hts library is available])
     
     # Restore the previous environment variables if required
     if test ${HTSLIB_PATH} != 0; then

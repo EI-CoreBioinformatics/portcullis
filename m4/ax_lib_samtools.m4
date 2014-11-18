@@ -126,17 +126,10 @@ if test -n "${SAMTOOLS_HOME}" ; then
         LDFLAGS="$LDFLAGS ${HTSLIB_LDFLAGS} ${SAMTOOLS_LDFLAGS}"
         CPPFLAGS="$CPPFLAGS ${HTSLIB_CPPFLAGS} ${SAMTOOLS_CPPFLAGS}"
 
-        AC_LANG_SAVE
-        AC_LANG_C
+        AC_LANG_PUSH(C)
         AC_CHECK_HEADER([sam.h], [ac_cv_sam_h=yes], [ac_cv_sam_h=no])
-        AC_CHECK_LIB([bam], [bam_parse_region], [ac_cv_libbam=yes], [ac_cv_libbam=no])
-        #AX_CPP_CHECK_LIB([bam],
-        #    [#include <bam.h>],
-        #    [bam_header_t* bh = bam_header_init()],
-        #    [ac_cv_libbam=yes],
-        #    [ac_cv_libbam=no]
-        #)
-        AC_LANG_RESTORE
+        AC_CHECK_LIB([bam], [bam_parse_region], [ac_cv_libbam=yes], [ac_cv_libbam=no])        
+        AC_LANG_POP(C)
 
         #echo "${ac_cv_sam_h}"
         #echo "${ac_cv_libbam}"
@@ -144,18 +137,18 @@ if test -n "${SAMTOOLS_HOME}" ; then
         LDFLAGS="$SAMTOOLS_OLD_LDFLAGS"
         CPPFLAGS="$SAMTOOLS_OLD_CPPFLAGS"
 
+        AC_MSG_CHECKING([samtools])
+                
         if test "${ac_cv_libbam}" = "yes" && test "${ac_cv_sam_h}" = "yes" ; then
                 #
                 # If both library and header were found, use them
                 #
-                AC_MSG_CHECKING([samtools])
                 AC_MSG_RESULT([ok])
-                with_samtools=yes                
+                AC_DEFINE(HAVE_SAMTOOLS,,[define if the samtools library is available])                
         else
                 #
                 # If either header or library was not found, revert and bomb
                 #
-                AC_MSG_CHECKING([samtools])
                 AC_MSG_RESULT([failed])
                 AC_MSG_ERROR([either specify a valid samtools installation with --with-samtools=DIR or disable samtools usage with --without-samtools])
         fi
