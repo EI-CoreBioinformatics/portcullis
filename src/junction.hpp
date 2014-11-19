@@ -147,7 +147,7 @@ private:
     
     
     // **** Junction metrics ****
-                                                // Metric 1 (nbReads) derived from size of junction alignment vector
+    uint32_t nbJunctionAlignments;              // Metric 1
     CanonicalSS canonicalSpliceSites;           // Metric 2
                                                 // Metric 3 (intron size) calculated via location properties
     int32_t  maxMinAnchor;                      // Metric 4
@@ -281,7 +281,12 @@ public:
     
     
     void addJunctionAlignment(const BamAlignment& al) {
-        this->junctionAlignments.push_back(al);                        
+        this->junctionAlignments.push_back(al);
+        this->nbJunctionAlignments = this->junctionAlignments.size();
+    }
+
+    void setNbJunctionAlignments(uint32_t nbJunctionAlignments) {
+        this->nbJunctionAlignments = nbJunctionAlignments;
     }
     
     void setDonorAndAcceptorMotif(CanonicalSS canonicalSS) {
@@ -770,7 +775,7 @@ public:
      * @return 
      */
     size_t getNbJunctionAlignments() const {
-        return this->junctionAlignments.size();
+        return this->nbJunctionAlignments;
     }
     
     /**
@@ -1192,13 +1197,13 @@ public:
         vector<string> parts; // #2: Search for tokens
         boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
 
-        if (parts.size() != 24) {
+        if (parts.size() != 28) {
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                 "Could not parse line due to incorrect number of columns. Expected 24 columns: ") + line));
         }
 
         // Create intron
-        shared_ptr<Intron> i(new Intron(
+        IntronPtr i(new Intron(
             lexical_cast<int32_t>(parts[1]),
             lexical_cast<int32_t>(parts[2]),
             lexical_cast<int32_t>(parts[3]),
@@ -1220,6 +1225,7 @@ public:
         j->setPredictedStrand(strandFromChar(parts[9][0]));
                 
         // Add metrics to junction
+        j->setNbJunctionAlignments(lexical_cast<uint32_t>(parts[10]));
         j->setDonorAndAcceptorMotif(cssFromChar(parts[11][0]));
         j->setMaxMinAnchor(lexical_cast<int32_t>(parts[13]));
         j->setDiffAnchor(lexical_cast<int32_t>(parts[14]));

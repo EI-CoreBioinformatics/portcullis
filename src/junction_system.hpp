@@ -104,10 +104,17 @@ public:
         maxQueryLength = 0;         
     }
     
+    JunctionSystem(string junctionFile) : JunctionSystem() {
+        load(junctionFile);
+    }
+    
     virtual ~JunctionSystem() {
              
     }
     
+    JunctionList getJunctions() {
+        return junctionList;
+    }
     
     size_t size() {
         return distinctJunctions.size();
@@ -527,8 +534,10 @@ public:
         string line;
         // Loop through until end of file or we move onto the next ref seq
         while ( std::getline(ifs, line) ) {
-            if ( !line.empty() ) {
-                JunctionPtr j = Junction::parse(line);
+            boost::trim(line);
+            if ( !line.empty() && line.find("index") == std::string::npos ) {
+                shared_ptr<Junction> j = Junction::parse(line);
+                junctionList.push_back(j);
             }
         }
         

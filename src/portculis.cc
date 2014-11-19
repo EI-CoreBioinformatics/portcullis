@@ -22,6 +22,7 @@
 #include <string.h>
 #include <iostream>
 #include <fstream>
+#include <vector>
 using std::string;
 using std::cout;
 using std::cerr;
@@ -112,7 +113,7 @@ int main(int argc, char *argv[]) {
     try {
         // Portculis args
         string modeStr;
-        vector<string> others;
+        std::vector<string> others;
         bool verbose;
         bool version;
         bool help;
@@ -129,7 +130,7 @@ int main(int argc, char *argv[]) {
         po::options_description hidden_options("Hidden options");
         hidden_options.add_options()
                 ("mode", po::value<string>(&modeStr), "Portculis mode.")
-                ("others", po::value< vector<string> >(&others), "Other options.")
+                ("others", po::value< std::vector<string> >(&others), "Other options.")
                 ;
 
         // Positional options

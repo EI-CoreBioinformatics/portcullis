@@ -40,6 +40,10 @@ using boost::filesystem::create_directory;
 using boost::filesystem::symbolic_link_exists;
 namespace po = boost::program_options;
 
+#include "junction_system.hpp"
+
+#include <dlib/clustering.h>
+using namespace dlib;
 
 namespace portculis {
     
@@ -51,14 +55,16 @@ class Cluster {
 private:
     
     string junctionFile;
+    string resultsFile;
     bool verbose;
     
 public:
     
-    Cluster() : Cluster("", false) {}
+    Cluster() : Cluster("", "", false) {}
     
-    Cluster(const string& _junctionFile, bool _verbose) {
+    Cluster(const string& _junctionFile, const string& _resultsFile, bool _verbose) {
         junctionFile = _junctionFile;
+        resultsFile = _resultsFile;
         verbose = _verbose;
         
         // Test if provided genome exists
@@ -77,7 +83,102 @@ public:
     
     
     void cluster() {
+        
+        // Load junction system
+        JunctionSystem js(junctionFile);
+        
+        cout << " - Loaded junctions from: " << junctionFile << endl;
+        
+        // Here the matrix type which we will need to populate with junction data
+        typedef matrix<double,3,1> sample_type;
+        
+        // Now we are making a typedef for the kind of kernel we want to use.  I picked the
+        // radial basis kernel because it only has one parameter and generally gives good
+        // results without much fiddling.
+        typedef radial_basis_kernel<sample_type> kernel_type;
 
+        // Here we declare an instance of the kcentroid object.  It is the object used to 
+        // represent each of the centers used for clustering.  The kcentroid has 3 parameters 
+        // you need to set.  The first argument to the constructor is the kernel we wish to 
+        // use.  The second is a parameter that determines the numerical accuracy with which 
+        // the object will perform part of the learning algorithm.  Generally, smaller values 
+        // give better results but cause the algorithm to attempt to use more dictionary vectors 
+        // (and thus run slower and use more memory).  The third argument, however, is the 
+        // maximum number of dictionary vectors a kcentroid is allowed to use.  So you can use
+        // it to control the runtime complexity.  
+        kcentroid<kernel_type> kc(kernel_type(0.1), 0.01, 50);
+        
+        // Now we make an instance of the kkmeans object and tell it to use kcentroid objects
+        // that are configured with the parameters from the kc object we defined above.
+        kkmeans<kernel_type> test(kc);
+
+        std::vector<sample_type> samples;
+        std::vector<sample_type> initial_centers;
+        
+        // Load feature vector from junction file into matrix
+        for(JunctionPtr j : js.getJunctions()) {
+            sample_type m;
+            m(0) = j->getNbJunctionAlignments();
+            m(1) = j->getEntropy();
+            m(2) = j->getIntronSize();
+            samples.push_back(m);
+        }
+        
+        cout << " - Populated matrix with junction data" << endl;
+
+        // tell the kkmeans object we made that we want to run k-means with k set to 3. 
+        // (i.e. we want 2 clusters)
+        test.set_number_of_centers(2);
+
+        // You need to pick some initial centers for the k-means algorithm.  So here
+        // we will use the dlib::pick_initial_centers() function which tries to find
+        // n points that are far apart (basically).  
+        pick_initial_centers(2, initial_centers, samples, test.get_kernel());
+
+        cout << " - Picked initial centers" << endl;
+        
+        // now run the k-means algorithm on our set of samples.  
+        test.train(samples,initial_centers);
+
+        cout << " - Trained model" << endl;
+        
+        unsigned long results[samples.size()];
+        uint32_t nbClass0 = 0;
+        uint32_t nbClass1 = 0;
+        
+        // now loop over all our samples and print out their predicted class.  In this example
+        // all points are correctly identified.
+        for (unsigned long i = 0; i < samples.size(); ++i) {
+            
+            results[i] = test(samples[i]);
+            
+            if (results[i] == 0) {
+                nbClass0++;
+            }
+            else if (results[i] == 1) {
+                nbClass1++;
+            }
+        }
+        
+        // Now print out how many dictionary vectors each center used.  Note that 
+        // the maximum number of 8 was reached.  If you went back to the kcentroid 
+        // constructor and changed the 8 to some bigger number you would see that these
+        // numbers would go up.  However, 8 is all we need to correctly cluster this dataset.
+        cout << "num dictionary vectors for center 0: " << test.get_kcentroid(0).dictionary_size() << endl;
+        cout << "num dictionary vectors for center 1: " << test.get_kcentroid(1).dictionary_size() << endl;
+        
+        cout << "num class 0: " << nbClass0 << endl;
+        cout << "num class 1: " << nbClass1 << endl;
+        
+        
+        if (!resultsFile.empty()) {
+            cout << "Saving results to: " << resultsFile << endl;
+            std::ofstream out(resultsFile.c_str());
+            for (unsigned long i = 0; i < samples.size(); ++i) {
+                out << results[i] << "\t" << i << "\t" << samples[i](0) << "\t" << samples[i](1) << "\t" << samples[i](2) << endl;
+            }
+            out.close();
+        }
     }
   
     static string helpMessage() {
@@ -90,13 +191,15 @@ public:
         
         // Portculis args
         string junctionFile;
-        string bamFile;
+        string resultsFile;
         bool verbose;
         bool help;
         
         // Declare the supported options.
         po::options_description generic_options(helpMessage());
         generic_options.add_options()
+                ("output,o", po::value<string>(&resultsFile)->default_value(""), 
+                    "File name for tabular results file generated by this program.")
                 ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                     "Print extra information")
                 ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -137,7 +240,7 @@ public:
              << "--------------------------------" << endl << endl;
         
         // Create the prepare class
-        Cluster cluster(junctionFile, verbose);
+        Cluster cluster(junctionFile, resultsFile, verbose);
         cluster.cluster();
         
         return 0;

@@ -214,4 +214,6 @@ struct IntronHasher {
        return seed;
     }
 };
+
+typedef shared_ptr<Intron> IntronPtr;
 }
