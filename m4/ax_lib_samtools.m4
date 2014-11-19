@@ -78,79 +78,90 @@ AC_DEFUN([AX_LIB_SAMTOOLS],
 #
 # Handle user hints
 #
-[AC_MSG_CHECKING([if samtools is wanted])
-AC_ARG_WITH([samtools],
-  AS_HELP_STRING([--with-samtools=DIR],
-                 [search for samtools in DIR/include and DIR/lib]),
- [if test "$withval" != no ; then
-   AC_MSG_RESULT([yes])
-   if test -d "$withval" ; then
-     SAMTOOLS_HOME="$withval"
-   else
-     AC_MSG_WARN([Sorry, $withval does not exist, checking usual places])
-   fi
- else
-   AC_MSG_RESULT([no])
- fi],
- [AC_MSG_RESULT([yes])])
+    [AC_MSG_CHECKING([if samtools is wanted])
+    AC_ARG_WITH([samtools],
+        AS_HELP_STRING(
+            [--with-samtools=DIR],
+            [search for samtools in DIR/include and DIR/lib]
+        ),
+        [if test "$withval" != no ; then
+            AC_MSG_RESULT([yes])
+            if test -d "$withval" ; then
+                SAMTOOLS_HOME="$withval"
+            else
+                AC_MSG_WARN([Sorry, $withval does not exist, checking usual places])
+            fi
+        else
+            AC_MSG_RESULT([no])
+        fi],
+        [AC_MSG_RESULT([yes])]
+    )
 
-SAMTOOLS_LIB="-lbam"
+    SAMTOOLS_LIB="-lbam"
 
-if test -f "${SAMTOOLS_HOME}/include/bam/sam.h" ; then
+    if test -f "${SAMTOOLS_HOME}/include/bam/sam.h" ; then
         SAMTOOLS_CPPFLAGS="-I${SAMTOOLS_HOME}/include/bam"
         SAMTOOLS_LDFLAGS="-L${SAMTOOLS_HOME}/lib"
-elif test -f "${SAMTOOLS_HOME}/include/sam.h" ; then
+    elif test -f "${SAMTOOLS_HOME}/include/sam.h" ; then
         SAMTOOLS_CPPFLAGS="-I${SAMTOOLS_HOME}/include"
         SAMTOOLS_LDFLAGS="-L${SAMTOOLS_HOME}/lib"
-elif test -f "${SAMTOOLS_HOME}/sam.h" ; then
+    elif test -f "${SAMTOOLS_HOME}/sam.h" ; then
         SAMTOOLS_CPPFLAGS="-I${SAMTOOLS_HOME}"
         SAMTOOLS_LDFLAGS="-L${SAMTOOLS_HOME}"
-elif test -f "/usr/local/include/bam/sam.h" ; then
+    elif test -f "/usr/local/include/bam/sam.h" ; then
         SAMTOOLS_HOME="/usr/local"
         SAMTOOLS_CPPFLAGS="-I${SAMTOOLS_HOME}/include/bam"
         SAMTOOLS_LDFLAGS="-L${SAMTOOLS_HOME}/lib"
-else
+    else
         SAMTOOLS_HOME="/usr"
         SAMTOOLS_CPPFLAGS="-I${SAMTOOLS_HOME}/include/bam"
         SAMTOOLS_LDFLAGS=""
-fi
+    fi
 
-#
-# Locate samtools, if wanted
-#
-if test -n "${SAMTOOLS_HOME}" ; then
+    #
+    # Locate samtools, if wanted
+    #
+    if test -n "${SAMTOOLS_HOME}" ; then
 
-        SAMTOOLS_OLD_LDFLAGS=$LDFLAGS
-        SAMTOOLS_OLD_CPPFLAGS=$LDFLAGS
-        
-        LDFLAGS="$LDFLAGS ${HTSLIB_LDFLAGS} ${SAMTOOLS_LDFLAGS}"
-        CPPFLAGS="$CPPFLAGS ${HTSLIB_CPPFLAGS} ${SAMTOOLS_CPPFLAGS}"
+        AC_MSG_CHECKING([if htslib is already configured])
+        if test "${HTSLIB_OK}" = "1" ; then
+            
+            AC_MSG_RESULT([yes])
+            SAMTOOLS_OLD_LDFLAGS=$LDFLAGS
+            SAMTOOLS_OLD_CPPFLAGS=$LDFLAGS
 
-        AC_LANG_PUSH(C)
-        AC_CHECK_HEADER([sam.h], [ac_cv_sam_h=yes], [ac_cv_sam_h=no])
-        AC_CHECK_LIB([bam], [bam_parse_region], [ac_cv_libbam=yes], [ac_cv_libbam=no])        
-        AC_LANG_POP(C)
+            LDFLAGS="$LDFLAGS ${HTSLIB_LDFLAGS} ${SAMTOOLS_LDFLAGS}"
+            CPPFLAGS="$CPPFLAGS ${HTSLIB_CPPFLAGS} ${SAMTOOLS_CPPFLAGS}"
 
-        #echo "${ac_cv_sam_h}"
-        #echo "${ac_cv_libbam}"
+            AC_LANG_PUSH(C)
+            AC_CHECK_HEADER([sam.h], [ac_cv_sam_h=yes], [ac_cv_sam_h=no])
+            AC_CHECK_LIB([bam], [bam_parse_region], [ac_cv_libbam=yes], [ac_cv_libbam=no], ${HTSLIB_LIB})        
+            AC_LANG_POP(C)
 
-        LDFLAGS="$SAMTOOLS_OLD_LDFLAGS"
-        CPPFLAGS="$SAMTOOLS_OLD_CPPFLAGS"
+            #echo "${ac_cv_sam_h}"
+            #echo "${ac_cv_libbam}"
 
-        AC_MSG_CHECKING([samtools])
-                
-        if test "${ac_cv_libbam}" = "yes" && test "${ac_cv_sam_h}" = "yes" ; then
+            LDFLAGS="$SAMTOOLS_OLD_LDFLAGS"
+            CPPFLAGS="$SAMTOOLS_OLD_CPPFLAGS"
+
+            AC_MSG_CHECKING([samtools])
+
+            if test "${ac_cv_libbam}" = "yes" && test "${ac_cv_sam_h}" = "yes" ; then
                 #
                 # If both library and header were found, use them
                 #
                 AC_MSG_RESULT([ok])
                 AC_DEFINE(HAVE_SAMTOOLS,,[define if the samtools library is available])                
-        else
+            else
                 #
                 # If either header or library was not found, revert and bomb
                 #
                 AC_MSG_RESULT([failed])
                 AC_MSG_ERROR([either specify a valid samtools installation with --with-samtools=DIR or disable samtools usage with --without-samtools])
+            fi
+        else
+            AC_MSG_RESULT([no])
+            AC_MSG_ERROR([htslib was not detected.  Please configure htslib before samtools.]) 
         fi
-fi
+    fi
 ])

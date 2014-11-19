@@ -17,46 +17,77 @@
 
 AC_DEFUN([AX_HTSLIB],
 [
-    AC_ARG_WITH([htslib],
-        [AS_HELP_STRING([--with-htslib=PREFIX],
-                [Use this if your htslib installation prefix was set to a non-standard location.])],
-        [HTSLIB_PATH=$withval], [HTSLIB_PATH=0])
+    AC_MSG_CHECKING([if htslib is wanted])
+    AC_ARG_WITH(
+        [htslib],
+        AS_HELP_STRING(
+            [--with-htslib=DIR],
+            [search for htslib in DIR/include and DIR/lib]
+        ),
+        [if test "$withval" != no ; then
+            AC_MSG_RESULT([yes])
+            if test -d "$withval" ; then
+                HTSLIB_PATH="$withval"
+            else
+                AC_MSG_WARN([Sorry, $withval does not exist, checking usual places])
+            fi
+        else
+            AC_MSG_RESULT([no])
+        fi],
+        [AC_MSG_RESULT([yes])]
+    )
 
-    # Update vars for htslib if required
-    if test ${HTSLIB_PATH} != 0; then
+    HTSLIB_LIB="-lhts"
+
+    if test -f "${HTSLIB_PATH}/include/htslib/hts.h" ; then
         HTSLIB_CPPFLAGS="-I${HTSLIB_PATH}/include"
         HTSLIB_LDFLAGS="-L${HTSLIB_PATH}/lib"
-        HTSLIB_LIB="-lhts"
-        
-        # We need to do this in case we are using samtools
-        export HTSLIB_CPPFLAGS
-        export HTSLIB_LDFLAGS
+    elif test -f "/usr/local/include/htslib/hts.h" ; then
+        HTSLIB_PATH="/usr/local"
+        HTSLIB_CPPFLAGS="-I${HTSLIB_PATH}/include"
+        HTSLIB_LDFLAGS="-L${HTSLIB_PATH}/lib"
+    else
+        HTSLIB_PATH="/usr"
+        HTSLIB_CPPFLAGS="-I${HTSLIB_PATH}/include"
+        HTSLIB_LDFLAGS=""
+    fi
+
+
+    #
+    # Locate samtools, if wanted
+    #
+    if test -n "${HTSLIB_PATH}" ; then
         
         OLD_CPPFLAGS=${CPPFLAGS}
         OLD_LDFLAGS=${LDFLAGS}
         CPPFLAGS="${AM_CPPFLAGS} ${CPPFLAGS} ${HTSLIB_CPPFLAGS}"
         LDFLAGS="${AM_LDFLAGS} ${LDFLAGS} ${HTSLIB_LDFLAGS}"
-    fi
-
-    AC_LANG_PUSH([C])
-
-    # Check header exists
-    AC_CHECK_HEADER([htslib/faidx.h], [], [
-        AC_MSG_ERROR([HTSlib headers not found. Please ensure that the htslib headers can be found on the CPPFLAGS env var. Alternatively, you can try the --with-htslib option, which assumes you have the following setup <htslib_dir>/include/htslib/<headers>.])
-    ])
-
-    # Check lib and function exists
-    AC_CHECK_LIB(hts, fai_build, [], [
-        AC_MSG_ERROR([HTSlib library not found. Please ensure that the HTSlib libs can be found on the LDFLAGS env var.  Alternatively, you can try the --with-htslib option, which assumes you have the following setup <htslib_dir>/lib/<libs>.])
-    ])
-
-    AC_LANG_POP([C])
-
-    AC_DEFINE(HAVE_HTSLIB,,[define if the hts library is available])
     
-    # Restore the previous environment variables if required
-    if test ${HTSLIB_PATH} != 0; then
+        AC_LANG_PUSH([C])
+
+        # Check header exists
+        AC_CHECK_HEADER([htslib/faidx.h], [ac_cv_faidx_h=yes], [ac_cv_faidx_h=no])
+
+        # Check lib and function exists
+        AC_CHECK_LIB(hts, fai_build, [ac_cv_libhts=yes], [ac_cv_libhts=no])
+
+        AC_LANG_POP([C])
+
+        #echo "${ac_cv_faidx_h}"
+        #echo "${ac_cv_libhts}"
+
         CPPFLAGS=${OLD_CPPFLAGS}
         LDFLAGS=${OLD_LDFLAGS}
+
+        AC_MSG_CHECKING([htslib])
+
+        if test "${ac_cv_libhts}" = "yes" && test "${ac_cv_faidx_h}" = "yes" ; then
+            AC_MSG_RESULT([ok])
+            HTSLIB_OK=1
+            AC_DEFINE(HAVE_HTSLIB, [1],[define if the hts library is available])
+        else
+            AC_MSG_RESULT([failed])    
+            AC_MSG_ERROR([HTSlib headers not found. Please ensure that the htslib headers can be found on the CPPFLAGS env var. Alternatively, you can try the --with-htslib option, which assumes you have the following setup <htslib_dir>/include/htslib/<headers>.])
+        fi
     fi
 ])
