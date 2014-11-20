@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS = subdir-objects
 # Create portculis binary
 bin_PROGRAMS = portculis
 
-portculis_CXXFLAGS = -g3
+portculis_CXXFLAGS = -g3 -O2
 portculis_CPPFLAGS = @AM_CPPFLAGS@ -I$(top_srcdir)/src 
 portculis_LDFLAGS = @AM_LDFLAGS@
 portculis_LDADD = @AM_LIBS@

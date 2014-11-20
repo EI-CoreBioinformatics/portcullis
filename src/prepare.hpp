@@ -58,7 +58,7 @@ const string PORTCULIS = "portculis";
 const string FASTA_EXTENSION = ".fa";
 const string FASTA_INDEX_EXTENSION = ".fai";
 const string BAM_EXTENSION = ".bam";
-const string BAM_INDEX_EXTENSION = ".bti";
+const string BAM_INDEX_EXTENSION = ".bai";
 const string BCF_EXTENSION = ".bcf";
 const string BCF_INDEX_EXTENSION = ".bci";
 const string BAM_DEPTH_EXTENSION = ".bdp";
@@ -357,12 +357,31 @@ protected:
             }
             else {
                 
+                // Sort the BAM file by coordinate
+                string sortCmd = BamUtils::createSortBamCmd(unsortedBam, sortedBam, false, threads, "1G");
+                
                 if (verbose) {
-                    cout << "Sorting " << unsortedBam << " ... " << endl;
+                    cout << "Sorting BAM using command \"" << sortCmd << "\" ... ";
+                    cout.flush();
                 }
 
-                // Sort the BAM file by coordinate
-                BamUtils::sortBam(unsortedBam, sortedBam, false, threads, "1G");
+                int exitCode = system(sortCmd.c_str());
+        
+                string badNameMergeFile = sortedBam + ".bam";
+
+                if (exists(badNameMergeFile)) {
+                    boost::filesystem::rename(badNameMergeFile, sortedBam);
+                }
+
+                if (exitCode != 0 || !exists(sortedBam) || !BamUtils::isSortedBam(sortedBam)) {
+                    BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                            "Failed to successfully sort: ") + unsortedBam));
+                }
+                
+                if (verbose) {
+                cout << "done." << endl
+                     << "Sorted BAM file created at: " << sortedBam << endl;
+                }
             }
             
         }
@@ -384,13 +403,21 @@ protected:
             if (verbose) cout << "Pre-indexed BAM detected: " << indexedFile << endl;
         }
         else {
+            
+            // Create BAM index
+            string indexCmd = BamUtils::createIndexBamCmd(sortedBam);                
+            
             if (verbose) {
-                cout << "Indexing " << sortedBam << " ... ";
+                cout << "Indexing BAM using command \"" << indexCmd << "\" ... ";
                 cout.flush();
             }
             
-            // Create BAM index
-            BamUtils::indexBam(sortedBam);
+            int exitCode = system(indexCmd.c_str());                    
+            
+             if (exitCode != 0 || !exists(output->getBamIndexFilePath())) {
+                    BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                            "Failed to successfully index: ") + sortedBam));
+            }
             
             if (verbose) {
                 cout << "done." << endl

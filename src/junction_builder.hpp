@@ -250,7 +250,7 @@ public:
         
         if (verbose) {
             cout << "done." << endl
-                 << "Strand specific input data: " << boolalpha << strandSpecific << endl << endl;
+                 << " - Strand specific input data: " << boolalpha << strandSpecific << endl << endl;
         }
     }
     

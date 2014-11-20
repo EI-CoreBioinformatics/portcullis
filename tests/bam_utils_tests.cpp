@@ -53,16 +53,15 @@ BOOST_AUTO_TEST_CASE(sort) {
     
     string unsortedBam = "resources/unsorted.bam";
     string sortedBam = "resources/sorted.test.bam";
-    BamUtils::sortBam(unsortedBam, sortedBam);
+    
+    string cmd = BamUtils::createSortBamCmd(unsortedBam, sortedBam);
+    
+    string correct("samtools sort -@ 1 -m 1G resources/unsorted.bam resources/sorted.test.bam");
+    
+    //cout << "cmd=" << cmd << endl;
     
     // Check the sorted bam file exists
-    BOOST_CHECK(boost::filesystem::exists(sortedBam));
-    
-    // Check the sorted bam file is actually sorted
-    BOOST_CHECK(BamUtils::isSortedBam(sortedBam)); 
-    
-    // Delete the sorted bam file
-    boost::filesystem::remove(sortedBam);
+    BOOST_CHECK(cmd == correct);
 }
 
 BOOST_AUTO_TEST_CASE(is_sorted1)
@@ -82,20 +81,6 @@ BOOST_AUTO_TEST_CASE(is_sorted2)
     
     // Check the merged bam file exists
     BOOST_CHECK(sorted);    
-}
-
-
-BOOST_AUTO_TEST_CASE(index)
-{
-    string sortedBam = "resources/sorted.bam";
-    string indexedBam = "resources/sorted.bam.bti";
-    BamUtils::indexBam(sortedBam);
-    
-    // Check the indexed bam file exists
-    BOOST_CHECK(boost::filesystem::exists(indexedBam));
-    
-    // Delete the indexed bam file
-    boost::filesystem::remove(indexedBam);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

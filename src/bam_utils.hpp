@@ -82,65 +82,43 @@ public:
         return header.HasSortOrder();
     }
     
-    static void sortBam(string unsortedFile, string sortedFile) {
-        sortBam(unsortedFile, sortedFile, false, 1, string("1G"));
+    /**
+     * Creates a samtools command that can be used to sort a bam file.  Assumes 
+     * entries will be sorted by position using 1 thread and 1GB or RAM.
+     * @param unsortedFile The bam file that needs sorting
+     * @param sortedFile The path to the new sorted bam file which will be created     
+     * @return The command that can be used to sort the bam file
+     */
+    static string createSortBamCmd(string unsortedFile, string sortedFile) {
+        return createSortBamCmd(unsortedFile, sortedFile, false, 1, string("1G"));
     }
     
-    static void sortBam(string unsortedFile, string sortedFile, bool sortByName, uint16_t threads, string memory) {
+    /**
+     * Creates a samtools command that can be used to sort a bam file
+     * @param unsortedFile The bam file that needs sorting
+     * @param sortedFile The path to the new sorted bam file which will be created
+     * @param sortByName If true, bam entries are sorted by name, otherwise by position
+     * @param threads Number of threads to use
+     * @param memory Amount of memory to request
+     * @return The command that can be used to sort the bam file
+     */
+    static string createSortBamCmd(string unsortedFile, string sortedFile, bool sortByName, uint16_t threads, string memory) {
         
-        string cmd = string("samtools sort -@ ") + lexical_cast<string>(threads) + 
+        return string("samtools sort -@ ") + lexical_cast<string>(threads) + 
                 " -m " + memory + " " + (sortByName ? "-n " : "") + unsortedFile + 
                 " " + sortedFile;
-        
-        cout << "Executing: \"" << cmd << "\" ... " << endl;
-        
-        system(cmd.c_str());
-        
-        string badNameMergeFile = sortedFile + ".bam";
-        
-        if (exists(badNameMergeFile)) {
-            boost::filesystem::rename(badNameMergeFile, sortedFile);
-        }
-        
-        if (!exists(sortedFile) || !isSortedBam(sortedFile)) {
-            BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
-                    "Failed to successfully sort: ") + unsortedFile));
-        }        
     }
     
-    static void indexBam(string sortedBam) {
+    /**
+     * Creates a samtools command that can be used to index a sorted bam file
+     * @param sortedBam Path to a sorted bam file to index
+     * @return The command that can be used to index the sorted bam file
+     */
+    static string createIndexBamCmd(string sortedBam) {
         
-        BamReader reader;
-        
-        if (!reader.Open(sortedBam)) {
-            BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
-                    "Could not open BAM file to index: ") + sortedBam));
-        }
-        
-        reader.CreateIndex(BamIndex::BAMTOOLS);        
-        reader.Close();
+        return string("samtools index ") + sortedBam;        
     }
     
-    static void depth(string sortedBam, string outputFile) {
-        
-        string cmd = string("samtools depth ") + sortedBam + " > " + outputFile;
-        
-        cout << "Executing: \"" << cmd << "\" ... " << endl;
-        cout.flush();
-        
-        system(cmd.c_str());        
-    }
-    
-    static void pileupBam(string sortedBam, string indexedGenomeFile, string outputFile) {
-        
-        string cmd = string("samtools mpileup -D -f ") + indexedGenomeFile + 
-                " " + sortedBam + " > " + outputFile;
-        
-        cout << "Executing: \"" << cmd << "\" ... " << endl;
-        cout.flush();
-        
-        system(cmd.c_str());        
-    }
     
     static bool opFollowsReference(char type) {
         

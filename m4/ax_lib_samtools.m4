@@ -135,7 +135,8 @@ AC_DEFUN([AX_LIB_SAMTOOLS],
 
             AC_LANG_PUSH(C)
             AC_CHECK_HEADER([sam.h], [ac_cv_sam_h=yes], [ac_cv_sam_h=no])
-            AC_CHECK_LIB([bam], [bam_parse_region], [ac_cv_libbam=yes], [ac_cv_libbam=no], ${HTSLIB_LIB})        
+            AC_CHECK_LIB([bam], [bam_parse_region], [ac_cv_libbam=yes], [ac_cv_libbam=no], ${HTSLIB_LIB})
+            AC_CHECK_PROG([ac_cv_bin], [samtools], [yes], [no])
             AC_LANG_POP(C)
 
             #echo "${ac_cv_sam_h}"
@@ -146,7 +147,7 @@ AC_DEFUN([AX_LIB_SAMTOOLS],
 
             AC_MSG_CHECKING([samtools])
 
-            if test "${ac_cv_libbam}" = "yes" && test "${ac_cv_sam_h}" = "yes" ; then
+            if test "${ac_cv_libbam}" = "yes" && test "${ac_cv_sam_h}" = "yes" && test "${ac_cv_bin}" = "yes" ; then
                 #
                 # If both library and header were found, use them
                 #
