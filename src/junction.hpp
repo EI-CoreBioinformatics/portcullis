@@ -55,7 +55,7 @@ const uint16_t MAP_QUALITY_THRESHOLD = 30;
 typedef boost::error_info<struct JunctionError,string> JunctionErrorInfo;
 struct JunctionException: virtual boost::exception, virtual std::exception { };
 
-const string METRIC_NAMES[18] = {
+const string METRIC_NAMES[19] = {
         "M1-nb_reads",
         "M2-canonical_ss",
         "M3-intron_size",
@@ -73,7 +73,8 @@ const string METRIC_NAMES[18] = {
         "M15-coverage",
         "M16-uniq_junc",
         "M17-primary_junc",
-        "M18-mm_score"
+        "M18-mm_score",
+        "M19-nb_mismatches"
     };
 
 const string PREDICTION_NAMES[1] = {
@@ -165,6 +166,7 @@ private:
     bool     uniqueJunction;                    // Metric 16
     bool     primaryJunction;                   // Metric 17
     double   multipleMappingScore;              // Metric 18
+    uint16_t nbMismatches;                      // Metric 19
     
     
     // **** Predictions ****
@@ -260,6 +262,7 @@ public:
         uniqueJunction = false;
         primaryJunction = false;
         multipleMappingScore = 0.0;
+        nbMismatches = 0;
         
         predictedStrand = UNKNOWN;
     }
@@ -419,7 +422,7 @@ public:
        
         calcAnchorStats();      // Metrics 5 and 7
         calcEntropy();          // Metric 6
-        calcAlignmentStats();   // Metrics 8 and 9
+        calcAlignmentStats();   // Metrics 8, 9 and 19
         calcMaxMMES();          // Metric 12
         calcMultipleMappingScore(map); // Metric 18
     }
@@ -560,6 +563,7 @@ public:
         
         nbDistinctAlignments = 0;
         nbReliableAlignments = 0;
+        nbMismatches = 0;
         
         for(BamAlignment ba : junctionAlignments) {
             
@@ -578,6 +582,12 @@ public:
             // because apparently "uniqueness" is not a well defined concept.
             if (ba.MapQuality >= MAP_QUALITY_THRESHOLD) {
                 nbReliableAlignments++;
+            }
+            
+            for (CigarOp op : ba.CigarData) {
+                if (op.Type == 'X') {
+                    nbMismatches++;
+                }
             }
         }        
     }
@@ -671,7 +681,7 @@ public:
         
         this->multipleMappingScore = (double)N / (double)M;
     }
-    
+        
     uint16_t calcMinimalMatchInCigarDataSubset(BamAlignment& ba, int32_t start, int32_t end) {
         
         if (start > ba.Position + ba.AlignedBases.size() || end < ba.Position)
@@ -714,40 +724,35 @@ public:
         
         for (int32_t i = a; i <= b; i++) {
             
-            //int32_t pos = intron->strand == NEGATIVE ? i*2+1 : i*2;
-            readCount += coverageLevels[i];
+            // Don't do anything stupid!
+            if (i >= 0 && i < coverageLevels.size()) {
+                readCount += coverageLevels[i];
+            }            
         }
         return multiplier * (double)readCount;
     }
     
-    void calcCoverage(int32_t meanReadLength, const vector<uint32_t>& coverageLevels) {
+    double calcCoverage(int32_t meanReadLength, const vector<uint32_t>& coverageLevels) {
         
-        int32_t donorStart = intron->start - 2 * meanReadLength; donorStart = donorStart < 0 ? 0 : donorStart;
-        int32_t donorMid = intron->start - meanReadLength;  // This one should be fine
-        int32_t donorEnd = intron->start;                   // This is definitely ok, no capping required
+        int32_t donorStart = intron->start - 2 * meanReadLength;
+        int32_t donorMid = intron->start - meanReadLength;
+        int32_t donorEnd = intron->start;
         
-        int32_t acceptorStart = intron->end - meanReadLength;
-        int32_t acceptorMid = intron->end;
-        int32_t acceptorEnd = intron->end + meanReadLength;
+        int32_t acceptorStart = intron->end;
+        int32_t acceptorMid = intron->end + meanReadLength;
+        int32_t acceptorEnd = intron->end + 2 * meanReadLength;
         
-        
-        if (donorMid - donorStart != donorEnd - donorMid ||
-            acceptorMid - acceptorStart != acceptorEnd - acceptorMid) {
-            
-            coverage = -1.0;
-        }
-        else {
-            
-            double donorCoverage = 
-                    calcCoverage(donorStart, donorMid-1, coverageLevels) -
-                    calcCoverage(donorMid, donorEnd, coverageLevels);
+        double donorCoverage = 
+                calcCoverage(donorStart, donorMid-1, coverageLevels) -
+                calcCoverage(donorMid, donorEnd, coverageLevels);
 
-            double acceptorCoverage = 
-                    calcCoverage(acceptorMid, acceptorEnd, coverageLevels) -
-                    calcCoverage(acceptorStart, acceptorMid-1, coverageLevels);
+        double acceptorCoverage = 
+                calcCoverage(acceptorMid, acceptorEnd, coverageLevels) -
+                calcCoverage(acceptorStart, acceptorMid-1, coverageLevels);
 
-            coverage = donorCoverage + acceptorCoverage;
-        }
+        coverage = donorCoverage + acceptorCoverage; 
+        
+        return coverage;
     }
     
     
@@ -908,7 +913,14 @@ public:
     }
 
     /**
-     * Metric 15:
+     * Metric 15: The coverage score around the junction.  Uses unspliced reads
+     * around both donor and acceptor sites.  If this is geniune junction you expect
+     * unspliced reads to drop off closer to the donor and acceptor sites you get
+     * (relative to read length).  We compare a window one read away from the d/a
+     * site and one read up to the d/a site.  We then substract the mean coverage from
+     * the more distant window to the close window.  We then add these score from
+     * both donor and acceptor sites together.  For genuine junctions this should be
+     * the score should be relatively large.  See TrueSight paper for more info.
      * @return 
      */
     double getCoverage() const {
@@ -931,9 +943,25 @@ public:
         return primaryJunction;
     }
     
+    /**
+     * Metric 18: Multiple mapping score (reflects mapping ambiguity.  Small score
+     * implies reads in this junction align to other splice junctions across the
+     * genome).  From TrueSight paper.
+     * @return 
+     */
     double getMultipleMappingScore() const {
         return multipleMappingScore;
     }
+    
+    /**
+     * Metric 19: Number of mismatches.  The total number of mismatches from all
+     * splice aligned reads in this junction.  From TrueSight paper.
+     * @return 
+     */
+    uint16_t getNbMismatches() const {
+        return nbMismatches;
+    }
+
 
     Strand getPredictedStrand() const {
         return predictedStrand;
@@ -1003,6 +1031,11 @@ public:
     void setPredictedStrand(Strand predictedStrand) {
         this->predictedStrand = predictedStrand;
     }
+    
+    void setNbMismatches(uint16_t nbMismatches) {
+        this->nbMismatches = nbMismatches;
+    }
+
 
 
     
@@ -1050,7 +1083,8 @@ public:
              << "15: Coverage: " << coverage << delimiter
              << "16: Unique Junction: " << boolalpha << uniqueJunction << delimiter
              << "17: Primary Junction: " << boolalpha << primaryJunction << delimiter
-             << "18: Multiple mapping score: " << multipleMappingScore << delimiter;
+             << "18: Multiple mapping score: " << multipleMappingScore << delimiter
+             << "19: # mismatches: " << nbMismatches << delimiter;
     }
     
     /**
@@ -1176,7 +1210,8 @@ public:
                     << j.coverage << "\t"
                     << j.uniqueJunction << "\t"
                     << j.primaryJunction << "\t"
-                    << j.multipleMappingScore;
+                    << j.multipleMappingScore << "\t"
+                    << j.nbMismatches;
     }
     
         
@@ -1242,7 +1277,7 @@ public:
         j->setUniqueJunction(lexical_cast<bool>(parts[25]));
         j->setPrimaryJunction(lexical_cast<bool>(parts[26]));
         j->setMultipleMappingScore(lexical_cast<double>(parts[27]));
-
+        j->setNbMismatches(lexical_cast<uint16_t>(parts[28]));
         
         return j;
     }

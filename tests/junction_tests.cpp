@@ -90,4 +90,45 @@ BOOST_AUTO_TEST_CASE(entropy) {
     BOOST_CHECK(e1 > e2);
 }
 
+/**
+ * This IS what you'd expect to see in a real junction
+ */
+BOOST_AUTO_TEST_CASE(coverage1) {
+    
+    shared_ptr<Intron> l(new Intron(5, 20, 30, portculis::POSITIVE));
+    Junction j1(l, 10, 40);
+    
+    vector<uint32_t> coverage1{ 10,10,10,10,10,10,10,10,10,10,
+                                10,10,10,10,10,8,6,4,3,2,
+                                0,0,0,0,0,0,0,0,0,0,
+                                2,3,4,7,8,10,10,10,10,10,
+                                10,10,10,10,10,10,10,10,10,10}; 
+    
+    double cvg1 = j1.calcCoverage(5,coverage1);
+                               
+    cout << "Coverage: " << cvg1 << endl;
+    BOOST_CHECK(cvg1 > 0);
+}
+
+/**
+ * This IS NOT what you'd expect to see in a real junction
+ */
+BOOST_AUTO_TEST_CASE(coverage2) {
+    
+    shared_ptr<Intron> l(new Intron(5, 20, 30, portculis::POSITIVE));
+    Junction j2(l, 10, 40);    
+    
+    vector<uint32_t> coverage2{ 0,0,0,0,0,0,0,0,0,0,
+                                0,0,0,0,0,2,3,5,7,8,
+                                10,10,10,10,10,10,10,10,10,10,
+                                8,6,4,3,2,0,0,0,0,0,
+                                0,0,0,0,0,0,0,0,0,0}; 
+    
+    double cvg2 = j2.calcCoverage(5,coverage2);
+                               
+    cout << "Coverage: " << cvg2 << endl;
+    
+    BOOST_CHECK(cvg2 < 0);
+
+
 BOOST_AUTO_TEST_SUITE_END()

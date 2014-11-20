@@ -343,7 +343,7 @@ public:
              << " - Calculating per base depth and junction coverage ... ";
         cout.flush();
         
-        DepthParser dp(alignmentsFile, strandSpecific);
+        DepthParser dp(alignmentsFile, strandSpecific, false);
         
         vector<uint32_t> batch;
         
@@ -389,6 +389,7 @@ public:
         
         cout << "done." << endl;        
     }
+    
     
     /**
      * Call this method to recalculate all junction metrics based on the current location

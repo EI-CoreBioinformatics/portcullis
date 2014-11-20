@@ -85,7 +85,11 @@ public:
     
     
     void filter() {
-
+        
+        // Load junction system
+        JunctionSystem js(junctionFile);
+        
+        
     }
   
     static string helpMessage() {
