@@ -77,9 +77,5 @@ BOOST_AUTO_TEST_CASE(test1)
     BOOST_CHECK(count2 <= count1);
 }
 
-BOOST_AUTO_TEST_CASE(test2)
-{
-    BOOST_CHECK(false);
-}
 
 BOOST_AUTO_TEST_SUITE_END()
