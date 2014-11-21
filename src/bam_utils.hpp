@@ -32,11 +32,16 @@ using boost::lexical_cast;
 #include <api/BamReader.h>
 #include <api/BamWriter.h>
 using namespace BamTools;
-       
 
 namespace portculis {
 namespace bamtools {
 
+#ifdef SAMTOOLS_PATH
+    const string SAMTOOLS_EXE = string(SAMTOOLS_PATH) + "/samtools";
+#else
+    const string SAMTOOLS_EXE("samtools");
+#endif    
+    
 typedef boost::error_info<struct BamError,string> BamErrorInfo;
 struct BamException: virtual boost::exception, virtual std::exception { };
 
@@ -104,7 +109,7 @@ public:
      */
     static string createSortBamCmd(string unsortedFile, string sortedFile, bool sortByName, uint16_t threads, string memory) {
         
-        return string("samtools sort -@ ") + lexical_cast<string>(threads) + 
+        return SAMTOOLS_EXE + " sort -@ " + lexical_cast<string>(threads) + 
                 " -m " + memory + " " + (sortByName ? "-n " : "") + unsortedFile + 
                 " " + sortedFile;
     }
@@ -116,7 +121,7 @@ public:
      */
     static string createIndexBamCmd(string sortedBam) {
         
-        return string("samtools index ") + sortedBam;        
+        return SAMTOOLS_EXE + " index " + sortedBam;        
     }
     
     

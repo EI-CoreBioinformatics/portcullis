@@ -61,7 +61,7 @@ AC_DEFUN([AX_DLIB],
             AC_MSG_ERROR([dlib headers not found.  Please ensure that the dlib headers directory can be found on the CPPFLAGS env var. Alternatively, you can try the --with-dlib option, which expects to find the dlib headers at <dlib_dir>/include/dlib/<headers>.])
         ])
 
-        AC_DEFINE(HAVE_DLIB,,[define if the dlib is available])
+        AC_DEFINE(HAVE_DLIB, [1],[define if the dlib is available])
 
         AC_LANG_POP(C++)
 

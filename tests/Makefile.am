@@ -3,7 +3,7 @@ ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
 TESTS = check_portculis
 check_PROGRAMS = check_portculis
-check_portculis_CXXFLAGS = -g3
+check_portculis_CXXFLAGS = -g3 @AM_CXXFLAGS@
 check_portculis_CPPFLAGS = @AM_CPPFLAGS@ -I$(top_srcdir)/src -I$(top_srcdir)/src/.deps
 check_portculis_LDFLAGS = @AM_LDFLAGS@ -L$(top_srcdir)/src/.deps @AM_LDFLAGS@
 check_portculis_LDADD = @AM_LIBS@ -lboost_unit_test_framework 

@@ -123,6 +123,8 @@ AC_DEFUN([AX_LIB_SAMTOOLS],
     #
     if test -n "${SAMTOOLS_HOME}" ; then
 
+        SAMTOOLS_PATH="${SAMTOOLS_HOME}/bin"
+
         AC_MSG_CHECKING([if htslib is already configured])
         if test "${HTSLIB_OK}" = "1" ; then
             
@@ -136,7 +138,7 @@ AC_DEFUN([AX_LIB_SAMTOOLS],
             AC_LANG_PUSH(C)
             AC_CHECK_HEADER([sam.h], [ac_cv_sam_h=yes], [ac_cv_sam_h=no])
             AC_CHECK_LIB([bam], [bam_parse_region], [ac_cv_libbam=yes], [ac_cv_libbam=no], ${HTSLIB_LIB})
-            AC_CHECK_PROG([ac_cv_bin], [samtools], [yes], [no])
+            AC_CHECK_PROG([ac_cv_bin], [samtools], [yes], [no], [${SAMTOOLS_PATH}])
             AC_LANG_POP(C)
 
             #echo "${ac_cv_sam_h}"
@@ -152,7 +154,8 @@ AC_DEFUN([AX_LIB_SAMTOOLS],
                 # If both library and header were found, use them
                 #
                 AC_MSG_RESULT([ok])
-                AC_DEFINE(HAVE_SAMTOOLS,,[define if the samtools library is available])                
+                AC_DEFINE(HAVE_SAMTOOLS, 1,[define if the samtools library is available])
+                AC_DEFINE_UNQUOTED(SAMTOOLS_PATH, ["${SAMTOOLS_PATH}"], [Path to samtools executable])
             else
                 #
                 # If either header or library was not found, revert and bomb
