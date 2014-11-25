@@ -1,18 +1,18 @@
 //  ********************************************************************
-//  This file is part of Portculis.
+//  This file is part of Portcullis.
 //
-//  Portculis is free software: you can redistribute it and/or modify
+//  Portcullis is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Portculis is distributed in the hope that it will be useful,
+//  Portcullis is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with Portculis.  If not, see <http://www.gnu.org/licenses/>.
+//  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
 #pragma once
@@ -43,17 +43,18 @@ using boost::filesystem::symbolic_link_exists;
 namespace po = boost::program_options;
 
 
-namespace portculis {
+namespace portcullis {
     
 typedef boost::error_info<struct FilterError,string> FilterErrorInfo;
 struct FilterException: virtual boost::exception, virtual std::exception { };
 
-const string DEFAULT_FILTER_OUTPUT_DIR = "portculis_filter_out";
-const string DEFAULT_FILTER_OUTPUT_PREFIX = "portculis";
+const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
+const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
 const double DEFAULT_MIN_ENTROPY = 1.0;
 const uint32_t DEFAULT_MIN_DISTINCT_ALIGNMENTS = 3;
+const uint32_t DEFAULT_MIN_RELIABLE_ALIGNMENTS = 1;
 const uint32_t DEFAULT_MIN_MAXMMES = 5;
-const uint16_t DEFAULT_MIN_HAMMING = 1;
+const uint16_t DEFAULT_MIN_HAMMING = 2;
 
 
 class Filter {
@@ -65,6 +66,7 @@ private:
     string outputDir;
     string outputPrefix;
     uint32_t minDistinctAlignments;
+    uint32_t minReliableAlignments;
     double minEntropy;
     uint16_t minHamming;
     uint32_t minMaxMMES;
@@ -82,6 +84,7 @@ public:
         // Set default thresholds
         minEntropy = DEFAULT_MIN_ENTROPY;
         minDistinctAlignments = DEFAULT_MIN_DISTINCT_ALIGNMENTS;
+        minReliableAlignments = DEFAULT_MIN_RELIABLE_ALIGNMENTS;
         minMaxMMES = DEFAULT_MIN_MAXMMES;
         minHamming = DEFAULT_MIN_HAMMING;
         
@@ -128,6 +131,23 @@ public:
     void setMinDistinctAlignments(uint32_t minDistinctAlignments) {
         this->minDistinctAlignments = minDistinctAlignments;
     }
+    
+    uint16_t getMinHamming() const {
+        return minHamming;
+    }
+
+    void setMinHamming(uint16_t minHamming) {
+        this->minHamming = minHamming;
+    }
+
+    uint32_t getMinReliableAlignments() const {
+        return minReliableAlignments;
+    }
+
+    void setMinReliableAlignments(uint32_t minReliableAlignments) {
+        this->minReliableAlignments = minReliableAlignments;
+    }
+
 
     double getMinEntropy() const {
         return minEntropy;
@@ -169,6 +189,7 @@ public:
         cout << "Filtering obvious false positive junctions or junctions without sufficient evidence" << endl
              << " - Minimum junction entropy required: " << minEntropy << endl
              << " - Minimum number of distinct alignments required: " << minDistinctAlignments << endl
+             << " - Minimum number of reliable alignments required: " << minReliableAlignments << endl
              << " - Minimum required value for the maximum of the minimal match on either side of the exon junction (MaxMMES): " << minMaxMMES << endl
              << " - Minimum hamming distance between regions around 5' and 3' splice sites: " << minHamming << endl << endl;
         
@@ -183,6 +204,7 @@ public:
         
         uint32_t belowMinEntropyThreshold = 0;
         uint32_t belowDistinctAlignmentThreshold = 0;
+        uint32_t belowReliableAlignmentThreshold = 0;
         uint32_t belowMaxMMESThreshold = 0;
         uint32_t below5pHammingThreshold = 0;
         uint32_t below3pHammingThreshold = 0;
@@ -198,6 +220,11 @@ public:
             
             if (j->getNbDistinctAlignments() < minDistinctAlignments) {
                 belowDistinctAlignmentThreshold++;
+                filter = true;
+            }
+            
+            if (j->getNbReliableAlignments() < minReliableAlignments) {
+                belowReliableAlignmentThreshold++;
                 filter = true;
             }
                 
@@ -224,6 +251,7 @@ public:
         cout << "Filtering results: " << endl
              << " - Below entropy threshold: " << belowMinEntropyThreshold << endl
              << " - Below distinct alignment threshold: " << belowDistinctAlignmentThreshold << endl
+             << " - Below reliable alignment threshold: " << belowReliableAlignmentThreshold << endl
              << " - Below maxMMES threshold: " << belowMaxMMESThreshold << endl 
              << " - Below hamming threshold at 5' splice site: " << below5pHammingThreshold << endl
              << " - Below hamming threshold at 3' splice site: " << below3pHammingThreshold << endl << endl;
@@ -240,17 +268,18 @@ public:
     }
   
     static string helpMessage() {
-        return string("\nPortculis Filter Mode Help.\n\n") +
-                      "Usage: portculis filter [options] <junction-file>\n\n" +
+        return string("\nPortcullis Filter Mode Help.\n\n") +
+                      "Usage: portcullis filter [options] <junction-file>\n\n" +
                       "Allowed options";
     }
     
     static int main(int argc, char *argv[]) {
         
-        // Portculis args
+        // Portcullis args
         string junctionFile;
         //string bamFile;
         uint32_t minDistinctAlignments;
+        uint32_t minReliableAlignments;
         double minEntropy;
         uint32_t minMaxMMES;
         uint16_t minHamming;
@@ -271,6 +300,8 @@ public:
                     "The minimum entropy required for a junction")
                 ("min_distinct_alignments,d", po::value<uint32_t>(&minDistinctAlignments)->default_value(DEFAULT_MIN_DISTINCT_ALIGNMENTS), 
                     "The minimum number of distinct alignment required for a junction")
+                ("min_reliable_alignments,r", po::value<uint32_t>(&minReliableAlignments)->default_value(DEFAULT_MIN_RELIABLE_ALIGNMENTS), 
+                    "The minimum number of reliable alignments (alignments uniquely mapping to genome) required for a junction")
                 ("min_maxmmes,m", po::value<uint32_t>(&minMaxMMES)->default_value(DEFAULT_MIN_MAXMMES), 
                     "The minimum value required for the maximum of minimal match on either side of exon junction")
                 ("min_hamming,h", po::value<uint16_t>(&minHamming)->default_value(DEFAULT_MIN_HAMMING), 
@@ -311,16 +342,18 @@ public:
         
         
 
-        auto_cpu_timer timer(1, "\nPortculis filter completed.\nTotal runtime: %ws\n\n");        
+        auto_cpu_timer timer(1, "\nPortcullis filter completed.\nTotal runtime: %ws\n\n");        
 
-        cout << "Running portculis in filter mode" << endl
+        cout << "Running portcullis in filter mode" << endl
              << "--------------------------------" << endl << endl;
         
         // Create the prepare class
         Filter filter(junctionFile, outputDir, outputPrefix, verbose);
         filter.setMinDistinctAlignments(minDistinctAlignments);
+        filter.setMinReliableAlignments(minReliableAlignments);
         filter.setMinEntropy(minEntropy);
         filter.setMinMaxMMES(minMaxMMES);
+        filter.setMinHamming(minHamming);
         filter.filter();
         
         return 0;

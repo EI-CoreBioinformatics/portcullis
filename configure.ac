@@ -3,14 +3,14 @@
 ##########################################################################
 
 # Autoconf initialistion.  Sets package name version and contact details
-AC_INIT([Portculis],[0.2.0],[daniel.mapleson@tgac.ac.uk],[portculis],[http://www.tgac.ac.uk])
+AC_INIT([Portcullis],[0.2.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
 
 # I built this with autoconf 2.53 and have only tested it on 2.69 systems.  You can change this but I don't
 # make any guarentees
 AC_PREREQ([2.53])
 
 # Check that the configure script is being run from the right directory
-AC_CONFIG_SRCDIR([src/portculis.cc])
+AC_CONFIG_SRCDIR([src/portcullis.cc])
 
 # Put auxillary build scripts in 'build-aux' directory
 AC_CONFIG_AUX_DIR([build-aux])
@@ -25,7 +25,7 @@ AC_CONFIG_SUBDIRS([include])
 # I've only tried this with automake 1.11 and above, so you require at least that version installed on your machine if you want to regenerate 'the Makefile.in's.  If you're looking at this comment in the 'configure' script then this the am__api_version, will be set to whatever I used to create this file.  Or it might be whatever you used if you made it yourself with autoconf (or autoreconf, or the autogen.sh script)
 AM_INIT_AUTOMAKE([1.11 foreign -Wall no-define])
 
-# Most of portculis is written in C++.  This is what this macro means: "Do compilation tests using CXX and CXXCPP and use extension .C for test programs. Use compilation flags: CPPFLAGS with CXXCPP, and both CPPFLAGS and CXXFLAGS with CXX."
+# Most of portcullis is written in C++.  This is what this macro means: "Do compilation tests using CXX and CXXCPP and use extension .C for test programs. Use compilation flags: CPPFLAGS with CXXCPP, and both CPPFLAGS and CXXFLAGS with CXX."
 AC_LANG_CPLUSPLUS
 
 # Set output variable CXXCPP to a command that runs the C++ preprocessor. If ‘$CXX -E’ doesn't work, /lib/cpp is used. It is portable to run CXXCPP only on files with a .c, .C, .cc, or .cpp extension.
@@ -36,7 +36,7 @@ CXXFLAGS=""
 AC_PROG_CXX
 
 # Determine a C compiler to use. If CC is not already set in the environment, check for gcc and cc, then for other C compilers. Set output variable CC to the name of the compiler found.
-# NOTE: This probably isn't necessary.  I don't think we have any C code in portculis.
+# NOTE: This probably isn't necessary.  I don't think we have any C code in portcullis.
 CFLAGS=""
 AC_PROG_CC
 
@@ -56,7 +56,7 @@ AC_PROG_INSTALL
 # Dependency checks
 ######################################################################
 
-# Check some (almost) standard functionality is present that we require to run portculis.
+# Check some (almost) standard functionality is present that we require to run portcullis.
 #AC_CHECK_HEADER_STDBOOL
 AC_FUNC_ERROR_AT_LINE
 AC_TYPE_INT16_T

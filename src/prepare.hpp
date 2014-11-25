@@ -1,18 +1,18 @@
 //  ********************************************************************
-//  This file is part of Portculis.
+//  This file is part of Portcullis.
 //
-//  Portculis is free software: you can redistribute it and/or modify
+//  Portcullis is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Portculis is distributed in the hope that it will be useful,
+//  Portcullis is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with Portculis.  If not, see <http://www.gnu.org/licenses/>.
+//  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
 #pragma once
@@ -41,19 +41,19 @@ using boost::filesystem::symbolic_link_exists;
 
 #include "bam_utils.hpp"
 #include "genome_mapper.hpp"
-using portculis::bamtools::BamUtils;
+using portcullis::bamtools::BamUtils;
 
 
-namespace portculis {
+namespace portcullis {
     
 typedef boost::error_info<struct PrepareError,string> PrepareErrorInfo;
 struct PrepareException: virtual boost::exception, virtual std::exception { };
 
 
-const string DEFAULT_PREP_OUTPUT_DIR = "portculis_prep_data";
+const string DEFAULT_PREP_OUTPUT_DIR = "portcullis_prep_data";
 const uint16_t DEFAULT_PREP_THREADS = 1;
 
-const string PORTCULIS = "portculis";
+const string PORTCULLIS = "portcullis";
 
 const string FASTA_EXTENSION = ".fa";
 const string FASTA_INDEX_EXTENSION = ".fai";
@@ -83,11 +83,11 @@ public:
     }
 
     string getUnsortedBamFilePath() const {
-        return prepDir + "/" + PORTCULIS + ".unsorted.alignments" + BAM_EXTENSION;
+        return prepDir + "/" + PORTCULLIS + ".unsorted.alignments" + BAM_EXTENSION;
     }
     
     string getSortedBamFilePath() const {
-        return prepDir + "/" + PORTCULIS + ".sorted.alignments" + BAM_EXTENSION;
+        return prepDir + "/" + PORTCULLIS + ".sorted.alignments" + BAM_EXTENSION;
     }
     
     string getBamIndexFilePath() const {
@@ -103,7 +103,7 @@ public:
     }    
     
     string getGenomeFilePath() const {
-        return prepDir + "/" + PORTCULIS + ".genome" + FASTA_EXTENSION;
+        return prepDir + "/" + PORTCULLIS + ".genome" + FASTA_EXTENSION;
     }
     
     string getGenomeIndexFilePath() const {
@@ -111,7 +111,7 @@ public:
     }
     
     string getSettingsFilePath() const {
-        return prepDir + "/" + PORTCULIS + ".settings";
+        return prepDir + "/" + PORTCULLIS + ".settings";
     }
     
     bool valid() {
@@ -201,7 +201,7 @@ private:
         verbose = _verbose;
         
         if (verbose) {
-            cout << "Configured portculis prep to use the following settings: " << endl
+            cout << "Configured portcullis prep to use the following settings: " << endl
                  << " - Output directory: " << output->getPrepDir() << endl
                  << " - Strand specific library: " << boolalpha << strandSpecific << endl
                  << " - Force prep (cleans output directory): " << boolalpha << force << endl
@@ -502,14 +502,14 @@ public:
 
   
     static string helpMessage() {
-        return string("\nPortculis Prepare Mode Help.\n\n") +
-                      "Usage: portculis prep [options] <genome-file> (<bam-file>)+ \n\n" +
+        return string("\nPortcullis Prepare Mode Help.\n\n") +
+                      "Usage: portcullis prep [options] <genome-file> (<bam-file>)+ \n\n" +
                       "Allowed options";
     }
     
     static int main(int argc, char *argv[]) {
         
-        // Portculis args
+        // Portcullis args
         vector<string> bamFiles;
         string genomeFile;
         string outputDir;
@@ -526,7 +526,7 @@ public:
                 ("output,o", po::value<string>(&outputDir)->default_value(DEFAULT_PREP_OUTPUT_DIR), 
                     (string("Output directory for prepared files. Default: ") + DEFAULT_PREP_OUTPUT_DIR).c_str())
                 ("force,f", po::bool_switch(&force)->default_value(false), 
-                    "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portculis will only do what it thinks it needs to.")
+                    "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
                 ("strand_specific,ss", po::bool_switch(&strandSpecific)->default_value(false), 
                     "Whether BAM alignments were generated using a strand specific RNAseq library.")
                 ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
@@ -582,9 +582,9 @@ public:
                         "Could not find genome file at: ") + genomeFile));
         }
 
-        auto_cpu_timer timer(1, "\nPortculis prep completed.\nTotal runtime: %ws\n\n");        
+        auto_cpu_timer timer(1, "\nPortcullis prep completed.\nTotal runtime: %ws\n\n");        
 
-        cout << "Running portculis in prepare mode" << endl
+        cout << "Running portcullis in prepare mode" << endl
              << "---------------------------------" << endl << endl;
         
         // Create the prepare class

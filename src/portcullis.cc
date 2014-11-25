@@ -1,18 +1,18 @@
 //  ********************************************************************
-//  This file is part of Portculis.
+//  This file is part of Portcullis.
 //
-//  Portculis is free software: you can redistribute it and/or modify
+//  Portcullis is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Portculis is distributed in the hope that it will be useful,
+//  Portcullis is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with Portculis.  If not, see <http://www.gnu.org/licenses/>.
+//  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
 #ifdef HAVE_CONFIG_H
@@ -46,13 +46,13 @@ namespace po = boost::program_options;
 #include "prepare.hpp"
 #include "filter.hpp"
 #include "cluster.hpp"
-using portculis::JunctionBuilder;
-using portculis::Prepare;
-using portculis::Filter;
-using portculis::Cluster;
+using portcullis::JunctionBuilder;
+using portcullis::Prepare;
+using portcullis::Filter;
+using portcullis::Cluster;
 
-typedef boost::error_info<struct PortculisError,string> PortculisErrorInfo;
-struct PortculisException: virtual boost::exception, virtual std::exception { };
+typedef boost::error_info<struct PortcullisError,string> PortcullisErrorInfo;
+struct PortcullisException: virtual boost::exception, virtual std::exception { };
 
 // Default values for arguments
 const uint16_t DEFAULT_THREADS = 4;
@@ -87,15 +87,15 @@ Mode parseMode(string mode) {
         return CLUSTER;
     }
     else {
-        BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
+        BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
                     "Could not recognise mode string: ") + mode));
     }
 }
 
 string helpHeader() {
-    return string("\nPortculis Help.\n\n") +
-                  "Portculis is a tool to identify genuine splice junctions using aligned RNAseq reads\n\n" +
-                  "Usage: portculis [options] <mode> <mode_args>\n\n" +
+    return string("\nPortcullis Help.\n\n") +
+                  "Portcullis is a tool to identify genuine splice junctions using aligned RNAseq reads\n\n" +
+                  "Usage: portcullis [options] <mode> <mode_args>\n\n" +
                   "Available modes:\n" +
                   " - prep    - Prepares a genome and bam file(s) ready for junction analysis\n" +
                   " - junc    - Perform junction analysis on prepared data\n" +
@@ -106,12 +106,12 @@ string helpHeader() {
 }
 
 /**
- * Start point for portculis.
+ * Start point for portcullis.
  */
 int main(int argc, char *argv[]) {
     
     try {
-        // Portculis args
+        // Portcullis args
         string modeStr;
         std::vector<string> others;
         bool verbose;
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
         // in config file, but will not be shown to the user.
         po::options_description hidden_options("Hidden options");
         hidden_options.add_options()
-                ("mode", po::value<string>(&modeStr), "Portculis mode.")
+                ("mode", po::value<string>(&modeStr), "Portcullis mode.")
                 ("others", po::value< std::vector<string> >(&others), "Other options.")
                 ;
 
@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
         // Output version information then exit if requested
         if (version) {
 #ifndef PACKAGE_NAME
-#define PACKAGE_NAME "Portculis"
+#define PACKAGE_NAME "Portcullis"
 #endif
 
 #ifndef PACKAGE_VERSION
@@ -188,8 +188,8 @@ int main(int argc, char *argv[]) {
             Cluster::main(modeArgC, modeArgV);            
         }
         else {
-            BOOST_THROW_EXCEPTION(PortculisException() << PortculisErrorInfo(string(
-                    "Unrecognised portculis mode: ") + modeStr));
+            BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
+                    "Unrecognised portcullis mode: ") + modeStr));
         }
                 
     } catch (boost::exception &e) { 

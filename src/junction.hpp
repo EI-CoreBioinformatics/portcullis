@@ -1,18 +1,18 @@
 //  ********************************************************************
-//  This file is part of Portculis.
+//  This file is part of Portcullis.
 //
-//  Portculis is free software: you can redistribute it and/or modify
+//  Portcullis is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Portculis is distributed in the hope that it will be useful,
+//  Portcullis is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with Portculis.  If not, see <http://www.gnu.org/licenses/>.
+//  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
 #pragma once
@@ -43,11 +43,11 @@ using namespace BamTools;
 #include "genome_mapper.hpp"
 #include "bam_utils.hpp"
 #include "seq_utils.hpp"
-using portculis::Intron;
-using portculis::Strand;
-using portculis::bamtools::BamUtils;
+using portcullis::Intron;
+using portcullis::Strand;
+using portcullis::bamtools::BamUtils;
 
-namespace portculis {    
+namespace portcullis {    
 
 const uint16_t MAP_QUALITY_THRESHOLD = 30;
 
@@ -1134,7 +1134,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         
         // Output junction parent
         strm << intron->ref.Name << "\t"
-             << "portculis" << "\t"     // source
+             << "portcullis" << "\t"     // source
              << "junction" << "\t"      // type (may change later)
              << leftFlankStart << "\t"  // start
              << rightFlankEnd << "\t"   // end
@@ -1147,7 +1147,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
 
         // Output left exonic region
         strm << intron->ref.Name << "\t"
-             << "portculis" << "\t"
+             << "portcullis" << "\t"
              << "partial_exon" << "\t"
              << leftFlankStart << "\t"
              << (intron->start - 1) << "\t"
@@ -1159,7 +1159,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
                 
         // Output right exonic region
         strm << intron->ref.Name << "\t"
-             << "portculis" << "\t"
+             << "portcullis" << "\t"
              << "partial_exon" << "\t"
              << (intron->end + 1) << "\t"
              << rightFlankEnd << "\t"

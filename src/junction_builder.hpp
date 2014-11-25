@@ -1,18 +1,18 @@
 //  ********************************************************************
-//  This file is part of Portculis.
+//  This file is part of Portcullis.
 //
-//  Portculis is free software: you can redistribute it and/or modify
+//  Portcullis is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Portculis is distributed in the hope that it will be useful,
+//  Portcullis is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with Portculis.  If not, see <http://www.gnu.org/licenses/>.
+//  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
 #pragma once
@@ -44,17 +44,17 @@ using namespace BamTools;
 #include "junction.hpp"
 #include "junction_system.hpp"
 #include "prepare.hpp"
-using portculis::GenomeMapper;
-using portculis::Intron;
-using portculis::Junction;
-using portculis::JunctionSystem;
+using portcullis::GenomeMapper;
+using portcullis::Intron;
+using portcullis::Junction;
+using portcullis::JunctionSystem;
 
 
 
-namespace portculis {
+namespace portcullis {
 
-const string DEFAULT_JUNC_OUTPUT_DIR = "portculis_junc_out";
-const string DEFAULT_JUNC_OUTPUT_PREFIX = "portculis";
+const string DEFAULT_JUNC_OUTPUT_DIR = "portcullis_junc_out";
+const string DEFAULT_JUNC_OUTPUT_PREFIX = "portcullis";
 const uint16_t DEFAULT_JUNC_THREADS = 1;
 
 typedef boost::error_info<struct JunctionBuilderError,string> JunctionBuilderErrorInfo;
@@ -208,7 +208,7 @@ public:
         verbose = _verbose;        
         
         if (verbose) {
-            cout << "Initialised Portculis instance with settings:" << endl
+            cout << "Initialised Portcullis instance with settings:" << endl
                  << " - Prep data dir: " << prepData->getPrepDir() << endl
                  << " - Output directory: " << outputDir << endl
                  << " - Output file name prefix: " << outputPrefix << endl
@@ -300,15 +300,15 @@ public:
     }
     
     static string helpMessage() {
-        return string("\nPortculis Junction Builder Mode Help.\n\n") +
-                      "Usage: portculis junc [options] <prep_data_dir> \n\n" +
-                      "Run \"portculis prep ...\" to generate data suitable for junction finding before running \"portculis junc ...\"\n\n" +
+        return string("\nPortcullis Junction Builder Mode Help.\n\n") +
+                      "Usage: portcullis junc [options] <prep_data_dir> \n\n" +
+                      "Run \"portcullis prep ...\" to generate data suitable for junction finding before running \"portcullis junc ...\"\n\n" +
                       "Allowed options";
     }
     
     static int main(int argc, char *argv[]) {
         
-        // Portculis args
+        // Portcullis args
         string prepDir;
         string outputDir;
         string outputPrefix;
@@ -365,9 +365,9 @@ public:
         }
         
         
-        auto_cpu_timer timer(1, "\nPortculis junc completed.\nTotal runtime: %ws\n\n");        
+        auto_cpu_timer timer(1, "\nPortcullis junc completed.\nTotal runtime: %ws\n\n");        
 
-        cout << "Running portculis in junction builder mode" << endl
+        cout << "Running portcullis in junction builder mode" << endl
              << "------------------------------------------" << endl << endl;
         
         // Do the work ...
