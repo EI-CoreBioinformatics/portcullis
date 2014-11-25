@@ -180,6 +180,10 @@ public:
             out.close();
         }
     }
+    
+    void pca() {
+        
+    }
   
     static string helpMessage() {
         return string("\nPortculis Cluster Mode Help.\n\n") +

@@ -83,6 +83,22 @@ static string strandToString(Strand strand) {
     return string("UNKNOWN");
 }
     
+struct RefSeq {
+   
+    int32_t     Id;     //!< id of the reference sequence
+    std::string Name;    //!< name of reference sequence
+    int32_t     Length;  //!< length of reference sequence
+    
+    //! constructor
+    RefSeq(const int32_t& id = -1,
+            const std::string& name = "",
+            const int32_t& length = 0)
+        : Id(id)
+        , Name(name)
+        , Length(length)
+    { }
+};
+
 typedef boost::error_info<struct IntronError,string> IntronErrorInfo;
 struct IntronException: virtual boost::exception, virtual std::exception { };
 
@@ -91,15 +107,15 @@ class Intron {
     
     
 public:    
-    int32_t refId;      // The reference sequence this location comes from
+    RefSeq ref;     // Details of the reference sequence
     int32_t start;      // The index of the base of the intron
     int32_t end;        // The index of the last base of the intron
     Strand strand;      // The strand the intron is on
     
-    Intron() : Intron(-1, -1, -1, UNKNOWN) {}
+    Intron() : Intron(RefSeq(), -1, -1, UNKNOWN) {}
     
-    Intron(int32_t _refId, int32_t _start, int32_t _end, Strand _strand) :
-        refId(_refId), start(_start), end(_end), strand(_strand) {
+    Intron(RefSeq _ref, int32_t _start, int32_t _end, Strand _strand) :
+        ref(_ref), start(_start), end(_end), strand(_strand) {
     }
 
     
@@ -111,7 +127,7 @@ public:
      */
     bool operator==(const Intron &other) const
     { 
-        return (refId == other.refId &&
+        return (ref.Id == other.ref.Id &&
                 start == other.start &&
                 end == other.end &&
                 strand == other.strand);
@@ -138,7 +154,7 @@ public:
      * @return 
      */
     bool sharesDonorOrAcceptor(const Intron& other) {
-        return refId == other.refId && 
+        return ref.Id == other.ref.Id && 
                 (start == other.start || end == other.end);
     }
     
@@ -170,18 +186,21 @@ public:
     }
     
     void outputDescription(std::ostream &strm, string delimiter) {
-        strm << "RefId: " << refId << delimiter
+        strm << "RefId: " << ref.Id << delimiter
+             << "RefName: " << ref.Name << delimiter
+             << "RefLength: " << ref.Length << delimiter
              << "Start: " << start << delimiter
              << "End: " << end << delimiter
              << "Strand: " << strandToString(strand);
     }
     
     friend std::ostream& operator<<(std::ostream &strm, const Intron& l) {
-        return strm << l.refId << "\t" << l.start << "\t" << l.end << "\t" << strandToChar(l.strand);
+        return strm << l.ref.Id << "\t" << l.ref.Name << "\t" << l.ref.Length 
+                << "\t" << l.start << "\t" << l.end << "\t" << strandToChar(l.strand);
     }
     
     static string locationOutputHeader() {
-        return string("refid\tstart\tend\tstrand"); 
+        return string("refid\trefname\treflen\tstart\tend\tstrand"); 
     }
     
 };
@@ -205,7 +224,7 @@ struct IntronHasher {
 
        // Modify 'seed' by XORing and bit-shifting in
        // one member of 'Key' after the other:
-       hash_combine(seed, hash_value(l.refId));
+       hash_combine(seed, hash_value(l.ref.Id));
        hash_combine(seed, hash_value(l.start));
        hash_combine(seed, hash_value(l.end));
        hash_combine(seed, hash_value(l.strand));

@@ -22,55 +22,58 @@
 #include <boost/test/unit_test.hpp>
 
 #include <intron.hpp>
-
+using portculis::RefSeq;
 using portculis::Intron;
 using portculis::POSITIVE;
 using portculis::NEGATIVE;
+
+const RefSeq rd2(2, "seq_2", 100);
+const RefSeq rd5(5, "seq_5", 100);
 
 BOOST_AUTO_TEST_SUITE(intron)
 
 BOOST_AUTO_TEST_CASE(equality1)
 {
-    Intron l1(5, 10, 20, POSITIVE);
-    Intron l2(5, 10, 20, POSITIVE);
+    Intron l1(rd5, 10, 20, POSITIVE);
+    Intron l2(rd5, 10, 20, POSITIVE);
     
     BOOST_CHECK(l1 == l2);
 }
 
 BOOST_AUTO_TEST_CASE(equality2)
 {
-    Intron l1(2, 20, 30, POSITIVE);
-    Intron l2(5, 20, 30, POSITIVE);
+    Intron l1(rd2, 20, 30, POSITIVE);
+    Intron l2(rd5, 20, 30, POSITIVE);
     
     BOOST_CHECK(l1 != l2);
 }
 
 BOOST_AUTO_TEST_CASE(equality3)
 {
-    Intron l1(5, 5, 25, POSITIVE);
-    Intron l2(5, 10, 20, POSITIVE);
+    Intron l1(rd5, 5, 25, POSITIVE);
+    Intron l2(rd5, 10, 20, POSITIVE);
     
     BOOST_CHECK(l1 != l2);
 }
 
 BOOST_AUTO_TEST_CASE(equality4)
 {
-    Intron l1(5, 10, 20, POSITIVE);
-    Intron l2(5, 10, 20, NEGATIVE);
+    Intron l1(rd5, 10, 20, POSITIVE);
+    Intron l2(rd5, 10, 20, NEGATIVE);
     
     BOOST_CHECK(l1 != l2);
 }
 
 BOOST_AUTO_TEST_CASE(min_anchor) {
     
-    Intron intron(5, 10, 20, portculis::POSITIVE);
+    Intron intron(rd5, 10, 20, portculis::POSITIVE);
     
     BOOST_CHECK(intron.minAnchorLength(4, 40) == 6);    
 }
 
 BOOST_AUTO_TEST_CASE(size) {
     
-    Intron intron(5, 10, 20, portculis::POSITIVE);
+    Intron intron(rd5, 10, 20, portculis::POSITIVE);
     
     BOOST_CHECK(intron.size() == 11);    
 }

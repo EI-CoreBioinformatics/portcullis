@@ -131,7 +131,7 @@ public:
      * @discussion The returned sequence is allocated by malloc family
      * and should be destroyed by end users by calling free() on it.
      */
-    char* fetchBases(char* name, int start, int end, int* len) {
+    char* fetchBases(const char* name, int start, int end, int* len) {
         return faidx_fetch_seq(fastaIndex, name, start, end, len);        
     }
     

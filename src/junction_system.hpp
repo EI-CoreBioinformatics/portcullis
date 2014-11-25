@@ -88,7 +88,7 @@ private:
         
         subset.clear();
         for(JunctionPtr j : junctionList) {
-            if (j->getIntron()->refId == refId) {
+            if (j->getIntron()->ref.Id == refId) {
                 subset.push_back(j);
             }    
         }        
@@ -154,6 +154,13 @@ public:
         this->refs = refs;
     }
     
+    bool addJunction(JunctionPtr j) {
+        
+        distinctJunctions[*(j->getIntron())] = j;
+        junctionList.push_back(j);
+        
+    }
+    
     /**
      * Adds any new junctions found from the given alignment to the set managed 
      * by this class
@@ -171,6 +178,8 @@ public:
         size_t nbOps = al.CigarData.size();
         
         int32_t refId = al.RefID;
+        string refName = refs[refId].RefName;
+        int32_t refLength = refs[refId].RefLength;
         int32_t lStart = offset;        
         int32_t lEnd = lStart;
         int32_t rStart = lStart;
@@ -194,7 +203,7 @@ public:
                     }
                 }
                 
-                shared_ptr<Intron> location(new Intron(refId, lEnd, rStart, 
+                shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
                         strandSpecific ? strandFromBool(al.IsReverseStrand()) : UNKNOWN));
                 
                 // We should now have the complete junction location information
@@ -266,7 +275,7 @@ public:
         uint64_t nonCanonicalSites = 0;
         for(JunctionPtr j : junctionList) {
             
-            CanonicalSS css = j->processJunctionWindow(genomeMapper, refs);
+            CanonicalSS css = j->processJunctionWindow(genomeMapper);
             
             switch(css) {
                 case CANONICAL:
@@ -321,7 +330,7 @@ public:
         for(JunctionPtr j : junctionList) {            
             j->processJunctionVicinity(
                     reader, 
-                    refs[j->getIntron()->refId].RefLength, 
+                    j->getIntron()->ref.Length, 
                     meanQueryLength, 
                     maxQueryLength,
                     strandSpecific);
@@ -354,7 +363,7 @@ public:
             findJunctions(dp.getCurrentRefIndex(), subset);
             
             for(JunctionPtr j : subset) {
-                j->calcCoverage(meanQueryLength, batch);
+                j->calcCoverage(batch);
             }            
         }
         
@@ -416,10 +425,7 @@ public:
         string junctionReportPath = outputPrefix + ".junctions.txt";
         string junctionFilePath = outputPrefix + ".junctions.tab";
         string junctionGFFPath = outputPrefix + ".junctions.gff3";
-        string junctionBEDAllPath = outputPrefix + ".junctions.all.bed";
-        string junctionBEDCanonicalPath = outputPrefix + ".junctions.canonical.bed";
-        string junctionBEDSemiCanonicalPath = outputPrefix + ".junctions.semicanonical.bed";
-        string junctionBEDNovelPath = outputPrefix + ".junctions.novel.bed";
+        string junctionBEDAllPath = outputPrefix + ".junctions.bed";
         
         cout << " - Saving junction report to: " << junctionReportPath << " ... ";
         cout.flush();
@@ -455,25 +461,7 @@ public:
         
         // Print junctions in BED format to file
         outputBED(junctionBEDAllPath, ALL);
-        
-        cout << "done." << endl
-             << " - Saving BED file with canonical junctions to: " << junctionBEDCanonicalPath << " ... ";
-        cout.flush();
-        
-        outputBED(junctionBEDCanonicalPath, CANONICAL);
-        
-        cout << "done." << endl
-             << " - Saving BED file with semi canonical junctions to: " << junctionBEDSemiCanonicalPath << " ... ";
-        cout.flush();
-        
-        outputBED(junctionBEDSemiCanonicalPath, SEMI_CANONICAL);
-        
-        cout << "done." << endl
-             << " - Saving BED file with non-canonical (novel) junctions to: " << junctionBEDNovelPath << " ... ";
-        cout.flush();
-        
-        outputBED(junctionBEDNovelPath, NO);
-        
+                
         cout << "done." << endl;
     }
     
@@ -503,7 +491,7 @@ public:
         
         uint64_t i = 0;
         for(JunctionPtr j : junctionList) {
-            j->outputGFF(strm, i++, refs);
+            j->outputGFF(strm, i++);
         }
     }
     
@@ -523,7 +511,7 @@ public:
         uint64_t i = 0;
         for(JunctionPtr j : junctionList) {
             if (type == ALL || j->getSpliceSiteType() == type) {
-                j->outputBED(strm, i++, refs);
+                j->outputBED(strm, i++);
             }
         }
     }

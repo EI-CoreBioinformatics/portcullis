@@ -29,17 +29,21 @@ using portculis::CanonicalSS;
 using std::cout;
 using std::endl;
 
+using portculis::RefSeq;
 using portculis::Intron;
 using portculis::Junction;
 using portculis::JunctionException;
 
 bool is_critical( JunctionException const& ex ) { return true; }
 
+const RefSeq rd2(2, "seq_2", 100);
+const RefSeq rd5(5, "seq_5", 100);
+
 BOOST_AUTO_TEST_SUITE(junction)
 
 BOOST_AUTO_TEST_CASE(intron) {
     
-    shared_ptr<Intron> l1(new Intron(5, 20, 30, portculis::POSITIVE));
+    shared_ptr<Intron> l1(new Intron(rd5, 20, 30, portculis::POSITIVE));
     Junction j1(l1, 10, 40);
     
     int32_t intronSz = j1.getIntronSize();
@@ -48,10 +52,10 @@ BOOST_AUTO_TEST_CASE(intron) {
 
 BOOST_AUTO_TEST_CASE(donor_acceptor) {
     
-    shared_ptr<Intron> l1(new Intron(5, 20, 30, portculis::POSITIVE));
+    shared_ptr<Intron> l1(new Intron(rd5, 20, 30, portculis::POSITIVE));
     Junction j1(l1, 10, 40);
     
-    shared_ptr<Intron> l2(new Intron(5, 20, 30, portculis::NEGATIVE));
+    shared_ptr<Intron> l2(new Intron(rd5, 20, 30, portculis::NEGATIVE));
     Junction j2(l2, 10, 40);
     
     CanonicalSS res1 = j1.setDonorAndAcceptorMotif("GT", "AG");
@@ -73,7 +77,7 @@ BOOST_AUTO_TEST_CASE(donor_acceptor) {
 
 BOOST_AUTO_TEST_CASE(entropy) {
     
-    shared_ptr<Intron> l(new Intron(5, 20, 30, portculis::POSITIVE));
+    shared_ptr<Intron> l(new Intron(rd5, 20, 30, portculis::POSITIVE));
     Junction j(l, 10, 40);
     
     int32_t ints1[] = {13, 15, 17, 19};
@@ -95,7 +99,7 @@ BOOST_AUTO_TEST_CASE(entropy) {
  */
 BOOST_AUTO_TEST_CASE(coverage1) {
     
-    shared_ptr<Intron> l(new Intron(5, 20, 30, portculis::POSITIVE));
+    shared_ptr<Intron> l(new Intron(rd5, 20, 30, portculis::POSITIVE));
     Junction j1(l, 10, 40);
     
     vector<uint32_t> coverage1{ 10,10,10,10,10,10,10,10,10,10,
@@ -104,9 +108,9 @@ BOOST_AUTO_TEST_CASE(coverage1) {
                                 2,3,4,7,8,10,10,10,10,10,
                                 10,10,10,10,10,10,10,10,10,10}; 
     
-    double cvg1 = j1.calcCoverage(5,coverage1);
+    double cvg1 = j1.calcCoverage(coverage1);
                                
-    cout << "Coverage: " << cvg1 << endl;
+    //cout << "Coverage: " << cvg1 << endl;
     BOOST_CHECK(cvg1 > 0);
 }
 
@@ -115,7 +119,7 @@ BOOST_AUTO_TEST_CASE(coverage1) {
  */
 BOOST_AUTO_TEST_CASE(coverage2) {
     
-    shared_ptr<Intron> l(new Intron(5, 20, 30, portculis::POSITIVE));
+    shared_ptr<Intron> l(new Intron(rd5, 20, 30, portculis::POSITIVE));
     Junction j2(l, 10, 40);    
     
     vector<uint32_t> coverage2{ 0,0,0,0,0,0,0,0,0,0,
@@ -124,12 +128,111 @@ BOOST_AUTO_TEST_CASE(coverage2) {
                                 8,6,4,3,2,0,0,0,0,0,
                                 0,0,0,0,0,0,0,0,0,0}; 
     
-    double cvg2 = j2.calcCoverage(5,coverage2);
+    double cvg2 = j2.calcCoverage(coverage2);
                                
-    cout << "Coverage: " << cvg2 << endl;
+    //cout << "Coverage: " << cvg2 << endl;
     
     BOOST_CHECK(cvg2 < 0);
 }
 
+BOOST_AUTO_TEST_CASE(hamming1) {
+    
+    shared_ptr<Intron> l(new Intron(rd5, 20, 29, portculis::POSITIVE));
+    Junction j(l, 5, 45);    
+    //               ***************||||||||||***************
+    string region = "TTTTTTTTTTAAAAAAAAAAGGGGGGGGGGCCCCCCCCCC";
+    
+    j.calcHammingScores(region);
+    
+    int16_t h5p = j.getHammingDistance5p();
+    int16_t h3p = j.getHammingDistance3p();
+    
+    //cout << "5' hamming: " << h5p << endl;
+    //cout << "3' hamming: " << h3p << endl;
+    
+    BOOST_CHECK(h5p == 10);
+    BOOST_CHECK(h3p == 10);
+}
+
+BOOST_AUTO_TEST_CASE(hamming2) {
+    
+    shared_ptr<Intron> l(new Intron(rd5, 20, 29, portculis::POSITIVE));
+    Junction j(l, 5, 45);    
+    
+    //               ***************||||||||||***************
+    string region = "CCCCCTTTTTAAAAATTTTTAAAAATTTTTAAAAAGGGGG";
+    
+    j.calcHammingScores(region);
+    
+    int16_t h5p = j.getHammingDistance5p();
+    int16_t h3p = j.getHammingDistance3p();
+    
+    //cout << "5' hamming: " << h5p << endl;
+    //cout << "3' hamming: " << h3p << endl;
+    
+    BOOST_CHECK(h5p == 0);
+    BOOST_CHECK(h3p == 0);
+}
+
+BOOST_AUTO_TEST_CASE(hamming3) {
+    
+    shared_ptr<Intron> l(new Intron(rd5, 20, 29, portculis::NEGATIVE));
+    Junction j(l, 5, 45);    
+    
+    //               ***************||||||||||***************
+    string region = "CCCCCTTTTTAAAAATTTTTAAAAATTTTTAAAAAGGGGG";
+    
+    j.calcHammingScores(region);
+    
+    int16_t h5p = j.getHammingDistance5p();
+    int16_t h3p = j.getHammingDistance3p();
+    
+    //cout << "5' hamming: " << h5p << endl;
+    //cout << "3' hamming: " << h3p << endl;
+    
+    BOOST_CHECK(h5p == 0);
+    BOOST_CHECK(h3p == 0);
+}
+
+
+BOOST_AUTO_TEST_CASE(hamming4) {
+    
+    shared_ptr<Intron> l(new Intron(rd5, 20, 29, portculis::POSITIVE));
+    Junction j(l, 15, 45);    
+    
+    //               *****||||||||||***************
+    string region = "AAAAATTTTTAAAAATTTTTAAAAAGGGGG";
+    
+    j.calcHammingScores(region);
+    
+    int16_t h5p = j.getHammingDistance5p();
+    int16_t h3p = j.getHammingDistance3p();
+    
+    //cout << "5' hamming: " << h5p << endl;
+    //cout << "3' hamming: " << h3p << endl;
+    
+    BOOST_CHECK(h5p == 0);
+    BOOST_CHECK(h3p == 0);
+}
+
+BOOST_AUTO_TEST_CASE(hamming5) {
+    
+    shared_ptr<Intron> l(new Intron(rd5, 20, 29, portculis::POSITIVE));
+    Junction j(l, 5, 34);    
+    
+    //               ***************||||||||||*****
+    string region = "CCCCCTTTTTAAAAATTTTTAAAAATTTTT";
+    
+    j.calcHammingScores(region);
+    
+    int16_t h5p = j.getHammingDistance5p();
+    int16_t h3p = j.getHammingDistance3p();
+    
+    //cout << "5' hamming: " << h5p << endl;
+    //cout << "3' hamming: " << h3p << endl;
+    
+    BOOST_CHECK(h5p == 0);
+    BOOST_CHECK(h3p == 0);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
