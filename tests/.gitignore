@@ -10,3 +10,6 @@
 /check_portculis.trs
 /check_portculis
 *.o
+/check_portcullis.trs
+/check_portcullis.log
+/check_portcullis

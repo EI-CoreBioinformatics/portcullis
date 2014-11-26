@@ -11,7 +11,7 @@ check_portcullis_SOURCES =   bam_utils_tests.cpp \
 			    seq_utils_tests.cpp \
 			    intron_tests.cpp \
 			    junction_tests.cpp \
-			    portculis_tests.cpp \
+			    portcullis_tests.cpp \
 			    depth_parser_tests.cpp \
 			    genome_mapper_tests.cpp \
 			    check_portcullis.cc
