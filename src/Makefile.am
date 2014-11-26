@@ -1,13 +1,13 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
 # Create portculis binary
-bin_PROGRAMS = portculis
+bin_PROGRAMS = portcullis
 
-portculis_CXXFLAGS = -g3 -O2 @AM_CXXFLAGS@
-portculis_CPPFLAGS = @AM_CPPFLAGS@ -I$(top_srcdir)/src 
-portculis_LDFLAGS = @AM_LDFLAGS@
-portculis_LDADD = @AM_LIBS@
-portculis_SOURCES =	bam_utils.hpp \
+portcullis_CXXFLAGS = -g3 -O2 @AM_CXXFLAGS@
+portcullis_CPPFLAGS = @AM_CPPFLAGS@ -I$(top_srcdir)/src 
+portcullis_LDFLAGS = @AM_LDFLAGS@
+portcullis_LDADD = @AM_LIBS@
+portcullis_SOURCES =	bam_utils.hpp \
 			depth_parser.hpp \
 			genome_mapper.hpp \
 			intron.hpp \
@@ -18,5 +18,5 @@ portculis_SOURCES =	bam_utils.hpp \
 			filter.hpp \
 			cluster.hpp \
 			seq_utils.hpp \
-			portculis.cc
+			portcullis.cc
                 
