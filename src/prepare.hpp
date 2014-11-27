@@ -31,13 +31,7 @@ using std::vector;
 #include <boost/filesystem.hpp>
 using boost::timer::auto_cpu_timer;
 using boost::lexical_cast;
-using boost::filesystem::absolute;
-using boost::filesystem::copy_file;
-using boost::filesystem::remove;
-using boost::filesystem::exists;
-using boost::filesystem::create_symlink;
-using boost::filesystem::create_directory;
-using boost::filesystem::symbolic_link_exists;
+using namespace boost::filesystem;
 
 #include "bam_utils.hpp"
 #include "genome_mapper.hpp"
@@ -256,7 +250,14 @@ protected:
                     cout << "Copying from " << from << " to " << to << " ... ";
                     cout.flush();
                 }
-                //copy_file(from, to, boost::filesystem::copy_option::overwrite_if_exists);
+                std::ifstream  src(from, std::ios::binary);
+                std::ofstream  dst(to,   std::ios::binary);
+
+                dst << src.rdbuf();
+                
+                src.close();
+                dst.close();
+                
                 if (verbose) cout << "done." << endl;
             }
         }
