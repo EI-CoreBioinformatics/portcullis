@@ -52,7 +52,7 @@ const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
 const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
 const double DEFAULT_MIN_ENTROPY = 1.0;
 const uint32_t DEFAULT_MIN_DISTINCT_ALIGNMENTS = 3;
-const uint32_t DEFAULT_MIN_RELIABLE_ALIGNMENTS = 1;
+const uint32_t DEFAULT_MIN_RELIABLE_ALIGNMENTS = 0;
 const uint32_t DEFAULT_MIN_MAXMMES = 5;
 const uint16_t DEFAULT_MIN_HAMMING = 2;
 
@@ -301,7 +301,7 @@ public:
                 ("min_distinct_alignments,d", po::value<uint32_t>(&minDistinctAlignments)->default_value(DEFAULT_MIN_DISTINCT_ALIGNMENTS), 
                     "The minimum number of distinct alignment required for a junction")
                 ("min_reliable_alignments,r", po::value<uint32_t>(&minReliableAlignments)->default_value(DEFAULT_MIN_RELIABLE_ALIGNMENTS), 
-                    "The minimum number of reliable alignments (alignments uniquely mapping to genome) required for a junction")
+                    "The minimum number of reliable alignments (alignments uniquely mapping to genome) required for a junction.  WARNING: putting this over 0 will probably produce false negatives.")
                 ("min_maxmmes,m", po::value<uint32_t>(&minMaxMMES)->default_value(DEFAULT_MIN_MAXMMES), 
                     "The minimum value required for the maximum of minimal match on either side of exon junction")
                 ("min_hamming,h", po::value<uint16_t>(&minHamming)->default_value(DEFAULT_MIN_HAMMING), 
