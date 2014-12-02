@@ -54,7 +54,7 @@ const uint16_t MAP_QUALITY_THRESHOLD = 30;
 typedef boost::error_info<struct JunctionError,string> JunctionErrorInfo;
 struct JunctionException: virtual boost::exception, virtual std::exception { };
 
-const string METRIC_NAMES[19] = {
+const string METRIC_NAMES[20] = {
         "M1-nb_reads",
         "M2-canonical_ss",
         "M3-intron_size",
@@ -73,7 +73,8 @@ const string METRIC_NAMES[19] = {
         "M16-uniq_junc",
         "M17-primary_junc",
         "M18-mm_score",
-        "M19-nb_mismatches"
+        "M19-nb_mismatches",
+        "M20-nb_msrs"
     };
 
 const string PREDICTION_NAMES[1] = {
@@ -166,6 +167,7 @@ private:
     bool     primaryJunction;                   // Metric 17
     double   multipleMappingScore;              // Metric 18
     uint16_t nbMismatches;                      // Metric 19
+    uint32_t nbMultipleSplicedReads;            // Metric 20
     
     
     // **** Predictions ****
@@ -262,6 +264,7 @@ public:
         primaryJunction = false;
         multipleMappingScore = 0.0;
         nbMismatches = 0;
+        nbMultipleSplicedReads = 0;
         
         predictedStrand = UNKNOWN;
     }
@@ -285,6 +288,17 @@ public:
     void addJunctionAlignment(const BamAlignment& al) {
         this->junctionAlignments.push_back(al);
         this->nbJunctionAlignments = this->junctionAlignments.size();
+        
+        uint16_t nbGaps = 0;
+        for(CigarOp op : al.CigarData) {
+            if (op.Type == 'N') {
+                nbGaps++;
+            }
+        }
+        
+        if (nbGaps > 1) {
+            this->nbMultipleSplicedReads++;
+        }
     }
 
     void setNbJunctionAlignments(uint32_t nbJunctionAlignments) {
@@ -990,6 +1004,15 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
     uint16_t getNbMismatches() const {
         return nbMismatches;
     }
+    
+    /**
+     * The number of spliced reads in this junction that also cover additional junctions
+     * @return 
+     */
+    uint32_t getNbMultipleSplicedReads() const {
+        return nbMultipleSplicedReads;
+    }
+
 
 
     Strand getPredictedStrand() const {
@@ -1064,6 +1087,11 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
     void setNbMismatches(uint16_t nbMismatches) {
         this->nbMismatches = nbMismatches;
     }
+    
+    void setNbMultipleSplicedReads(uint32_t nbMultipleSplicedReads) {
+        this->nbMultipleSplicedReads = nbMultipleSplicedReads;
+    }
+
 
 
 
@@ -1113,7 +1141,8 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
              << "16: Unique Junction: " << boolalpha << uniqueJunction << delimiter
              << "17: Primary Junction: " << boolalpha << primaryJunction << delimiter
              << "18: Multiple mapping score: " << multipleMappingScore << delimiter
-             << "19: # mismatches: " << nbMismatches << delimiter;
+             << "19: # mismatches: " << nbMismatches << delimiter
+             << "20: # Multiple Spliced Reads: " << nbMultipleSplicedReads;
     }
     
     /**
@@ -1238,7 +1267,8 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
                     << j.uniqueJunction << "\t"
                     << j.primaryJunction << "\t"
                     << j.multipleMappingScore << "\t"
-                    << j.nbMismatches;
+                    << j.nbMismatches << "\t"
+                    << j.nbMultipleSplicedReads;
     }
     
         
@@ -1259,9 +1289,9 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         vector<string> parts; // #2: Search for tokens
         boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
 
-        if (parts.size() != 31) {
+        if (parts.size() != 32) {
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "Could not parse line due to incorrect number of columns. Expected 31 columns: ") + line));
+                "Could not parse line due to incorrect number of columns. Expected 32 columns: ") + line));
         }
 
         // Create intron
@@ -1305,6 +1335,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         j->setPrimaryJunction(lexical_cast<bool>(parts[28]));
         j->setMultipleMappingScore(lexical_cast<double>(parts[29]));
         j->setNbMismatches(lexical_cast<uint16_t>(parts[30]));
+        j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[31]));
         
         return j;
     }

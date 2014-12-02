@@ -24,7 +24,7 @@ def loadbed(filepath, usestrand) :
         print "non unique items in bed file " + filepath
     return items
 
-def filtbed(infile, outfile, keeplist) :
+def filtbed(infile, outfile, keeplist, usestrand) :
     o = open(outfile, 'w')
     with open(infile) as f:
         index=0
@@ -35,7 +35,9 @@ def filtbed(infile, outfile, keeplist) :
                 start = words[6]
                 end = words[7]
                 strand = words[5]
-                key = chr + "_" + start + "_" + end + "_" + strand
+                key = chr + "_" + start + "_" + end
+                if usestrand:
+                    key += "_" + strand
                 if key in keeplist:
                     print >> o, line,
             index += 1
