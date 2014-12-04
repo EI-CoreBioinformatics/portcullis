@@ -20,21 +20,40 @@
 #define BOOST_TEST_MODULE PORTCULLIS
 #endif
 #include <boost/test/unit_test.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/operations.hpp>
+using boost::filesystem::remove_all;
+using boost::filesystem::create_directory;
 
+#include <prepare.hpp>
 #include <junction_builder.hpp>
 
 BOOST_AUTO_TEST_SUITE(junction_builder)
 
-BOOST_AUTO_TEST_CASE(constructor)
+BOOST_AUTO_TEST_CASE(test1)
 {
-    /*portcullis::Portcullis portcullis(
-                        "tests/resources/ecoli.bam",
-                        "tests/resources/ecoli.fa",
-                        "tests/tmp/portcullis/constructor1",
-                        1,
-                        false,
-                        false);*/
-
+    vector<string> bams;
+    bams.push_back("resources/clipped3.bam");
+    
+    string outdir = "resources/temp";
+    create_directory(outdir);
+    
+    string prepdir = "resources/temp/prep";
+    create_directory(prepdir);
+    
+    string juncdir = "resources/temp/junc";
+    create_directory(juncdir);
+    
+    
+    portcullis::Prepare prep(prepdir);
+    prep.prepare(bams, "resources/artha_chr4.fa");
+    prep.outputDetails(); // Outputs settings file
+    
+    portcullis::JunctionBuilder jb(prepdir, juncdir, "test", 1, false, true);
+    jb.process();
+    
+    remove_all(outdir);
+    
     BOOST_CHECK(true);
 }
 

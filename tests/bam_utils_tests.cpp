@@ -83,4 +83,30 @@ BOOST_AUTO_TEST_CASE(is_sorted2)
     BOOST_CHECK(sorted);    
 }
 
+// This test doesn't actually do that much.  Refine it later.
+BOOST_AUTO_TEST_CASE(minmalMatch1)
+{
+    string bam = "resources/clipped3.bam";
+    
+    BamReader reader;
+    reader.Open(bam);
+    
+    // Sam header and refs info from the input bam
+    SamHeader header = reader.GetHeader();
+    RefVector refs = reader.GetReferenceData();
+    
+    BamAlignment ba;
+    reader.GetNextAlignment(ba);
+        
+    //cout << ba.AlignedBases << endl;
+    //cout << "Pos: " << ba.Position << endl;
+    
+    uint16_t mm = BamUtils::calcMinimalMatchInCigarDataSubset(ba, 6441673 + 2, 6441673 + 10);
+    
+    //cout << mm << endl;
+    
+    // Check the merged bam file exists
+    BOOST_CHECK(mm == 0);    
+}
+
 BOOST_AUTO_TEST_SUITE_END()

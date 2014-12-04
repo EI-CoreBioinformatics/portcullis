@@ -150,6 +150,41 @@ public:
                                 "_R?") :
                 al.Name;
     }
+    
+    static uint16_t calcMinimalMatchInCigarDataSubset(BamAlignment& ba, int32_t start, int32_t end) {
+        
+        if (start > ba.Position + ba.AlignedBases.size() || end < ba.Position)
+            BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                    "Found an alignment that does not have a presence in the requested region")));
+        
+        int32_t pos = ba.Position;
+        uint16_t mismatches = 0;
+        int32_t length = 0;
+        bool inRegion = false;
+        
+        for(CigarOp op : ba.CigarData) {
+           
+            if (pos > end) {
+                break;
+            }
+            
+            inRegion = pos >= start;                
+            
+            if (BamUtils::opFollowsReference(op.Type)) {
+                
+                if (inRegion)
+                    length += op.Length;
+
+                pos += op.Length;
+            }
+            
+            if (inRegion && op.Type == 'X') {
+                mismatches++;
+            }
+        } 
+        
+        return length - mismatches;
+    }
 };
 }    
 }

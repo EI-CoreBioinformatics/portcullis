@@ -26,12 +26,17 @@ using std::ifstream;
 using std::string;
 using std::vector;
 
+#include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/program_options.hpp>
 using boost::timer::auto_cpu_timer;
 using boost::lexical_cast;
+using boost::algorithm::trim;
 using namespace boost::filesystem;
+namespace po = boost::program_options;
 
 #include "bam_utils.hpp"
 #include "genome_mapper.hpp"
@@ -185,9 +190,14 @@ private:
     uint16_t threads;
     bool verbose;
 
-    void init(string _outputDir, bool _strandSpecific, bool _force, bool _useLinks, uint16_t _threads, bool _verbose) {
-        
-        output = new PreparedFiles(_outputDir);
+    
+public:
+    
+    Prepare(string _outputPrefix) : Prepare(_outputPrefix, false, false, false, 1, false) {
+    }
+    
+    Prepare(string _outputPrefix, bool _strandSpecific, bool _force, bool _useLinks, uint16_t _threads, bool _verbose) {
+        output = new PreparedFiles(_outputPrefix);
         strandSpecific = _strandSpecific;
         force = _force;
         useLinks = _useLinks;
@@ -205,22 +215,12 @@ private:
         
         if (force) {
             if (verbose) {
-                cout << "Cleaning output dir " << _outputDir << " ... ";
+                cout << "Cleaning output dir " << _outputPrefix << " ... ";
                 cout.flush();
             }
             output->clean();
             if (verbose) cout << "done." << endl << endl;
         }
-    }
-    
-public:
-    
-    Prepare(string _outputPrefix) {
-        init(_outputPrefix, false, false, false, 1, false);
-    }
-    
-    Prepare(string _outputPrefix, bool _strandSpecific, bool _force, bool _useLinks, uint16_t _threads, bool _verbose) {
-        init(_outputPrefix, _strandSpecific, _force, _useLinks, _threads, _verbose);
     }
     
     virtual ~Prepare() {

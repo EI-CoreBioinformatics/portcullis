@@ -32,6 +32,7 @@ using std::shared_ptr;
 
 typedef std::unordered_map<string, uint16_t> SplicedAlignmentMap;
 
+#include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/lexical_cast.hpp>
 using boost::lexical_cast;
@@ -690,8 +691,8 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         
         for(BamAlignment ba : junctionAlignments) {
             
-            uint16_t leftMM = calcMinimalMatchInCigarDataSubset(ba, leftFlankStart, intron->start);
-            uint16_t rightMM = calcMinimalMatchInCigarDataSubset(ba, intron->end, rightFlankEnd);
+            uint16_t leftMM = BamUtils::calcMinimalMatchInCigarDataSubset(ba, leftFlankStart, intron->start);
+            uint16_t rightMM = BamUtils::calcMinimalMatchInCigarDataSubset(ba, intron->end, rightFlankEnd);
             
             uint16_t mmes = min(leftMM, rightMM);
 
@@ -718,41 +719,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         
         this->multipleMappingScore = (double)N / (double)M;
     }
-        
-    uint16_t calcMinimalMatchInCigarDataSubset(BamAlignment& ba, int32_t start, int32_t end) {
-        
-        if (start > ba.Position + ba.AlignedBases.size() || end < ba.Position)
-            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                    "Found an alignment that does not have a presence in the requested region")));
-        
-        int32_t pos = ba.Position;
-        uint16_t mismatches = 0;
-        int32_t length = 0;
-        bool inRegion = false;
-        
-        for(CigarOp op : ba.CigarData) {
-           
-            if (pos > end) {
-                break;
-            }
-            
-            inRegion = pos >= start;                
-            
-            if (BamUtils::opFollowsReference(op.Type)) {
-                
-                if (inRegion)
-                    length += op.Length;
-
-                pos += op.Length;
-            }
-            
-            if (inRegion && op.Type == 'X') {
-                mismatches++;
-            }
-        } 
-        
-        return length - mismatches;
-    }
+    
     
     double calcCoverage(int32_t a, int32_t b, const vector<uint32_t>& coverageLevels) {
         
