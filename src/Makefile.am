@@ -4,7 +4,7 @@ AUTOMAKE_OPTIONS = subdir-objects
 bin_PROGRAMS = portcullis
 
 portcullis_CXXFLAGS = -g3 -O2 @AM_CXXFLAGS@
-portcullis_CPPFLAGS = @AM_CPPFLAGS@ -I$(top_srcdir)/src 
+portcullis_CPPFLAGS = @AM_CPPFLAGS@ -I$(top_srcdir)/src -I$(top_srcdir)/include 
 portcullis_LDFLAGS = @AM_LDFLAGS@
 portcullis_LDADD = @AM_LIBS@
 portcullis_SOURCES =	bam_utils.hpp \
