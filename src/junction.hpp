@@ -1130,8 +1130,8 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         
         // Output junction parent
         strm << intron->ref.Name << "\t"
-             << "portcullis" << "\t"     // source
-             << "junction" << "\t"      // type (may change later)
+             << "portcullis" << "\t"    // source
+             << "intron" << "\t"        // type (may change later)
              << leftFlankStart << "\t"  // start
              << rightFlankEnd << "\t"   // end
              << "0.0" << "\t"           // No score for the moment
