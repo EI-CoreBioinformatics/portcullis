@@ -74,6 +74,7 @@ AC_CHECK_HEADERS([iostream])
 AC_CHECK_HEADERS([stdio.h])
 AC_CHECK_HEADERS([fstream])
 AC_CHECK_HEADERS([vector])
+AC_CHECK_HEADERS([glob.h])
 
 # Save libs (restore as and when needed)
 SAVED_LIBS="${LIBS}"

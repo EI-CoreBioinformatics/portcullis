@@ -16,7 +16,7 @@
 //  *******************************************************************
 
 #pragma once
-
+#include <glob.h>
 #include <fstream>
 #include <string>
 #include <iostream>
@@ -242,7 +242,7 @@ protected:
         else {
             
             if (useLinks) {
-                create_symlink(absolute(from), to);            
+                create_symlink(canonical(from), to);            
                 if (verbose) cout << "Created symlink from " << from << " to " << to << endl;
             }
             else {
@@ -353,8 +353,8 @@ protected:
             if (BamUtils::isSortedBam(unsortedBam) && !force) {
                 
                 if (verbose) cout << "Provided BAM appears to be sorted already, just creating symlink instead." << endl;
-                create_symlink(absolute(unsortedBam), sortedBam);            
-                if (verbose) cout << "Created symlink from " << absolute(unsortedBam) << " to " << sortedBam << endl;
+                create_symlink(canonical(unsortedBam), sortedBam);            
+                if (verbose) cout << "Created symlink from " << canonical(unsortedBam) << " to " << sortedBam << endl;
             }
             else {
                 
@@ -370,7 +370,7 @@ protected:
         
                 string badNameMergeFile = sortedBam + ".bam";
 
-                if (exists(badNameMergeFile)) {
+                if (exists(badNameMergeFile) || symbolic_link_exists(badNameMergeFile)) {
                     boost::filesystem::rename(badNameMergeFile, sortedBam);
                 }
 
@@ -508,6 +508,27 @@ public:
                       "Allowed options";
     }
     
+    static vector<string> globFiles(vector<string> input) {
+       
+        glob_t globbuf;
+ 
+        // Translate glob patterns into real paths
+        int i = 0;
+        for(string g : input) {           
+            glob(g.c_str(), i > 0 ? GLOB_TILDE | GLOB_APPEND : GLOB_TILDE, NULL, &globbuf);
+            i++;
+        }
+           
+        vector<string> transformedBams;
+        for( int i = 0; i < globbuf.gl_pathc; ++i )
+            transformedBams.push_back( globbuf.gl_pathv[i] );
+           
+        if( globbuf.gl_pathc > 0 )
+            globfree( &globbuf );
+        
+        return transformedBams;
+    }
+    
     static int main(int argc, char *argv[]) {
         
         // Portcullis args
@@ -583,6 +604,9 @@ public:
                         "Could not find genome file at: ") + genomeFile));
         }
 
+        // Glob the input bam files
+        vector<string> transformedBams = globFiles(bamFiles);
+        
         auto_cpu_timer timer(1, "\nPortcullis prep completed.\nTotal runtime: %ws\n\n");        
 
         cout << "Running portcullis in prepare mode" << endl
@@ -593,7 +617,7 @@ public:
         
         // Prep the input to produce a usable indexed and sorted bam plus, indexed
         // genome and queryable coverage information
-        prep.prepare(bamFiles, genomeFile);
+        prep.prepare(transformedBams, genomeFile);
         
         // Output any remaining details
         prep.outputDetails();

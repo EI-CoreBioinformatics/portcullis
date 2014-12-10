@@ -28,7 +28,7 @@ using boost::filesystem::create_directory;
 #include <prepare.hpp>
 #include <junction_builder.hpp>
 
-BOOST_AUTO_TEST_SUITE(junction_builder)
+BOOST_AUTO_TEST_SUITE(interface)
 
 BOOST_AUTO_TEST_CASE(test1)
 {
@@ -55,6 +55,28 @@ BOOST_AUTO_TEST_CASE(test1)
     remove_all(outdir);
     
     BOOST_CHECK(true);
+}
+
+BOOST_AUTO_TEST_CASE(glob1)
+{
+    vector<string> bams;
+    bams.push_back("resources/*.bam");
+    
+    vector<string> globbedFiles = portcullis::Prepare::globFiles(bams);
+    
+    BOOST_CHECK(globbedFiles.size() >= 5);
+    BOOST_CHECK(globbedFiles.size() < 10);
+}
+
+BOOST_AUTO_TEST_CASE(glob2)
+{
+    vector<string> bams;
+    bams.push_back("resources/*.bam");
+    bams.push_back("resources/*.bam");
+    
+    vector<string> globbedFiles = portcullis::Prepare::globFiles(bams);
+    
+    BOOST_CHECK(globbedFiles.size() >= 10);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
