@@ -18,9 +18,6 @@ AC_CONFIG_AUX_DIR([build-aux])
 # Set the macro directory
 AC_CONFIG_MACRO_DIR([m4])
 
-# Add the include directory
-AC_CONFIG_SUBDIRS([include])
-
 # Automake initialisation.  Sets some default flags.  We use 'foreign' because we have a markdown README file.
 # I've only tried this with automake 1.11 and above, so you require at least that version installed on your machine if you want to regenerate 'the Makefile.in's.  If you're looking at this comment in the 'configure' script then this the am__api_version, will be set to whatever I used to create this file.  Or it might be whatever you used if you made it yourself with autoconf (or autoreconf, or the autogen.sh script)
 AM_INIT_AUTOMAKE([1.11 foreign -Wall no-define])
@@ -91,7 +88,6 @@ AX_HTSLIB
 AX_LIB_SAMTOOLS
 LIBS="${SAVED_LIBS}"
 AX_LIB_BAMTOOLS
-#AX_DLIB
 
 ## Check for boost
 AX_BOOST_BASE([1.52],, [AC_MSG_ERROR([Boost not found.  Please ensure that boost is properly built and the BOOST_ROOT environment variable is set.  Alternatively you can override BOOST_ROOT with the --with-boost option.])])
