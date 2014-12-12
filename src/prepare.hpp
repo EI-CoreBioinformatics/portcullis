@@ -16,6 +16,7 @@
 //  *******************************************************************
 
 #pragma once
+
 #include <glob.h>
 #include <fstream>
 #include <string>
@@ -61,7 +62,39 @@ const string BAM_INDEX_EXTENSION = ".bai";
 const string BCF_EXTENSION = ".bcf";
 const string BCF_INDEX_EXTENSION = ".bci";
 const string BAM_DEPTH_EXTENSION = ".bdp";
+   
+enum class StrandSpecific : std::uint8_t {
+    UNSTRANDED = 0,
+    FIRSTSTRAND = 1,
+    SECONDSTRAND = 2
+};
+
+inline const string SSToString(StrandSpecific ss) {
+    switch (ss) {
+        case StrandSpecific::UNSTRANDED:   return "UNSTRANDED";
+        case StrandSpecific::FIRSTSTRAND:  return "FIRSTSTRAND";
+        case StrandSpecific::SECONDSTRAND: return "SECONDSTRAND";
+        default:      return "[Unknown StrandSpecific type]";
+    }
+}
+
+inline const StrandSpecific SSFromString(string& ss) {
     
+    if (boost::iequals(ss, "UNSTRANDED")) {
+        return StrandSpecific::UNSTRANDED;
+    }
+    else if (boost::iequals(ss, "FIRSTSTRAND")) {
+        return StrandSpecific::FIRSTSTRAND;
+    }
+    else if (boost::iequals(ss, "SECONDSTRAND")) {
+        return StrandSpecific::SECONDSTRAND;
+    }
+        
+    BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                    "Can't recognise StrandSpecific string: ") + ss));
+    
+    return StrandSpecific::UNSTRANDED;
+}
 
 class PreparedFiles {
     
@@ -155,7 +188,7 @@ public:
         remove(getSettingsFilePath());
     }
     
-    bool loadSettings() {
+    StrandSpecific loadSettings() {
         ifstream ifs(getSettingsFilePath().c_str());
         string line;
         while ( std::getline(ifs, line) ) {
@@ -163,18 +196,16 @@ public:
                if (line.find("SS") == 0) {
                    size_t eqPos = line.find("=");                   
                    if (eqPos > 0) {
-                       string val = (line.substr(eqPos)); 
+                       string val = (line.substr(eqPos+1)); 
                        boost::trim(val);
                        std::istringstream is(val);
-                       bool b;
-                       is >> std::boolalpha >> b;
-                       return b;
+                       string ss;
+                       is >> ss;
+                       return SSFromString(ss);
                    }
                } 
             }
         }
-        
-        
     }
 };
 
@@ -184,7 +215,7 @@ class Prepare {
 private:
     
     PreparedFiles* output;
-    bool strandSpecific;
+    StrandSpecific strandSpecific;
     bool force;
     bool useLinks;
     uint16_t threads;
@@ -193,10 +224,10 @@ private:
     
 public:
     
-    Prepare(string _outputPrefix) : Prepare(_outputPrefix, false, false, false, 1, false) {
+    Prepare(string _outputPrefix) : Prepare(_outputPrefix, StrandSpecific::UNSTRANDED, false, false, 1, false) {
     }
     
-    Prepare(string _outputPrefix, bool _strandSpecific, bool _force, bool _useLinks, uint16_t _threads, bool _verbose) {
+    Prepare(string _outputPrefix, StrandSpecific _strandSpecific, bool _force, bool _useLinks, uint16_t _threads, bool _verbose) {
         output = new PreparedFiles(_outputPrefix);
         strandSpecific = _strandSpecific;
         force = _force;
@@ -207,7 +238,7 @@ public:
         if (verbose) {
             cout << "Configured portcullis prep to use the following settings: " << endl
                  << " - Output directory: " << output->getPrepDir() << endl
-                 << " - Strand specific library: " << boolalpha << strandSpecific << endl
+                 << " - Strand specific library: " << SSToString(strandSpecific) << endl
                  << " - Force prep (cleans output directory): " << boolalpha << force << endl
                  << " - Use symbolic links instead of copy where possible: " << boolalpha << useLinks << endl
                  << " - Threads (for sorting BAM): " << threads << endl << endl;
@@ -497,7 +528,7 @@ public:
                     "Could not open settings file for writing: ") + settingsFile));
         }
 
-        outfile << "SS=" << (strandSpecific ? "true" : "false") << endl;
+        outfile << "SS=" << SSToString(strandSpecific) << endl;
         outfile.close();
     }
 
@@ -536,7 +567,7 @@ public:
         string genomeFile;
         string outputDir;
         bool force;
-        bool strandSpecific;
+        string strandSpecific;
         bool useLinks;
         uint16_t threads;
         bool verbose;
@@ -549,8 +580,8 @@ public:
                     (string("Output directory for prepared files. Default: ") + DEFAULT_PREP_OUTPUT_DIR).c_str())
                 ("force,f", po::bool_switch(&force)->default_value(false), 
                     "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
-                ("strand_specific,ss", po::bool_switch(&strandSpecific)->default_value(false), 
-                    "Whether BAM alignments were generated using a strand specific RNAseq library.")
+                ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(SSToString(StrandSpecific::UNSTRANDED)), 
+                    "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unstranded\"")
                 ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
                     "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
                 ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_PREP_THREADS),
@@ -613,7 +644,7 @@ public:
              << "---------------------------------" << endl << endl;
         
         // Create the prepare class
-        Prepare prep(outputDir, strandSpecific, force, useLinks, threads, verbose);
+        Prepare prep(outputDir, SSFromString(strandSpecific), force, useLinks, threads, verbose);
         
         // Prep the input to produce a usable indexed and sorted bam plus, indexed
         // genome and queryable coverage information

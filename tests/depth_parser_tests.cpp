@@ -24,7 +24,6 @@
 #include <boost/filesystem.hpp>
 
 #include <depth_parser.hpp>
-
 using std::cout;
 using std::endl;
 
@@ -32,7 +31,7 @@ BOOST_AUTO_TEST_SUITE(depth_parser)
 
 BOOST_AUTO_TEST_CASE(test1)
 {
-    portcullis::DepthParser dp1("resources/sorted.bam", true, true);
+    portcullis::DepthParser dp1("resources/sorted.bam", 0, true);
     
     vector<uint32_t> batch1;
         
@@ -53,7 +52,7 @@ BOOST_AUTO_TEST_CASE(test1)
     BOOST_CHECK(allPos1);
     //cout << count1 << std::endl;
     
-    portcullis::DepthParser dp2("resources/sorted.bam", true, false);
+    portcullis::DepthParser dp2("resources/sorted.bam", 0, false);
     
     vector<uint32_t> batch2;
         

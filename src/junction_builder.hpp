@@ -67,7 +67,7 @@ private:
     PreparedFiles* prepData;
     string outputDir;
     string outputPrefix;
-    bool strandSpecific;
+    StrandSpecific strandSpecific;
     uint16_t threads;
     bool fast;
     bool verbose;
@@ -250,7 +250,7 @@ public:
         
         if (verbose) {
             cout << "done." << endl
-                 << " - Strand specific input data: " << boolalpha << strandSpecific << endl << endl;
+                 << " - Strand specific input data: " << SSToString(strandSpecific) << endl << endl;
         }
     }
     

@@ -44,6 +44,7 @@ using namespace BamTools;
 #include "genome_mapper.hpp"
 #include "bam_utils.hpp"
 #include "seq_utils.hpp"
+#include "prepare.hpp"
 using portcullis::Intron;
 using portcullis::Strand;
 using portcullis::bamtools::BamUtils;
@@ -384,7 +385,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         return validDA;
     }
     
-    void processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, bool strandSpecific) {
+    void processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, StrandSpecific strandSpecific) {
         
         int32_t refId = intron->ref.Id;
         Strand strand = intron->strand;
@@ -405,17 +406,17 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         
         while(reader.GetNextAlignment(ba)) {
             
+            //TODO: Should we consider strand specific reads differently here?
+            
             // Look for left flanking alignments
             if (    intron->start > ba.Position && 
-                    leftFlankStart <= ba.Position + ba.AlignedBases.size() &&
-                    (!strandSpecific || strand == strandFromBool(ba.IsReverseStrand()))) {
+                    leftFlankStart <= ba.Position + ba.AlignedBases.size()) {
                 nbLeftFlankingAlignments++;
             }
             
             // Look for right flanking alignments
             if (    rightFlankEnd >= ba.Position && 
-                    intron->end < ba.Position &&
-                    (!strandSpecific || strand == strandFromBool(ba.IsReverseStrand()))) {
+                    intron->end < ba.Position) {
                 nbRightFlankingAlignments++;
             }
         }

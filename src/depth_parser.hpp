@@ -48,7 +48,7 @@ private:
  
     // Path to the original genome file in fasta format
     string bamFile;
-    bool strandSpecific;
+    uint8_t strandSpecific;
     bool allowGappedAlignments;
     
     bam_header_t *header;
@@ -104,7 +104,7 @@ protected:
     
 public:
     
-    DepthParser(string _bamFile, bool _strandSpecific, bool _allowGappedAlignments) : 
+    DepthParser(string _bamFile, uint8_t _strandSpecific, bool _allowGappedAlignments) : 
         bamFile(_bamFile), strandSpecific(_strandSpecific), allowGappedAlignments(_allowGappedAlignments) {
     
         data = (aux_t**)calloc(1, sizeof(aux_t**));

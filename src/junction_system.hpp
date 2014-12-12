@@ -297,7 +297,7 @@ public:
              << " - Found " << nonCanonicalSites << " non-canonical splice sites." << endl;
     }
     
-    void findFlankingAlignments(string alignmentsFile, bool strandSpecific) {
+    void findFlankingAlignments(string alignmentsFile, StrandSpecific strandSpecific) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
@@ -344,7 +344,7 @@ public:
         cout << "done." << endl;
     }
     
-    void calcCoverage(string alignmentsFile, bool strandSpecific) {
+    void calcCoverage(string alignmentsFile, StrandSpecific strandSpecific) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
@@ -352,7 +352,7 @@ public:
              << " - Calculating per base depth and junction coverage ... ";
         cout.flush();
         
-        DepthParser dp(alignmentsFile, strandSpecific, false);
+        DepthParser dp(alignmentsFile, static_cast<uint8_t>(strandSpecific), false);
         
         vector<uint32_t> batch;
         

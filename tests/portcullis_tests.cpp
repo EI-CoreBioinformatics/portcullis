@@ -25,7 +25,6 @@
 using boost::filesystem::remove_all;
 using boost::filesystem::create_directory;
 
-#include <prepare.hpp>
 #include <junction_builder.hpp>
 
 BOOST_AUTO_TEST_SUITE(interface)

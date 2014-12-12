@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.2.0"
+#define PACKAGE_VERSION "0.2.1"
 #endif
             cout << PACKAGE_NAME << " V" << PACKAGE_VERSION << endl;
             return 0;
