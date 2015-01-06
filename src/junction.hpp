@@ -1113,11 +1113,12 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
              << "20: # Multiple Spliced Reads: " << nbMultipleSplicedReads;
     }
     
+    
     /**
-     * Complete human readable description of this junction
+     * Complete human readable description of this intron (for augustus hints)
      * @param strm
      */
-    void outputGFF(std::ostream &strm, uint32_t id) {
+    void outputIntronGFF(std::ostream &strm, uint32_t id) {
         
         // Use intron strand if known, otherwise use the predicted strand,
         // if predicted strand is also unknown then use "." to indicated unstranded
@@ -1133,6 +1134,37 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         strm << intron->ref.Name << "\t"
              << "portcullis" << "\t"    // source
              << "intron" << "\t"        // type (may change later)
+             << intron->start << "\t"   // start
+             << intron->end << "\t"     // end
+             << "0.0" << "\t"           // No score for the moment
+             << strand << "\t"          // strand
+             << "." << "\t"             // Just put "." for the phase
+             << "mult=" << nbJunctionAlignments << ";"  // Number of times it was seen
+             << "src=E";                // Source for augustus
+        strm << endl;
+
+    }
+    
+    /**
+     * Complete human readable description of this junction
+     * @param strm
+     */
+    void outputJunctionGFF(std::ostream &strm, uint32_t id) {
+        
+        // Use intron strand if known, otherwise use the predicted strand,
+        // if predicted strand is also unknown then use "." to indicated unstranded
+        const char strand = (intron->strand == UNKNOWN ?
+                                predictedStrand == UNKNOWN ?
+                                    '.' :
+                                    strandToChar(predictedStrand) :
+                                strandToChar(intron->strand));
+        
+        string juncId = string("junc_") + lexical_cast<string>(id);
+        
+        // Output junction parent
+        strm << intron->ref.Name << "\t"
+             << "portcullis" << "\t"    // source
+             << "junction" << "\t"      // type (may change later)
              << leftFlankStart << "\t"  // start
              << rightFlankEnd << "\t"   // end
              << "0.0" << "\t"           // No score for the moment

@@ -425,6 +425,7 @@ public:
         string junctionReportPath = outputPrefix + ".junctions.txt";
         string junctionFilePath = outputPrefix + ".junctions.tab";
         string junctionGFFPath = outputPrefix + ".junctions.gff3";
+        string intronGFFPath = outputPrefix + ".introns.gff3";
         string junctionBEDAllPath = outputPrefix + ".junctions.bed";
         
         cout << " - Saving junction report to: " << junctionReportPath << " ... ";
@@ -445,13 +446,22 @@ public:
         junctionFileStream.close();
         
         cout << "done." << endl
-             << " - Saving GFF file to: " << junctionGFFPath << " ... ";
+             << " - Saving junction GFF file to: " << junctionGFFPath << " ... ";
         cout.flush();
         
         // Print junction stats to file
         ofstream junctionGFFStream(junctionGFFPath.c_str());
-        outputGFF(junctionGFFStream);
+        outputJunctionGFF(junctionGFFStream);
         junctionGFFStream.close();
+        
+        cout << "done." << endl
+             << " - Saving intron GFF file to: " << intronGFFPath << " ... ";
+        cout.flush();
+        
+        // Print junction stats to file
+        ofstream intronGFFStream(intronGFFPath.c_str());
+        outputIntronGFF(intronGFFStream);
+        intronGFFStream.close();
         
         // Output BED files
         
@@ -487,11 +497,19 @@ public:
         return strm;
     }
     
-    void outputGFF(std::ostream &strm) {
+    void outputJunctionGFF(std::ostream &strm) {
         
         uint64_t i = 0;
         for(JunctionPtr j : junctionList) {
-            j->outputGFF(strm, i++);
+            j->outputJunctionGFF(strm, i++);
+        }
+    }
+    
+    void outputIntronGFF(std::ostream &strm) {
+        
+        uint64_t i = 0;
+        for(JunctionPtr j : junctionList) {
+            j->outputIntronGFF(strm, i++);
         }
     }
     
