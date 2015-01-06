@@ -1138,7 +1138,9 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
              << "0.0" << "\t"           // No score for the moment
              << strand << "\t"          // strand
              << "." << "\t"             // Just put "." for the phase
-             << "ID=" << juncId << ";";
+             << "ID=" << juncId << ";"  // ID of the intron
+             << "mult=" << nbJunctionAlignments << ";"  // Number of times it was seen
+             << "src=E";                // Source for augustus
         outputDescription(strm, ";");
         strm << endl;
 
