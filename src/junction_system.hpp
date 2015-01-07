@@ -203,6 +203,12 @@ public:
                     }
                 }
                 
+                // Check here to make sure we are not running off the end of a sequence
+                if (rEnd >= refLength) {
+                    rEnd = refLength - 1;
+                }
+                
+                // Create the intron
                 shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
                         strandSpecific ? strandFromBool(al.IsReverseStrand()) : UNKNOWN));
                 

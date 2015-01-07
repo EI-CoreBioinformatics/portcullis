@@ -369,10 +369,15 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         if (seqLen == -1) 
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Can't find genomic region for junction")));
+        
         if (seqLen != rightFlankEnd - leftFlankStart + 1)
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                    "Retrieved sequence is not of the expected length")));
-            
+                    "Retrieved sequence is not of the expected length.") +
+                    "\nSequence Name: " + intron->ref.Name + 
+                    "\nSequence Length: " + lexical_cast<string>(seqLen) + 
+                    "\nLeft flank start: " + lexical_cast<string>(leftFlankStart) + 
+                    "\nRight flank end: " + lexical_cast<string>(rightFlankEnd) + "\n"));
+                    
 
         // Process the predicted donor / acceptor regions and update junction
         string daSeq1 = region.substr(intron->start - leftFlankStart, 2);
