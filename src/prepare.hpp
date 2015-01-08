@@ -148,27 +148,27 @@ public:
     
     bool valid() {
         
-        if (!exists(getSortedBamFilePath())) {
+        if (!exists(getSortedBamFilePath()) && !symbolic_link_exists(getSortedBamFilePath())) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                     "Could not find sorted BAM files at: ") + getSortedBamFilePath()));
         }
 
-        if (!exists(getBamIndexFilePath())) {
+        if (!exists(getBamIndexFilePath()) && !symbolic_link_exists(getBamIndexFilePath())) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                     "Could not find BAM index at: ") + getBamIndexFilePath()));
         }
         
-        if (!exists(getGenomeFilePath())) {
+        if (!exists(getGenomeFilePath()) && !symbolic_link_exists(getGenomeFilePath())) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                     "Could not find genome file at: ") + getGenomeFilePath()));
         }
         
-        if (!exists(getGenomeIndexFilePath())) {
+        if (!exists(getGenomeIndexFilePath()) && !symbolic_link_exists(getGenomeIndexFilePath())) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                     "Could not find genome index at: ") + getGenomeIndexFilePath()));
         }
         
-        if (!exists(getSettingsFilePath())) {
+        if (!exists(getSettingsFilePath()) && !symbolic_link_exists(getSettingsFilePath())) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                     "Could not find settings file at: ") + getSettingsFilePath()));
         } 
@@ -340,7 +340,7 @@ protected:
         
         string mergedBam = output->getUnsortedBamFilePath();        
 
-        bool mergedBamExists = exists(mergedBam);
+        bool mergedBamExists = exists(mergedBam) || symbolic_link_exists(mergedBam);
 
         if (mergedBamExists) {
             if (verbose) cout << "Pre-merged BAM detected: " << mergedBam << endl;
@@ -359,7 +359,7 @@ protected:
         }
         
         // Return true if the merged BAM exists now, which is should do
-        return exists(mergedBam);        
+        return exists(mergedBam) || symbolic_link_exists(mergedBam);        
     }
 
     /**
@@ -429,7 +429,7 @@ protected:
         const string sortedBam = output->getSortedBamFilePath();
         const string indexedFile = output->getBamIndexFilePath();
         
-        bool indexedBamExists = exists(indexedFile);
+        bool indexedBamExists = exists(indexedFile) || symbolic_link_exists(indexedFile);
         
         if (indexedBamExists) {
             if (verbose) cout << "Pre-indexed BAM detected: " << indexedFile << endl;
@@ -457,7 +457,7 @@ protected:
             }
         }
         
-        return exists(indexedFile);
+        return exists(indexedFile) || symbolic_link_exists(indexedFile);
     }
     
 
@@ -630,7 +630,7 @@ public:
         }
         
         // Test if provided genome exists
-        if (!exists(genomeFile)) {
+        if (!exists(genomeFile) && !symbolic_link_exists(genomeFile)) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                         "Could not find genome file at: ") + genomeFile));
         }
