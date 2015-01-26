@@ -28,3 +28,4 @@
 !/m4/ax_cpp_lib_check.m4
 *.configure.swp
 *.2.0.tar.gz
+/CMakeLists.txt

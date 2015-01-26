@@ -310,7 +310,10 @@ public:
         cout << " - Using unspliced alignments file: " << alignmentsFile << endl
              << " - Acquiring all alignments in each junction's vicinity ... ";
         cout.flush();
-                
+        
+
+        // Maybe try to multi-thread this part
+        
         BamReader reader;
         
         if (!reader.Open(alignmentsFile)) {
@@ -329,6 +332,7 @@ public:
                         "Error creating BAM index for alignments file: ") + indexFile));
             }            
         }
+        
         
         // Read the alignments around every junction and set appropriate metrics
         size_t count = 0;
