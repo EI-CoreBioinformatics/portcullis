@@ -29,3 +29,4 @@
 *.configure.swp
 *.2.0.tar.gz
 /CMakeLists.txt
+*.tar.gz
