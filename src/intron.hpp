@@ -1,34 +1,36 @@
 //  ********************************************************************
-//  This file is part of Portculis.
+//  This file is part of Portcullis.
 //
-//  Portculis is free software: you can redistribute it and/or modify
+//  Portcullis is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Portculis is distributed in the hope that it will be useful,
+//  Portcullis is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with Portculis.  If not, see <http://www.gnu.org/licenses/>.
+//  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
 #pragma once
 
 #include <math.h>
 #include <string>
+#include <memory>
+
 using std::min;
 using std::string;
+using std::shared_ptr;
 
 #include <boost/exception/all.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/shared_ptr.hpp>
+#include <boost/functional/hash.hpp>
 using boost::lexical_cast;
-using boost::shared_ptr;
 
-namespace portculis {    
+namespace portcullis {    
     
 enum Strand {
     POSITIVE,
@@ -81,48 +83,41 @@ static string strandToString(Strand strand) {
     return string("UNKNOWN");
 }
     
+struct RefSeq {
+   
+    int32_t     Id;     //!< id of the reference sequence
+    std::string Name;    //!< name of reference sequence
+    int32_t     Length;  //!< length of reference sequence
+    
+    //! constructor
+    RefSeq(const int32_t& id = -1,
+            const std::string& name = "",
+            const int32_t& length = 0)
+        : Id(id)
+        , Name(name)
+        , Length(length)
+    { }
+};
+
 typedef boost::error_info<struct IntronError,string> IntronErrorInfo;
 struct IntronException: virtual boost::exception, virtual std::exception { };
+
 
 class Intron {
     
     
 public:    
-    int32_t refId;      // The reference sequence this location comes from
+    RefSeq ref;     // Details of the reference sequence
     int32_t start;      // The index of the base of the intron
     int32_t end;        // The index of the last base of the intron
     Strand strand;      // The strand the intron is on
     
-    Intron() :
-        refId(-1), start(-1), end(-1), strand(UNKNOWN) {        
-    }
+    Intron() : Intron(RefSeq(), -1, -1, UNKNOWN) {}
     
-    Intron(int32_t _refId, int32_t _start, int32_t _end, Strand _strand) :
-        refId(_refId), start(_start), end(_end), strand(_strand) {
+    Intron(RefSeq _ref, int32_t _start, int32_t _end, Strand _strand) :
+        ref(_ref), start(_start), end(_end), strand(_strand) {
     }
 
-    /**
-     * Overload hash_value with Location so that boost know how to use this class
-     * as a key in some kind of hash table
-     * 
-     * @param other
-     * @return 
-     */
-    friend size_t hash_value(const Intron& l)
-    {
-        // Start with a hash value of 0    .
-        std::size_t seed = 0;
-
-        // Modify 'seed' by XORing and bit-shifting in
-        // one member of 'Key' after the other:
-        boost::hash_combine(seed, l.refId);
-        boost::hash_combine(seed, l.start);
-        boost::hash_combine(seed, l.end);
-        boost::hash_combine(seed, l.strand);
-
-        // Return the result.
-        return seed;
-    }
     
     /**
      * Note that equality is determined purely on the ref id and the junction's
@@ -132,7 +127,7 @@ public:
      */
     bool operator==(const Intron &other) const
     { 
-        return (refId == other.refId &&
+        return (ref.Id == other.ref.Id &&
                 start == other.start &&
                 end == other.end &&
                 strand == other.strand);
@@ -159,7 +154,7 @@ public:
      * @return 
      */
     bool sharesDonorOrAcceptor(const Intron& other) {
-        return refId == other.refId && 
+        return ref.Id == other.ref.Id && 
                 (start == other.start || end == other.end);
     }
     
@@ -191,20 +186,53 @@ public:
     }
     
     void outputDescription(std::ostream &strm, string delimiter) {
-        strm << "RefId: " << refId << delimiter
+        strm << "RefId: " << ref.Id << delimiter
+             << "RefName: " << ref.Name << delimiter
+             << "RefLength: " << ref.Length << delimiter
              << "Start: " << start << delimiter
              << "End: " << end << delimiter
              << "Strand: " << strandToString(strand);
     }
     
     friend std::ostream& operator<<(std::ostream &strm, const Intron& l) {
-        return strm << l.refId << "\t" << l.start << "\t" << l.end << "\t" << strandToChar(l.strand);
+        return strm << l.ref.Id << "\t" << l.ref.Name << "\t" << l.ref.Length 
+                << "\t" << l.start << "\t" << l.end << "\t" << strandToChar(l.strand);
     }
     
     static string locationOutputHeader() {
-        return string("refid\tstart\tend\tstrand"); 
+        return string("refid\trefname\treflen\tstart\tend\tstrand"); 
     }
     
 };
 
+/**
+    * Overload hash_value with Location so that boost know how to use this class
+    * as a key in some kind of hash table
+    * 
+    * @param other
+    * @return 
+    */
+struct IntronHasher {
+    
+    size_t operator()(const Intron& l) const
+    {
+       using boost::hash_value;
+       using boost::hash_combine;
+
+       // Start with a hash value of 0    .
+       size_t seed = 0;
+
+       // Modify 'seed' by XORing and bit-shifting in
+       // one member of 'Key' after the other:
+       hash_combine(seed, hash_value(l.ref.Id));
+       hash_combine(seed, hash_value(l.start));
+       hash_combine(seed, hash_value(l.end));
+       hash_combine(seed, hash_value(l.strand));
+
+       // Return the result.
+       return seed;
+    }
+};
+
+typedef shared_ptr<Intron> IntronPtr;
 }

@@ -63,6 +63,10 @@ AC_DEFUN([AX_BOOST_TIMER],
 		LDFLAGS="$LDFLAGS $BOOST_LDFLAGS"
 		export LDFLAGS
 
+                LIBS_SAVED=$LIBS
+		LIBS="$LIBS $BOOST_CHRONO_LIB $BOOST_SYSTEM_LIB"
+		export LIBS
+
         AC_CACHE_CHECK(whether the Boost::Timer library is available,
 					   ax_cv_boost_timer,
         [AC_LANG_PUSH([C++])
@@ -114,6 +118,7 @@ AC_DEFUN([AX_BOOST_TIMER],
 		fi
 
 		CPPFLAGS="$CPPFLAGS_SAVED"
-	LDFLAGS="$LDFLAGS_SAVED"
+                LDFLAGS="$LDFLAGS_SAVED"
+                LIBS="$LIBS_SAVED"
 	fi
 ])

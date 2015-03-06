@@ -1,18 +1,18 @@
 //  ********************************************************************
-//  This file is part of Portculis.
+//  This file is part of Portcullis.
 //
-//  Portculis is free software: you can redistribute it and/or modify
+//  Portcullis is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Portculis is distributed in the hope that it will be useful,
+//  Portcullis is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with Portculis.  If not, see <http://www.gnu.org/licenses/>.
+//  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
 #pragma once
@@ -20,22 +20,22 @@
 #include <math.h>
 #include <string>
 #include <vector>
+#include <memory>
+#include <unordered_map>
 using std::endl;
 using std::min;
 using std::max;
 using std::string;
 using std::size_t;
 using std::vector;
+using std::shared_ptr;
 
+typedef std::unordered_map<string, uint16_t> SplicedAlignmentMap;
+
+#include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
-#include <boost/foreach.hpp>
-#include <boost/functional/hash.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/unordered_map.hpp>
 using boost::lexical_cast;
-using boost::shared_ptr;
-typedef boost::unordered_map<string, uint16_t> SplicedAlignmentMap;
 
 #include <api/BamAlignment.h>
 using namespace BamTools;
@@ -44,19 +44,19 @@ using namespace BamTools;
 #include "genome_mapper.hpp"
 #include "bam_utils.hpp"
 #include "seq_utils.hpp"
-using portculis::Intron;
-using portculis::Strand;
-using portculis::bamtools::BamUtils;
+#include "prepare.hpp"
+using portcullis::Intron;
+using portcullis::Strand;
+using portcullis::bamtools::BamUtils;
 
-namespace portculis {    
+namespace portcullis {    
 
-const uint16_t MAP_QUALITY_THRESHOLD = 30;    
-    
+const uint16_t MAP_QUALITY_THRESHOLD = 30;
 
 typedef boost::error_info<struct JunctionError,string> JunctionErrorInfo;
 struct JunctionException: virtual boost::exception, virtual std::exception { };
 
-const string METRIC_NAMES[18] = {
+const string METRIC_NAMES[20] = {
         "M1-nb_reads",
         "M2-canonical_ss",
         "M3-intron_size",
@@ -74,7 +74,9 @@ const string METRIC_NAMES[18] = {
         "M15-coverage",
         "M16-uniq_junc",
         "M17-primary_junc",
-        "M18-mm_score"
+        "M18-mm_score",
+        "M19-nb_mismatches",
+        "M20-nb_msrs"
     };
 
 const string PREDICTION_NAMES[1] = {
@@ -92,7 +94,8 @@ const string SEMI_CANONICAL_SEQ2_RC = SeqUtils::reverseComplement(SEMI_CANONICAL
 enum CanonicalSS {
     CANONICAL,
     SEMI_CANONICAL,
-    NO
+    NO,
+    ALL
 };
 
 static CanonicalSS cssFromChar(char css) {
@@ -147,7 +150,7 @@ private:
     
     
     // **** Junction metrics ****
-                                                // Metric 1 (nbReads) derived from size of junction alignment vector
+    uint32_t nbJunctionAlignments;              // Metric 1
     CanonicalSS canonicalSpliceSites;           // Metric 2
                                                 // Metric 3 (intron size) calculated via location properties
     int32_t  maxMinAnchor;                      // Metric 4
@@ -165,6 +168,8 @@ private:
     bool     uniqueJunction;                    // Metric 16
     bool     primaryJunction;                   // Metric 17
     double   multipleMappingScore;              // Metric 18
+    uint16_t nbMismatches;                      // Metric 19
+    uint32_t nbMultipleSplicedReads;            // Metric 20
     
     
     // **** Predictions ****
@@ -180,32 +185,6 @@ private:
     string da1, da2;                    // These store the nucleotides found at the predicted donor / acceptor sites in the intron
     
     
-    
-    void init(int32_t _leftFlankStart, int32_t _rightFlankEnd) {
-        
-        leftFlankStart = _leftFlankStart;
-        rightFlankEnd = _rightFlankEnd;
-        canonicalSpliceSites = NO;
-        maxMinAnchor = intron->minAnchorLength(_leftFlankStart, _rightFlankEnd);
-        diffAnchor = 0;
-        entropy = 0;
-        nbDistinctAnchors = 0;
-        nbDistinctAlignments = 0;
-        nbReliableAlignments = 0;
-        nbUpstreamFlankingAlignments = 0;
-        nbDownstreamFlankingAlignments = 0;
-        maxMMES = 0;
-        hammingDistance5p = -1;
-        hammingDistance3p = -1;
-        coverage = 0.0;
-        uniqueJunction = false;
-        primaryJunction = false;
-        multipleMappingScore = 0.0;
-        
-        predictedStrand = UNKNOWN;
-    }
-    
-    
 protected:
     
     /**
@@ -217,7 +196,7 @@ protected:
      */
     CanonicalSS hasCanonicalSpliceSites(const string& seq1, const string& seq2) {
         
-        if (intron == NULL || seq1.size() != 2 || seq2.size() != 2)
+        if (intron == nullptr || seq1.size() != 2 || seq2.size() != 2)
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Can't test for valid donor / acceptor when either string are not of length two, or the intron location is not defined")));
         
@@ -268,7 +247,28 @@ public:
     
     Junction(shared_ptr<Intron> _location, int32_t _leftFlankStart, int32_t _rightFlankEnd) :
         intron(_location) {
-        init(_leftFlankStart, _rightFlankEnd);
+        leftFlankStart = _leftFlankStart;
+        rightFlankEnd = _rightFlankEnd;
+        canonicalSpliceSites = NO;
+        maxMinAnchor = intron->minAnchorLength(_leftFlankStart, _rightFlankEnd);
+        diffAnchor = 0;
+        entropy = 0;
+        nbDistinctAnchors = 0;
+        nbDistinctAlignments = 0;
+        nbReliableAlignments = 0;
+        nbUpstreamFlankingAlignments = 0;
+        nbDownstreamFlankingAlignments = 0;
+        maxMMES = 0;
+        hammingDistance5p = -1;
+        hammingDistance3p = -1;
+        coverage = 0.0;
+        uniqueJunction = false;
+        primaryJunction = false;
+        multipleMappingScore = 0.0;
+        nbMismatches = 0;
+        nbMultipleSplicedReads = 0;
+        
+        predictedStrand = UNKNOWN;
     }
     
     // **** Destructor ****
@@ -288,7 +288,23 @@ public:
     
     
     void addJunctionAlignment(const BamAlignment& al) {
-        this->junctionAlignments.push_back(al);                        
+        this->junctionAlignments.push_back(al);
+        this->nbJunctionAlignments = this->junctionAlignments.size();
+        
+        uint16_t nbGaps = 0;
+        for(CigarOp op : al.CigarData) {
+            if (op.Type == 'N') {
+                nbGaps++;
+            }
+        }
+        
+        if (nbGaps > 1) {
+            this->nbMultipleSplicedReads++;
+        }
+    }
+
+    void setNbJunctionAlignments(uint32_t nbJunctionAlignments) {
+        this->nbJunctionAlignments = nbJunctionAlignments;
     }
     
     void setDonorAndAcceptorMotif(CanonicalSS canonicalSS) {
@@ -339,26 +355,29 @@ public:
     }
         
     
-    CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper, RefVector& refs) {
+CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         
-        if (intron == NULL) 
+        if (intron == nullptr) 
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Can't find genomic sequence for this junction as no intron is defined")));
                 
-        int32_t refid = intron->refId;
-        char* refName = new char[refs[refid].RefName.size() + 1];
-        strcpy(refName, refs[refid].RefName.c_str());
-
+        int32_t refid = intron->ref.Id;
+        
         // Just access the whole junction region
         int seqLen = -1;
-        string region(genomeMapper->fetchBases(refName, leftFlankStart, rightFlankEnd, &seqLen));        
+        string region(genomeMapper->fetchBases(intron->ref.Name.c_str(), leftFlankStart, rightFlankEnd, &seqLen));        
         if (seqLen == -1) 
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Can't find genomic region for junction")));
+        
         if (seqLen != rightFlankEnd - leftFlankStart + 1)
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                    "Retrieved sequence is not of the expected length")));
-            
+                    "Retrieved sequence is not of the expected length.") +
+                    "\nSequence Name: " + intron->ref.Name + 
+                    "\nSequence Length: " + lexical_cast<string>(seqLen) + 
+                    "\nLeft flank start: " + lexical_cast<string>(leftFlankStart) + 
+                    "\nRight flank end: " + lexical_cast<string>(rightFlankEnd) + "\n"));
+                    
 
         // Process the predicted donor / acceptor regions and update junction
         string daSeq1 = region.substr(intron->start - leftFlankStart, 2);
@@ -367,16 +386,13 @@ public:
            
         // Create strings for hamming analysis
         calcHammingScores(region);
-        
-        // Clean up
-        delete refName;        
-        
+                
         return validDA;
     }
     
-    void processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, bool strandSpecific) {
+    void processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, StrandSpecific strandSpecific) {
         
-        int32_t refId = intron->refId;
+        int32_t refId = intron->ref.Id;
         Strand strand = intron->strand;
 
         uint32_t nbLeftFlankingAlignments = 0, nbRightFlankingAlignments = 0;
@@ -395,17 +411,17 @@ public:
         
         while(reader.GetNextAlignment(ba)) {
             
+            //TODO: Should we consider strand specific reads differently here?
+            
             // Look for left flanking alignments
             if (    intron->start > ba.Position && 
-                    leftFlankStart <= ba.Position + ba.AlignedBases.size() &&
-                    (!strandSpecific || strand == strandFromBool(ba.IsReverseStrand()))) {
+                    leftFlankStart <= ba.Position + ba.AlignedBases.size()) {
                 nbLeftFlankingAlignments++;
             }
             
             // Look for right flanking alignments
             if (    rightFlankEnd >= ba.Position && 
-                    intron->end < ba.Position &&
-                    (!strandSpecific || strand == strandFromBool(ba.IsReverseStrand()))) {
+                    intron->end < ba.Position) {
                 nbRightFlankingAlignments++;
             }
         }
@@ -421,7 +437,7 @@ public:
        
         calcAnchorStats();      // Metrics 5 and 7
         calcEntropy();          // Metric 6
-        calcAlignmentStats();   // Metrics 8 and 9
+        calcAlignmentStats();   // Metrics 8, 9 and 19
         calcMaxMMES();          // Metric 12
         calcMultipleMappingScore(map); // Metric 18
     }
@@ -441,7 +457,7 @@ public:
         uint32_t nbDistinctLeftAnchors = 0, nbDistinctRightAnchors = 0;
         int32_t lastLStart = -1, lastREnd = -1;
                 
-        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+        for(BamAlignment ba : junctionAlignments) {
             
             int32_t lStart = max(ba.Position, leftFlankStart);
             int32_t rEnd = min(ba.Position + (int32_t)ba.AlignedBases.size(), rightFlankEnd);
@@ -485,7 +501,7 @@ public:
         
         vector<int32_t> junctionPositions;
         
-        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+        for(BamAlignment ba : junctionAlignments) {
             junctionPositions.push_back(ba.Position);
         }
         
@@ -562,8 +578,9 @@ public:
         
         nbDistinctAlignments = 0;
         nbReliableAlignments = 0;
+        nbMismatches = 0;
         
-        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+        for(BamAlignment ba : junctionAlignments) {
             
             int32_t start = ba.Position;
             int32_t end = ba.Position + ba.AlignedBases.size();
@@ -581,6 +598,12 @@ public:
             if (ba.MapQuality >= MAP_QUALITY_THRESHOLD) {
                 nbReliableAlignments++;
             }
+            
+            for (CigarOp op : ba.CigarData) {
+                if (op.Type == 'X') {
+                    nbMismatches++;
+                }
+            }
         }        
     }
     
@@ -591,22 +614,46 @@ public:
      */
     void calcHammingScores(string& junctionSeq) {
         
-        const uint8_t REGION_LENGTH = 10;
+        // Default region length is 10, however this may get modified if we have
+        // particularly short anchors
+        uint16_t REGION_LENGTH = 10;
+        
         string intron5p;
         string intron3p;
         string anchor5p;
         string anchor3p;
         
-        int32_t intronStartOffset = intron->start - leftFlankStart;
-        int32_t intronEndOffset = intron->end - leftFlankStart;
+        int32_t diffAnchor5p = intron->start - leftFlankStart;
+        int32_t diffAnchor3p = rightFlankEnd - intron->end;
+
+        // Shorten region to look for based on size of the anchors (flanking region).  i.e. if the 
+        // smallest anchor is less than the default region length, we shrink the region length
+        // to the size of the smallest anchor
+        REGION_LENGTH = diffAnchor5p < REGION_LENGTH ? diffAnchor5p : REGION_LENGTH;
+        REGION_LENGTH = diffAnchor3p < REGION_LENGTH ? diffAnchor3p : REGION_LENGTH;
         
-        // This test might be revisiting in the future.  It's possible that we could
-        // just get a larger flanking region to calculate the many cases
-        if (intron->size() < REGION_LENGTH 
-                || intronStartOffset - REGION_LENGTH < 0 
-                || intronEndOffset + REGION_LENGTH >= rightFlankEnd - leftFlankStart) {
+        //cout << "region length: " << REGION_LENGTH << endl;
+        
+        int32_t intronStartOffset = intron->start - leftFlankStart;
+        int32_t anchor3pStartOffset = intron->end - leftFlankStart + 1;
+        
+        // The first parts of this if statement are for debugging purposes.  We
+        // don't actually expect these to be set for real
+        if (intron->size() < REGION_LENGTH) {
             hammingDistance5p = -1;
             hammingDistance3p = -1;
+        }
+        else if (intronStartOffset - REGION_LENGTH < 0) {
+            hammingDistance5p = -2;
+            hammingDistance3p = -2;
+        }
+        else if (anchor3pStartOffset + REGION_LENGTH > size()) {
+            hammingDistance5p = -3;
+            hammingDistance3p = -3;
+        }
+        else if (anchor3pStartOffset + REGION_LENGTH > junctionSeq.size()) {
+            hammingDistance5p = -4;
+            hammingDistance3p = -4;
         }
         else {
 
@@ -615,21 +662,26 @@ public:
             switch(s) {
                 case POSITIVE:
                     intron5p = junctionSeq.substr(intronStartOffset, REGION_LENGTH);
-                    intron3p = junctionSeq.substr(intronEndOffset - REGION_LENGTH, REGION_LENGTH);
+                    intron3p = junctionSeq.substr(anchor3pStartOffset - REGION_LENGTH, REGION_LENGTH);
                     anchor5p = junctionSeq.substr(intronStartOffset - REGION_LENGTH, REGION_LENGTH);
-                    anchor3p = junctionSeq.substr(intronEndOffset, REGION_LENGTH);
+                    anchor3p = junctionSeq.substr(anchor3pStartOffset, REGION_LENGTH);
                     break;
                 case NEGATIVE:
-                    intron5p = SeqUtils::reverseComplement(junctionSeq.substr(intronEndOffset - REGION_LENGTH, REGION_LENGTH));
+                    intron5p = SeqUtils::reverseComplement(junctionSeq.substr(anchor3pStartOffset - REGION_LENGTH, REGION_LENGTH));
                     intron3p = SeqUtils::reverseComplement(junctionSeq.substr(intronStartOffset, REGION_LENGTH));
-                    anchor5p = SeqUtils::reverseComplement(junctionSeq.substr(intronEndOffset, REGION_LENGTH));
+                    anchor5p = SeqUtils::reverseComplement(junctionSeq.substr(anchor3pStartOffset, REGION_LENGTH));
                     anchor3p = SeqUtils::reverseComplement(junctionSeq.substr(intronStartOffset - REGION_LENGTH, REGION_LENGTH));
                     break;
                 default:
-                    hammingDistance5p = -1;
-                    hammingDistance3p = -1;
+                    hammingDistance5p = -5;
+                    hammingDistance3p = -5;
                     return;
             }
+            
+            /*cout << "anchor 5': " << anchor5p << endl;
+            cout << "intron 5': " << intron5p << endl;
+            cout << "intron 3': " << intron3p << endl;
+            cout << "anchor 3': " << anchor3p << endl;*/
             
             hammingDistance5p = SeqUtils::hammingDistance(anchor5p, intron3p);
             hammingDistance3p = SeqUtils::hammingDistance(anchor3p, intron5p);  
@@ -643,10 +695,10 @@ public:
         
         uint16_t maxmmes = 0;
         
-        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+        for(BamAlignment ba : junctionAlignments) {
             
-            uint16_t leftMM = calcMinimalMatchInCigarDataSubset(ba, leftFlankStart, intron->start);
-            uint16_t rightMM = calcMinimalMatchInCigarDataSubset(ba, intron->end, rightFlankEnd);
+            uint16_t leftMM = BamUtils::calcMinimalMatchInCigarDataSubset(ba, leftFlankStart, intron->start);
+            uint16_t rightMM = BamUtils::calcMinimalMatchInCigarDataSubset(ba, intron->end, rightFlankEnd);
             
             uint16_t mmes = min(leftMM, rightMM);
 
@@ -664,7 +716,7 @@ public:
         size_t N = this->getNbJunctionAlignments();
         
         uint32_t M = 0;
-        BOOST_FOREACH(BamAlignment ba, junctionAlignments) {
+        for(BamAlignment ba : junctionAlignments) {
             
             string name = BamUtils::deriveName(ba);
             
@@ -674,40 +726,6 @@ public:
         this->multipleMappingScore = (double)N / (double)M;
     }
     
-    uint16_t calcMinimalMatchInCigarDataSubset(BamAlignment& ba, int32_t start, int32_t end) {
-        
-        if (start > ba.Position + ba.AlignedBases.size() || end < ba.Position)
-            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                    "Found an alignment that does not have a presence in the requested region")));
-        
-        int32_t pos = ba.Position;
-        uint16_t mismatches = 0;
-        int32_t length = 0;
-        bool inRegion = false;
-        
-        BOOST_FOREACH(CigarOp op, ba.CigarData) {
-           
-            if (pos > end) {
-                break;
-            }
-            
-            inRegion = pos >= start;                
-            
-            if (BamUtils::opFollowsReference(op.Type)) {
-                
-                if (inRegion)
-                    length += op.Length;
-
-                pos += op.Length;
-            }
-            
-            if (inRegion && op.Type == 'X') {
-                mismatches++;
-            }
-        } 
-        
-        return length - mismatches;
-    }
     
     double calcCoverage(int32_t a, int32_t b, const vector<uint32_t>& coverageLevels) {
         
@@ -716,40 +734,37 @@ public:
         
         for (int32_t i = a; i <= b; i++) {
             
-            //int32_t pos = intron->strand == NEGATIVE ? i*2+1 : i*2;
-            readCount += coverageLevels[i];
+            // Don't do anything stupid!
+            if (i >= 0 && i < coverageLevels.size()) {
+                readCount += coverageLevels[i];
+            }            
         }
         return multiplier * (double)readCount;
     }
     
-    void calcCoverage(int32_t meanReadLength, const vector<uint32_t>& coverageLevels) {
+    double calcCoverage(const vector<uint32_t>& coverageLevels) {
         
-        int32_t donorStart = intron->start - 2 * meanReadLength; donorStart = donorStart < 0 ? 0 : donorStart;
-        int32_t donorMid = intron->start - meanReadLength;  // This one should be fine
-        int32_t donorEnd = intron->start;                   // This is definitely ok, no capping required
+        const uint32_t REGION_LENGTH = 10;
         
-        int32_t acceptorStart = intron->end - meanReadLength;
-        int32_t acceptorMid = intron->end;
-        int32_t acceptorEnd = intron->end + meanReadLength;
+        int32_t donorStart = intron->start - 2 * REGION_LENGTH;
+        int32_t donorMid = intron->start - REGION_LENGTH;
+        int32_t donorEnd = intron->start;
         
+        int32_t acceptorStart = intron->end;
+        int32_t acceptorMid = intron->end + REGION_LENGTH;
+        int32_t acceptorEnd = intron->end + 2 * REGION_LENGTH;
         
-        if (donorMid - donorStart != donorEnd - donorMid ||
-            acceptorMid - acceptorStart != acceptorEnd - acceptorMid) {
-            
-            coverage = -1.0;
-        }
-        else {
-            
-            double donorCoverage = 
-                    calcCoverage(donorStart, donorMid-1, coverageLevels) -
-                    calcCoverage(donorMid, donorEnd, coverageLevels);
+        double donorCoverage = 
+                calcCoverage(donorStart, donorMid-1, coverageLevels) -
+                calcCoverage(donorMid, donorEnd, coverageLevels);
 
-            double acceptorCoverage = 
-                    calcCoverage(acceptorMid, acceptorEnd, coverageLevels) -
-                    calcCoverage(acceptorStart, acceptorMid-1, coverageLevels);
+        double acceptorCoverage = 
+                calcCoverage(acceptorMid, acceptorEnd, coverageLevels) -
+                calcCoverage(acceptorStart, acceptorMid-1, coverageLevels);
 
-            coverage = donorCoverage + acceptorCoverage;
-        }
+        coverage = donorCoverage + acceptorCoverage; 
+        
+        return coverage;
     }
     
     
@@ -767,6 +782,10 @@ public:
     int32_t getRightFlankEnd() const {
         return rightFlankEnd;
     }
+    
+    size_t size() const {
+        return rightFlankEnd - leftFlankStart + 1;
+    }
 
     
     
@@ -777,7 +796,7 @@ public:
      * @return 
      */
     size_t getNbJunctionAlignments() const {
-        return this->junctionAlignments.size();
+        return this->nbJunctionAlignments;
     }
     
     /**
@@ -789,12 +808,16 @@ public:
         return this->canonicalSpliceSites;
     }
     
+    CanonicalSS getSpliceSiteType() const {
+        return this->canonicalSpliceSites;
+    }
+    
     /**
      * Metric 3: The intron size
      * @return 
      */
     int32_t getIntronSize() const {
-        return intron != NULL ? intron->size() : 0;
+        return intron != nullptr ? intron->size() : 0;
     }
     
     /**
@@ -906,7 +929,14 @@ public:
     }
 
     /**
-     * Metric 15:
+     * Metric 15: The coverage score around the junction.  Uses unspliced reads
+     * around both donor and acceptor sites.  If this is geniune junction you expect
+     * unspliced reads to drop off closer to the donor and acceptor sites you get
+     * (relative to read length).  We compare a window one read away from the d/a
+     * site and one read up to the d/a site.  We then substract the mean coverage from
+     * the more distant window to the close window.  We then add these score from
+     * both donor and acceptor sites together.  For genuine junctions this should be
+     * the score should be relatively large.  See TrueSight paper for more info.
      * @return 
      */
     double getCoverage() const {
@@ -929,9 +959,34 @@ public:
         return primaryJunction;
     }
     
+    /**
+     * Metric 18: Multiple mapping score (reflects mapping ambiguity.  Small score
+     * implies reads in this junction align to other splice junctions across the
+     * genome).  From TrueSight paper.
+     * @return 
+     */
     double getMultipleMappingScore() const {
         return multipleMappingScore;
     }
+    
+    /**
+     * Metric 19: Number of mismatches.  The total number of mismatches from all
+     * splice aligned reads in this junction.  From TrueSight paper.
+     * @return 
+     */
+    uint16_t getNbMismatches() const {
+        return nbMismatches;
+    }
+    
+    /**
+     * The number of spliced reads in this junction that also cover additional junctions
+     * @return 
+     */
+    uint32_t getNbMultipleSplicedReads() const {
+        return nbMultipleSplicedReads;
+    }
+
+
 
     Strand getPredictedStrand() const {
         return predictedStrand;
@@ -1001,6 +1056,16 @@ public:
     void setPredictedStrand(Strand predictedStrand) {
         this->predictedStrand = predictedStrand;
     }
+    
+    void setNbMismatches(uint16_t nbMismatches) {
+        this->nbMismatches = nbMismatches;
+    }
+    
+    void setNbMultipleSplicedReads(uint32_t nbMultipleSplicedReads) {
+        this->nbMultipleSplicedReads = nbMultipleSplicedReads;
+    }
+
+
 
 
     
@@ -1019,7 +1084,7 @@ public:
      */
     void outputDescription(std::ostream &strm, string delimiter) {
         
-        if (intron != NULL) {
+        if (intron != nullptr) {
             intron->outputDescription(strm, delimiter);
         }
         else {
@@ -1048,14 +1113,17 @@ public:
              << "15: Coverage: " << coverage << delimiter
              << "16: Unique Junction: " << boolalpha << uniqueJunction << delimiter
              << "17: Primary Junction: " << boolalpha << primaryJunction << delimiter
-             << "18: Multiple mapping score: " << multipleMappingScore << delimiter;
+             << "18: Multiple mapping score: " << multipleMappingScore << delimiter
+             << "19: # mismatches: " << nbMismatches << delimiter
+             << "20: # Multiple Spliced Reads: " << nbMultipleSplicedReads;
     }
     
+    
     /**
-     * Complete human readable description of this junction
+     * Complete human readable description of this intron (for augustus hints)
      * @param strm
      */
-    void outputGFF(std::ostream &strm, uint32_t id, RefVector& refs) {
+    void outputIntronGFF(std::ostream &strm, uint32_t id) {
         
         // Use intron strand if known, otherwise use the predicted strand,
         // if predicted strand is also unknown then use "." to indicated unstranded
@@ -1066,24 +1134,56 @@ public:
                                 strandToChar(intron->strand));
         
         string juncId = string("junc_") + lexical_cast<string>(id);
-        string refName = refs[intron->refId].RefName;
         
         // Output junction parent
-        strm << refName << "\t"
-             << "portculis" << "\t"     // source
+        strm << intron->ref.Name << "\t"
+             << "portcullis" << "\t"    // source
+             << "intron" << "\t"        // type (may change later)
+             << intron->start << "\t"   // start
+             << intron->end << "\t"     // end
+             << "0.0" << "\t"           // No score for the moment
+             << strand << "\t"          // strand
+             << "." << "\t"             // Just put "." for the phase
+             << "mult=" << nbJunctionAlignments << ";"  // Number of times it was seen
+             << "src=E";                // Source for augustus
+        strm << endl;
+
+    }
+    
+    /**
+     * Complete human readable description of this junction
+     * @param strm
+     */
+    void outputJunctionGFF(std::ostream &strm, uint32_t id) {
+        
+        // Use intron strand if known, otherwise use the predicted strand,
+        // if predicted strand is also unknown then use "." to indicated unstranded
+        const char strand = (intron->strand == UNKNOWN ?
+                                predictedStrand == UNKNOWN ?
+                                    '.' :
+                                    strandToChar(predictedStrand) :
+                                strandToChar(intron->strand));
+        
+        string juncId = string("junc_") + lexical_cast<string>(id);
+        
+        // Output junction parent
+        strm << intron->ref.Name << "\t"
+             << "portcullis" << "\t"    // source
              << "junction" << "\t"      // type (may change later)
              << leftFlankStart << "\t"  // start
              << rightFlankEnd << "\t"   // end
              << "0.0" << "\t"           // No score for the moment
              << strand << "\t"          // strand
              << "." << "\t"             // Just put "." for the phase
-             << "ID=" << juncId << ";";
+             << "ID=" << juncId << ";"  // ID of the intron
+             << "mult=" << nbJunctionAlignments << ";"  // Number of times it was seen
+             << "src=E;";                // Source for augustus
         outputDescription(strm, ";");
         strm << endl;
 
         // Output left exonic region
-        strm << refName << "\t"
-             << "portculis" << "\t"
+        strm << intron->ref.Name << "\t"
+             << "portcullis" << "\t"
              << "partial_exon" << "\t"
              << leftFlankStart << "\t"
              << (intron->start - 1) << "\t"
@@ -1094,8 +1194,8 @@ public:
              << "Parent=" << juncId << endl;
                 
         // Output right exonic region
-        strm << refName << "\t"
-             << "portculis" << "\t"
+        strm << intron->ref.Name << "\t"
+             << "portcullis" << "\t"
              << "partial_exon" << "\t"
              << (intron->end + 1) << "\t"
              << rightFlankEnd << "\t"
@@ -1110,7 +1210,7 @@ public:
      * Complete human readable description of this junction
      * @param strm
      */
-    void outputBED(std::ostream &strm, uint32_t id, RefVector& refs) {
+    void outputBED(std::ostream &strm, uint32_t id) {
         
         // Use intron strand if known, otherwise use the predicted strand,
         // if predicted strand is also unknown then use "." to indicated unstranded
@@ -1121,19 +1221,18 @@ public:
                                 strandToChar(intron->strand));
         
         string juncId = string("junc_") + lexical_cast<string>(id);
-        string refName = refs[intron->refId].RefName;
         
         int32_t sz1 = intron->start - leftFlankStart;
         int32_t sz2 = rightFlankEnd - intron->end;
         string blockSizes = lexical_cast<string>(sz1) + "," + lexical_cast<string>(sz2);
-        string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end+1 - leftFlankStart);
+        string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end - leftFlankStart);
         
         // Output junction parent
-        strm << refName << "\t"         // chrom
+        strm << intron->ref.Name << "\t"         // chrom
              << leftFlankStart << "\t"  // chromstart
              << rightFlankEnd << "\t"   // chromend
              << juncId << "\t"          // name
-             << "0.0" << "\t"           // No score for the moment
+             << this->getNbJunctionAlignments() << "\t"           // Use the depth as the score for the moment
              << strand << "\t"          // strand
              << intron->start << "\t"   // thickstart
              << intron->end << "\t"     // thickend
@@ -1174,7 +1273,9 @@ public:
                     << j.coverage << "\t"
                     << j.uniqueJunction << "\t"
                     << j.primaryJunction << "\t"
-                    << j.multipleMappingScore;
+                    << j.multipleMappingScore << "\t"
+                    << j.nbMismatches << "\t"
+                    << j.nbMultipleSplicedReads;
     }
     
         
@@ -1195,54 +1296,59 @@ public:
         vector<string> parts; // #2: Search for tokens
         boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
 
-        if (parts.size() != 24) {
+        if (parts.size() != 32) {
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "Could not parse line due to incorrect number of columns. Expected 24 columns: ") + line));
+                "Could not parse line due to incorrect number of columns. Expected 32 columns: ") + line));
         }
 
         // Create intron
-        shared_ptr<Intron> i(new Intron(
-            lexical_cast<int32_t>(parts[1]),
-            lexical_cast<int32_t>(parts[2]),
-            lexical_cast<int32_t>(parts[3]),
-            strandFromChar(parts[4][0])
+        IntronPtr i(new Intron(
+            RefSeq(lexical_cast<int32_t>(parts[1]), parts[2], lexical_cast<int32_t>(parts[3])),
+            lexical_cast<int32_t>(parts[4]),
+            lexical_cast<int32_t>(parts[5]),
+            strandFromChar(parts[6][0])
         ));
 
         // Create basic junction
         shared_ptr<Junction> j(new Junction(
             i,
-            lexical_cast<int32_t>(parts[5]),
-            lexical_cast<int32_t>(parts[6])
+            lexical_cast<int32_t>(parts[7]),
+            lexical_cast<int32_t>(parts[8])
         ));
 
         // Splice site strings
-        j->setDa1(parts[7]);
-        j->setDa2(parts[8]);
+        j->setDa1(parts[9]);
+        j->setDa2(parts[10]);
 
         // Set predictions to junction
-        j->setPredictedStrand(strandFromChar(parts[9][0]));
+        j->setPredictedStrand(strandFromChar(parts[11][0]));
                 
         // Add metrics to junction
-        j->setDonorAndAcceptorMotif(cssFromChar(parts[11][0]));
-        j->setMaxMinAnchor(lexical_cast<int32_t>(parts[13]));
-        j->setDiffAnchor(lexical_cast<int32_t>(parts[14]));
-        j->setEntropy(lexical_cast<double>(parts[15]));
-        j->setNbDistinctAnchors(lexical_cast<uint32_t>(parts[16]));
-        j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[17]));
-        j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[18]));
-        j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[19]));
-        j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[20]));
-        j->setMaxMMES(lexical_cast<uint32_t>(parts[21]));
-        j->setHammingDistance5p(lexical_cast<uint32_t>(parts[22]));
-        j->setHammingDistance3p(lexical_cast<uint32_t>(parts[23]));
-        j->setCoverage(lexical_cast<double>(parts[24]));
-        j->setUniqueJunction(lexical_cast<bool>(parts[25]));
-        j->setPrimaryJunction(lexical_cast<bool>(parts[26]));
-        j->setMultipleMappingScore(lexical_cast<double>(parts[27]));
-
+        j->setNbJunctionAlignments(lexical_cast<uint32_t>(parts[12]));
+        j->setDonorAndAcceptorMotif(cssFromChar(parts[13][0]));
+        j->setMaxMinAnchor(lexical_cast<int32_t>(parts[15]));
+        j->setDiffAnchor(lexical_cast<int32_t>(parts[16]));
+        j->setEntropy(lexical_cast<double>(parts[17]));
+        j->setNbDistinctAnchors(lexical_cast<uint32_t>(parts[18]));
+        j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[19]));
+        j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[20]));
+        j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[21]));
+        j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[22]));
+        j->setMaxMMES(lexical_cast<uint32_t>(parts[23]));
+        j->setHammingDistance5p(lexical_cast<uint32_t>(parts[24]));
+        j->setHammingDistance3p(lexical_cast<uint32_t>(parts[25]));
+        j->setCoverage(lexical_cast<double>(parts[26]));
+        j->setUniqueJunction(lexical_cast<bool>(parts[27]));
+        j->setPrimaryJunction(lexical_cast<bool>(parts[28]));
+        j->setMultipleMappingScore(lexical_cast<double>(parts[29]));
+        j->setNbMismatches(lexical_cast<uint16_t>(parts[30]));
+        j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[31]));
         
         return j;
     }
 };
+
+typedef shared_ptr<Junction> JunctionPtr;
+typedef std::vector<shared_ptr<Junction> > JunctionList;
 
 }

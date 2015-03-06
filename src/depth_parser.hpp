@@ -1,38 +1,35 @@
 //  ********************************************************************
-//  This file is part of Portculis.
+//  This file is part of Portcullis.
 //
-//  Portculis is free software: you can redistribute it and/or modify
+//  Portcullis is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Portculis is distributed in the hope that it will be useful,
+//  Portcullis is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with Portculis.  If not, see <http://www.gnu.org/licenses/>.
+//  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
 #pragma once
 
+#include <iostream>
 #include <string>
 #include <vector>
 using std::string;
 using std::vector;
-
-#include <boost/exception/all.hpp>
+using std::cout;
 
 #include <api/BamReader.h>
 using namespace BamTools;
 
-#include "bam.h"
+#include <bam.h>
 
-namespace portculis {
-
-typedef boost::error_info<struct DepthParserError,string> DepthParserErrorInfo;
-struct DepthParserException: virtual boost::exception, virtual std::exception { };
+namespace portcullis {
     
 typedef struct {     // auxiliary data structure
 	bamFile fp;      // the file handler
@@ -51,7 +48,8 @@ private:
  
     // Path to the original genome file in fasta format
     string bamFile;
-    bool strandSpecific;
+    uint8_t strandSpecific;
+    bool allowGappedAlignments;
     
     bam_header_t *header;
     aux_t** data;
@@ -69,16 +67,45 @@ protected:
         aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
         int ret = aux->iter? bam_iter_read(aux->fp, aux->iter, b) : bam_read1(aux->fp, b);
         if (!(b->core.flag&BAM_FUNMAP)) {
-                if ((int)b->core.qual < aux->min_mapQ) b->core.flag |= BAM_FUNMAP;
-                else if (aux->min_len && bam_cigar2qlen(&b->core, bam1_cigar(b)) < aux->min_len) b->core.flag |= BAM_FUNMAP;
+            if ((int)b->core.qual < aux->min_mapQ) b->core.flag |= BAM_FUNMAP;
+            else if (aux->min_len && bam_cigar2qlen(&b->core, bam1_cigar(b)) < aux->min_len) b->core.flag |= BAM_FUNMAP;
         }
+            
+        return ret;
+    }
+    
+    // This function reads a BAM alignment from one BAM file.
+    static int read_bam_skip_gapped(void *data, bam1_t *b) // read level filters better go here to avoid pileup
+    {
+        aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
+        int ret = 0;
+        bool skip = false;
+        do {
+            skip = false;
+            ret = aux->iter? bam_iter_read(aux->fp, aux->iter, b) : bam_read1(aux->fp, b);
+            uint32_t *cigar = bam1_cigar(b);            
+            for(int k=0; k < b->core.n_cigar; ++k) {
+                int cop = cigar[k] & BAM_CIGAR_MASK; // operation
+                if (cop == BAM_CREF_SKIP) {
+                    skip = true;
+                    break;
+                }
+            }
+            
+            if (!(b->core.flag&BAM_FUNMAP)) {
+                if ((int)b->core.qual < aux->min_mapQ) b->core.flag |= BAM_FUNMAP;
+                else if (aux->min_len && bam_cigar2qlen(&b->core, cigar) < aux->min_len) b->core.flag |= BAM_FUNMAP;
+            }
+            
+        } while(skip);
         return ret;
     }
     
     
 public:
     
-    DepthParser(string _bamFile, bool _strandSpecific) : bamFile(_bamFile), strandSpecific(_strandSpecific) {
+    DepthParser(string _bamFile, uint8_t _strandSpecific, bool _allowGappedAlignments) : 
+        bamFile(_bamFile), strandSpecific(_strandSpecific), allowGappedAlignments(_allowGappedAlignments) {
     
         data = (aux_t**)calloc(1, sizeof(aux_t**));
         data[0] = (aux_t*)calloc(1, sizeof(aux_t));
@@ -87,7 +114,9 @@ public:
         data[0]->min_len  = 0;                 
              
         header = bam_header_read(data[0]->fp);
-        mplp = bam_mplp_init(1, read_bam, (void**)data);
+        mplp = allowGappedAlignments ? 
+            bam_mplp_init(1, read_bam, (void**)data) :
+            bam_mplp_init(1, read_bam_skip_gapped, (void**)data);
         
         res = 0;
         start = true;

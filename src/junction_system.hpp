@@ -1,18 +1,18 @@
 //  ********************************************************************
-//  This file is part of Portculis.
+//  This file is part of Portcullis.
 //
-//  Portculis is free software: you can redistribute it and/or modify
+//  Portcullis is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Portculis is distributed in the hope that it will be useful,
+//  Portcullis is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with Portculis.  If not, see <http://www.gnu.org/licenses/>.
+//  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
 #pragma once
@@ -22,30 +22,32 @@
 #include "junction.hpp"
 #include "genome_mapper.hpp"
 #include "depth_parser.hpp"
-using portculis::bamtools::BamUtils;
-using portculis::DepthParser;
-using portculis::Intron;
-using portculis::Junction;
+using portcullis::bamtools::BamUtils;
+using portcullis::DepthParser;
+using portcullis::Intron;
+using portcullis::IntronHasher;
+using portcullis::Junction;
+using portcullis::JunctionPtr;
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/exception/all.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/timer/timer.hpp>
-#include <boost/unordered_map.hpp>
 using boost::split;
 using boost::lexical_cast;
-using boost::shared_ptr;
 using boost::timer::auto_cpu_timer;
-typedef boost::unordered_map<Intron, shared_ptr<Junction> > DistinctJunctions;
-typedef boost::unordered_map<Intron, shared_ptr<Junction> >::iterator JunctionMapIterator;
 
 #include <fstream>
 #include <vector>
+#include <memory>
+#include <unordered_map>
 using std::ofstream;
-typedef std::pair<const Intron, shared_ptr<Junction> > JunctionMapType;
-typedef std::vector<shared_ptr<Junction> > JunctionList;
+using std::shared_ptr;
 
-namespace portculis {
+typedef std::unordered_map<Intron, JunctionPtr, IntronHasher> DistinctJunctions;
+typedef std::unordered_map<Intron, JunctionPtr, IntronHasher>::iterator JunctionMapIterator;
+typedef std::pair<const Intron, JunctionPtr> JunctionMapType;
+
+namespace portcullis {
 class JunctionSystem {
 
 private:    
@@ -60,15 +62,15 @@ private:
     SplicedAlignmentMap splicedAlignmentMap;
     
     
-    size_t createJunctionGroup(size_t index, vector<shared_ptr<Junction> >& group) {
+    size_t createJunctionGroup(size_t index, vector<JunctionPtr>& group) {
         
-        shared_ptr<Junction> junc = junctionList[index];        
+        JunctionPtr junc = junctionList[index];        
         group.push_back(junc);
         
         bool foundMore = false;
         for(size_t j = index + 1; j < junctionList.size(); j++) {
 
-            shared_ptr<Junction> next = junctionList[j];
+            JunctionPtr next = junctionList[j];
 
             if (junc->sharesDonorOrAcceptor(next)) {
                 group.push_back(next);                    
@@ -85,8 +87,8 @@ private:
     void findJunctions(const int32_t refId, JunctionList& subset) {
         
         subset.clear();
-        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
-            if (j->getIntron()->refId == refId) {
+        for(JunctionPtr j : junctionList) {
+            if (j->getIntron()->ref.Id == refId) {
                 subset.push_back(j);
             }    
         }        
@@ -96,14 +98,23 @@ private:
 public:
     
     
-    JunctionSystem() :
-        minQueryLength(0), meanQueryLength(0.0), maxQueryLength(0) {        
+    JunctionSystem() {
+        minQueryLength = 0;
+        meanQueryLength = 0.0;
+        maxQueryLength = 0;         
+    }
+    
+    JunctionSystem(string junctionFile) : JunctionSystem() {
+        load(junctionFile);
     }
     
     virtual ~JunctionSystem() {
              
     }
     
+    JunctionList getJunctions() {
+        return junctionList;
+    }
     
     size_t size() {
         return distinctJunctions.size();
@@ -143,6 +154,13 @@ public:
         this->refs = refs;
     }
     
+    bool addJunction(JunctionPtr j) {
+        
+        distinctJunctions[*(j->getIntron())] = j;
+        junctionList.push_back(j);
+        
+    }
+    
     /**
      * Adds any new junctions found from the given alignment to the set managed 
      * by this class
@@ -160,6 +178,8 @@ public:
         size_t nbOps = al.CigarData.size();
         
         int32_t refId = al.RefID;
+        string refName = refs[refId].RefName;
+        int32_t refLength = refs[refId].RefLength;
         int32_t lStart = offset;        
         int32_t lEnd = lStart;
         int32_t rStart = lStart;
@@ -183,7 +203,13 @@ public:
                     }
                 }
                 
-                shared_ptr<Intron> location(new Intron(refId, lEnd, rStart, 
+                // Check here to make sure we are not running off the end of a sequence
+                if (rEnd >= refLength) {
+                    rEnd = refLength - 1;
+                }
+                
+                // Create the intron
+                shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
                         strandSpecific ? strandFromBool(al.IsReverseStrand()) : UNKNOWN));
                 
                 // We should now have the complete junction location information
@@ -193,14 +219,14 @@ public:
                 // location / junction pair.  If we've seen this location before
                 // then add this alignment to the existing junction
                 if (it == distinctJunctions.end()) {
-                    shared_ptr<Junction> junction(new Junction(location, lStart, rEnd));
+                    JunctionPtr junction(new Junction(location, lStart, rEnd));
                     junction->addJunctionAlignment(al);
                     distinctJunctions[*location] = junction;
                     junctionList.push_back(junction);
                 }
                 else {
                     
-                    shared_ptr<Junction> junction = it->second;
+                    JunctionPtr junction = it->second;
                     junction->addJunctionAlignment(al);
                     junction->extendFlanks(lStart, rEnd);
                 }
@@ -253,9 +279,9 @@ public:
         uint64_t canonicalSites = 0;
         uint64_t semiCanonicalSites = 0;
         uint64_t nonCanonicalSites = 0;
-        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
+        for(JunctionPtr j : junctionList) {
             
-            CanonicalSS css = j->processJunctionWindow(genomeMapper, refs);
+            CanonicalSS css = j->processJunctionWindow(genomeMapper);
             
             switch(css) {
                 case CANONICAL:
@@ -277,14 +303,17 @@ public:
              << " - Found " << nonCanonicalSites << " non-canonical splice sites." << endl;
     }
     
-    void findFlankingAlignments(string alignmentsFile, bool strandSpecific) {
+    void findFlankingAlignments(string alignmentsFile, StrandSpecific strandSpecific) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
         cout << " - Using unspliced alignments file: " << alignmentsFile << endl
              << " - Acquiring all alignments in each junction's vicinity ... ";
         cout.flush();
-                
+        
+
+        // Maybe try to multi-thread this part
+        
         BamReader reader;
         
         if (!reader.Open(alignmentsFile)) {
@@ -304,13 +333,14 @@ public:
             }            
         }
         
+        
         // Read the alignments around every junction and set appropriate metrics
         size_t count = 0;
         //cout << endl;
-        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {            
+        for(JunctionPtr j : junctionList) {            
             j->processJunctionVicinity(
                     reader, 
-                    refs[j->getIntron()->refId].RefLength, 
+                    j->getIntron()->ref.Length, 
                     meanQueryLength, 
                     maxQueryLength,
                     strandSpecific);
@@ -324,7 +354,7 @@ public:
         cout << "done." << endl;
     }
     
-    void calcCoverage(string alignmentsFile, bool strandSpecific) {
+    void calcCoverage(string alignmentsFile, StrandSpecific strandSpecific) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
@@ -332,7 +362,7 @@ public:
              << " - Calculating per base depth and junction coverage ... ";
         cout.flush();
         
-        DepthParser dp(alignmentsFile, strandSpecific);
+        DepthParser dp(alignmentsFile, static_cast<uint8_t>(strandSpecific), false);
         
         vector<uint32_t> batch;
         
@@ -342,8 +372,8 @@ public:
             JunctionList subset;
             findJunctions(dp.getCurrentRefIndex(), subset);
             
-            BOOST_FOREACH(shared_ptr<Junction> j, subset) {
-                j->calcCoverage(meanQueryLength, batch);
+            for(JunctionPtr j : subset) {
+                j->calcCoverage(batch);
             }            
         }
         
@@ -359,14 +389,14 @@ public:
         
         for(size_t i = 0; i < junctionList.size(); i++) {
         
-            vector<shared_ptr<Junction> > junctionGroup;
+            vector<JunctionPtr > junctionGroup;
             i = createJunctionGroup(i, junctionGroup);            
                         
             uint32_t maxReads = 0;
             size_t maxIndex = 0;
             bool uniqueJunction = junctionGroup.size() == 1;
             for(size_t j = 0; j < junctionGroup.size(); j++) {                    
-                shared_ptr<Junction> junc = junctionGroup[j];
+                JunctionPtr junc = junctionGroup[j];
                 if (maxReads < junc->getNbJunctionAlignments()) {
                     maxReads = junc->getNbJunctionAlignments();
                     maxIndex = j;
@@ -379,6 +409,7 @@ public:
         cout << "done." << endl;        
     }
     
+    
     /**
      * Call this method to recalculate all junction metrics based on the current location
      * and alignment information present in this junction
@@ -390,7 +421,7 @@ public:
         cout << " - Calculating ... ";
         cout.flush();
         
-        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
+        for(JunctionPtr j : junctionList) {
             j->calcAllRemainingMetrics(splicedAlignmentMap);
         }
         
@@ -404,7 +435,8 @@ public:
         string junctionReportPath = outputPrefix + ".junctions.txt";
         string junctionFilePath = outputPrefix + ".junctions.tab";
         string junctionGFFPath = outputPrefix + ".junctions.gff3";
-        string junctionBEDPath = outputPrefix + ".junctions.bed";
+        string intronGFFPath = outputPrefix + ".introns.gff3";
+        string junctionBEDAllPath = outputPrefix + ".junctions.bed";
         
         cout << " - Saving junction report to: " << junctionReportPath << " ... ";
         cout.flush();
@@ -424,30 +456,39 @@ public:
         junctionFileStream.close();
         
         cout << "done." << endl
-             << " - Saving GFF file to: " << junctionGFFPath << " ... ";
+             << " - Saving junction GFF file to: " << junctionGFFPath << " ... ";
         cout.flush();
         
         // Print junction stats to file
         ofstream junctionGFFStream(junctionGFFPath.c_str());
-        outputGFF(junctionGFFStream);
+        outputJunctionGFF(junctionGFFStream);
         junctionGFFStream.close();
         
         cout << "done." << endl
-             << " - Saving BED file to: " << junctionBEDPath << " ... ";
+             << " - Saving intron GFF file to: " << intronGFFPath << " ... ";
         cout.flush();
         
         // Print junction stats to file
-        ofstream junctionBEDStream(junctionBEDPath.c_str());
-        outputBED(junctionBEDStream);
-        junctionBEDStream.close();
+        ofstream intronGFFStream(intronGFFPath.c_str());
+        outputIntronGFF(intronGFFStream);
+        intronGFFStream.close();
         
+        // Output BED files
+        
+        cout << "done." << endl
+             << " - Saving BED file with all junctions to: " << junctionBEDAllPath << " ... ";
+        cout.flush();
+        
+        // Print junctions in BED format to file
+        outputBED(junctionBEDAllPath, ALL);
+                
         cout << "done." << endl;
     }
     
     void outputDescription(std::ostream &strm) {
         
         uint64_t i = 0;
-        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
+        for(JunctionPtr j : junctionList) {
             strm << "Junction " << i++ << ":" << endl;
             j->outputDescription(strm);
             strm << endl;
@@ -459,18 +500,26 @@ public:
         strm << "index\t" << Junction::junctionOutputHeader() << endl;
         
         uint64_t i = 0;
-        BOOST_FOREACH(shared_ptr<Junction> j, js.junctionList) {
+        for(JunctionPtr j : js.junctionList) {
             strm << i++ << "\t" << *j << endl;
         }
         
         return strm;
     }
     
-    void outputGFF(std::ostream &strm) {
+    void outputJunctionGFF(std::ostream &strm) {
         
         uint64_t i = 0;
-        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
-            j->outputGFF(strm, i++, refs);
+        for(JunctionPtr j : junctionList) {
+            j->outputJunctionGFF(strm, i++);
+        }
+    }
+    
+    void outputIntronGFF(std::ostream &strm) {
+        
+        uint64_t i = 0;
+        for(JunctionPtr j : junctionList) {
+            j->outputIntronGFF(strm, i++);
         }
     }
     
@@ -478,11 +527,20 @@ public:
         
     }
     
-    void outputBED(std::ostream &strm) {
+    void outputBED(string& path, CanonicalSS type) {
+        
+        ofstream junctionBEDStream(path.c_str());
+        outputBED(junctionBEDStream, type);
+        junctionBEDStream.close();
+    }
+    
+    void outputBED(std::ostream &strm, CanonicalSS type) {
         strm << "track name=\"junctions\"" << endl;
         uint64_t i = 0;
-        BOOST_FOREACH(shared_ptr<Junction> j, junctionList) {
-            j->outputBED(strm, i++, refs);
+        for(JunctionPtr j : junctionList) {
+            if (type == ALL || j->getSpliceSiteType() == type) {
+                j->outputBED(strm, i++);
+            }
         }
     }
     
@@ -493,8 +551,10 @@ public:
         string line;
         // Loop through until end of file or we move onto the next ref seq
         while ( std::getline(ifs, line) ) {
-            if ( !line.empty() ) {
+            boost::trim(line);
+            if ( !line.empty() && line.find("index") == std::string::npos ) {
                 shared_ptr<Junction> j = Junction::parse(line);
+                junctionList.push_back(j);
             }
         }
         

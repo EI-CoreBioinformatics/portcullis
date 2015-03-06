@@ -1,18 +1,18 @@
 //  ********************************************************************
-//  This file is part of Portculis.
+//  This file is part of Portcullis.
 //
-//  Portculis is free software: you can redistribute it and/or modify
+//  Portcullis is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Portculis is distributed in the hope that it will be useful,
+//  Portcullis is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with Portculis.  If not, see <http://www.gnu.org/licenses/>.
+//  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
 #pragma once
@@ -30,9 +30,9 @@ using std::string;
 using boost::filesystem::exists;
 using boost::timer::auto_cpu_timer;
 
-#include <faidx.h>
+#include <htslib/faidx.h>
 
-namespace portculis {
+namespace portcullis {
 
 typedef boost::error_info<struct GenomeMapperError,string> GenomeMapperErrorInfo;
 struct GenomeMapperException: virtual boost::exception, virtual std::exception { };
@@ -58,12 +58,12 @@ public:
      */
     GenomeMapper(string _genomeFile) : 
         genomeFile(_genomeFile) {
-            fastaIndex = NULL;
+            fastaIndex = nullptr;
     }
     
     virtual ~GenomeMapper() {        
         
-        if (fastaIndex != NULL) {
+        if (fastaIndex != nullptr) {
             fai_destroy(fastaIndex);
         }
         
@@ -131,7 +131,7 @@ public:
      * @discussion The returned sequence is allocated by malloc family
      * and should be destroyed by end users by calling free() on it.
      */
-    char* fetchBases(char* name, int start, int end, int* len) {
+    char* fetchBases(const char* name, int start, int end, int* len) {
         return faidx_fetch_seq(fastaIndex, name, start, end, len);        
     }
     
@@ -140,7 +140,7 @@ public:
      * @return 
      */
     int getNbSeqs() {
-        return faidx_fetch_nseq(fastaIndex); 
+        return faidx_nseq(fastaIndex); 
     }
     
 };
