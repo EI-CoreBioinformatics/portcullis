@@ -1,21 +1,21 @@
 
-#Portculis
+#Portcullis
 
 
 
 ##Installation:
 
   - If you cloned the git repository you must first run "./autogen.sh" to create the configure and make files for your project.  Do not worry if this fails due to missing dependencies at this stage.  If you downloaded a source code distribution tarball then you can skip this step.
-  - Portculis depends on samtools.  Instead of having to install this separately we provide the source code bundled and customised for portculis here.  To compile samtools change into the samtools directory and simply type ```make```
+  - Portcullis depends on samtools.  Instead of having to install this separately we provide the source code bundled and customised for portcullis here.  To compile samtools change into the samtools directory and simply type ```make```
   - Now, for a typical installation on a machine where you have root access type ```./configure; make; sudo make install;```
 
-The configure script can take several options as arguments.  One commonly modified option is ```--prefix```, which will install portculis to a custom directory.  By default this is "/usr/local", so the portculis executable would be found at "/usr/local/bin" by default.  In addition, some options specific to managing KAT dependencies located in non-standard locations are:
+The configure script can take several options as arguments.  One commonly modified option is ```--prefix```, which will install portcullis to a custom directory.  By default this is "/usr/local", so the portcullis executable would be found at "/usr/local/bin" by default.  In addition, some options specific to managing portcullis dependencies located in non-standard locations are:
 
   - ```--with-doxygen``` - for specifying a custom doxygen directory (doxygen is only required for generating code documention.
 
 Type ```./configure --help``` for full details.
 
-The Makefile for portculis can take several goals.  Full details of common make goals can be found in the INSTALL file.  Typically, the following options can optionally used by KAT:
+The Makefile for portcullis can take several goals.  Full details of common make goals can be found in the INSTALL file.  Typically, the following options can optionally used by KAT:
 
   - ```make check``` - runs unit tests.  Requires boost unit test framework to be installed and available.
   - ```make dist``` - packages the installation into a tarballed distributable.
@@ -24,9 +24,9 @@ The Makefile for portculis can take several goals.  Full details of common make 
 
 ##Operating Instructions:
 
-After portculis has been installed, the `portculis` executable should be available.
+After portcullis has been installed, the `portcullis` executable should be available.
 
-Typing `portculis` or `portculis --help` at the command line will present you with the portculis help message.
+Typing `portcullis` or `portcullis --help` at the command line will present you with the portcullis help message.
 
 There are 4 modes available:
 

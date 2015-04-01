@@ -83,7 +83,7 @@ SAVED_LIBS="${LIBS}"
 AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
 AX_CHECK_ZLIB(, [AC_MSG_ERROR([Zlib not found.  Please ensure that zlib is properly built and configured.])])
 
-# Check for sam/bamtools and dlib (needs pthread and z library)... yes the $PTHREAD_CFLAGS is intentional!
+# Check for sam/bamtools (needs pthread and z library)... yes the $PTHREAD_CFLAGS is intentional!
 LIBS="${SAVED_LIBS} ${PTHREAD_CFLAGS} -lz"
 AX_HTSLIB
 AX_LIB_SAMTOOLS
@@ -111,7 +111,6 @@ LIBS="${SAVED_LIBS}"
 AM_CXXFLAGS="-DCPLUSPLUS"
 AC_SUBST([AM_CXXFLAGS])
 
-#AM_CPPFLAGS="${BAMTOOLS_CPPFLAGS} ${SAMTOOLS_CPPFLAGS} ${HTSLIB_CPPFLAGS} ${DLIB_CPPFLAGS} ${BOOST_CPPFLAGS} ${ZLIB_CPPFLAGS}"
 AM_CPPFLAGS="${BAMTOOLS_CPPFLAGS} ${SAMTOOLS_CPPFLAGS} ${HTSLIB_CPPFLAGS} ${BOOST_CPPFLAGS} ${ZLIB_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
