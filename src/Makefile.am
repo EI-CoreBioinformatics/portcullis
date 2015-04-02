@@ -7,7 +7,8 @@ portcullis_CXXFLAGS = -g3 -O2 @AM_CXXFLAGS@
 portcullis_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src @AM_CPPFLAGS@  
 portcullis_LDFLAGS = @AM_LDFLAGS@
 portcullis_LDADD = @AM_LIBS@
-portcullis_SOURCES =	bam_utils.hpp \
+portcullis_SOURCES =	../include/dlib/all/source.cpp \
+			bam_utils.hpp \
 			depth_parser.hpp \
 			genome_mapper.hpp \
 			intron.hpp \

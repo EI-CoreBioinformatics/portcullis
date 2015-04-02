@@ -51,6 +51,8 @@ using portcullis::Prepare;
 using portcullis::Filter;
 using portcullis::Cluster;
 
+#include "smv_test.hpp"
+
 typedef boost::error_info<struct PortcullisError,string> PortcullisErrorInfo;
 struct PortcullisException: virtual boost::exception, virtual std::exception { };
 
@@ -64,7 +66,8 @@ enum Mode {
     JUNC,
     FILTER,
     FULL,
-    CLUSTER
+    CLUSTER,
+    SVM_TEST
 };
 
 Mode parseMode(string mode) {
@@ -85,6 +88,9 @@ Mode parseMode(string mode) {
     }
     else if (upperMode == string("CLUSTER")) {
         return CLUSTER;
+    }
+    else if (upperMode == string("SVM_TEST")) {
+        return SVM_TEST;
     }
     else {
         BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
@@ -186,6 +192,9 @@ int main(int argc, char *argv[]) {
         }
         else if (mode == CLUSTER) {
             Cluster::main(modeArgC, modeArgV);            
+        }
+        else if (mode == SVM_TEST) {
+            svm_test();            
         }
         else {
             BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
