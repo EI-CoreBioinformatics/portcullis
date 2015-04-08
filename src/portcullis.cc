@@ -46,12 +46,16 @@ namespace po = boost::program_options;
 #include "prepare.hpp"
 #include "filter.hpp"
 #include "cluster.hpp"
+#include "train.hpp"
+#include "test.hpp"
 using portcullis::JunctionBuilder;
 using portcullis::Prepare;
 using portcullis::Filter;
 using portcullis::Cluster;
+using portcullis::Train;
+using portcullis::Test;
 
-#include "smv_test.hpp"
+#include "train.hpp"
 
 typedef boost::error_info<struct PortcullisError,string> PortcullisErrorInfo;
 struct PortcullisException: virtual boost::exception, virtual std::exception { };
@@ -67,7 +71,8 @@ enum Mode {
     FILTER,
     FULL,
     CLUSTER,
-    SVM_TEST
+    TRAIN,
+    TEST
 };
 
 Mode parseMode(string mode) {
@@ -89,8 +94,11 @@ Mode parseMode(string mode) {
     else if (upperMode == string("CLUSTER")) {
         return CLUSTER;
     }
-    else if (upperMode == string("SVM_TEST")) {
-        return SVM_TEST;
+    else if (upperMode == string("TRAIN")) {
+        return TRAIN;
+    }
+    else if (upperMode == string("TEST")) {
+        return TEST;
     }
     else {
         BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
@@ -193,8 +201,11 @@ int main(int argc, char *argv[]) {
         else if (mode == CLUSTER) {
             Cluster::main(modeArgC, modeArgV);            
         }
-        else if (mode == SVM_TEST) {
-            svm_test();            
+        else if (mode == TRAIN) {
+            Train::main(modeArgC, modeArgV);            
+        }
+        else if (mode == TEST) {
+            Test::main(modeArgC, modeArgV);            
         }
         else {
             BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
