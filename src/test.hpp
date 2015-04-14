@@ -119,17 +119,11 @@ public:
         cout << "Found " << good.getJunctions().size() << " good junctions to keep" << endl;
         
         // Print junction stats to file
-        string goodFile = resultsFile + ".good.tab";
-        string badFile = resultsFile + ".bad.tab";
+        string goodFile = resultsFile + ".good";
+        string badFile = resultsFile + ".bad";
         
-        ofstream goodStream(goodFile.c_str());
-        goodStream << good << endl;
-        goodStream.close();
-        
-        ofstream badStream(badFile.c_str());
-        badStream << bad << endl;
-        badStream.close();
-        
+        good.saveAll(goodFile);
+        bad.saveAll(badFile);        
     }
     
     

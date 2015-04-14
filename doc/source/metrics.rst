@@ -18,18 +18,7 @@ that we will use throughout::
 
 
 
-Metric 1 - Number of spliced reads
-----------------------------------
-
-This a count of the number of reads containing an 'N' cigar operation at exactly
-this genomic position represented by this junction.  Because we use 'N' cigar operations
-to derive all potential junctions each junction with have a value of 1 or more for
-this metric.
-
-#TODO pretty pic
-
-
-Metric 2 - Canonical splice site
+Metric 1 - Canonical splice site
 --------------------------------
 
 Most splice junctions contain distinctive dinucleotide pattern at the start and 
@@ -43,32 +32,78 @@ at the donor and acceptor sites are considered novel splice sites.
 #TODO pretty pic
 
 
-Metric 3 - Intron size
+Metric 2 - Number of spliced reads
+----------------------------------
+
+This a count of the number of reads containing an 'N' cigar operation at exactly
+the genomic position represented by this junction.  Because we use 'N' cigar operations
+to derive all potential junctions each junction will have a value of 1 or more for
+this metric.
+
+#TODO pretty pic
+
+
+Metric 3 - Number of Distinct Alignments
+----------------------------------------
+
+This is the number of distinct / non-redundant spliced reads supporting the junction.
+Therefore duplicate reads are only counted as a single read for this metric.
+
+
+Metric 4 - Number of Reliable Alignments
+----------------------------------------
+
+This is the number of spliced reads supporting this junction that probably do
+not map elsewhere in the genome.  For us we try to gauge this by treating all spliced
+alignments with a mapping score of 30 or greater as reliable alignments.
+
+
+Metric 5 - Intron size
 ----------------------
 
 This is the length of the region defined by the 'N' cigar operation.  Which should
 also be the size of the intron if this is a genuine splice site.
 
 
-Metric 4 - Max-min-Anchor
+Metric 6 / 7 - Left / Right Anchor Size
+---------------------------------------
+
+The size of each anchor measured in transcript coordinates.  These metrics will 
+therefore have a maximum value of the readlength - 1.  Upstream and downstream
+junctions contained within MSRs associated to this junction are collapsed for 
+the purposes of this metric.
+
+
+Metric 8 - Max-min-Anchor
 -------------------------
 
-This is the maximum of the minimum anchor size of all spliced reads associated with
-this junction.  
+This is the maximum of the minimum anchor sizes of all spliced reads associated with
+this junction.  Again, all upstream and downstream junctions contained within MSRs
+are collapsed for the purposes of this metric.  
 
 #TODO pretty pic
 
-Metric 5 - Difference between Anchors
+
+Metric 9 - Difference between Anchors
 -------------------------------------
 
 This is the difference between the minimum L/R anchor and the maximum L/R anchor
-with the smaller of the two values reported.
+with the smaller of the two values reported. Again, all upstream and downstream 
+junctions contained within MSRs are collapsed for the purposes of this metric.  
 
 #TODO pretty pic
 
 
-Metric 6 - Entropy
-------------------
+Metric 10 - Distinct Anchors
+----------------------------
+
+For this metric the number of distinct left side anchors and the number of distinct 
+right anchors are both recorded.  The value used for the metric is the smaller of 
+the two values reported.
+
+
+Metric 11 - Entropy
+-------------------
 
 This describes the entropy of the spliced reads associated with this junction. 
 Higher entropy is generally more indicative of a genuine junction than a lower score.
@@ -86,39 +121,6 @@ Entropy was calculated using the following equations::
 #TODO pretty pic
 
 
-Metric 7 - Distinct Anchors
----------------------------
-
-For this metric the number of distinct left side anchors and the number of distinct 
-right anchors are both recorded.  The value used for the metric is the smaller of 
-the two values reported.
-
-
-Metric 8 - Number of Distinct Alignments
-----------------------------------------
-
-This is the number of non-redundant spliced reads supporting the junction.  A non-
-redundant read is defined as a read that is not mapped to exactly the same genomic
-position.
-
-Metric 9 - Number of Reliable Alignments
-----------------------------------------
-
-This is essentially the number of spliced reads supporting this junction that do
-not map elsewhere in the genome.  For us we try to gauge this by treating all spliced
-alignments with a mapping score of 30 or greater as reliable alignments.
-
-Metric 10 and 11 - Number of Upstream and Downstream Alignments
----------------------------------------------------------------
-
-This is a count of the number of unspliced reads aligning upstream of the splice 
-junction, that overlap with the upstream anchor.  Caution must be taken interpreting
-this metric closely packed introns could mean the presence of MSRs exclude the possibility
-of getting any unspliced upstream alignments.  In addition, if the junction is close
-to the sequence start, it maybe that no unspliced upstream alignments are possible
-either.
-
-
 Metric 12 - Maximum of the Minimal Match of Either Side (MaxMMES)
 -----------------------------------------------------------------
 
@@ -132,7 +134,7 @@ all spliced reads to have 0 mismatches.  In this case this metric is not very us
 
 #TODO pretty pic
 
-Metric 13 and 14 - 5' and 3' Hamming distance
+Metric 13 / 14 - 5' and 3' Hamming distance
 ---------------------------------------------
 
 Aligners can often make incorrect alignments around repeated genomic locations.
@@ -187,7 +189,9 @@ Metric 19 - Number of mismatches
 --------------------------------
 
 This is the total number of mismatches found in all spliced reads supporting the
-junction.
+junction.  This includes any mismatches at any point along the spliced read, which
+includes mismatches even if they are the otherside of another junction in the case 
+of an MSR.
 
 
 Metric 20 - Number of Multiple Spliced Reads
@@ -195,3 +199,21 @@ Metric 20 - Number of Multiple Spliced Reads
 
 This is a count of the number of spliced reads that support the junction that also
 support another junction.
+
+
+Metric 21 / 22 - Number of Upstream and Downstream Junctions
+------------------------------------------------------------
+
+The number of upstream and downstream junctions contained within any MSRs associated
+with this junction.  Will be 0 for junctions without any MSRs.
+
+
+Metric 23 / 24 - Number of Upstream and Downstream Alignments
+---------------------------------------------------------------
+
+This is a count of the number of unspliced reads aligning upstream of the splice 
+junction, that overlap with the upstream anchor.  Caution must be taken interpreting
+this metric closely packed introns could mean the presence of MSRs exclude the possibility
+of getting any unspliced upstream alignments.  In addition, if the junction is close
+to the sequence start, it maybe that no unspliced upstream alignments are possible
+either.
