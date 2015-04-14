@@ -163,6 +163,16 @@ public:
                 al.Name;
     }
     
+    static bool isSplicedRead(BamAlignment& ba) {
+        for(CigarOp op : ba.CigarData) {
+            if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
     static uint16_t calcMinimalMatchInCigarDataSubset(BamAlignment& ba, int32_t start, int32_t end) {
         
         if (start > ba.Position + ba.AlignedBases.size() || end < ba.Position)

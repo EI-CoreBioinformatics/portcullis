@@ -45,8 +45,8 @@ namespace po = boost::program_options;
 
 namespace portcullis {
     
-typedef boost::error_info<struct FilterError,string> FilterErrorInfo;
-struct FilterException: virtual boost::exception, virtual std::exception { };
+typedef boost::error_info<struct JuncFilterError,string> JuncFilterErrorInfo;
+struct JuncFilterException: virtual boost::exception, virtual std::exception { };
 
 const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
 const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
@@ -57,7 +57,7 @@ const uint32_t DEFAULT_MIN_MAXMMES = 5;
 const uint16_t DEFAULT_MIN_HAMMING = 2;
 
 
-class Filter {
+class JunctionFilter {
 
 private:
     
@@ -74,7 +74,7 @@ private:
     
 public:
     
-    Filter(const string& _junctionFile, const string& _outputDir, const string& _outputPrefix, bool _verbose) {
+    JunctionFilter(const string& _junctionFile, const string& _outputDir, const string& _outputPrefix, bool _verbose) {
         junctionFile = _junctionFile;
         //bamFile = _bamFile;
         outputDir = _outputDir;
@@ -90,7 +90,7 @@ public:
         
         // Test if provided genome exists
         if (!exists(junctionFile)) {
-            BOOST_THROW_EXCEPTION(FilterException() << FilterErrorInfo(string(
+            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
                         "Could not find junction file at: ") + junctionFile));
         }
         
@@ -101,7 +101,7 @@ public:
         }*/
     }
     
-    virtual ~Filter() {
+    virtual ~JunctionFilter() {
     }
     
        
@@ -342,13 +342,13 @@ public:
         
         
 
-        auto_cpu_timer timer(1, "\nPortcullis filter completed.\nTotal runtime: %ws\n\n");        
+        auto_cpu_timer timer(1, "\nPortcullis junction filter completed.\nTotal runtime: %ws\n\n");        
 
-        cout << "Running portcullis in filter mode" << endl
+        cout << "Running portcullis in junction filter mode" << endl
              << "--------------------------------" << endl << endl;
         
         // Create the prepare class
-        Filter filter(junctionFile, outputDir, outputPrefix, verbose);
+        JunctionFilter filter(junctionFile, outputDir, outputPrefix, verbose);
         filter.setMinDistinctAlignments(minDistinctAlignments);
         filter.setMinReliableAlignments(minReliableAlignments);
         filter.setMinEntropy(minEntropy);

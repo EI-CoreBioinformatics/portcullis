@@ -44,13 +44,15 @@ namespace po = boost::program_options;
 #include "junction_builder.hpp"
 #include "genome_mapper.hpp"
 #include "prepare.hpp"
-#include "filter.hpp"
+#include "junction_filter.hpp"
+#include "bam_filter.hpp"
 #include "cluster.hpp"
 #include "train.hpp"
 #include "test.hpp"
 using portcullis::JunctionBuilder;
 using portcullis::Prepare;
-using portcullis::Filter;
+using portcullis::JunctionFilter;
+using portcullis::BamFilter;
 using portcullis::Cluster;
 using portcullis::Train;
 using portcullis::Test;
@@ -69,6 +71,7 @@ enum Mode {
     PREP,
     JUNC,
     FILTER,
+    BAM_FILT,
     FULL,
     CLUSTER,
     TRAIN,
@@ -87,6 +90,9 @@ Mode parseMode(string mode) {
     }
     else if (upperMode == string("FILTER")) {
         return FILTER;
+    }
+    else if (upperMode == string("BAMFILT")) {
+        return BAM_FILT;
     }
     else if (upperMode == string("FULL")) {
         return FULL;
@@ -114,6 +120,7 @@ string helpHeader() {
                   " - prep    - Prepares a genome and bam file(s) ready for junction analysis\n" +
                   " - junc    - Perform junction analysis on prepared data\n" +
                   " - filter  - Discard unlikely junctions and produce BAM containing alignments to genuine junctions\n" +
+                  " - bamfilt - Filters a BAM to remove any reads associated with invalid junctions\n" + 
                   " - full    - Runs prep, junc, filter as a complete pipeline\n" +
                   " - cluster - Clusters potential junctions to help distinguish real junctions for false\n\n" +
                   "\nAvailable options";
@@ -193,7 +200,10 @@ int main(int argc, char *argv[]) {
             JunctionBuilder::main(modeArgC, modeArgV);
         }
         else if (mode == FILTER) {
-            Filter::main(modeArgC, modeArgV);
+            JunctionFilter::main(modeArgC, modeArgV);
+        }
+        else if (mode == BAM_FILT) {
+            BamFilter::main(modeArgC, modeArgV);
         }
         else if (mode == FULL) {
             

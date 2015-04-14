@@ -159,8 +159,8 @@ private:
     uint32_t nbDistinctAlignments;              // Metric 3
     uint32_t nbReliableAlignments;              // Metric 4
                                                 // Metric 5 (intron size) calculated via location properties
-    uint16_t leftAncSize;                       // Metric 6
-    uint16_t rightAncSize;                      // Metric 7
+    uint32_t leftAncSize;                       // Metric 6
+    uint32_t rightAncSize;                      // Metric 7
     int32_t  maxMinAnchor;                      // Metric 8
     int32_t  diffAnchor;                        // Metric 9
     uint32_t nbDistinctAnchors;                 // Metric 10
@@ -1027,6 +1027,23 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         this->da2 = da2;
     }
     
+    void setLeftAncSize(uint16_t leftAncSize) {
+        this->leftAncSize = leftAncSize;
+    }
+
+    void setNbDownstreamJunctions(uint16_t nbDownstreamJunctions) {
+        this->nbDownstreamJunctions = nbDownstreamJunctions;
+    }
+
+    void setNbUpstreamJunctions(uint16_t nbUpstreamJunctions) {
+        this->nbUpstreamJunctions = nbUpstreamJunctions;
+    }
+
+    void setRightAncSize(uint16_t rightAncSize) {
+        this->rightAncSize = rightAncSize;
+    }
+
+    
     void setCoverage(double coverage) {
         this->coverage = coverage;
     }
@@ -1332,9 +1349,9 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         vector<string> parts; // #2: Search for tokens
         boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
 
-        if (parts.size() != 32) {
+        if (parts.size() != 36) {
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "Could not parse line due to incorrect number of columns. Expected 32 columns: ") + line));
+                "Could not parse line due to incorrect number of columns. Expected 36 columns: ") + line));
         }
 
         // Create intron
@@ -1360,16 +1377,17 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         j->setPredictedStrand(strandFromChar(parts[11][0]));
                 
         // Add metrics to junction
-        j->setNbJunctionAlignments(lexical_cast<uint32_t>(parts[12]));
-        j->setDonorAndAcceptorMotif(cssFromChar(parts[13][0]));
-        j->setMaxMinAnchor(lexical_cast<int32_t>(parts[15]));
-        j->setDiffAnchor(lexical_cast<int32_t>(parts[16]));
-        j->setEntropy(lexical_cast<double>(parts[17]));
-        j->setNbDistinctAnchors(lexical_cast<uint32_t>(parts[18]));
-        j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[19]));
-        j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[20]));
-        j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[21]));
-        j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[22]));
+        j->setDonorAndAcceptorMotif(cssFromChar(parts[12][0]));
+        j->setNbJunctionAlignments(lexical_cast<uint32_t>(parts[13]));
+        j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[14]));
+        j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[15]));
+        // Intron size not required
+        j->setLeftAncSize(lexical_cast<uint32_t>(parts[17]));
+        j->setRightAncSize(lexical_cast<uint32_t>(parts[18]));
+        j->setMaxMinAnchor(lexical_cast<int32_t>(parts[19]));
+        j->setDiffAnchor(lexical_cast<int32_t>(parts[20]));
+        j->setNbDistinctAnchors(lexical_cast<uint32_t>(parts[21]));
+        j->setEntropy(lexical_cast<double>(parts[22]));
         j->setMaxMMES(lexical_cast<uint32_t>(parts[23]));
         j->setHammingDistance5p(lexical_cast<uint32_t>(parts[24]));
         j->setHammingDistance3p(lexical_cast<uint32_t>(parts[25]));
@@ -1379,6 +1397,10 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         j->setMultipleMappingScore(lexical_cast<double>(parts[29]));
         j->setNbMismatches(lexical_cast<uint16_t>(parts[30]));
         j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[31]));
+        j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[32]));
+        j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[33]));
+        j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[34]));
+        j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[35]));
         
         return j;
     }
