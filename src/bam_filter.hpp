@@ -130,7 +130,7 @@ public:
         // Load junction system
         JunctionSystem js(junctionFile);
         
-        cout << " - Found " << js.getJunctions().size() << " potential valid junctions" << endl << endl;
+        cout << " - Found " << js.getJunctions().size() << " junctions" << endl << endl;
         
         // Sam header and refs info from the input bam    
         SamHeader header;    
@@ -173,10 +173,13 @@ public:
         BamAlignment al;
         uint64_t nbReadsIn = 0;
         uint64_t nbReadsOut = 0;
+        uint32_t nbJunctionsFound = 0;
+        uint32_t nbSkipRefsFound = 0;
+        
         while(reader.GetNextAlignment(al)) {
             
             nbReadsIn++;
-            bool write = true;
+            bool write = false;
                 
             if (BamUtils::isSplicedRead(al)) {
                 
@@ -193,6 +196,7 @@ public:
                     CigarOp op = al.CigarData[i];
                     if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
                         rStart = lEnd + op.Length;
+                        nbSkipRefsFound++;
                         
                         // Create the intron
                         shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
@@ -201,15 +205,17 @@ public:
                         
                         if (js.getJunction(*location) != nullptr) {
                             // Break out of the loop leaving write set to true
+                            write = true;
                             break;
                         }
                     }
                     else if (BamUtils::opFollowsReference(op.Type)) {
                         lEnd += op.Length;                
                     }
-                }
-                
-                write = false;
+                }                
+            }
+            else {
+                write = true;
             }            
             
             if (write) {
@@ -224,7 +230,7 @@ public:
         
         uint32_t diff = nbReadsIn - nbReadsOut;
         
-        cout << "Filtered out " << diff << " alignments.  In: " << nbReadsIn << "; Out: " << nbReadsOut << ";" << endl << endl;
+        cout << "Filtered out " << diff << " alignments.  In: " << nbReadsIn << "; Out: " << nbReadsOut << ";" << endl << endl;        
     }
   
     static string helpMessage() {
