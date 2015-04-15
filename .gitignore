@@ -30,3 +30,4 @@
 *.2.0.tar.gz
 /CMakeLists.txt
 *.tar.gz
+/portcullis-0.3.0/

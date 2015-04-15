@@ -3,7 +3,7 @@
 ##########################################################################
 
 # Autoconf initialistion.  Sets package name version and contact details
-AC_INIT([Portcullis],[0.2.1],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
+AC_INIT([Portcullis],[0.3.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
 
 # I built this with autoconf 2.53 and have only tested it on 2.69 systems.  You can change this but I don't
 # make any guarentees
@@ -83,11 +83,7 @@ SAVED_LIBS="${LIBS}"
 AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
 AX_CHECK_ZLIB(, [AC_MSG_ERROR([Zlib not found.  Please ensure that zlib is properly built and configured.])])
 
-# Check for sam/bamtools (needs pthread and z library)... yes the $PTHREAD_CFLAGS is intentional!
-LIBS="${SAVED_LIBS} ${PTHREAD_CFLAGS} -lz"
-AX_HTSLIB
-AX_LIB_SAMTOOLS
-LIBS="${SAVED_LIBS}"
+# Check for bamtools
 AX_LIB_BAMTOOLS
 
 ## Check for boost
@@ -111,15 +107,15 @@ LIBS="${SAVED_LIBS}"
 AM_CXXFLAGS="-DCPLUSPLUS"
 AC_SUBST([AM_CXXFLAGS])
 
-AM_CPPFLAGS="${BAMTOOLS_CPPFLAGS} ${SAMTOOLS_CPPFLAGS} ${HTSLIB_CPPFLAGS} ${BOOST_CPPFLAGS} ${ZLIB_CPPFLAGS}"
+AM_CPPFLAGS="${BAMTOOLS_CPPFLAGS} ${BOOST_CPPFLAGS} ${ZLIB_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
-AM_LDFLAGS="${BAMTOOLS_LDFLAGS} ${SAMTOOLS_LDFLAGS} ${HTSLIB_LDFLAGS} ${BOOST_LDFLAGS} ${ZLIB_LDFLAGS}"
+AM_LDFLAGS="${BAMTOOLS_LDFLAGS} ${BOOST_LDFLAGS} ${ZLIB_LDFLAGS}"
 AC_SUBST([AM_LDFLAGS])
 
-AM_LIBS="${BAMTOOLS_LIB} ${SAMTOOLS_LIB} ${HTSLIB_LIB} ${BOOST_LIBS} ${PTHREAD_CFLAGS} ${ZLIB_LIB}"
+AM_LIBS="${BAMTOOLS_LIB} ${BOOST_LIBS} ${PTHREAD_CFLAGS} ${ZLIB_LIB}"
 AC_SUBST([AM_LIBS])
 
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile])
+AC_CONFIG_FILES([Makefile deps/htslib-1.2.1/Makefile deps/samtools-1.2/Makefile src/Makefile tests/Makefile])
 AC_OUTPUT

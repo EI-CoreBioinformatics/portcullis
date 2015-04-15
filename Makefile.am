@@ -9,6 +9,6 @@ EXTRA_DIST = include README.md COPYING AUTHORS tests/resources
 dist_noinst_SCRIPTS = autogen.sh clean.sh
 
 # SRC DIRS
-SUBDIRS = src tests
+SUBDIRS = deps/htslib-1.2.1 deps/samtools-1.2 src tests
 
 
