@@ -1,0 +1,6 @@
+*.o
+/xx#unsorted.tmp.cram.sam_
+/samtools
+*.h
+*.a
+/Makefile

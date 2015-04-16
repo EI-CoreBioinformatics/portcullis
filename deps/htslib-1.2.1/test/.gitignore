@@ -1,0 +1,13 @@
+/xx#unsorted.tmp.cram.sam_
+/sam
+/test-regidx
+/test-vcf-api
+/test-vcf-sweep
+/test_view
+*_
+*.tmp.bam
+*.tmp.bam.*
+*.tmp.*
+*.tmp
+/fieldarith
+/hfile
