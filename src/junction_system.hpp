@@ -188,14 +188,14 @@ public:
         for(size_t i = startOp; i < nbOps; i++) {
             
             CigarOp op = al.CigarData[i];
-            if (op.Type == 'N') {
+            if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
                 foundJunction = true;
                 
                 rStart = lEnd + op.Length;
                 rEnd = rStart;
                 
                 size_t j = i+1;
-                while (j < nbOps && al.CigarData[j].Type != 'N') {
+                while (j < nbOps && al.CigarData[j].Type != Constants::BAM_CIGAR_REFSKIP_CHAR) {
                     
                     CigarOp rOp = al.CigarData[j++];
                     if (BamUtils::opFollowsReference(rOp.Type)) {
@@ -555,10 +555,24 @@ public:
             if ( !line.empty() && line.find("index") == std::string::npos ) {
                 shared_ptr<Junction> j = Junction::parse(line);
                 junctionList.push_back(j);
+                distinctJunctions[*(j->getIntron())] = j;
             }
         }
         
         ifs.close();
+    }
+    
+    JunctionPtr getJunctionAt(uint32_t index) const {
+        return this->junctionList[index];
+    }
+    
+    JunctionPtr getJunction(Intron& intron) const {
+        try {
+            return this->distinctJunctions.at(intron);
+        }
+        catch (std::out_of_range ex) {
+            return nullptr;
+        }
     }
     
 };

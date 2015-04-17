@@ -56,18 +56,18 @@ const uint16_t MAP_QUALITY_THRESHOLD = 30;
 typedef boost::error_info<struct JunctionError,string> JunctionErrorInfo;
 struct JunctionException: virtual boost::exception, virtual std::exception { };
 
-const string METRIC_NAMES[20] = {
-        "M1-nb_reads",
-        "M2-canonical_ss",
-        "M3-intron_size",
-        "M4-max_min_anc",
-        "M5-dif_anc",
-        "M6-entropy",
-        "M7-dist_anc",
-        "M8-nb_dist_aln",
-        "M9-nb_rel_aln",
-        "M10-up_aln",
-        "M11-down_aln",
+const string METRIC_NAMES[24] = {
+        "M1-canonical_ss",
+        "M2-nb_reads",
+        "M3-nb_dist_aln",
+        "M4-nb_rel_aln",
+        "M5-intron_size",
+        "M6-left_anc_size",
+        "M7-right_anc_size",
+        "M8-max_min_anc",
+        "M9-dif_anc",
+        "M10-dist_anc",
+        "M11-entropy",
         "M12-maxmmes",
         "M13-hamming5p",
         "M14-hamming3p",
@@ -76,7 +76,11 @@ const string METRIC_NAMES[20] = {
         "M17-primary_junc",
         "M18-mm_score",
         "M19-nb_mismatches",
-        "M20-nb_msrs"
+        "M20-nb_msrs",
+        "M21-nb_up_juncs",
+        "M22-nb_down_juncs",
+        "M23-up_aln",
+        "M24-down_aln"        
     };
 
 const string PREDICTION_NAMES[1] = {
@@ -147,29 +151,33 @@ private:
     // **** Properties that describe where the junction is ****
     shared_ptr<Intron> intron;
     vector<BamAlignment> junctionAlignments;
-    
+        
     
     // **** Junction metrics ****
-    uint32_t nbJunctionAlignments;              // Metric 1
-    CanonicalSS canonicalSpliceSites;           // Metric 2
-                                                // Metric 3 (intron size) calculated via location properties
-    int32_t  maxMinAnchor;                      // Metric 4
-    int32_t  diffAnchor;                        // Metric 5
-    double   entropy;                           // Metric 6
-    uint32_t nbDistinctAnchors;                 // Metric 7
-    uint32_t nbDistinctAlignments;              // Metric 8
-    uint32_t nbReliableAlignments;              // Metric 9
-    uint32_t nbUpstreamFlankingAlignments;      // Metric 10
-    uint32_t nbDownstreamFlankingAlignments;    // Metric 11
+    CanonicalSS canonicalSpliceSites;           // Metric 1
+    uint32_t nbJunctionAlignments;              // Metric 2
+    uint32_t nbDistinctAlignments;              // Metric 3
+    uint32_t nbReliableAlignments;              // Metric 4
+                                                // Metric 5 (intron size) calculated via location properties
+    uint32_t leftAncSize;                       // Metric 6
+    uint32_t rightAncSize;                      // Metric 7
+    int32_t  maxMinAnchor;                      // Metric 8
+    int32_t  diffAnchor;                        // Metric 9
+    uint32_t nbDistinctAnchors;                 // Metric 10
+    double   entropy;                           // Metric 11
     uint32_t maxMMES;                           // Metric 12
     int16_t  hammingDistance5p;                 // Metric 13
     int16_t  hammingDistance3p;                 // Metric 14
     double   coverage;                          // Metric 15
     bool     uniqueJunction;                    // Metric 16
-    bool     primaryJunction;                   // Metric 17
+    bool     primaryJunction;                   // Metric 17    
     double   multipleMappingScore;              // Metric 18
     uint16_t nbMismatches;                      // Metric 19
     uint32_t nbMultipleSplicedReads;            // Metric 20
+    uint16_t nbUpstreamJunctions;               // Metric 21
+    uint16_t nbDownstreamJunctions;             // Metric 22
+    uint32_t nbUpstreamFlankingAlignments;      // Metric 23
+    uint32_t nbDownstreamFlankingAlignments;    // Metric 24
     
     
     // **** Predictions ****
@@ -183,6 +191,7 @@ private:
     int32_t leftFlankStart;
     int32_t rightFlankEnd;
     string da1, da2;                    // These store the nucleotides found at the predicted donor / acceptor sites in the intron
+       
     
     
 protected:
@@ -269,6 +278,8 @@ public:
         nbMultipleSplicedReads = 0;
         
         predictedStrand = UNKNOWN;
+        nbUpstreamJunctions = 0;
+        nbDownstreamJunctions = 0;
     }
     
     // **** Destructor ****
@@ -459,14 +470,16 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
                 
         for(BamAlignment ba : junctionAlignments) {
             
-            int32_t lStart = max(ba.Position, leftFlankStart);
-            int32_t rEnd = min(ba.Position + (int32_t)ba.AlignedBases.size(), rightFlankEnd);
-            int32_t leftSize = lEnd - lStart;
-            int32_t rightSize = rEnd - rStart;
-            minLeftSize = min(minLeftSize, leftSize);
-            minRightSize = min(minRightSize, rightSize);
+            int32_t leftSize = BamUtils::alignedBasesBetween(ba, ba.Position, lEnd);
+            int32_t rightSize = BamUtils::alignedBasesBetween(ba, rStart, ba.Position + (int32_t)ba.AlignedBases.size());
+            
             maxLeftSize = max(maxLeftSize, leftSize);
+            minLeftSize = min(minLeftSize, leftSize);
             maxRightSize = max(maxRightSize, rightSize);
+            minRightSize = min(minRightSize, rightSize);
+            
+            int32_t lStart = ba.Position;
+            int32_t rEnd = ba.Position + (int32_t)ba.AlignedBases.size();
             
             if (lStart != lastLStart) {
                 nbDistinctLeftAnchors++;
@@ -480,6 +493,8 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         
         int32_t diffLeftSize = maxLeftSize - minLeftSize;
         int32_t diffRightSize = maxRightSize - minRightSize;
+        leftAncSize = maxLeftSize;
+        rightAncSize = maxRightSize;            
         diffAnchor = min(diffLeftSize, diffRightSize);
         nbDistinctAnchors = min(nbDistinctLeftAnchors, nbDistinctRightAnchors);
     }
@@ -569,7 +584,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
      
     
     /**
-     * Metric 8, 9: # Distinct Alignments, # Unique Alignments
+     * Metrics: # Distinct Alignments, # Unique/Reliable Alignments, #mismatches
      * @return 
      */
     void calcAlignmentStats() {
@@ -579,6 +594,8 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         nbDistinctAlignments = 0;
         nbReliableAlignments = 0;
         nbMismatches = 0;
+        nbUpstreamJunctions = 0;
+        nbDownstreamJunctions = 0;
         
         for(BamAlignment ba : junctionAlignments) {
             
@@ -599,11 +616,36 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
                 nbReliableAlignments++;
             }
             
+            uint16_t leftSize = 0;
+            uint16_t rightSize = 0;
+            uint16_t upjuncs = 0;
+            uint16_t downjuncs = 0;
+            int32_t pos = start;
+            
             for (CigarOp op : ba.CigarData) {
-                if (op.Type == 'X') {
+                
+                if (BamUtils::opFollowsReference(op.Type)) {
+                    pos += op.Length;                    
+                }
+                
+                if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
+                    if (pos < intron->start) {
+                        upjuncs++;
+                    }
+                    else if (pos > intron->end) {
+                        downjuncs++;
+                    }  
+                }
+                
+                // Looks for a mismatch at any point along the spliced read
+                // (even if it's the otherside of another junction in the case of an MSR)
+                if (op.Type == Constants::BAM_CIGAR_MISMATCH_CHAR) {
                     nbMismatches++;
                 }
             }
+            
+            nbUpstreamJunctions = max(nbUpstreamJunctions, upjuncs);
+            nbDownstreamJunctions = max(nbDownstreamJunctions, downjuncs);
         }        
     }
     
@@ -792,7 +834,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
     // **** Metric getters ****
     
     /**
-     * Metric 1: The number of alignments directly supporting this junction
+     * The number of alignments directly supporting this junction
      * @return 
      */
     size_t getNbJunctionAlignments() const {
@@ -800,7 +842,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
     }
     
     /**
-     * Metric 2: Whether or not there is a donor and acceptor motif at the two base
+     * Whether or not there is a donor and acceptor motif at the two base
      * pairs at the start and end of the junction / intron
      * @return 
      */
@@ -813,15 +855,23 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
     }
     
     /**
-     * Metric 3: The intron size
+     * The intron size
      * @return 
      */
     int32_t getIntronSize() const {
         return intron != nullptr ? intron->size() : 0;
     }
     
+    int32_t getLeftAnchorSize() const {
+        return leftAncSize;
+    }
+    
+    int32_t getRightAnchorSize() const {
+        return rightAncSize;                
+    }
+    
     /**
-     * Metric 4: The maximum anchor distance from the shortest side of each supporting 
+     * The maximum anchor distance from the shortest side of each supporting 
      * alignment
      * @return
      */
@@ -830,7 +880,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
     }
     
     /**
-     * Metric 5: Diff Anchor
+     * Diff Anchor
      * @return 
      */
     int32_t getDiffAnchor() const {        
@@ -838,7 +888,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
     }
     
     /**
-     * Metric 6: Entropy (definition from "Graveley et al, The developmental 
+     * Entropy (definition from "Graveley et al, The developmental 
      * transcriptome of Drosophila melanogaster, Nature, 2011")
      * 
      * We measured the entropy of the reads that mapped to the splice junction. 
@@ -864,32 +914,20 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
     }
     
     
-    /**
-     * Metric 7
-     * @return 
-     */
     uint32_t getNbDistinctAnchors() const {
         return nbDistinctAnchors;
     }
     
-    /**
-     * Metric 8
-     * @return 
-     */
     uint32_t getNbDistinctAlignments() const {
         return nbDistinctAlignments;
     }
 
-    /**
-     * Metric 9
-     * @return 
-     */
     uint32_t getNbReliableAlignments() const {
         return nbReliableAlignments;
     }
 
     /**
-     * Metric 10: The number of upstream non-spliced supporting reads
+     * The number of upstream non-spliced supporting reads
      * @return 
      */
     uint32_t getNbUpstreamFlankingAlignments() const {
@@ -897,7 +935,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
     }
     
     /**
-     * Metric 11: The number of downstream non-spliced supporting reads
+     * The number of downstream non-spliced supporting reads
      * @return 
      */
     uint32_t getNbDownstreamFlankingAlignments() const {
@@ -905,7 +943,7 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
     }
 
     /**
-     * Metric 12: The maximum of the minimal mismatches exon sequences
+     * The maximum of the minimal mismatches exon sequences
      * @return 
      */
     uint32_t getMaxMMES() const {
@@ -913,17 +951,13 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
     }
     
     /**
-     * Metric 13: Hamming distance between the 
+     * Hamming distance between the 
      * @return 
      */
     int16_t getHammingDistance3p() const {
         return hammingDistance3p;
     }
 
-    /**
-     * Metric 14:
-     * @return 
-     */
     int16_t getHammingDistance5p() const {
         return hammingDistance5p;
     }
@@ -943,18 +977,10 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         return coverage;
     }
     
-    /**
-     * Metric 16:
-     * @return 
-     */
     bool isUniqueJunction() const {
         return uniqueJunction;
     }
 
-    /**
-     * Metric 17:
-     * @return 
-     */
     bool isPrimaryJunction() const {
         return primaryJunction;
     }
@@ -1000,6 +1026,23 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
     void setDa2(string da2) {
         this->da2 = da2;
     }
+    
+    void setLeftAncSize(uint16_t leftAncSize) {
+        this->leftAncSize = leftAncSize;
+    }
+
+    void setNbDownstreamJunctions(uint16_t nbDownstreamJunctions) {
+        this->nbDownstreamJunctions = nbDownstreamJunctions;
+    }
+
+    void setNbUpstreamJunctions(uint16_t nbUpstreamJunctions) {
+        this->nbUpstreamJunctions = nbUpstreamJunctions;
+    }
+
+    void setRightAncSize(uint16_t rightAncSize) {
+        this->rightAncSize = rightAncSize;
+    }
+
     
     void setCoverage(double coverage) {
         this->coverage = coverage;
@@ -1090,32 +1133,37 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         else {
             strm << "No location set";
         }
-        
+                
         strm << delimiter
              << "Flank limits: (" << leftFlankStart << ", " << rightFlankEnd << ")" << delimiter
              << "Junction Predictions:" << delimiter
-             << "1:  Strand: " << strandToString(predictedStrand) << delimiter
+             << "P1:  Strand: " << strandToString(predictedStrand) << delimiter
              << "Junction Metrics:" << delimiter
-             << "1:  # Junction Alignments: " << getNbJunctionAlignments() << delimiter
-             << "2:  Canonical?: " << boolalpha << cssToString(canonicalSpliceSites) << "; Sequences: (" << da1 << " " << da2 << ")" << delimiter
-             << "3:  Intron Size: " << getIntronSize() << delimiter
-             << "4:  MaxMinAnchor: " << maxMinAnchor << delimiter
-             << "5:  DiffAnchor: " << diffAnchor << delimiter
-             << "6:  Entropy: " << entropy << delimiter
-             << "7:  # Distinct Anchors: " << nbDistinctAnchors << delimiter
-             << "8:  # Distinct Alignments: " << nbDistinctAlignments << delimiter
-             << "9:  # Reliable (MP >=" << MAP_QUALITY_THRESHOLD << ") Alignments: " << nbReliableAlignments << delimiter
-             << "10: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
-             << "11: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
-             << "12: MaxMMES: " << maxMMES << delimiter
-             << "13: Hamming Distance 5': " << hammingDistance5p << delimiter
-             << "14: Hamming Distance 3': " << hammingDistance3p << delimiter
-             << "15: Coverage: " << coverage << delimiter
-             << "16: Unique Junction: " << boolalpha << uniqueJunction << delimiter
-             << "17: Primary Junction: " << boolalpha << primaryJunction << delimiter
-             << "18: Multiple mapping score: " << multipleMappingScore << delimiter
-             << "19: # mismatches: " << nbMismatches << delimiter
-             << "20: # Multiple Spliced Reads: " << nbMultipleSplicedReads;
+             << "M1:  Canonical?: " << boolalpha << cssToString(canonicalSpliceSites) << "; Sequences: (" << da1 << " " << da2 << ")" << delimiter
+             << "M2:  # Junction Alignments: " << getNbJunctionAlignments() << delimiter
+             << "M3:  # Distinct Alignments: " << nbDistinctAlignments << delimiter
+             << "M4:  # Reliable (MP >=" << MAP_QUALITY_THRESHOLD << ") Alignments: " << nbReliableAlignments << delimiter
+             << "M5:  Intron Size: " << getIntronSize() << delimiter
+             << "M6:  Left Anchor Size: " << leftAncSize << delimiter
+             << "M7:  Right Anchor Size: " << rightAncSize << delimiter
+             << "M8:  MaxMinAnchor: " << maxMinAnchor << delimiter
+             << "M9:  DiffAnchor: " << diffAnchor << delimiter
+             << "M10: # Distinct Anchors: " << nbDistinctAnchors << delimiter
+             << "M11: Entropy: " << entropy << delimiter
+             << "M12: MaxMMES: " << maxMMES << delimiter
+             << "M13: Hamming Distance 5': " << hammingDistance5p << delimiter
+             << "M14: Hamming Distance 3': " << hammingDistance3p << delimiter
+             << "M15: Coverage: " << coverage << delimiter
+             << "M16: Unique Junction: " << boolalpha << uniqueJunction << delimiter
+             << "M17: Primary Junction: " << boolalpha << primaryJunction << delimiter
+             << "M18: Multiple mapping score: " << multipleMappingScore << delimiter
+             << "M19: # mismatches: " << nbMismatches << delimiter
+             << "M20: # Multiple Spliced Reads: " << nbMultipleSplicedReads << delimiter
+             << "M21: # Upstream Junctions: " << nbUpstreamJunctions << delimiter
+             << "M22: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
+             << "M23: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
+             << "M24: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments;
+             
     }
     
     
@@ -1256,17 +1304,17 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
                     << j.da1 << "\t"
                     << j.da2 << "\t"
                     << strandToChar(j.predictedStrand) << "\t"
-                    << j.getNbJunctionAlignments() << "\t"
                     << cssToChar(j.canonicalSpliceSites) << "\t"
-                    << j.getIntronSize() << "\t"
-                    << j.maxMinAnchor << "\t"
-                    << j.diffAnchor << "\t"
-                    << j.entropy << "\t"
-                    << j.nbDistinctAnchors << "\t"
+                    << j.getNbJunctionAlignments() << "\t"
                     << j.nbDistinctAlignments << "\t"
                     << j.nbReliableAlignments << "\t"
-                    << j.nbUpstreamFlankingAlignments << "\t"
-                    << j.nbDownstreamFlankingAlignments << "\t"
+                    << j.getIntronSize() << "\t"
+                    << j.getLeftAnchorSize() << "\t"
+                    << j.getRightAnchorSize() << "\t"
+                    << j.maxMinAnchor << "\t"
+                    << j.diffAnchor << "\t"
+                    << j.nbDistinctAnchors << "\t"
+                    << j.entropy << "\t"
                     << j.maxMMES << "\t"
                     << j.hammingDistance5p << "\t"
                     << j.hammingDistance3p << "\t"
@@ -1275,7 +1323,12 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
                     << j.primaryJunction << "\t"
                     << j.multipleMappingScore << "\t"
                     << j.nbMismatches << "\t"
-                    << j.nbMultipleSplicedReads;
+                    << j.nbMultipleSplicedReads << "\t"
+                    << j.nbUpstreamJunctions << "\t"
+                    << j.nbDownstreamJunctions << "\t"
+                    << j.nbUpstreamFlankingAlignments << "\t"
+                    << j.nbDownstreamFlankingAlignments;
+                    
     }
     
         
@@ -1296,9 +1349,9 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         vector<string> parts; // #2: Search for tokens
         boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
 
-        if (parts.size() != 32) {
+        if (parts.size() != 36) {
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "Could not parse line due to incorrect number of columns. Expected 32 columns: ") + line));
+                "Could not parse line due to incorrect number of columns. Expected 36 columns: ") + line));
         }
 
         // Create intron
@@ -1324,16 +1377,17 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         j->setPredictedStrand(strandFromChar(parts[11][0]));
                 
         // Add metrics to junction
-        j->setNbJunctionAlignments(lexical_cast<uint32_t>(parts[12]));
-        j->setDonorAndAcceptorMotif(cssFromChar(parts[13][0]));
-        j->setMaxMinAnchor(lexical_cast<int32_t>(parts[15]));
-        j->setDiffAnchor(lexical_cast<int32_t>(parts[16]));
-        j->setEntropy(lexical_cast<double>(parts[17]));
-        j->setNbDistinctAnchors(lexical_cast<uint32_t>(parts[18]));
-        j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[19]));
-        j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[20]));
-        j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[21]));
-        j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[22]));
+        j->setDonorAndAcceptorMotif(cssFromChar(parts[12][0]));
+        j->setNbJunctionAlignments(lexical_cast<uint32_t>(parts[13]));
+        j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[14]));
+        j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[15]));
+        // Intron size not required
+        j->setLeftAncSize(lexical_cast<uint32_t>(parts[17]));
+        j->setRightAncSize(lexical_cast<uint32_t>(parts[18]));
+        j->setMaxMinAnchor(lexical_cast<int32_t>(parts[19]));
+        j->setDiffAnchor(lexical_cast<int32_t>(parts[20]));
+        j->setNbDistinctAnchors(lexical_cast<uint32_t>(parts[21]));
+        j->setEntropy(lexical_cast<double>(parts[22]));
         j->setMaxMMES(lexical_cast<uint32_t>(parts[23]));
         j->setHammingDistance5p(lexical_cast<uint32_t>(parts[24]));
         j->setHammingDistance3p(lexical_cast<uint32_t>(parts[25]));
@@ -1343,6 +1397,10 @@ CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         j->setMultipleMappingScore(lexical_cast<double>(parts[29]));
         j->setNbMismatches(lexical_cast<uint16_t>(parts[30]));
         j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[31]));
+        j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[32]));
+        j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[33]));
+        j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[34]));
+        j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[35]));
         
         return j;
     }

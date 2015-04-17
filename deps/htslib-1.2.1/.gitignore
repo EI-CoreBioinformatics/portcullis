@@ -1,0 +1,11 @@
+*.o
+/xx#unsorted.tmp.cram.sam_
+*.h
+*.a
+/Makefile
+/bgzip
+*.pico
+/htsfile
+*.so
+/tabix
+*.so.1

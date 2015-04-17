@@ -44,12 +44,20 @@ namespace po = boost::program_options;
 #include "junction_builder.hpp"
 #include "genome_mapper.hpp"
 #include "prepare.hpp"
-#include "filter.hpp"
+#include "junction_filter.hpp"
+#include "bam_filter.hpp"
 #include "cluster.hpp"
+#include "train.hpp"
+#include "test.hpp"
 using portcullis::JunctionBuilder;
 using portcullis::Prepare;
-using portcullis::Filter;
+using portcullis::JunctionFilter;
+using portcullis::BamFilter;
 using portcullis::Cluster;
+using portcullis::Train;
+using portcullis::Test;
+
+#include "train.hpp"
 
 typedef boost::error_info<struct PortcullisError,string> PortcullisErrorInfo;
 struct PortcullisException: virtual boost::exception, virtual std::exception { };
@@ -63,8 +71,11 @@ enum Mode {
     PREP,
     JUNC,
     FILTER,
+    BAM_FILT,
     FULL,
-    CLUSTER
+    CLUSTER,
+    TRAIN,
+    TEST
 };
 
 Mode parseMode(string mode) {
@@ -80,11 +91,20 @@ Mode parseMode(string mode) {
     else if (upperMode == string("FILTER")) {
         return FILTER;
     }
+    else if (upperMode == string("BAMFILT")) {
+        return BAM_FILT;
+    }
     else if (upperMode == string("FULL")) {
         return FULL;
     }
     else if (upperMode == string("CLUSTER")) {
         return CLUSTER;
+    }
+    else if (upperMode == string("TRAIN")) {
+        return TRAIN;
+    }
+    else if (upperMode == string("TEST")) {
+        return TEST;
     }
     else {
         BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
@@ -100,6 +120,7 @@ string helpHeader() {
                   " - prep    - Prepares a genome and bam file(s) ready for junction analysis\n" +
                   " - junc    - Perform junction analysis on prepared data\n" +
                   " - filter  - Discard unlikely junctions and produce BAM containing alignments to genuine junctions\n" +
+                  " - bamfilt - Filters a BAM to remove any reads associated with invalid junctions\n" + 
                   " - full    - Runs prep, junc, filter as a complete pipeline\n" +
                   " - cluster - Clusters potential junctions to help distinguish real junctions for false\n\n" +
                   "\nAvailable options";
@@ -179,7 +200,10 @@ int main(int argc, char *argv[]) {
             JunctionBuilder::main(modeArgC, modeArgV);
         }
         else if (mode == FILTER) {
-            Filter::main(modeArgC, modeArgV);
+            JunctionFilter::main(modeArgC, modeArgV);
+        }
+        else if (mode == BAM_FILT) {
+            BamFilter::main(modeArgC, modeArgV);
         }
         else if (mode == FULL) {
             
@@ -187,13 +211,23 @@ int main(int argc, char *argv[]) {
         else if (mode == CLUSTER) {
             Cluster::main(modeArgC, modeArgV);            
         }
+        else if (mode == TRAIN) {
+            Train::main(modeArgC, modeArgV);            
+        }
+        else if (mode == TEST) {
+            Test::main(modeArgC, modeArgV);            
+        }
         else {
             BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
                     "Unrecognised portcullis mode: ") + modeStr));
         }
                 
-    } catch (boost::exception &e) { 
-        std::cerr << boost::diagnostic_information(e); 
+    } catch(po::error& e) { 
+        cerr << "Error: Parsing Command Line: " << e.what() << endl; 
+        return 1; 
+    } 
+    catch (boost::exception &e) { 
+        cerr << boost::diagnostic_information(e); 
         return 4;
     } catch (exception& e) {
         cerr << "Error: " << e.what() << endl;

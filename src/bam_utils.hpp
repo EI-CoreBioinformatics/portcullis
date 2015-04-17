@@ -124,6 +124,18 @@ public:
         return SAMTOOLS_EXE + " index " + sortedBam;        
     }
     
+    static bool opAlignsToReference(char type) {
+        
+        switch (type) {
+            // increase end position on CIGAR chars [DMXN=]
+            case Constants::BAM_CIGAR_MATCH_CHAR    :
+            case Constants::BAM_CIGAR_MISMATCH_CHAR :
+            case Constants::BAM_CIGAR_SEQMATCH_CHAR :
+                return true;
+            default:
+                return false;
+        }
+    }
     
     static bool opFollowsReference(char type) {
         
@@ -151,6 +163,16 @@ public:
                 al.Name;
     }
     
+    static bool isSplicedRead(BamAlignment& ba) {
+        for(CigarOp op : ba.CigarData) {
+            if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
     static uint16_t calcMinimalMatchInCigarDataSubset(BamAlignment& ba, int32_t start, int32_t end) {
         
         if (start > ba.Position + ba.AlignedBases.size() || end < ba.Position)
@@ -168,22 +190,42 @@ public:
                 break;
             }
             
-            inRegion = pos >= start;                
-            
             if (BamUtils::opFollowsReference(op.Type)) {
-                
-                if (inRegion)
-                    length += op.Length;
-
                 pos += op.Length;
             }
             
-            if (inRegion && op.Type == 'X') {
+            if (pos >= start && op.Type == 'X') {
                 mismatches++;
             }
         } 
         
-        return length - mismatches;
+        return end - start - mismatches;
+    }
+    
+    static uint16_t alignedBasesBetween(BamAlignment& ba, int32_t start, int32_t end) {
+        
+        if (start > ba.Position + ba.AlignedBases.size() || end < ba.Position)
+            BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                    "Found an alignment that does not have a presence in the requested region")));
+        
+        int32_t pos = ba.Position;
+        int32_t length = 0;
+        
+        for(CigarOp op : ba.CigarData) {
+           
+            if (pos > end) {
+                break;
+            }
+            
+            if (BamUtils::opFollowsReference(op.Type)) {
+                pos += op.Length;
+                if (pos >= start && op.Type != Constants::BAM_CIGAR_REFSKIP_CHAR) {
+                    length += op.Length;
+                }
+            }            
+        } 
+        
+        return length;
     }
 };
 }    

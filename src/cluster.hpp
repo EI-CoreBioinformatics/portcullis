@@ -69,7 +69,7 @@ public:
         
         // Test if provided genome exists
         if (!exists(junctionFile)) {
-            BOOST_THROW_EXCEPTION(FilterException() << FilterErrorInfo(string(
+            BOOST_THROW_EXCEPTION(ClusterException() << ClusterErrorInfo(string(
                         "Could not find junction file at: ") + junctionFile));
         }
     }
