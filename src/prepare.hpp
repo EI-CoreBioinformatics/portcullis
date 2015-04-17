@@ -609,7 +609,7 @@ public:
         cmdline_options.add(generic_options).add(hidden_options);
 
         // Parse command line
-        po::variables_map vm;
+        po::variables_map vm;        
         po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
         po::notify(vm);
 
@@ -618,7 +618,7 @@ public:
             cout << generic_options << endl;
             return 1;
         }
-        
+
         // Acquire path to bam file
         if (vm.count("bam-files")) {
             bamFiles = vm["bam-files"].as<vector<string> >();
@@ -628,7 +628,7 @@ public:
         if (vm.count("genome-file")) {
             genomeFile = vm["genome-file"].as<string>();
         }
-        
+
         // Test if provided genome exists
         if (!exists(genomeFile) && !symbolic_link_exists(genomeFile)) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
@@ -637,23 +637,24 @@ public:
 
         // Glob the input bam files
         vector<string> transformedBams = globFiles(bamFiles);
-        
+
         auto_cpu_timer timer(1, "\nPortcullis prep completed.\nTotal runtime: %ws\n\n");        
 
         cout << "Running portcullis in prepare mode" << endl
-             << "---------------------------------" << endl << endl;
-        
+             << "----------------------------------" << endl << endl;
+
         // Create the prepare class
         Prepare prep(outputDir, SSFromString(strandSpecific), force, useLinks, threads, verbose);
-        
+
         // Prep the input to produce a usable indexed and sorted bam plus, indexed
         // genome and queryable coverage information
         prep.prepare(transformedBams, genomeFile);
-        
+
         // Output any remaining details
         prep.outputDetails();
-        
-        return 0;
+
+        return 0;        
     }
+    
 };
 }

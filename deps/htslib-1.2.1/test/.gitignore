@@ -11,3 +11,4 @@
 *.tmp
 /fieldarith
 /hfile
+*.out.new

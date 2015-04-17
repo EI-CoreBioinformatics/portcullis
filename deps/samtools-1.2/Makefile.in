@@ -25,11 +25,11 @@
 HTSDIR = ../htslib-1.2.1
 
 CC       = gcc
-CPPFLAGS = $(DFLAGS) $(INCLUDES)
+CPPFLAGS = @AM_CPPFLAGS@ $(DFLAGS) $(INCLUDES)
 CFLAGS   = -g -Wall -O2
-LDFLAGS  =
+LDFLAGS  = @AM_LDFLAGS@
 LDLIBS   =
-DFLAGS=     -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -D_CURSES_LIB=1
+DFLAGS=     -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -D_CURSES_LIB=0
 LOBJS=      bam_aux.o bam.o bam_import.o sam.o \
             sam_header.o bam_plbuf.o
 AOBJS=      bam_index.o bam_plcmd.o sam_view.o \
@@ -40,7 +40,7 @@ AOBJS=      bam_index.o bam_plcmd.o sam_view.o \
             faidx.o stats.o stats_isize.o bam_flags.o bam_split.o \
             bam_tview.o bam_tview_curses.o bam_tview_html.o bam_lpileup.o
 INCLUDES=   -I. -I$(HTSDIR)
-LIBCURSES=  -lcurses # -lXCurses
+LIBCURSES=  #-lcurses # -lXCurses
 
 prefix      = @prefix@
 exec_prefix = $(prefix)
@@ -293,7 +293,8 @@ clean-all: clean clean-htslib
 tags:
 	ctags -f TAGS *.[ch] misc/*.[ch]
 
-
+distdir:
+	
 force:
 
 

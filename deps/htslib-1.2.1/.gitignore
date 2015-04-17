@@ -4,3 +4,8 @@
 *.a
 /Makefile
 /bgzip
+*.pico
+/htsfile
+*.so
+/tabix
+*.so.1

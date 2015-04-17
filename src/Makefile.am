@@ -22,6 +22,7 @@ portcullis_SOURCES =	bam_utils.hpp \
 			bam_filter.hpp \
 			junction_filter.hpp \
 			cluster.hpp \
+			test.hpp \
 			train.hpp \
 			seq_utils.hpp \
 			portcullis.cc

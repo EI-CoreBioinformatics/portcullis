@@ -222,8 +222,12 @@ int main(int argc, char *argv[]) {
                     "Unrecognised portcullis mode: ") + modeStr));
         }
                 
-    } catch (boost::exception &e) { 
-        std::cerr << boost::diagnostic_information(e); 
+    } catch(po::error& e) { 
+        cerr << "Error: Parsing Command Line: " << e.what() << endl; 
+        return 1; 
+    } 
+    catch (boost::exception &e) { 
+        cerr << boost::diagnostic_information(e); 
         return 4;
     } catch (exception& e) {
         cerr << "Error: " << e.what() << endl;
