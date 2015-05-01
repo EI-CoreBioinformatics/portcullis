@@ -8,6 +8,7 @@ portcullis_CPPFLAGS =	-I$(top_srcdir)/deps/htslib-1.2.1 \
 			-I$(top_srcdir)/deps/samtools-1.2 \
 			-I$(top_srcdir)/include \
 			-I$(top_srcdir)/src \
+			-DPREFIX="\"$(prefix)\"" \
 			@AM_CPPFLAGS@  
 portcullis_LDFLAGS = -L$(top_srcdir)/deps/htslib-1.2.1 @AM_LDFLAGS@
 portcullis_LDADD = -lhts @AM_LIBS@

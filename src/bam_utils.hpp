@@ -36,8 +36,8 @@ using namespace BamTools;
 namespace portcullis {
 namespace bamtools {
 
-#ifdef SAMTOOLS_PATH
-    const string SAMTOOLS_EXE = string(SAMTOOLS_PATH) + "/samtools";
+#ifdef PREFIX
+    const string SAMTOOLS_EXE = string(PREFIX) + "/bin/samtools";
 #else
     const string SAMTOOLS_EXE("samtools");
 #endif    
