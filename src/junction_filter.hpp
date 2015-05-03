@@ -42,6 +42,11 @@ using boost::filesystem::create_directory;
 using boost::filesystem::symbolic_link_exists;
 namespace po = boost::program_options;
 
+#ifdef PREFIX
+    const string FILT_EXE = string(PREFIX) + "/bin/filter_junctions.py";
+#else
+    const string FILT_EXE("filter_junctions.py");
+#endif    
 
 namespace portcullis {
     
@@ -50,11 +55,8 @@ struct JuncFilterException: virtual boost::exception, virtual std::exception { }
 
 const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
 const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
-const double DEFAULT_MIN_ENTROPY = 1.0;
-const uint32_t DEFAULT_MIN_DISTINCT_ALIGNMENTS = 3;
-const uint32_t DEFAULT_MIN_RELIABLE_ALIGNMENTS = 0;
-const uint32_t DEFAULT_MIN_MAXMMES = 5;
-const uint16_t DEFAULT_MIN_HAMMING = 2;
+const string DEFAULT_FILTER_FILE = "default_filter.json";
+
 
 
 class JunctionFilter {
@@ -62,43 +64,20 @@ class JunctionFilter {
 private:
     
     string junctionFile;
-    //string bamFile;
+    string filterFile;
     string outputDir;
     string outputPrefix;
-    uint32_t minDistinctAlignments;
-    uint32_t minReliableAlignments;
-    double minEntropy;
-    uint16_t minHamming;
-    uint32_t minMaxMMES;
     bool verbose;
     
 public:
     
-    JunctionFilter(const string& _junctionFile, const string& _outputDir, const string& _outputPrefix, bool _verbose) {
+    JunctionFilter(const string& _junctionFile, const string& _filterFile, const string& _outputDir, const string& _outputPrefix, bool _verbose) {
         junctionFile = _junctionFile;
-        //bamFile = _bamFile;
+        filterFile = _filterFile;
         outputDir = _outputDir;
         outputPrefix = _outputPrefix;
         verbose = _verbose;
         
-        // Set default thresholds
-        minEntropy = DEFAULT_MIN_ENTROPY;
-        minDistinctAlignments = DEFAULT_MIN_DISTINCT_ALIGNMENTS;
-        minReliableAlignments = DEFAULT_MIN_RELIABLE_ALIGNMENTS;
-        minMaxMMES = DEFAULT_MIN_MAXMMES;
-        minHamming = DEFAULT_MIN_HAMMING;
-        
-        // Test if provided genome exists
-        if (!exists(junctionFile)) {
-            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                        "Could not find junction file at: ") + junctionFile));
-        }
-        
-        // Test if provided genome exists
-        /*if (!exists(bamFile)) {
-            BOOST_THROW_EXCEPTION(FilterException() << FilterErrorInfo(string(
-                        "Could not find BAM file at: ") + bamFile));
-        }*/
     }
     
     virtual ~JunctionFilter() {
@@ -108,13 +87,13 @@ public:
 
 public:
     
-    /*string getBamFile() const {
-        return bamFile;
+    string getFilterFile() const {
+        return filterFile;
     }
 
-    void setBamFile(string bamFile) {
-        this->bamFile = bamFile;
-    }*/
+    void setFilterFile(string filterFile) {
+        this->filterFile = filterFile;
+    }
 
     string getJunctionFile() const {
         return junctionFile;
@@ -124,47 +103,6 @@ public:
         this->junctionFile = junctionFile;
     }
 
-    uint32_t getMinDistinctAlignments() const {
-        return minDistinctAlignments;
-    }
-
-    void setMinDistinctAlignments(uint32_t minDistinctAlignments) {
-        this->minDistinctAlignments = minDistinctAlignments;
-    }
-    
-    uint16_t getMinHamming() const {
-        return minHamming;
-    }
-
-    void setMinHamming(uint16_t minHamming) {
-        this->minHamming = minHamming;
-    }
-
-    uint32_t getMinReliableAlignments() const {
-        return minReliableAlignments;
-    }
-
-    void setMinReliableAlignments(uint32_t minReliableAlignments) {
-        this->minReliableAlignments = minReliableAlignments;
-    }
-
-
-    double getMinEntropy() const {
-        return minEntropy;
-    }
-
-    void setMinEntropy(double minEntropy) {
-        this->minEntropy = minEntropy;
-    }
-
-    uint32_t getMinMaxMMES() const {
-        return minMaxMMES;
-    }
-
-    void setMinMaxMMES(uint32_t minMaxMMES) {
-        this->minMaxMMES = minMaxMMES;
-    }
-    
     string getOutputDir() const {
         return outputDir;
     }
@@ -186,85 +124,57 @@ public:
     
     void filter() {
         
-        cout << "Filtering obvious false positive junctions or junctions without sufficient evidence" << endl
-             << " - Minimum junction entropy required: " << minEntropy << endl
-             << " - Minimum number of distinct alignments required: " << minDistinctAlignments << endl
-             << " - Minimum number of reliable alignments required: " << minReliableAlignments << endl
-             << " - Minimum required value for the maximum of the minimal match on either side of the exon junction (MaxMMES): " << minMaxMMES << endl
-             << " - Minimum hamming distance between regions around 5' and 3' splice sites: " << minHamming << endl << endl;
-        
-        cout << "Loading junctions from: " << junctionFile << endl;
-        
-        // Load junction system
-        JunctionSystem js(junctionFile);
-        
-        cout << " - Found " << js.getJunctions().size() << " potential junctions" << endl << endl;
-        
-        JunctionSystem filtered;
-        
-        uint32_t belowMinEntropyThreshold = 0;
-        uint32_t belowDistinctAlignmentThreshold = 0;
-        uint32_t belowReliableAlignmentThreshold = 0;
-        uint32_t belowMaxMMESThreshold = 0;
-        uint32_t below5pHammingThreshold = 0;
-        uint32_t below3pHammingThreshold = 0;
-        
-        for(JunctionPtr j : js.getJunctions()) {
-            
-            bool filter = false;
-            
-            if (j->getEntropy() < minEntropy) {
-                belowMinEntropyThreshold++;                
-                filter = true;
-            }
-            
-            if (j->getNbDistinctAlignments() < minDistinctAlignments) {
-                belowDistinctAlignmentThreshold++;
-                filter = true;
-            }
-            
-            if (j->getNbReliableAlignments() < minReliableAlignments) {
-                belowReliableAlignmentThreshold++;
-                filter = true;
-            }
-                
-            if (j->getMaxMMES() < minMaxMMES) {
-                belowMaxMMESThreshold++;
-                filter = true;
-            }
-            
-            if (j->getHammingDistance5p() < minHamming) {
-                below5pHammingThreshold++;
-                filter = true;
-            }
-            
-            if (j->getHammingDistance3p() < minHamming) {
-                below3pHammingThreshold++;
-                filter = true;
-            }
-            
-            if (!filter) {
-                filtered.addJunction(j);
-            }
+        // Test if provided genome exists
+        if (!exists(junctionFile)) {
+            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                        "Could not find junction file at: ") + junctionFile));
         }
         
-        cout << "Filtering results: " << endl
-             << " - Below entropy threshold: " << belowMinEntropyThreshold << endl
-             << " - Below distinct alignment threshold: " << belowDistinctAlignmentThreshold << endl
-             << " - Below reliable alignment threshold: " << belowReliableAlignmentThreshold << endl
-             << " - Below maxMMES threshold: " << belowMaxMMESThreshold << endl 
-             << " - Below hamming threshold at 5' splice site: " << below5pHammingThreshold << endl
-             << " - Below hamming threshold at 3' splice site: " << below3pHammingThreshold << endl << endl;
+        // Test if provided filter config file exists
+        if (!exists(filterFile)) {
+            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                        "Could not find filter configuration file at: ") + filterFile));
+        }
         
-        uint32_t diff = js.getJunctions().size() - filtered.getJunctions().size();
+        cout << "Filtering junctions according to provided configuration file ... ";
+        cout.flush();
         
-        cout << "Filtered out " << diff << " junctions.  " << filtered.getJunctions().size() << " junctions remaining" << endl << endl;
         
         if (!exists(outputDir)) {
             create_directory(outputDir);
+        }        
+        
+        string tmpOutputTabFile = outputDir + "/tmp.tab";
+        
+        string filterCmd = string("python filter_junctions.py ") +
+               " --input=" + junctionFile + 
+               " --json=" + filterFile +
+               " --output=" + tmpOutputTabFile;
+        
+        if (verbose) {
+            cout << "Running filter script: " << filterCmd << endl;
         }
         
-        filtered.saveAll(outputDir + "/" + outputPrefix);        
+        int exitCode = system(filterCmd.c_str());                    
+            
+        if (exitCode != 0 || !exists(tmpOutputTabFile)) {
+                BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                        "Failed to successfully filter: ") + junctionFile));
+        }
+        
+        cout << "done" << endl << endl;
+        
+        // Load junction system
+        JunctionSystem originalJuncs(junctionFile);
+        
+        // Load junction system
+        JunctionSystem filteredJunc(tmpOutputTabFile);
+        
+        uint32_t diff = originalJuncs.getJunctions().size() - filteredJunc.getJunctions().size();
+        
+        cout << "Filtered out " << diff << " junctions.  " << filteredJunc.getJunctions().size() << " junctions remaining" << endl << endl;
+        
+        filteredJunc.saveAll(outputDir + "/" + outputPrefix);        
     }
   
     static string helpMessage() {
@@ -277,12 +187,7 @@ public:
         
         // Portcullis args
         string junctionFile;
-        //string bamFile;
-        uint32_t minDistinctAlignments;
-        uint32_t minReliableAlignments;
-        double minEntropy;
-        uint32_t minMaxMMES;
-        uint16_t minHamming;
+        string filterFile;
         
         string outputDir;
         string outputPrefix;
@@ -296,16 +201,8 @@ public:
                     "Output directory for files generated by this program.")
                 ("output_prefix,p", po::value<string>(&outputPrefix)->default_value(DEFAULT_FILTER_OUTPUT_PREFIX), 
                     "File name prefix for files generated by this program.")
-                ("min_entropy,e", po::value<double>(&minEntropy)->default_value(DEFAULT_MIN_ENTROPY), 
-                    "The minimum entropy required for a junction")
-                ("min_distinct_alignments,d", po::value<uint32_t>(&minDistinctAlignments)->default_value(DEFAULT_MIN_DISTINCT_ALIGNMENTS), 
-                    "The minimum number of distinct alignment required for a junction")
-                ("min_reliable_alignments,r", po::value<uint32_t>(&minReliableAlignments)->default_value(DEFAULT_MIN_RELIABLE_ALIGNMENTS), 
-                    "The minimum number of reliable alignments (alignments uniquely mapping to genome) required for a junction.  WARNING: putting this over 0 will probably produce false negatives.")
-                ("min_maxmmes,m", po::value<uint32_t>(&minMaxMMES)->default_value(DEFAULT_MIN_MAXMMES), 
-                    "The minimum value required for the maximum of minimal match on either side of exon junction")
-                ("min_hamming,h", po::value<uint16_t>(&minHamming)->default_value(DEFAULT_MIN_HAMMING), 
-                    "The minimum hamming distance allowed between regions around 5' and 3' splice sites.  (Low hamming score indicates potential repeat region).")
+                ("filter_file,f", po::value<string>(&filterFile)->default_value(DEFAULT_FILTER_FILE), 
+                    "The filter configuration file to use.")
                 ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                     "Print extra information")
                 ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -316,13 +213,11 @@ public:
         po::options_description hidden_options("Hidden options");
         hidden_options.add_options()
                 ("junction-file,g", po::value<string>(&junctionFile), "Path to the junction file to process.")
-                //("bam-file,g", po::value<string>(&bamFile), "Path to the BAM file to filter.")
                 ;
 
         // Positional option for the input bam file
         po::positional_options_description p;
         p.add("junction-file", 1);
-        //p.add("bam-file", 1);
         
         
         // Combine non-positional options
@@ -348,12 +243,7 @@ public:
              << "--------------------------------" << endl << endl;
         
         // Create the prepare class
-        JunctionFilter filter(junctionFile, outputDir, outputPrefix, verbose);
-        filter.setMinDistinctAlignments(minDistinctAlignments);
-        filter.setMinReliableAlignments(minReliableAlignments);
-        filter.setMinEntropy(minEntropy);
-        filter.setMinMaxMMES(minMaxMMES);
-        filter.setMinHamming(minHamming);
+        JunctionFilter filter(junctionFile, filterFile, outputDir, outputPrefix, verbose);
         filter.filter();
         
         return 0;

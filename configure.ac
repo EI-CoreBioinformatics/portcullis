@@ -117,5 +117,5 @@ AM_LIBS="${BAMTOOLS_LIB} ${BOOST_LIBS} ${PTHREAD_CFLAGS} ${ZLIB_LIB}"
 AC_SUBST([AM_LIBS])
 
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile deps/htslib-1.2.1/Makefile deps/samtools-1.2/Makefile src/Makefile tests/Makefile])
+AC_CONFIG_FILES([Makefile deps/htslib-1.2.1/Makefile deps/samtools-1.2/Makefile src/Makefile tests/Makefile scripts/Makefile])
 AC_OUTPUT

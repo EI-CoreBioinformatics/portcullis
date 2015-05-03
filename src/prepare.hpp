@@ -446,7 +446,7 @@ protected:
             
             int exitCode = system(indexCmd.c_str());                    
             
-             if (exitCode != 0 || !exists(output->getBamIndexFilePath())) {
+            if (exitCode != 0 || !exists(output->getBamIndexFilePath())) {
                     BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                             "Failed to successfully index: ") + sortedBam));
             }
