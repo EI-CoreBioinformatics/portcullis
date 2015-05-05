@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import re
+import sys
 import json
 import argparse
 import os
@@ -17,7 +18,7 @@ def to_csv_out(handle, fieldnames):
     writer.writeheader()
     return writer
 
-def to_json(handle, fieldnames):
+def to_json(handle, fieldnames, debug=False):
 
     '''This function will load the JSON configuration, check that
     both parameters and expression are defined, and prepare the configuration for the analysis.
@@ -39,12 +40,16 @@ def to_json(handle, fieldnames):
     
     json_dict=json.load(handle)
     if "parameters" not in json_dict or "expression" not in json_dict:
-        raise ValueError("Configuration is faulty")
+        print("Configuration is faulty - please ensure that the JSON has valid \"parameters\" and \"expression\" fields.",
+              file=sys.stderr)
+        sys.exit(1)
     
     for param in set(json_dict["parameters"]):
         parameter_name=param.split(".")[0]
         if json_dict["parameters"][param]["operator"] not in ("gt","ge","eq","lt","le", "in", "not in"):
-            raise TypeError("Unrecognized operator: {0}".format(json_dict["parameters"][param]["operator"]))
+            print("Unrecognized operator: {0}".format(json_dict["parameters"][param]["operator"]),
+                  file=sys.stderr)
+            sys.exit(1)
 
         json_dict["parameters"][param]["name"]=parameter_name
     
@@ -52,20 +57,27 @@ def to_json(handle, fieldnames):
     
     diff=set.difference(parameter_names, set(fieldnames))
     if len(diff)>0:
-        raise ValueError("Unrecognized parameters:\n\t{0}".format("\n\t".join(list(diff))))
+        print("Unrecognized operator: {0}".format(json_dict["parameters"][param]["operator"]),
+                file=sys.stderr)
+        sys.exit(1)
     
     keys = list(filter(lambda x: x not in ("and","or"), re.findall("([^ ()]+)", json_dict["expression"])))
     diff_params=set.difference(set(keys), set(json_dict["parameters"].keys()))
     if len(diff_params)>0:
-        raise ValueError("Expression and required parameters mismatch:\n\t{0}".format("\n\t".join(list(diff_params))))
+        print("Expression and required parameters mismatch:\n\t{0}".format("\n\t".join(list(diff_params))),
+              file=sys.stderr)
+        sys.exit(1)
 
     newexpr=json_dict["expression"][:]
     for key in keys:
         newexpr=re.sub(key, "evaluated[\"{0}\"]".format(key), newexpr)
     json_dict["expression"]=newexpr
     newexpr=compile(newexpr, "<string>", "eval")
+    if debug is True:
+        print(json.dump(json_dict), file=sys.stderr)
+    
     json_dict["compiled"]=newexpr
-    print(json_dict)
+    
     return json_dict
 
 def evaluate(param, conf):
@@ -94,14 +106,16 @@ def main():
     parser.add_argument("--json", type=argparse.FileType('r'), required=True,
                         help="JSON configuration file.")
     parser.add_argument("--input", type=to_csv, required=True,
-                        help="CSV junction file.")
+                        help="CSV junction file.")#
+    parser.add_argument("--debug", action='store_true', default=False,
+                        help="Debug flag")
     parser.add_argument("--out", type=argparse.FileType('w'), required=True,
                         help="CSV output junction file.")
     args=parser.parse_args()
     
     args.out=to_csv_out(args.out, args.input.fieldnames)
     
-    json_dict = to_json(args.json, args.input.fieldnames)
+    json_dict = to_json(args.json, args.input.fieldnames, debug=args.debug)
     
     for row in args.input:
         evaluated={}
@@ -112,5 +126,7 @@ def main():
             #json_dict["parameters"][param]["function"](row[param])
         if eval(json_dict['compiled']) is True:
             args.out.writerow(row)
+
+    sys.exit(0)
             
 if __name__=='__main__': main()
