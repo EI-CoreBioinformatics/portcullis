@@ -136,10 +136,6 @@ public:
                         "Could not find filter configuration file at: ") + filterFile));
         }
         
-        cout << "Filtering junctions according to provided configuration file ... ";
-        cout.flush();
-        
-        
         if (!exists(outputDir)) {
             create_directory(outputDir);
         }        
@@ -155,6 +151,9 @@ public:
             cout << "Running filter script: " << filterCmd << endl;
         }
         
+        cout << "Filtering junctions according to provided configuration file ... ";
+        cout.flush();
+                
         int exitCode = system(filterCmd.c_str());                    
             
         if (exitCode != 0 || !exists(tmpOutputTabFile)) {
