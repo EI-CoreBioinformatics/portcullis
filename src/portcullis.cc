@@ -49,6 +49,7 @@ namespace po = boost::program_options;
 #include "cluster.hpp"
 #include "train.hpp"
 #include "test.hpp"
+#include "portcullis_fs.hpp"
 using portcullis::JunctionBuilder;
 using portcullis::Prepare;
 using portcullis::JunctionFilter;
@@ -56,6 +57,7 @@ using portcullis::BamFilter;
 using portcullis::Cluster;
 using portcullis::Train;
 using portcullis::Test;
+using portcullis::PortcullisFS;
 
 #include "train.hpp"
 
@@ -135,7 +137,6 @@ int main(int argc, char *argv[]) {
         // Portcullis args
         string modeStr;
         std::vector<string> others;
-        bool verbose;
         bool version;
         bool help;
 
@@ -174,16 +175,18 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        // Output version information then exit if requested
-        if (version) {
+        // Always output version information but exit if version info was all user requested
+        
 #ifndef PACKAGE_NAME
 #define PACKAGE_NAME "Portcullis"
 #endif
 
 #ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.2.1"
+#define PACKAGE_VERSION "0.4.0"
 #endif
-            cout << PACKAGE_NAME << " V" << PACKAGE_VERSION << endl;
+        cout << PACKAGE_NAME << " V" << PACKAGE_VERSION << endl;
+        
+        if (version) {    
             return 0;
         }
         
@@ -193,14 +196,21 @@ int main(int argc, char *argv[]) {
         const int modeArgC = argc-1;
         char** modeArgV = argv+1;
         
+        PortcullisFS fs(boost::filesystem::system_complete(argv[0]));
+        
+        cout << endl 
+             << "Project filesystem" << endl 
+             << "------------------" << endl
+             << fs << endl;
+        
         if (mode == PREP) {
-            Prepare::main(modeArgC, modeArgV);
+            Prepare::main(modeArgC, modeArgV, fs);
         }
         else if(mode == JUNC) {
             JunctionBuilder::main(modeArgC, modeArgV);
         }
         else if (mode == FILTER) {
-            JunctionFilter::main(modeArgC, modeArgV);
+            JunctionFilter::main(modeArgC, modeArgV, fs);
         }
         else if (mode == BAM_FILT) {
             BamFilter::main(modeArgC, modeArgV);

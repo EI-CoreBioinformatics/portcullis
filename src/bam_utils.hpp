@@ -23,8 +23,11 @@
 using namespace::std;
 
 #include <boost/exception/all.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/filesystem.hpp>
 using boost::filesystem::exists;
+using boost::filesystem::path;
 using boost::lexical_cast;
 
 #include <api/algorithms/Sort.h>
@@ -36,16 +39,13 @@ using namespace BamTools;
 namespace portcullis {
 namespace bamtools {
 
-#ifdef PREFIX
-    const string SAMTOOLS_EXE = string(PREFIX) + "/bin/samtools";
-#else
-    const string SAMTOOLS_EXE("samtools");
-#endif    
-    
 typedef boost::error_info<struct BamError,string> BamErrorInfo;
 struct BamException: virtual boost::exception, virtual std::exception { };
 
 class BamUtils {
+    
+private:
+    
 public:
     
     static void mergeBams(vector<string>& bamFiles, string bamOut) {
@@ -90,16 +90,18 @@ public:
     /**
      * Creates a samtools command that can be used to sort a bam file.  Assumes 
      * entries will be sorted by position using 1 thread and 1GB or RAM.
+     * @param samtoolsExe The path to samtools
      * @param unsortedFile The bam file that needs sorting
      * @param sortedFile The path to the new sorted bam file which will be created     
      * @return The command that can be used to sort the bam file
      */
-    static string createSortBamCmd(string unsortedFile, string sortedFile) {
-        return createSortBamCmd(unsortedFile, sortedFile, false, 1, string("1G"));
+    static string createSortBamCmd(path samtoolsExe, string unsortedFile, string sortedFile) {
+        return createSortBamCmd(samtoolsExe, unsortedFile, sortedFile, false, 1, string("1G"));
     }
     
     /**
      * Creates a samtools command that can be used to sort a bam file
+     * @param samtoolsExe The path to samtools
      * @param unsortedFile The bam file that needs sorting
      * @param sortedFile The path to the new sorted bam file which will be created
      * @param sortByName If true, bam entries are sorted by name, otherwise by position
@@ -107,21 +109,22 @@ public:
      * @param memory Amount of memory to request
      * @return The command that can be used to sort the bam file
      */
-    static string createSortBamCmd(string unsortedFile, string sortedFile, bool sortByName, uint16_t threads, string memory) {
+    static string createSortBamCmd(path samtoolsExe, string unsortedFile, string sortedFile, bool sortByName, uint16_t threads, string memory) {
         
-        return SAMTOOLS_EXE + " sort -@ " + lexical_cast<string>(threads) + 
+        return string(samtoolsExe.c_str()) + " sort -@ " + lexical_cast<string>(threads) + 
                 " -m " + memory + " " + (sortByName ? "-n " : "") + unsortedFile + 
                 " " + sortedFile;
     }
     
     /**
      * Creates a samtools command that can be used to index a sorted bam file
+     * @param samtoolsExe The path to samtools
      * @param sortedBam Path to a sorted bam file to index
      * @return The command that can be used to index the sorted bam file
      */
-    static string createIndexBamCmd(string sortedBam) {
+    static string createIndexBamCmd(path samtoolsExe, string sortedBam) {
         
-        return SAMTOOLS_EXE + " index " + sortedBam;        
+        return string(samtoolsExe.c_str()) + " index " + sortedBam;        
     }
     
     static bool opAlignsToReference(char type) {
