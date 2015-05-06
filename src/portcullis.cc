@@ -23,6 +23,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+using std::vector;
 using std::string;
 using std::cout;
 using std::cerr;
@@ -128,6 +129,155 @@ string helpHeader() {
                   "\nAvailable options";
 }
 
+static string fullHelp() {
+    return string("\nPortcullis Full Pipeline Mode Help.\n\n") +
+                  "Usage: portcullis full [options] <genome-file> (<bam-file>)+ \n\n" +
+                  "Allowed options";
+}
+
+
+int mainFull(int argc, char *argv[], PortcullisFS& fs) {
+    
+    // Portcullis args
+    std::vector<string> bamFiles;
+    string genomeFile;
+    string outputDir;
+    string strandSpecific;
+    uint16_t threads;
+    bool verbose;
+    bool help;
+
+    // Declare the supported options.
+    po::options_description generic_options(fullHelp());
+    generic_options.add_options()
+            ("output,o", po::value<string>(&outputDir)->default_value("portcullis_out"), 
+                "Output directory for prepared files. Default: portcullis_out")
+            ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(portcullis::SSToString(portcullis::StrandSpecific::UNSTRANDED)), 
+                (string("Whether BAM alignments were generated using a strand specific RNAseq library: ") +
+                        "\"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\"" +
+                        "(Ligation, Standard SOLiD, flux sim reads)  Default: \"unstranded\"").c_str())
+            ("threads,t", po::value<uint16_t>(&threads)->default_value(1),
+                "The number of threads to used to sort the BAM file (if required).  Default: 1")
+            ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
+                "Print extra information")
+            ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
+            ;
+
+    // Hidden options, will be allowed both on command line and
+    // in config file, but will not be shown to the user.
+    po::options_description hidden_options("Hidden options");
+    hidden_options.add_options()
+            ("bam-files,i", po::value< std::vector<string> >(&bamFiles), "Path to the BAM files to process.")
+            ("genome-file,g", po::value<string>(&genomeFile), "Path to the genome file to process.")
+            ;
+
+    // Positional option for the input bam file
+    po::positional_options_description p;
+    p.add("genome-file", 1);
+    p.add("bam-files", 100);
+
+    // Combine non-positional options
+    po::options_description cmdline_options;
+    cmdline_options.add(generic_options).add(hidden_options);
+
+    // Parse command line
+    po::variables_map vm;        
+    po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
+    po::notify(vm);
+
+    // Output help information the exit if requested
+    if (help || argc <= 1) {
+        cout << generic_options << endl;
+        return 1;
+    }
+
+    // Acquire path to bam file
+    if (vm.count("bam-files")) {
+        bamFiles = vm["bam-files"].as<std::vector<string> >();
+    }
+
+    // Acquire path to genome file
+    if (vm.count("genome-file")) {
+        genomeFile = vm["genome-file"].as<string>();
+    }
+
+    // Test if provided genome exists
+    if (!exists(genomeFile) && !symbolic_link_exists(genomeFile)) {
+        BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
+                    "Could not find genome file at: ") + genomeFile));
+    }
+
+    // Glob the input bam files
+    std::vector<string> transformedBams = Prepare::globFiles(bamFiles);
+
+    auto_cpu_timer timer(1, "\nPortcullis completed.\nTotal runtime: %ws\n\n");        
+
+    cout << "Running full portcullis pipeline" << endl
+         << "--------------------------------" << endl << endl;
+
+
+    if (!exists(outputDir)) {
+        if (!create_directory(outputDir)) {
+            BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
+                    "Could not create output directory: ") + outputDir));
+        }
+    }
+    
+    // ************ Prepare input data (BAMs + genome) ***********
+    
+    string prepDir = string(outputDir) + "/prepare";
+
+    // Create the prepare class
+    Prepare prep(prepDir, portcullis::SSFromString(strandSpecific), true, false, threads, verbose);
+    prep.setFs(fs);
+
+    // Prep the input to produce a usable indexed and sorted bam plus, indexed
+    // genome and queryable coverage information
+    prep.prepare(transformedBams, genomeFile);
+
+    // Output any remaining details
+    prep.outputDetails();
+    
+    
+    // ************ Identify all junctions and calculate metrics ***********
+        
+    string juncDir = string(outputDir) + "/all_junctions";
+    
+    // Identify junctions and calculate metrics
+    JunctionBuilder(prepDir, juncDir, "portcullis_all", threads, true, verbose).process();
+    
+
+    // ************ Use default filtering strategy *************
+    
+    string filtDir = string(outputDir) + "/filtered_junctions";
+    string juncTab = string(juncDir) + "/portcullis_all.junctions.tab";
+    
+    path defaultFilterFile = path(fs.GetEtcDir());
+    defaultFilterFile /= "default_filter.json";
+    
+    JunctionFilter filter(juncTab, defaultFilterFile.c_str(), filtDir, "portcullis_filtered", verbose, fs);
+    filter.filter();
+
+    
+    // *********** BAM filter *********
+    
+    string filtJuncTab = string(filtDir) + "portcullis_filtered.junctions.tab";
+    string filtBamDir = string(outputDir) + "filtered_bams";
+    
+    for(string bamFile : transformedBams) {
+        path bf(bamFile);
+        string filteredBam = string(filtBamDir) + bf.leaf().c_str() + ".filtered.bam";
+
+        BamFilter filter(filtJuncTab, bamFile, filteredBam, verbose);
+        filter.setStrandSpecific(portcullis::SSFromString(strandSpecific));
+        filter.filter();
+    }
+    
+    return 0;        
+}
+
+
+
 /**
  * Start point for portcullis.
  */
@@ -216,7 +366,7 @@ int main(int argc, char *argv[]) {
             BamFilter::main(modeArgC, modeArgV);
         }
         else if (mode == FULL) {
-            
+            mainFull(modeArgC, modeArgV, fs);
         }
         else if (mode == CLUSTER) {
             Cluster::main(modeArgC, modeArgV);            
