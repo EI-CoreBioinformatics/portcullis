@@ -117,6 +117,13 @@ public:
     Intron(RefSeq _ref, int32_t _start, int32_t _end, Strand _strand) :
         ref(_ref), start(_start), end(_end), strand(_strand) {
     }
+    
+    Intron(const Intron& other) {
+        ref = other.ref;
+        start = other.start;
+        end = other.end;
+        strand = other.strand;
+    }
 
     
     /**

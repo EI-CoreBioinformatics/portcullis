@@ -41,14 +41,14 @@ def to_json(handle, fieldnames, debug=False):
     json_dict=json.load(handle)
     if "parameters" not in json_dict or "expression" not in json_dict:
         print("Configuration is faulty - please ensure that the JSON has valid \"parameters\" and \"expression\" fields.",
-              file=sys.stderr)
+              sys.stderr)
         sys.exit(1)
     
     for param in set(json_dict["parameters"]):
         parameter_name=param.split(".")[0]
         if json_dict["parameters"][param]["operator"] not in ("gt","ge","eq","lt","le", "in", "not in"):
             print("Unrecognized operator: {0}".format(json_dict["parameters"][param]["operator"]),
-                  file=sys.stderr)
+                  sys.stderr)
             sys.exit(1)
 
         json_dict["parameters"][param]["name"]=parameter_name
@@ -58,14 +58,14 @@ def to_json(handle, fieldnames, debug=False):
     diff=set.difference(parameter_names, set(fieldnames))
     if len(diff)>0:
         print("Unrecognized operator: {0}".format(json_dict["parameters"][param]["operator"]),
-                file=sys.stderr)
+                sys.stderr)
         sys.exit(1)
     
     keys = list(filter(lambda x: x not in ("and","or"), re.findall("([^ ()]+)", json_dict["expression"])))
     diff_params=set.difference(set(keys), set(json_dict["parameters"].keys()))
     if len(diff_params)>0:
         print("Expression and required parameters mismatch:\n\t{0}".format("\n\t".join(list(diff_params))),
-              file=sys.stderr)
+              sys.stderr)
         sys.exit(1)
 
     newexpr=json_dict["expression"][:]
@@ -74,7 +74,7 @@ def to_json(handle, fieldnames, debug=False):
     json_dict["expression"]=newexpr
     newexpr=compile(newexpr, "<string>", "eval")
     if debug is True:
-        print(json.dump(json_dict), file=sys.stderr)
+        print(json.dump(json_dict), sys.stderr)
     
     json_dict["compiled"]=newexpr
     

@@ -282,6 +282,52 @@ public:
         nbDownstreamJunctions = 0;
     }
     
+    /**
+     * Copy constructor
+     * @param j The other junction to deep copy into this
+     */
+    Junction(const Junction& j) : Junction(j, true) {}
+        
+    /**
+     * Copy constructor, with option to copy bam alignments associated with the junction
+     * @param j The other junction to deep copy into this
+     * @param withAlignments Whether to copy over the alignments or not
+     */
+    Junction(const Junction& j, bool withAlignments) {
+        intron = make_shared<Intron>(Intron(*(j.intron)));        
+        leftFlankStart = j.leftFlankStart;
+        rightFlankEnd = j.rightFlankEnd;
+        canonicalSpliceSites = j.canonicalSpliceSites;
+        maxMinAnchor = j.maxMinAnchor;
+        diffAnchor = j.diffAnchor;
+        entropy = j.entropy;
+        nbDistinctAnchors = j.nbDistinctAnchors;
+        nbDistinctAlignments = j.nbDistinctAlignments;
+        nbReliableAlignments = j.nbReliableAlignments;
+        nbUpstreamFlankingAlignments = j.nbUpstreamFlankingAlignments;
+        nbDownstreamFlankingAlignments = j.nbDownstreamFlankingAlignments;
+        maxMMES = j.maxMMES;
+        hammingDistance5p = j.hammingDistance5p;
+        hammingDistance3p = j.hammingDistance3p;
+        coverage = j.coverage;
+        uniqueJunction = j.uniqueJunction;
+        primaryJunction = j.primaryJunction;
+        multipleMappingScore = j.multipleMappingScore;
+        nbMismatches = j.nbMismatches;
+        nbMultipleSplicedReads = j.nbMultipleSplicedReads;
+        
+        predictedStrand = j.predictedStrand;
+        nbUpstreamJunctions = j.nbUpstreamJunctions;
+        nbDownstreamJunctions = j.nbDownstreamJunctions;
+        
+        if (withAlignments) {
+            
+            for(BamAlignment ba : j.junctionAlignments) {
+                this->junctionAlignments.push_back(ba);
+            }
+        }
+    }
+    
     // **** Destructor ****
     virtual ~Junction() {
         

@@ -24,6 +24,7 @@
 #include "depth_parser.hpp"
 using portcullis::bamtools::BamUtils;
 using portcullis::DepthParser;
+using portcullis::GenomeMapper;
 using portcullis::Intron;
 using portcullis::IntronHasher;
 using portcullis::Junction;
@@ -156,9 +157,27 @@ public:
     
     bool addJunction(JunctionPtr j) {
         
-        distinctJunctions[*(j->getIntron())] = j;
-        junctionList.push_back(j);
+        return this->addJunction(j, true);
+    }
+    
+    bool addJunction(JunctionPtr j, bool withAlignments) {
         
+        JunctionPtr newJ = make_shared<Junction>(Junction(*j, withAlignments));        
+        
+        distinctJunctions[*(j->getIntron())] = newJ;
+        junctionList.push_back(newJ);        
+    }
+    
+    /**
+     * Appends a new copy of all the junctions in the other junction system to this
+     * junction system, without the Bam alignments associated with them.
+     * @param other The other junctions system containing junctions to be added to this.
+     */
+    void append(JunctionSystem& other) {
+        
+        for(JunctionPtr j : other.getJunctions()) {
+            this->addJunction(j, false);
+        }
     }
     
     /**
@@ -303,7 +322,7 @@ public:
              << " - Found " << nonCanonicalSites << " non-canonical splice sites." << endl;
     }
     
-    void findFlankingAlignments(string alignmentsFile, StrandSpecific strandSpecific) {
+    void findFlankingAlignments(path alignmentsFile, StrandSpecific strandSpecific) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
@@ -316,16 +335,16 @@ public:
         
         BamReader reader;
         
-        if (!reader.Open(alignmentsFile)) {
+        if (!reader.Open(alignmentsFile.string())) {
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                    "Could not open bam reader for alignments file: ") + alignmentsFile));
+                    "Could not open bam reader for alignments file: ") + alignmentsFile.string()));
         }
         // Sam header and refs info from the input bam
         SamHeader header = reader.GetHeader();
         RefVector refs = reader.GetReferenceData();
 
         // Opens the index for this BAM file
-        string indexFile = alignmentsFile + ".bti";
+        string indexFile = alignmentsFile.string() + ".bti";
         if ( !reader.OpenIndex(indexFile) ) {            
             if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
                 BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -354,7 +373,7 @@ public:
         cout << "done." << endl;
     }
     
-    void calcCoverage(string alignmentsFile, StrandSpecific strandSpecific) {
+    void calcCoverage(path alignmentsFile, StrandSpecific strandSpecific) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
@@ -426,6 +445,35 @@ public:
         }
         
         cout << "done." << endl;
+    }
+    
+    void calculateMetrics(bool fast, path genomeFile, path unsplicedBamFile, StrandSpecific strandSpecific) {
+        
+        // Acquires donor / acceptor info from indexed genome file
+        cout << "Stage 1: Scanning reference sequences:" << endl;
+        GenomeMapper gmap(genomeFile);
+        gmap.loadFastaIndex();
+        scanReference(&gmap, refs);
+        
+        if (fast) {
+            cout << "Stage 2: skipped due to user request to run in fast mode" << endl << endl;
+        }
+        else {
+            // Count the number of alignments found in upstream and downstream flanking 
+            // regions for each junction
+            cout << "Stage 2: Analysing unspliced alignments around junctions:" << endl;
+            findFlankingAlignments(unsplicedBamFile, strandSpecific);
+        }
+
+        cout << "Stage 3: Calculating unspliced alignment coverage around junctions:" << endl;
+        calcCoverage(unsplicedBamFile, strandSpecific);
+            
+        cout << "Stage 4: Calculating junction status flags:" << endl;
+        calcJunctionStats();
+        
+        // Calculate all remaining metrics
+        cout << "Stage 5: Calculating remaining junction metrics:" << endl;
+        calcAllRemainingMetrics();
     }
     
     void saveAll(string outputPrefix) {

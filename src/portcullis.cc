@@ -225,6 +225,9 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
     
     // ************ Prepare input data (BAMs + genome) ***********
     
+    cout << "Preparing input data (BAMs + genome)" << endl
+         << "----------------------------------" << endl << endl;
+    
     string prepDir = string(outputDir) + "/prepare";
 
     // Create the prepare class
@@ -240,7 +243,10 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
     
     
     // ************ Identify all junctions and calculate metrics ***********
-        
+    
+    cout << "Identifying junctions and calculating metrics" << endl
+         << "---------------------------------------------" << endl << endl;
+    
     string juncDir = string(outputDir) + "/all_junctions";
     
     // Identify junctions and calculate metrics
@@ -248,6 +254,9 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
     
 
     // ************ Use default filtering strategy *************
+    
+    cout << "Filtering junctions" << endl
+         << "-------------------" << endl << endl;
     
     string filtDir = string(outputDir) + "/filtered_junctions";
     string juncTab = string(juncDir) + "/portcullis_all.junctions.tab";
@@ -261,18 +270,17 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
     
     // *********** BAM filter *********
     
-    string filtJuncTab = string(filtDir) + "portcullis_filtered.junctions.tab";
-    string filtBamDir = string(outputDir) + "filtered_bams";
+    cout << "Filtering BAMs" << endl
+         << "--------------" << endl << endl;
     
-    for(string bamFile : transformedBams) {
-        path bf(bamFile);
-        string filteredBam = string(filtBamDir) + bf.leaf().c_str() + ".filtered.bam";
+    string filtJuncTab = string(filtDir) + "/portcullis_filtered.junctions.tab";
+    string bamFile = string(prepDir) + "/portcullis.sorted.alignments.bam";
+    string filteredBam = string(outputDir) + "/portcullis.filtered.bam";
+    
+    BamFilter bamFilter(filtJuncTab, bamFile, filteredBam, verbose);
+    bamFilter.setStrandSpecific(portcullis::SSFromString(strandSpecific));
+    bamFilter.filter();
 
-        BamFilter filter(filtJuncTab, bamFile, filteredBam, verbose);
-        filter.setStrandSpecific(portcullis::SSFromString(strandSpecific));
-        filter.filter();
-    }
-    
     return 0;        
 }
 
