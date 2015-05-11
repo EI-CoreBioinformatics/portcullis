@@ -263,10 +263,13 @@ public:
         diffAnchor = 0;
         entropy = 0;
         nbDistinctAnchors = 0;
+        nbJunctionAlignments = 0;
         nbDistinctAlignments = 0;
         nbReliableAlignments = 0;
         nbUpstreamFlankingAlignments = 0;
         nbDownstreamFlankingAlignments = 0;
+        leftAncSize = 0;
+        rightAncSize = 0;
         maxMMES = 0;
         hammingDistance5p = -1;
         hammingDistance3p = -1;
@@ -302,8 +305,11 @@ public:
         diffAnchor = j.diffAnchor;
         entropy = j.entropy;
         nbDistinctAnchors = j.nbDistinctAnchors;
+        nbJunctionAlignments = j.nbJunctionAlignments;
         nbDistinctAlignments = j.nbDistinctAlignments;
         nbReliableAlignments = j.nbReliableAlignments;
+        leftAncSize = j.leftAncSize;
+        rightAncSize = j.rightAncSize;
         nbUpstreamFlankingAlignments = j.nbUpstreamFlankingAlignments;
         nbDownstreamFlankingAlignments = j.nbDownstreamFlankingAlignments;
         maxMMES = j.maxMMES;
@@ -412,7 +418,7 @@ public:
     }
         
     
-CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
+    CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         
         if (intron == nullptr) 
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(

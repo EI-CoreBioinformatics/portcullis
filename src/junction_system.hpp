@@ -293,11 +293,26 @@ public:
      * @return 
      */
     void scanReference(GenomeMapper* genomeMapper, RefVector& refs) {
+        scanReference(genomeMapper, refs, false);
+    }
+    
+    /**
+     * This will look for donor acceptor sites and find hamming distances around
+     * the junctions.  In both cases we need to consult the genome, so both
+     * parts of the junction analysis are handled in this function
+     * @param genomeMapper
+     * @param refs
+     * @param verbose
+     * @return 
+     */
+    void scanReference(GenomeMapper* genomeMapper, RefVector& refs, bool verbose) {
         
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");        
-        
-        cout << " - Acquiring junction sequence sites from genome ... ";
-        cout.flush();
+        if (verbose) {
+            auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");        
+
+            cout << " - Acquiring junction sequence sites from genome ... ";
+            cout.flush();
+        }
         
         uint64_t canonicalSites = 0;
         uint64_t semiCanonicalSites = 0;
@@ -320,20 +335,28 @@ public:
                      
         }
         
-        cout << "done." << endl
-             << " - Found " << canonicalSites << " canonical splice sites." << endl
-             << " - Found " << semiCanonicalSites << " semi-canonical splice sites." << endl
-             << " - Found " << nonCanonicalSites << " non-canonical splice sites." << endl;
+        if (verbose) {
+            cout << "done." << endl
+                 << " - Found " << canonicalSites << " canonical splice sites." << endl
+                 << " - Found " << semiCanonicalSites << " semi-canonical splice sites." << endl
+                 << " - Found " << nonCanonicalSites << " non-canonical splice sites." << endl;
+        }
     }
     
+    
     void findFlankingAlignments(path alignmentsFile, StrandSpecific strandSpecific) {
+        findFlankingAlignments(alignmentsFile, strandSpecific, false);
+    }
+    
+    void findFlankingAlignments(path alignmentsFile, StrandSpecific strandSpecific, bool verbose) {
         
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
+        if (verbose) {
+            auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
-        cout << " - Using unspliced alignments file: " << alignmentsFile << endl
-             << " - Acquiring all alignments in each junction's vicinity ... ";
-        cout.flush();
-        
+            cout << " - Using unspliced alignments file: " << alignmentsFile << endl
+                 << " - Acquiring all alignments in each junction's vicinity ... ";
+            cout.flush();
+        }
 
         // Maybe try to multi-thread this part
         
@@ -374,7 +397,9 @@ public:
         // Reset the reader for future use.
         reader.Close();
         
-        cout << "done." << endl;
+        if (verbose) {
+            cout << "done." << endl;
+        }
     }
     
     void calcCoverage(path alignmentsFile, StrandSpecific strandSpecific) {
@@ -404,11 +429,17 @@ public:
     }
     
     void calcJunctionStats() {
+        calcJunctionStats(false);
+    }
+    
+    void calcJunctionStats(bool verbose) {
         
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
+        if (verbose) {
+            auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
-        cout << " - Grouping junctions ... ";
-        cout.flush();
+            cout << " - Grouping junctions ... ";
+            cout.flush();
+        }
         
         for(size_t i = 0; i < junctionList.size(); i++) {
         
@@ -429,8 +460,11 @@ public:
             junctionGroup[maxIndex]->setPrimaryJunction(true);
         }
         
-        cout << "done." << endl;        
+        if(verbose) {
+            cout << "done." << endl;        
+        }
     }
+    
     
     
     /**
@@ -438,46 +472,45 @@ public:
      * and alignment information present in this junction
      */
     void calcAllRemainingMetrics() {
+        calcAllRemainingMetrics(false);
+    }
+    
+    /**
+     * Call this method to recalculate all junction metrics based on the current location
+     * and alignment information present in this junction
+     */
+    void calcAllRemainingMetrics(bool verbose) {
        
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n"); 
-        
-        cout << " - Calculating ... ";
-        cout.flush();
+        if (verbose) {
+            auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n"); 
+
+            cout << " - Calculating ... ";
+            cout.flush();
+        }
         
         for(JunctionPtr j : junctionList) {
             j->calcAllRemainingMetrics(splicedAlignmentMap);
         }
         
-        cout << "done." << endl;
+        if (verbose) {
+            cout << "done." << endl;
+        }
     }
     
-    void calculateMetrics(bool fast, path genomeFile, path unsplicedBamFile, StrandSpecific strandSpecific) {
+    void calculateMetrics(path genomeFile, path unsplicedBamFile, StrandSpecific strandSpecific, bool verbose) {
         
         // Acquires donor / acceptor info from indexed genome file
-        cout << "Stage 1: Scanning reference sequences:" << endl;
+        //cout << "Stage 1: Scanning reference sequences:" << endl;
         GenomeMapper gmap(genomeFile);
         gmap.loadFastaIndex();
-        scanReference(&gmap, refs);
-        
-        if (fast) {
-            cout << "Stage 2: skipped due to user request to run in fast mode" << endl << endl;
-        }
-        else {
-            // Count the number of alignments found in upstream and downstream flanking 
-            // regions for each junction
-            cout << "Stage 2: Analysing unspliced alignments around junctions:" << endl;
-            findFlankingAlignments(unsplicedBamFile, strandSpecific);
-        }
-
-        cout << "Stage 3: Calculating unspliced alignment coverage around junctions:" << endl;
-        calcCoverage(unsplicedBamFile, strandSpecific);
-            
-        cout << "Stage 4: Calculating junction status flags:" << endl;
-        calcJunctionStats();
+        scanReference(&gmap, refs, verbose);
+           
+        //cout << "Stage 2: Calculating junction status flags:" << endl;
+        calcJunctionStats(verbose);
         
         // Calculate all remaining metrics
-        cout << "Stage 5: Calculating remaining junction metrics:" << endl;
-        calcAllRemainingMetrics();
+        //cout << "Stage 4: Calculating remaining junction metrics:" << endl;
+        calcAllRemainingMetrics(verbose);
     }
     
     void saveAll(string outputPrefix) {

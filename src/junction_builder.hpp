@@ -94,7 +94,19 @@ protected:
         return string(bamFile) + ".bti";
     }
     
-    
+    void updateJS(shared_ptr<JunctionSystem> js, int32_t lastRefId) {
+        
+        string message = string(" - ") + refs[lastRefId].RefName + " - %ws\n";
+        auto_cpu_timer timer(1, message);
+        
+        // Target sequence changed so calculate junction metrics for this sequence
+        js->calculateMetrics(prepData->getGenomeFilePath(), getUnsplicedBamFile(), strandSpecific, verbose);
+
+        // Append junctions found in tempJs to this.
+        junctionSystem.append(*js);
+
+        js = make_shared<JunctionSystem>(JunctionSystem(refs));
+    }
     
 
 public:
@@ -233,19 +245,12 @@ public:
         
         int32_t lastRefId = -1;
         
+        cout << endl << "Processing alignments and calculating metrics for reference sequence: " << endl;
+        
         while(reader.GetNextAlignment(al)) {
             
             if (al.RefID != lastRefId && !start) {
-                
-                // Target sequence changed so calculate junction metrics for this sequence
-                cout << "Calculating metrics for Reference Sequence: " << refs[lastRefId].RefName << endl;
-                tempJs->calculateMetrics(fast, prepData->getGenomeFilePath(), getUnsplicedBamFile(), strandSpecific);
-                
-                // Append junctions found in tempJs to this.
-                junctionSystem.append(*tempJs);
-                
-                tempJs = make_shared<JunctionSystem>(JunctionSystem());
-                lastRefId = al.RefID;                           
+                updateJS(tempJs, lastRefId);                
             }
             
             lastRefId = al.RefID;
@@ -267,23 +272,39 @@ public:
             }
         }
         
+        // Update the last set of junctions
+        updateJS(tempJs, lastRefId);
+                                 
+        
         reader.Close();
         unsplicedWriter.Close();
         splicedWriter.Close();
-        cout << "done." << endl;
+        
+        if (fast) {
+            //cout << "skipped due to user request to run in fast mode" << endl << endl;
+        }
+        else {
+            // Count the number of alignments found in upstream and downstream flanking 
+            // regions for each junction
+            cout << endl << endl << "Analysing unspliced alignments around junctions:" << endl;
+            junctionSystem.findFlankingAlignments(unsplicedFile, strandSpecific);
+        }
+        
+        cout << endl << "Calculating unspliced alignment coverage around junctions..." << endl;
+        junctionSystem.calcCoverage(unsplicedFile, strandSpecific);
         
         // Calculate some stats
         uint64_t totalAlignments = splicedCount + unsplicedCount;
         double meanQueryLength = (double)sumQueryLengths / (double)totalAlignments;
         junctionSystem.setQueryLengthStats(minQueryLength, meanQueryLength, maxQueryLength);
         
-        cout << " - Processed " << totalAlignments << " alignments." << endl
+        cout << "Processed " << totalAlignments << " alignments." << endl
              << " - Alignment query length statistics: min: " << minQueryLength << "; mean: " << meanQueryLength << "; max: " << maxQueryLength << ";" << endl
              << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl
-             << " - Found " << unsplicedCount << " unspliced alignments." << endl;
+             << " - Found " << unsplicedCount << " unspliced alignments." << endl << endl;
         
-        
-        cout << " - Indexing unspliced alignments ... ";
+        cout << "Indexing:" << endl;
+        cout << " - unspliced alignments ... ";
         BamReader indexReader;
         if (!reader.Open(unsplicedFile)) {
             BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
@@ -303,7 +324,7 @@ public:
         }
         reader.Close();
         cout << "done." << endl;
-        cout << " - Indexing spliced alignments ... ";
+        cout << " - spliced alignments ... ";
         cout.flush();
         
         if (!reader.Open(splicedFile)) {
@@ -325,10 +346,8 @@ public:
         reader.Close();
         cout << "done." << endl;
         
-        cout << "Saving junctions ...";
-        cout.flush();
+        cout << endl << "Saving junctions: " << endl;
         junctionSystem.saveAll(outputDir + "/" + outputPrefix);
-        cout << "done." << endl;
     }
     
     static string helpMessage() {
