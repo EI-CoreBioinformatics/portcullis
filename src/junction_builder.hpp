@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <memory>
 using std::boolalpha;
 using std::string;
 using std::cout;
@@ -96,8 +97,7 @@ protected:
     
     void updateJS(shared_ptr<JunctionSystem> js, int32_t lastRefId) {
         
-        string message = string(" - ") + refs[lastRefId].RefName + " - %ws\n";
-        auto_cpu_timer timer(1, message);
+        cout << " - " << refs[lastRefId].RefName << endl;
         
         // Target sequence changed so calculate junction metrics for this sequence
         js->calculateMetrics(prepData->getGenomeFilePath(), getUnsplicedBamFile(), strandSpecific, verbose);
@@ -105,7 +105,8 @@ protected:
         // Append junctions found in tempJs to this.
         junctionSystem.append(*js);
 
-        js = make_shared<JunctionSystem>(JunctionSystem(refs));
+        js.reset();        
+        js = make_shared<JunctionSystem>(refs);
     }
     
 
@@ -241,7 +242,7 @@ public:
         
         bool start = true;
         
-        shared_ptr<JunctionSystem> tempJs = make_shared<JunctionSystem>(JunctionSystem(refs));
+        shared_ptr<JunctionSystem> tempJs(make_shared<JunctionSystem>(refs));
         
         int32_t lastRefId = -1;
         
@@ -274,7 +275,6 @@ public:
         
         // Update the last set of junctions
         updateJS(tempJs, lastRefId);
-                                 
         
         reader.Close();
         unsplicedWriter.Close();

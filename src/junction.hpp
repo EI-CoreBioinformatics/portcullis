@@ -297,7 +297,7 @@ public:
      * @param withAlignments Whether to copy over the alignments or not
      */
     Junction(const Junction& j, bool withAlignments) {
-        intron = make_shared<Intron>(Intron(*(j.intron)));        
+        intron = make_shared<Intron>(*(j.intron));        
         leftFlankStart = j.leftFlankStart;
         rightFlankEnd = j.rightFlankEnd;
         canonicalSpliceSites = j.canonicalSpliceSites;
@@ -336,7 +336,11 @@ public:
     
     // **** Destructor ****
     virtual ~Junction() {
-        
+        junctionAlignments.clear(); 
+    }
+    
+    void clearAlignments() {
+        junctionAlignments.clear();  
     }
     
    

@@ -114,7 +114,9 @@ public:
     }
     
     virtual ~JunctionSystem() {
-             
+        distinctJunctions.clear();     
+        junctionList.clear();
+        splicedAlignmentMap.clear();
     }
     
     JunctionList getJunctions() {
@@ -160,16 +162,11 @@ public:
     }
     
     bool addJunction(JunctionPtr j) {
+     
+        j->clearAlignments();
         
-        return this->addJunction(j, true);
-    }
-    
-    bool addJunction(JunctionPtr j, bool withAlignments) {
-        
-        JunctionPtr newJ = make_shared<Junction>(Junction(*j, withAlignments));        
-        
-        distinctJunctions[*(j->getIntron())] = newJ;
-        junctionList.push_back(newJ);        
+        distinctJunctions[*(j->getIntron())] = j;
+        junctionList.push_back(j);        
     }
     
     /**
@@ -180,7 +177,7 @@ public:
     void append(JunctionSystem& other) {
         
         for(JunctionPtr j : other.getJunctions()) {
-            this->addJunction(j, false);
+            this->addJunction(j);
         }
     }
     
@@ -350,13 +347,11 @@ public:
     
     void findFlankingAlignments(path alignmentsFile, StrandSpecific strandSpecific, bool verbose) {
         
-        if (verbose) {
-            auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
-        
-            cout << " - Using unspliced alignments file: " << alignmentsFile << endl
-                 << " - Acquiring all alignments in each junction's vicinity ... ";
-            cout.flush();
-        }
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
+
+        cout << " - Using unspliced alignments file: " << alignmentsFile << endl
+             << " - Acquiring all alignments in each junction's vicinity ... ";
+        cout.flush();
 
         // Maybe try to multi-thread this part
         
@@ -397,9 +392,7 @@ public:
         // Reset the reader for future use.
         reader.Close();
         
-        if (verbose) {
-            cout << "done." << endl;
-        }
+        cout << "done." << endl;
     }
     
     void calcCoverage(path alignmentsFile, StrandSpecific strandSpecific) {
