@@ -4,6 +4,7 @@ ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
 # ADDITIONAL FILES TO INSTALL
 EXTRA_DIST = include \
+etc \
 README.md \
 COPYING \
 AUTHORS \
@@ -61,7 +62,10 @@ deps/samtools-1.2/NEWS
 # FILES NOT TO INSTALL
 dist_noinst_SCRIPTS = autogen.sh clean.sh
 
+# 
+sysconf_DATA = etc/default_filter.json
+
 # SRC DIRS
-SUBDIRS = deps/htslib-1.2.1 deps/samtools-1.2 src tests
+SUBDIRS = deps/htslib-1.2.1 deps/samtools-1.2 src tests scripts
 
 

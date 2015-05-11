@@ -24,6 +24,7 @@
 #include "depth_parser.hpp"
 using portcullis::bamtools::BamUtils;
 using portcullis::DepthParser;
+using portcullis::GenomeMapper;
 using portcullis::Intron;
 using portcullis::IntronHasher;
 using portcullis::Junction;
@@ -101,7 +102,11 @@ public:
     JunctionSystem() {
         minQueryLength = 0;
         meanQueryLength = 0.0;
-        maxQueryLength = 0;         
+        maxQueryLength = 0;        
+    }
+    
+    JunctionSystem(RefVector refs) : JunctionSystem() {
+        this->refs = refs;
     }
     
     JunctionSystem(string junctionFile) : JunctionSystem() {
@@ -109,7 +114,9 @@ public:
     }
     
     virtual ~JunctionSystem() {
-             
+        distinctJunctions.clear();     
+        junctionList.clear();
+        splicedAlignmentMap.clear();
     }
     
     JunctionList getJunctions() {
@@ -155,10 +162,23 @@ public:
     }
     
     bool addJunction(JunctionPtr j) {
+     
+        j->clearAlignments();
         
         distinctJunctions[*(j->getIntron())] = j;
-        junctionList.push_back(j);
+        junctionList.push_back(j);        
+    }
+    
+    /**
+     * Appends a new copy of all the junctions in the other junction system to this
+     * junction system, without the Bam alignments associated with them.
+     * @param other The other junctions system containing junctions to be added to this.
+     */
+    void append(JunctionSystem& other) {
         
+        for(JunctionPtr j : other.getJunctions()) {
+            this->addJunction(j);
+        }
     }
     
     /**
@@ -270,11 +290,26 @@ public:
      * @return 
      */
     void scanReference(GenomeMapper* genomeMapper, RefVector& refs) {
+        scanReference(genomeMapper, refs, false);
+    }
+    
+    /**
+     * This will look for donor acceptor sites and find hamming distances around
+     * the junctions.  In both cases we need to consult the genome, so both
+     * parts of the junction analysis are handled in this function
+     * @param genomeMapper
+     * @param refs
+     * @param verbose
+     * @return 
+     */
+    void scanReference(GenomeMapper* genomeMapper, RefVector& refs, bool verbose) {
         
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");        
-        
-        cout << " - Acquiring junction sequence sites from genome ... ";
-        cout.flush();
+        if (verbose) {
+            auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");        
+
+            cout << " - Acquiring junction sequence sites from genome ... ";
+            cout.flush();
+        }
         
         uint64_t canonicalSites = 0;
         uint64_t semiCanonicalSites = 0;
@@ -297,35 +332,41 @@ public:
                      
         }
         
-        cout << "done." << endl
-             << " - Found " << canonicalSites << " canonical splice sites." << endl
-             << " - Found " << semiCanonicalSites << " semi-canonical splice sites." << endl
-             << " - Found " << nonCanonicalSites << " non-canonical splice sites." << endl;
+        if (verbose) {
+            cout << "done." << endl
+                 << " - Found " << canonicalSites << " canonical splice sites." << endl
+                 << " - Found " << semiCanonicalSites << " semi-canonical splice sites." << endl
+                 << " - Found " << nonCanonicalSites << " non-canonical splice sites." << endl;
+        }
     }
     
-    void findFlankingAlignments(string alignmentsFile, StrandSpecific strandSpecific) {
+    
+    void findFlankingAlignments(path alignmentsFile, StrandSpecific strandSpecific) {
+        findFlankingAlignments(alignmentsFile, strandSpecific, false);
+    }
+    
+    void findFlankingAlignments(path alignmentsFile, StrandSpecific strandSpecific, bool verbose) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
-        
+
         cout << " - Using unspliced alignments file: " << alignmentsFile << endl
              << " - Acquiring all alignments in each junction's vicinity ... ";
         cout.flush();
-        
 
         // Maybe try to multi-thread this part
         
         BamReader reader;
         
-        if (!reader.Open(alignmentsFile)) {
+        if (!reader.Open(alignmentsFile.string())) {
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                    "Could not open bam reader for alignments file: ") + alignmentsFile));
+                    "Could not open bam reader for alignments file: ") + alignmentsFile.string()));
         }
         // Sam header and refs info from the input bam
         SamHeader header = reader.GetHeader();
         RefVector refs = reader.GetReferenceData();
 
         // Opens the index for this BAM file
-        string indexFile = alignmentsFile + ".bti";
+        string indexFile = alignmentsFile.string() + ".bti";
         if ( !reader.OpenIndex(indexFile) ) {            
             if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
                 BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -354,7 +395,7 @@ public:
         cout << "done." << endl;
     }
     
-    void calcCoverage(string alignmentsFile, StrandSpecific strandSpecific) {
+    void calcCoverage(path alignmentsFile, StrandSpecific strandSpecific) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
@@ -381,11 +422,17 @@ public:
     }
     
     void calcJunctionStats() {
+        calcJunctionStats(false);
+    }
+    
+    void calcJunctionStats(bool verbose) {
         
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
+        if (verbose) {
+            auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
         
-        cout << " - Grouping junctions ... ";
-        cout.flush();
+            cout << " - Grouping junctions ... ";
+            cout.flush();
+        }
         
         for(size_t i = 0; i < junctionList.size(); i++) {
         
@@ -406,8 +453,11 @@ public:
             junctionGroup[maxIndex]->setPrimaryJunction(true);
         }
         
-        cout << "done." << endl;        
+        if(verbose) {
+            cout << "done." << endl;        
+        }
     }
+    
     
     
     /**
@@ -415,17 +465,45 @@ public:
      * and alignment information present in this junction
      */
     void calcAllRemainingMetrics() {
+        calcAllRemainingMetrics(false);
+    }
+    
+    /**
+     * Call this method to recalculate all junction metrics based on the current location
+     * and alignment information present in this junction
+     */
+    void calcAllRemainingMetrics(bool verbose) {
        
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n"); 
-        
-        cout << " - Calculating ... ";
-        cout.flush();
+        if (verbose) {
+            auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n"); 
+
+            cout << " - Calculating ... ";
+            cout.flush();
+        }
         
         for(JunctionPtr j : junctionList) {
             j->calcAllRemainingMetrics(splicedAlignmentMap);
         }
         
-        cout << "done." << endl;
+        if (verbose) {
+            cout << "done." << endl;
+        }
+    }
+    
+    void calculateMetrics(path genomeFile, path unsplicedBamFile, StrandSpecific strandSpecific, bool verbose) {
+        
+        // Acquires donor / acceptor info from indexed genome file
+        //cout << "Stage 1: Scanning reference sequences:" << endl;
+        GenomeMapper gmap(genomeFile);
+        gmap.loadFastaIndex();
+        scanReference(&gmap, refs, verbose);
+           
+        //cout << "Stage 2: Calculating junction status flags:" << endl;
+        calcJunctionStats(verbose);
+        
+        // Calculate all remaining metrics
+        //cout << "Stage 4: Calculating remaining junction metrics:" << endl;
+        calcAllRemainingMetrics(verbose);
     }
     
     void saveAll(string outputPrefix) {

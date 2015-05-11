@@ -37,7 +37,7 @@ test_bgzip($opts);
 test_faidx($opts);
 test_index($opts);
 test_mpileup($opts);
-test_usage($opts, cmd=>'samtools');
+#test_usage($opts, cmd=>'samtools');
 test_view($opts);
 test_cat($opts);
 test_bam2fq($opts);

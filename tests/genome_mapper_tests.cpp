@@ -22,6 +22,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
+using boost::filesystem::path;
 
 #include <genome_mapper.hpp>
 
@@ -38,7 +40,7 @@ BOOST_AUTO_TEST_CASE(ecoli)
     genomeMapper.loadFastaIndex();
     
     // Check faidx file exists
-    string faidxFile = genomeMapper.getFastaIndexFile();    
+    path faidxFile = genomeMapper.getFastaIndexFile();    
     BOOST_CHECK(boost::filesystem::exists(faidxFile));
     
     // Check number of seqs is what we expect

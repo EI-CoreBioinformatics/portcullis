@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <memory>
 using std::boolalpha;
 using std::string;
 using std::cout;
@@ -94,144 +95,18 @@ protected:
         return string(bamFile) + ".bti";
     }
     
-    /**
-     * Populates the set of distinct junctions.  
-     * 
-     * Also outputs all the unspliced alignments to a separate file if requested
-     */
-    void separateSplicedAlignments() {
+    void updateJS(shared_ptr<JunctionSystem> js, int32_t lastRefId) {
         
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");
+        cout << " - " << refs[lastRefId].RefName << endl;
         
-        BamReader reader;
-        
-        const string sortedBamFile = prepData->getSortedBamFilePath();
-        
-        if (!reader.Open(sortedBamFile)) {
-            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                    "Could not open BAM reader for input: ") + sortedBamFile));
-        }
-        
-        // Sam header and refs info from the input bam
-        header = reader.GetHeader();
-        refs = reader.GetReferenceData();
+        // Target sequence changed so calculate junction metrics for this sequence
+        js->calculateMetrics(prepData->getGenomeFilePath(), getUnsplicedBamFile(), strandSpecific, verbose);
 
-        junctionSystem.setRefs(refs);
-       
-        cout << " - Reading alignments from: " << sortedBamFile << endl;
-        
-        string indexFile = prepData->getBamIndexFilePath();
-        
-        // Opens the index for this BAM file
-        if ( !reader.OpenIndex(indexFile) ) {            
-            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                    "Could not open index for BAM: ") + indexFile));             
-        }
-        
-        cout << " - Using BAM index: " << indexFile << endl;
-        
-        BamWriter unsplicedWriter;
-        string unsplicedFile = getUnsplicedBamFile();
+        // Append junctions found in tempJs to this.
+        junctionSystem.append(*js);
 
-        if (!unsplicedWriter.Open(unsplicedFile, header, refs)) {
-            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                    "Could not open BAM writer for non-spliced file: ") + unsplicedFile));
-        }
-
-        cout << " - Saving unspliced alignments to: " << unsplicedFile << endl;
-        
-        BamWriter splicedWriter;
-        string splicedFile = getSplicedBamFile();
-
-        if (!splicedWriter.Open(splicedFile, header, refs)) {
-            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                    "Could not open BAM writer for spliced file: ") + splicedFile));
-        }
-
-        cout << " - Saving spliced alignments to: " << splicedFile << endl;
-        
-        BamAlignment al;
-        uint64_t splicedCount = 0;
-        uint64_t unsplicedCount = 0;
-        uint64_t sumQueryLengths = 0;
-        int32_t minQueryLength = 100000;
-        int32_t maxQueryLength = 0;
-        cout << " - Processing alignments ... ";
-        cout.flush();
-        while(reader.GetNextAlignment(al))
-        {
-            int32_t len = al.Length;
-            minQueryLength = min(minQueryLength, len);
-            maxQueryLength = max(maxQueryLength, len);
-            
-            sumQueryLengths += len;
-            
-            if (junctionSystem.addJunctions(al, false)) {//strandSpecific)) {
-                splicedWriter.SaveAlignment(al);
-                splicedCount++;                
-            }
-            else {
-                unsplicedWriter.SaveAlignment(al);
-                unsplicedCount++;
-            }
-        }
-        
-        reader.Close();
-        unsplicedWriter.Close();
-        splicedWriter.Close();
-        cout << "done." << endl;
-        
-        // Calculate some stats
-        uint64_t totalAlignments = splicedCount + unsplicedCount;
-        double meanQueryLength = (double)sumQueryLengths / (double)totalAlignments;
-        junctionSystem.setQueryLengthStats(minQueryLength, meanQueryLength, maxQueryLength);
-        
-        cout << " - Processed " << totalAlignments << " alignments." << endl
-             << " - Alignment query length statistics: min: " << minQueryLength << "; mean: " << meanQueryLength << "; max: " << maxQueryLength << ";" << endl
-             << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl
-             << " - Found " << unsplicedCount << " unspliced alignments." << endl;
-        
-        
-        cout << " - Indexing unspliced alignments ... ";
-        BamReader indexReader;
-        if (!reader.Open(unsplicedFile)) {
-            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                    "Could not open bam reader for unspliced alignments file: ") + unsplicedFile));
-        }
-        // Sam header and refs info from the input bam
-        SamHeader unsplicedHeader = reader.GetHeader();
-        RefVector unsplicedRefs = reader.GetReferenceData();
-
-        // Opens the index for this BAM file
-        string unsplicedIndexFile = getAssociatedIndexFile(unsplicedFile);
-        if ( !reader.OpenIndex(unsplicedIndexFile) ) {            
-            if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
-                BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                        "Error creating BAM index for unspliced alignments file: ") + unsplicedIndexFile));
-            }            
-        }
-        reader.Close();
-        cout << "done." << endl;
-        cout << " - Indexing spliced alignments ... ";
-        
-        if (!reader.Open(splicedFile)) {
-            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                    "Could not open bam reader for spliced alignments file: ") + splicedFile));
-        }
-        // Sam header and refs info from the input bam
-        SamHeader splicedHeader = reader.GetHeader();
-        RefVector splicedRefs = reader.GetReferenceData();
-
-        // Opens the index for this BAM file
-        string splicedIndexFile = getAssociatedIndexFile(splicedFile);
-        if ( !reader.OpenIndex(splicedIndexFile) ) {            
-            if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
-                BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                        "Error creating BAM index for spliced alignments file: ") + splicedIndexFile));
-            }            
-        }
-        reader.Close();
-        cout << "done." << endl;
+        js.reset();        
+        js = make_shared<JunctionSystem>(refs);
     }
     
 
@@ -300,41 +175,178 @@ public:
         }        
     }
     
-
+    
+    
+    /**
+     * Populates the set of distinct junctions.  
+     * 
+     * Also outputs all the unspliced alignments to a separate file if requested
+     */
     void process() {
-       
-        // Collect junctions from BAM file (also outputs unspliced alignments
-        // to a separate file)
-        cout << "Stage 1: Separating spliced alignments:" << endl;
-        separateSplicedAlignments();        
         
-        // Acquires donor / acceptor info from indexed genome file
-        cout << "Stage 2: Scanning reference sequences:" << endl;
-        GenomeMapper gmap(prepData->getGenomeFilePath());
-        gmap.loadFastaIndex();
-        junctionSystem.scanReference(&gmap, refs);
+        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");
+        
+        BamReader reader;
+        
+        const string sortedBamFile = prepData->getSortedBamFilePath();
+        
+        if (!reader.Open(sortedBamFile)) {
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                    "Could not open BAM reader for input: ") + sortedBamFile));
+        }
+        
+        // Sam header and refs info from the input bam
+        header = reader.GetHeader();
+        refs = reader.GetReferenceData();
+
+        junctionSystem.setRefs(refs);
+       
+        cout << " - Reading alignments from: " << sortedBamFile << endl;
+        
+        string indexFile = prepData->getBamIndexFilePath();
+        
+        // Opens the index for this BAM file
+        if ( !reader.OpenIndex(indexFile) ) {            
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                    "Could not open index for BAM: ") + indexFile));             
+        }
+        
+        cout << " - Using BAM index: " << indexFile << endl;
+        
+        BamWriter unsplicedWriter;
+        string unsplicedFile = getUnsplicedBamFile();
+
+        if (!unsplicedWriter.Open(unsplicedFile, header, refs)) {
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                    "Could not open BAM writer for non-spliced file: ") + unsplicedFile));
+        }
+
+        cout << " - Saving unspliced alignments to: " << unsplicedFile << endl;
+        
+        BamWriter splicedWriter;
+        string splicedFile = getSplicedBamFile();
+
+        if (!splicedWriter.Open(splicedFile, header, refs)) {
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                    "Could not open BAM writer for spliced file: ") + splicedFile));
+        }
+
+        cout << " - Saving spliced alignments to: " << splicedFile << endl;
+        
+        BamAlignment al;
+        uint64_t splicedCount = 0;
+        uint64_t unsplicedCount = 0;
+        uint64_t sumQueryLengths = 0;
+        int32_t minQueryLength = 100000;
+        int32_t maxQueryLength = 0;
+        
+        bool start = true;
+        
+        shared_ptr<JunctionSystem> tempJs(make_shared<JunctionSystem>(refs));
+        
+        int32_t lastRefId = -1;
+        
+        cout << endl << "Processing alignments and calculating metrics for reference sequence: " << endl;
+        
+        while(reader.GetNextAlignment(al)) {
+            
+            if (al.RefID != lastRefId && !start) {
+                updateJS(tempJs, lastRefId);                
+            }
+            
+            lastRefId = al.RefID;
+            start = false;     
+            
+            int32_t len = al.Length;
+            minQueryLength = min(minQueryLength, len);
+            maxQueryLength = max(maxQueryLength, len);
+            
+            sumQueryLengths += len;
+            
+            if (tempJs->addJunctions(al, false)) {//strandSpecific)) {
+                splicedWriter.SaveAlignment(al);
+                splicedCount++;                
+            }
+            else {
+                unsplicedWriter.SaveAlignment(al);
+                unsplicedCount++;
+            }
+        }
+        
+        // Update the last set of junctions
+        updateJS(tempJs, lastRefId);
+        
+        reader.Close();
+        unsplicedWriter.Close();
+        splicedWriter.Close();
         
         if (fast) {
-            cout << "Stage 3: skipped due to user request to run in fast mode" << endl << endl;
+            //cout << "skipped due to user request to run in fast mode" << endl << endl;
         }
         else {
             // Count the number of alignments found in upstream and downstream flanking 
             // regions for each junction
-            cout << "Stage 3: Analysing unspliced alignments around junctions:" << endl;
-            junctionSystem.findFlankingAlignments(getUnsplicedBamFile(), strandSpecific);
+            cout << endl << endl << "Analysing unspliced alignments around junctions:" << endl;
+            junctionSystem.findFlankingAlignments(unsplicedFile, strandSpecific);
         }
+        
+        cout << endl << "Calculating unspliced alignment coverage around junctions..." << endl;
+        junctionSystem.calcCoverage(unsplicedFile, strandSpecific);
+        
+        // Calculate some stats
+        uint64_t totalAlignments = splicedCount + unsplicedCount;
+        double meanQueryLength = (double)sumQueryLengths / (double)totalAlignments;
+        junctionSystem.setQueryLengthStats(minQueryLength, meanQueryLength, maxQueryLength);
+        
+        cout << "Processed " << totalAlignments << " alignments." << endl
+             << " - Alignment query length statistics: min: " << minQueryLength << "; mean: " << meanQueryLength << "; max: " << maxQueryLength << ";" << endl
+             << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl
+             << " - Found " << unsplicedCount << " unspliced alignments." << endl << endl;
+        
+        cout << "Indexing:" << endl;
+        cout << " - unspliced alignments ... ";
+        BamReader indexReader;
+        if (!reader.Open(unsplicedFile)) {
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                    "Could not open bam reader for unspliced alignments file: ") + unsplicedFile));
+        }
+        // Sam header and refs info from the input bam
+        SamHeader unsplicedHeader = reader.GetHeader();
+        RefVector unsplicedRefs = reader.GetReferenceData();
 
-        cout << "Stage 4: Calculating unspliced alignment coverage around junctions:" << endl;
-        junctionSystem.calcCoverage(getUnsplicedBamFile(), strandSpecific);
-            
-        cout << "Stage 5: Calculating junction status flags:" << endl;
-        junctionSystem.calcJunctionStats();
+        // Opens the index for this BAM file
+        string unsplicedIndexFile = getAssociatedIndexFile(unsplicedFile);
+        if ( !reader.OpenIndex(unsplicedIndexFile) ) {            
+            if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
+                BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                        "Error creating BAM index for unspliced alignments file: ") + unsplicedIndexFile));
+            }            
+        }
+        reader.Close();
+        cout << "done." << endl;
+        cout << " - spliced alignments ... ";
+        cout.flush();
         
-        // Calculate all remaining metrics
-        cout << "Stage 6: Calculating remaining junction metrics:" << endl;
-        junctionSystem.calcAllRemainingMetrics();
+        if (!reader.Open(splicedFile)) {
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                    "Could not open bam reader for spliced alignments file: ") + splicedFile));
+        }
+        // Sam header and refs info from the input bam
+        SamHeader splicedHeader = reader.GetHeader();
+        RefVector splicedRefs = reader.GetReferenceData();
+
+        // Opens the index for this BAM file
+        string splicedIndexFile = getAssociatedIndexFile(splicedFile);
+        if ( !reader.OpenIndex(splicedIndexFile) ) {            
+            if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
+                BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                        "Error creating BAM index for spliced alignments file: ") + splicedIndexFile));
+            }            
+        }
+        reader.Close();
+        cout << "done." << endl;
         
-        cout << "Stage 7: Outputting junction information:" << endl;
+        cout << endl << "Saving junctions: " << endl;
         junctionSystem.saveAll(outputDir + "/" + outputPrefix);
     }
     

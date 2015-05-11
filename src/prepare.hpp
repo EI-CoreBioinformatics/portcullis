@@ -41,7 +41,9 @@ namespace po = boost::program_options;
 
 #include "bam_utils.hpp"
 #include "genome_mapper.hpp"
+#include "portcullis_fs.hpp"
 using portcullis::bamtools::BamUtils;
+using portcullis::PortcullisFS;
 
 
 namespace portcullis {
@@ -220,6 +222,7 @@ private:
     bool useLinks;
     uint16_t threads;
     bool verbose;
+    PortcullisFS fs;
 
     
 public:
@@ -390,7 +393,7 @@ protected:
             else {
                 
                 // Sort the BAM file by coordinate
-                string sortCmd = BamUtils::createSortBamCmd(unsortedBam, sortedBam, false, threads, "1G");
+                string sortCmd = BamUtils::createSortBamCmd(fs.GetSamtoolsExe(), unsortedBam, sortedBam, false, threads, "1G");
                 
                 if (verbose) {
                     cout << "Sorting BAM using command \"" << sortCmd << "\" ... ";
@@ -437,7 +440,7 @@ protected:
         else {
             
             // Create BAM index
-            string indexCmd = BamUtils::createIndexBamCmd(sortedBam);                
+            string indexCmd = BamUtils::createIndexBamCmd(fs.GetSamtoolsExe(), sortedBam);                
             
             if (verbose) {
                 cout << "Indexing BAM using command \"" << indexCmd << "\" ... ";
@@ -446,7 +449,7 @@ protected:
             
             int exitCode = system(indexCmd.c_str());                    
             
-             if (exitCode != 0 || !exists(output->getBamIndexFilePath())) {
+            if (exitCode != 0 || !exists(output->getBamIndexFilePath())) {
                     BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                             "Failed to successfully index: ") + sortedBam));
             }
@@ -517,6 +520,15 @@ public:
         }
         
     }
+        PortcullisFS getFs() const {
+            return fs;
+        }
+
+        void setFs(PortcullisFS fs) {
+            this->fs = fs;
+        }
+
+    
 
     bool outputDetails() {
         
@@ -560,7 +572,7 @@ public:
         return transformedBams;
     }
     
-    static int main(int argc, char *argv[]) {
+    static int main(int argc, char *argv[], PortcullisFS& fs) {
         
         // Portcullis args
         vector<string> bamFiles;
@@ -645,6 +657,7 @@ public:
 
         // Create the prepare class
         Prepare prep(outputDir, SSFromString(strandSpecific), force, useLinks, threads, verbose);
+        prep.setFs(fs);
 
         // Prep the input to produce a usable indexed and sorted bam plus, indexed
         // genome and queryable coverage information

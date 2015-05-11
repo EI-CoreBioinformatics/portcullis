@@ -24,12 +24,16 @@
 #include <boost/filesystem.hpp>
 
 #include <bam_utils.hpp>
+#include <portcullis_fs.hpp>
 
 using std::cout;
 using std::endl;
 
 using portcullis::bamtools::BamUtils;
+using portcullis::PortcullisFS;
 
+const string samtoolsExe = "../deps/samtools-1.2/samtools";
+        
 BOOST_AUTO_TEST_SUITE(bam_utils)
 
 BOOST_AUTO_TEST_CASE(merge) {
@@ -54,9 +58,9 @@ BOOST_AUTO_TEST_CASE(sort) {
     string unsortedBam = "resources/unsorted.bam";
     string sortedBam = "resources/sorted.test.bam";
     
-    string cmd = BamUtils::createSortBamCmd(unsortedBam, sortedBam);
+    string cmd = BamUtils::createSortBamCmd(samtoolsExe, unsortedBam, sortedBam);
     
-    string correct("samtools sort -@ 1 -m 1G resources/unsorted.bam resources/sorted.test.bam");
+    string correct("../deps/samtools-1.2/samtools sort -@ 1 -m 1G resources/unsorted.bam resources/sorted.test.bam");
     
     //cout << "cmd=" << cmd << endl;
     
@@ -105,8 +109,8 @@ BOOST_AUTO_TEST_CASE(minmalMatch1)
     
     //cout << mm << endl;
     
-    // Check the merged bam file exists
-    BOOST_CHECK(mm == 0);    
+    // Check the minimal match result
+    BOOST_CHECK(mm == 8);    
 }
 
 BOOST_AUTO_TEST_SUITE_END()

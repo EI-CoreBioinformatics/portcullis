@@ -263,10 +263,13 @@ public:
         diffAnchor = 0;
         entropy = 0;
         nbDistinctAnchors = 0;
+        nbJunctionAlignments = 0;
         nbDistinctAlignments = 0;
         nbReliableAlignments = 0;
         nbUpstreamFlankingAlignments = 0;
         nbDownstreamFlankingAlignments = 0;
+        leftAncSize = 0;
+        rightAncSize = 0;
         maxMMES = 0;
         hammingDistance5p = -1;
         hammingDistance3p = -1;
@@ -282,9 +285,62 @@ public:
         nbDownstreamJunctions = 0;
     }
     
+    /**
+     * Copy constructor
+     * @param j The other junction to deep copy into this
+     */
+    Junction(const Junction& j) : Junction(j, true) {}
+        
+    /**
+     * Copy constructor, with option to copy bam alignments associated with the junction
+     * @param j The other junction to deep copy into this
+     * @param withAlignments Whether to copy over the alignments or not
+     */
+    Junction(const Junction& j, bool withAlignments) {
+        intron = make_shared<Intron>(*(j.intron));        
+        leftFlankStart = j.leftFlankStart;
+        rightFlankEnd = j.rightFlankEnd;
+        canonicalSpliceSites = j.canonicalSpliceSites;
+        maxMinAnchor = j.maxMinAnchor;
+        diffAnchor = j.diffAnchor;
+        entropy = j.entropy;
+        nbDistinctAnchors = j.nbDistinctAnchors;
+        nbJunctionAlignments = j.nbJunctionAlignments;
+        nbDistinctAlignments = j.nbDistinctAlignments;
+        nbReliableAlignments = j.nbReliableAlignments;
+        leftAncSize = j.leftAncSize;
+        rightAncSize = j.rightAncSize;
+        nbUpstreamFlankingAlignments = j.nbUpstreamFlankingAlignments;
+        nbDownstreamFlankingAlignments = j.nbDownstreamFlankingAlignments;
+        maxMMES = j.maxMMES;
+        hammingDistance5p = j.hammingDistance5p;
+        hammingDistance3p = j.hammingDistance3p;
+        coverage = j.coverage;
+        uniqueJunction = j.uniqueJunction;
+        primaryJunction = j.primaryJunction;
+        multipleMappingScore = j.multipleMappingScore;
+        nbMismatches = j.nbMismatches;
+        nbMultipleSplicedReads = j.nbMultipleSplicedReads;
+        
+        predictedStrand = j.predictedStrand;
+        nbUpstreamJunctions = j.nbUpstreamJunctions;
+        nbDownstreamJunctions = j.nbDownstreamJunctions;
+        
+        if (withAlignments) {
+            
+            for(BamAlignment ba : j.junctionAlignments) {
+                this->junctionAlignments.push_back(ba);
+            }
+        }
+    }
+    
     // **** Destructor ****
     virtual ~Junction() {
-        
+        junctionAlignments.clear(); 
+    }
+    
+    void clearAlignments() {
+        junctionAlignments.clear();  
     }
     
    
@@ -366,7 +422,7 @@ public:
     }
         
     
-CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
+    CanonicalSS processJunctionWindow(GenomeMapper* genomeMapper) {
         
         if (intron == nullptr) 
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(

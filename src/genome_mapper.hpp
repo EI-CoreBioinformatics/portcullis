@@ -27,7 +27,9 @@ using std::string;
 #include <boost/exception/all.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 using boost::filesystem::exists;
+using boost::filesystem::path;
 using boost::timer::auto_cpu_timer;
 
 #include <htslib/faidx.h>
@@ -41,7 +43,7 @@ class GenomeMapper {
 private:
  
     // Path to the original genome file in fasta format
-    string genomeFile;
+    path genomeFile;
     
     // Handle to genome map.  Created by constructor.
     faidx_t* fastaIndex;
@@ -56,7 +58,7 @@ public:
      * uses Samtools to create a fasta index for the genome file and then
      * manages the data structure returned after loading the index.
      */
-    GenomeMapper(string _genomeFile) : 
+    GenomeMapper(path _genomeFile) : 
         genomeFile(_genomeFile) {
             fastaIndex = nullptr;
     }
@@ -70,8 +72,8 @@ public:
     }
     
     
-    string getFastaIndexFile() const {
-        return genomeFile + ".fai";
+    path getFastaIndexFile() const {
+        return path(genomeFile.parent_path()) /= path(genomeFile.leaf().string() + ".fai");
     }
     
     
@@ -84,7 +86,7 @@ public:
 
         if (faiRes != 0) {
             BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
-                    "Genome indexing failed: ") + genomeFile));
+                    "Genome indexing failed: ") + genomeFile.string()));
         }
     }
     
@@ -96,13 +98,13 @@ public:
         
         if (!exists(genomeFile)) {
            BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
-                    "Genome file does not exist: ") + genomeFile)); 
+                    "Genome file does not exist: ") + genomeFile.string())); 
         }
         
-        string fastaIndexFile = getFastaIndexFile();
+        path fastaIndexFile = getFastaIndexFile();
         if (!exists(fastaIndexFile)) {
            BOOST_THROW_EXCEPTION(GenomeMapperException() << GenomeMapperErrorInfo(string(
-                    "Genome index file does not exist: ") + fastaIndexFile)); 
+                    "Genome index file does not exist: ") + fastaIndexFile.string())); 
         }
         
         fastaIndex = fai_load(genomeFile.c_str());

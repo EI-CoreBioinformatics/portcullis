@@ -9,8 +9,8 @@ portcullis_CPPFLAGS =	-I$(top_srcdir)/deps/htslib-1.2.1 \
 			-I$(top_srcdir)/include \
 			-I$(top_srcdir)/src \
 			@AM_CPPFLAGS@  
-portcullis_LDFLAGS = -L$(top_srcdir)/deps/htslib-1.2.1 @AM_LDFLAGS@
-portcullis_LDADD = -lhts @AM_LIBS@
+portcullis_LDFLAGS = @AM_LDFLAGS@
+portcullis_LDADD = $(top_srcdir)/deps/htslib-1.2.1/libhts.a @AM_LIBS@
 portcullis_SOURCES =	bam_utils.hpp \
 			depth_parser.hpp \
 			genome_mapper.hpp \

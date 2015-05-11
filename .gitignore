@@ -31,3 +31,7 @@
 /CMakeLists.txt
 *.tar.gz
 /portcullis-0.3.0/
+callgrind*
+/.pydevproject
+*.cproject
+*.project
