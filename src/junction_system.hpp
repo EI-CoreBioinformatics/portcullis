@@ -102,7 +102,11 @@ public:
     JunctionSystem() {
         minQueryLength = 0;
         meanQueryLength = 0.0;
-        maxQueryLength = 0;         
+        maxQueryLength = 0;        
+    }
+    
+    JunctionSystem(RefVector refs) : JunctionSystem() {
+        this->refs = refs;
     }
     
     JunctionSystem(string junctionFile) : JunctionSystem() {

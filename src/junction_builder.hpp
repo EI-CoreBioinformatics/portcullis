@@ -226,18 +226,16 @@ public:
         uint64_t sumQueryLengths = 0;
         int32_t minQueryLength = 100000;
         int32_t maxQueryLength = 0;
-        cout << " - Processing alignments ... ";
-        cout.flush();
         
         bool start = true;
         
-        shared_ptr<JunctionSystem> tempJs = make_shared<JunctionSystem>(JunctionSystem());
+        shared_ptr<JunctionSystem> tempJs = make_shared<JunctionSystem>(JunctionSystem(refs));
         
         int32_t lastRefId = -1;
         
         while(reader.GetNextAlignment(al)) {
             
-            if (al.RefID != lastRefId) {
+            if (al.RefID != lastRefId && !start) {
                 
                 // Target sequence changed so calculate junction metrics for this sequence
                 cout << "Calculating metrics for Reference Sequence: " << refs[lastRefId].RefName << endl;
@@ -247,9 +245,11 @@ public:
                 junctionSystem.append(*tempJs);
                 
                 tempJs = make_shared<JunctionSystem>(JunctionSystem());
-                lastRefId = al.RefID;                
+                lastRefId = al.RefID;                           
             }
             
+            lastRefId = al.RefID;
+            start = false;     
             
             int32_t len = al.Length;
             minQueryLength = min(minQueryLength, len);
@@ -265,8 +265,6 @@ public:
                 unsplicedWriter.SaveAlignment(al);
                 unsplicedCount++;
             }
-            
-            start = false;
         }
         
         reader.Close();
