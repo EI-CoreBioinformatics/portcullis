@@ -69,8 +69,11 @@ namespace portcullis {
             path srcDir = path(rootDir);
             srcDir /= "src";
             
+            path testDir = path(rootDir);
+            testDir /= "tests";
+            
                 
-            if (exe.parent_path() == srcDir) {
+            if (exe.parent_path() == srcDir || exe.parent_path() == testDir) {
                 samtoolsExe = path(rootDir);
                 samtoolsExe /= "deps/samtools-1.2/samtools"; 
                 

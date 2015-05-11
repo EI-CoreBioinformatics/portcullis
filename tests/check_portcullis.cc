@@ -18,6 +18,7 @@
 #define BOOST_TEST_MAIN
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE PORTCULLIS
+#define BOOST_TEST_LOG_LEVEL all
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_log.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -26,6 +27,8 @@
 
 using namespace boost::unit_test;
 using namespace std;
+
+
 
 BOOST_AUTO_TEST_SUITE(master)
 

@@ -24,6 +24,9 @@ using std::string;
 using std::vector;
 using std::cout;
 
+#include <boost/filesystem/path.hpp>
+using boost::filesystem::path;
+
 #include <api/BamReader.h>
 using namespace BamTools;
 

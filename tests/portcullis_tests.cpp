@@ -25,7 +25,14 @@
 using boost::filesystem::remove_all;
 using boost::filesystem::create_directory;
 
+#include <prepare.hpp>
+#include <portcullis_fs.hpp>
 #include <junction_builder.hpp>
+using portcullis::Prepare;
+using portcullis::PortcullisFS;
+using portcullis::JunctionBuilder;
+
+const string samtoolsExe = "../deps/samtools-1.2/samtools";
 
 BOOST_AUTO_TEST_SUITE(interface)
 
@@ -43,16 +50,20 @@ BOOST_AUTO_TEST_CASE(test1)
     string juncdir = "resources/temp/junc";
     create_directory(juncdir);
     
+    path testexe = boost::filesystem::system_complete(path("check_portcullis"));
+    cout << testexe << endl;
+    PortcullisFS fs(testexe);
     
-    portcullis::Prepare prep(prepdir);
+    Prepare prep(prepdir);
+    prep.setFs(fs);
     prep.prepare(bams, "resources/artha_chr4.fa");
     prep.outputDetails(); // Outputs settings file
     
-    portcullis::JunctionBuilder jb(prepdir, juncdir, "test", 1, false, true);
-    jb.process();
-    
+    JunctionBuilder(prepdir, juncdir, "test", 1, false, true).process();
+    cout << "Here5" <<endl;
     remove_all(outdir);
     
+    cout << "Here6" <<endl;
     BOOST_CHECK(true);
 }
 
