@@ -354,7 +354,7 @@ int main(int argc, char *argv[]) {
         const int modeArgC = argc-1;
         char** modeArgV = argv+1;
         
-        PortcullisFS fs(boost::filesystem::system_complete(argv[0]));
+        PortcullisFS fs(argv[0]);
         
         cout << endl 
              << "Project filesystem" << endl 

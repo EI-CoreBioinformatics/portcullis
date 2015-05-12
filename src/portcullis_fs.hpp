@@ -19,8 +19,11 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
-using boost::filesystem::exists;
-using boost::filesystem::path;
+
+namespace fs = boost::filesystem;
+
+using fs::exists;
+using fs::path;
 
 namespace portcullis {
     
@@ -42,6 +45,19 @@ namespace portcullis {
         path etcDir;
         path rootDir;
         
+        
+        string exec(const char* cmd) {
+            FILE* pipe = popen(cmd, "r");
+            if (!pipe) return "ERROR";
+            char buffer[512];
+            string result = "";
+            while(!feof(pipe)) {
+                if(fgets(buffer, 512, pipe) != NULL)
+                        result += buffer;
+            }
+            pclose(pipe);
+            return result;
+        }
     
     public:
        
@@ -51,11 +67,41 @@ namespace portcullis {
          * 
          * @param exe Full path to the exe, probably derived from argv0.
          */
-        PortcullisFS(path exe) {
+        PortcullisFS(const char* argv) {
             
-            portcullisExe = exe;
+            path exe(argv);
             
-            rootDir = exe.parent_path().parent_path();
+            cout << exe << endl;
+            
+            if(exe.is_absolute()) {
+                
+                //cout << "Absolute" << endl;
+                
+                // Easy job... nothing special to do, resolve symlink then take two levels up
+                portcullisExe = fs::canonical(exe);
+                rootDir = portcullisExe.parent_path().parent_path();
+            }
+            else if (exe.string().find('/') != string::npos) {
+                
+                //cout << "Relative" << endl;
+                
+                // Relative with some parent paths... get absolute path, resolving symlinks then take two levels up
+                portcullisExe = fs::canonical(fs::system_complete(exe));
+                rootDir = portcullisExe.parent_path().parent_path();
+            }
+            else {
+
+                //cout << "name only" << endl;
+                
+                // Tricky one... just exe name, no indication of where if comes from. Now we have to resort to using which.
+                string cmd = string("which ") + exe.string();
+                string res = exec(cmd.c_str());
+                string fullpath = res.substr(0, res.length() - 1);
+
+                //cout << "fullpath" << fullpath << endl;
+                portcullisExe = fs::canonical(path(fullpath));
+                rootDir = portcullisExe.parent_path().parent_path();
+            }
             
             binDir = path(rootDir);
             binDir /= "bin";
@@ -73,7 +119,7 @@ namespace portcullis {
             testDir /= "tests";
             
                 
-            if (exe.parent_path() == srcDir || exe.parent_path() == testDir) {
+            if (portcullisExe.parent_path() == srcDir || portcullisExe.parent_path() == testDir) {
                 samtoolsExe = path(rootDir);
                 samtoolsExe /= "deps/samtools-1.2/samtools"; 
                 
