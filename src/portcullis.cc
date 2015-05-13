@@ -124,7 +124,7 @@ string helpHeader() {
                   " - junc    - Perform junction analysis on prepared data\n" +
                   " - filter  - Discard unlikely junctions and produce BAM containing alignments to genuine junctions\n" +
                   " - bamfilt - Filters a BAM to remove any reads associated with invalid junctions\n" + 
-                  " - full    - Runs prep, junc, filter as a complete pipeline\n" +
+                  " - full    - Runs prep, junc, filter and bamfilt as a complete pipeline\n" +
                   " - cluster - Clusters potential junctions to help distinguish real junctions for false\n\n" +
                   "\nAvailable options";
 }

@@ -12,6 +12,18 @@ Welcome to portcullis' documentation!
 The aim of portcullis is to create an RNAseq driven junction prediction tool.
 
 
+
+Contents:
+
+.. toctree::
+    :numbered:
+    :maxdepth: 2
+
+    installation
+    metrics
+
+
+
 .. _issues:
 Issues
 ======
@@ -27,19 +39,6 @@ Availability and License
 Open source code available on github: https://github.com/maplesond/portcullis.git
 
 Spectre is available under GNU GLP V3: http://www.gnu.org/licenses/gpl.txt
-
-
-
-Contents:
-
-.. toctree::
-    :numbered:
-    :maxdepth: 2
-
-    installation
-    metrics
-
-
 
 
 Indices and tables
