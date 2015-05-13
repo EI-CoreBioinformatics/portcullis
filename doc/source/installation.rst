@@ -35,7 +35,8 @@ it will be.
 
 Bamtools will be statically linked into portcullis and should require no further
 intervention at runtime, however boost and zlib will need to be on your LD_LIBRARY_PATH
-in order for portcullis to dynamically link them at runtime.
+or in one of the automatically searched lib directories in order for portcullis 
+to dynamically link them at runtime.
 
 
 Internal Dependencies

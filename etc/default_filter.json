@@ -1,33 +1,33 @@
 {
 	"parameters": {
-		"M2-nb_reads":{
+		"M2-nb_reads": {
 			"operator": "ge",
-			"value": 1000
+			"value": 10
 		},
-		"M15-coverage": {
-			"operator": "gt",
-			"value": 20
+                "M3-nb_dist_aln": {
+			"operator": "ge",
+			"value": 5
 		},
-		"M1-canonical_ss":{
-			"operator": "in",
-			"value": ["C"]
-		},
-		"M5-intron_size.1": {
-			"operator": "le",
-			"value": 1000
-		},
-		"M5-intron_size.2": {
-			"operator": "le",
-			"value": 10000
-		},
+                "M4-nb_rel_aln": {
+                        "operator": "ge",
+                        "value": 5
+                },
+                "M8-max_min_anc": {
+                        "operator": "ge",
+                        "value": 10
+                },
 		"M11-entropy": {
-			"operator": "gt",
-			"value": 2
+			"operator": "ge",
+			"value": 1.0
 		},
-		"refname": {
-			"operator": "not in",
-			"value": ["Chr1"]
-		}
+                "M13-hamming5p": {
+                        "operator": "ge",
+                        "value": 3
+                },
+                "M14-hamming3p": {
+                        "operator": "ge",
+                        "value": 3
+                }
 	},
-	"expression": "refname and M1-canonical_ss and M5-intron_size.2 and (M2-nb_reads or (M11-entropy and M15-coverage and M5-intron_size.1))"  
+	"expression": "M2-nb_reads and M3-nb_dist_aln and M4-nb_rel_aln and M8-max_min_anc and M11-entropy and M13-hamming5p and M14-hamming3p"  
 }

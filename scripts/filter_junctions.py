@@ -47,7 +47,7 @@ def to_json(handle, fieldnames, debug=False):
     for param in set(json_dict["parameters"]):
         parameter_name=param.split(".")[0]
         if json_dict["parameters"][param]["operator"] not in ("gt","ge","eq","lt","le", "in", "not in"):
-            print("Unrecognized operator: {0}".format(json_dict["parameters"][param]["operator"]),
+            print("Unrecognized operator for {1}: {0}".format(json_dict["parameters"][param]["operator"], param),
                   sys.stderr)
             sys.exit(1)
 
@@ -57,8 +57,10 @@ def to_json(handle, fieldnames, debug=False):
     
     diff=set.difference(parameter_names, set(fieldnames))
     if len(diff)>0:
-        print("Unrecognized operator: {0}".format(json_dict["parameters"][param]["operator"]),
+        print("Unrecognized parameters: {0}".format(",".join(list(diff))),
                 sys.stderr)
+        print("Fieldnames:\n\t{0}".format("\n\t".join(fieldnames)), file=sys.stderr)
+        print("Parameter names:\n\t{0}".format("\n\t".join(parameter_names)), file=sys.stderr)
         sys.exit(1)
     
     keys = list(filter(lambda x: x not in ("and","or"), re.findall("([^ ()]+)", json_dict["expression"])))
@@ -74,7 +76,7 @@ def to_json(handle, fieldnames, debug=False):
     json_dict["expression"]=newexpr
     newexpr=compile(newexpr, "<string>", "eval")
     if debug is True:
-        print(json.dump(json_dict), sys.stderr)
+        print(json.dumps(json_dict), file=sys.stderr)
     
     json_dict["compiled"]=newexpr
     

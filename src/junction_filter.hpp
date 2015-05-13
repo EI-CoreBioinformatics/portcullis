@@ -142,17 +142,18 @@ public:
         
         string tmpOutputTabFile = outputDir + "/tmp.tab";
         
-        string filterCmd = string("python ") + fs.GetFilterJuncsPy().c_str() +
+        string filterCmd = string("python3 ") + fs.GetFilterJuncsPy().c_str() +
                " --input " + junctionFile + 
                " --json " + filterFile +
                " --out " + tmpOutputTabFile;
         
         if (verbose) {
-            cout << "Running filter script: " << filterCmd << endl;
+            filterCmd += " --debug";
+        
+            cout << "Applying filter script: " << filterCmd << endl;
         }
         
-        cout << "Filtering junctions according to provided configuration file ... ";
-        cout.flush();
+        cout << "Filtering junctions..." << endl << endl;
                 
         int exitCode = system(filterCmd.c_str());                    
             
@@ -160,8 +161,6 @@ public:
                 BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
                         "Failed to successfully filter: ") + junctionFile));
         }
-        
-        cout << "done" << endl << endl;
         
         // Load junction system
         JunctionSystem originalJuncs(junctionFile);
@@ -171,7 +170,8 @@ public:
         
         uint32_t diff = originalJuncs.getJunctions().size() - filteredJunc.getJunctions().size();
         
-        cout << "Original junction file contained " << originalJuncs.getJunctions().size() << " junctions." << endl
+        cout << endl 
+             << "Original junction file contained " << originalJuncs.getJunctions().size() << " junctions." << endl
              << "Filtered out " << diff << " junctions." << endl 
              << filteredJunc.getJunctions().size() << " junctions remaining" << endl << endl
              << "Saving junctions in suitable file formats:" << endl;

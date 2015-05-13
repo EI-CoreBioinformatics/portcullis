@@ -1,0 +1,33 @@
+{
+	"parameters": {
+		"M2-nb_reads":{
+			"operator": "ge",
+			"value": 1000
+		},
+		"M15-coverage": {
+			"operator": "gt",
+			"value": 20
+		},
+		"M1-canonical_ss":{
+			"operator": "in",
+			"value": ["C"]
+		},
+		"M5-intron_size.1": {
+			"operator": "le",
+			"value": 1000
+		},
+		"M5-intron_size.2": {
+			"operator": "le",
+			"value": 10000
+		},
+		"M11-entropy": {
+			"operator": "gt",
+			"value": 2
+		},
+		"refname": {
+			"operator": "not in",
+			"value": ["Chr1"]
+		}
+	},
+	"expression": "refname and M1-canonical_ss and M5-intron_size.2 and (M2-nb_reads or (M11-entropy and M15-coverage and M5-intron_size.1))"  
+}
