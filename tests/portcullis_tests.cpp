@@ -50,9 +50,7 @@ BOOST_AUTO_TEST_CASE(test1)
     string juncdir = "resources/temp/junc";
     create_directory(juncdir);
     
-    path testexe = boost::filesystem::system_complete(path("check_portcullis"));
-    cout << testexe << endl;
-    PortcullisFS fs(testexe);
+    PortcullisFS fs("./check_portcullis");
     
     Prepare prep(prepdir);
     prep.setFs(fs);
@@ -60,10 +58,8 @@ BOOST_AUTO_TEST_CASE(test1)
     prep.outputDetails(); // Outputs settings file
     
     JunctionBuilder(prepdir, juncdir, "test", 1, false, true).process();
-    cout << "Here5" <<endl;
     remove_all(outdir);
     
-    cout << "Here6" <<endl;
     BOOST_CHECK(true);
 }
 

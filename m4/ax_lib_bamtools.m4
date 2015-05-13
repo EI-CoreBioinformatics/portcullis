@@ -36,20 +36,25 @@ AC_DEFUN([AX_LIB_BAMTOOLS],
 
     if test -f "${BAMTOOLS_HOME}/include/bamtools/api/BamReader.h" ; then
         BAMTOOLS_CPPFLAGS="-I${BAMTOOLS_HOME}/include/bamtools"
-        BAMTOOLS_LDFLAGS="-L${BAMTOOLS_HOME}/lib"
+        BAMTOOLS_LIBPATH="${BAMTOOLS_HOME}/lib"
+        BAMTOOLS_LDFLAGS="-L${BAMTOOLS_LIBPATH}"
     elif test -f "${BAMTOOLS_HOME}/include/api/BamReader.h" ; then
         BAMTOOLS_CPPFLAGS="-I${BAMTOOLS_HOME}/include"
-        BAMTOOLS_LDFLAGS="-L${BAMTOOLS_HOME}/lib"
+        BAMTOOLS_LIBPATH="${BAMTOOLS_HOME}/lib"
+        BAMTOOLS_LDFLAGS="-L${BAMTOOLS_LIBPATH}"
     elif test -f "${BAMTOOLS_HOME}/api/BamReader.h" ; then
         BAMTOOLS_CPPFLAGS="-I${BAMTOOLS_HOME}"
-        BAMTOOLS_LDFLAGS="-L${BAMTOOLS_HOME}"
+        BAMTOOLS_LIBPATH="${BAMTOOLS_HOME}"
+        BAMTOOLS_LDFLAGS="-L${BAMTOOLS_LIBPATH}"
     elif test -f "/usr/local/include/bamtools/api/BamReader.h" ; then
         BAMTOOLS_HOME="/usr/local"
         BAMTOOLS_CPPFLAGS="-I${BAMTOOLS_HOME}/include/bamtools"
-        BAMTOOLS_LDFLAGS="-L${BAMTOOLS_HOME}/lib"
+        BAMTOOLS_LIBPATH="${BAMTOOLS_HOME}/lib"
+        BAMTOOLS_LDFLAGS="-L${BAMTOOLS_LIBPATH}"
     else
         BAMTOOLS_HOME="/usr"
         BAMTOOLS_CPPFLAGS="-I${BAMTOOLS_HOME}/include/bamtools"
+        BAMTOOLS_LIBPATH=""        
         BAMTOOLS_LDFLAGS=""
     fi
 
@@ -80,6 +85,7 @@ AC_DEFUN([AX_LIB_BAMTOOLS],
         AC_LANG_POP(C++)
         
         BAMTOOLS_LIB="-lbamtools"
+        BAMTOOLS_STATIC_LIB="${BAMTOOLS_LIBPATH}/libbamtools.a"
         AC_DEFINE(HAVE_BAMTOOLS, [1], [define if the bamtools library is available])
 
         # Restore the previous environment variables if required

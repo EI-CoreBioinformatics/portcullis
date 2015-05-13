@@ -8,7 +8,7 @@ junctions by assuming any RNAseq alignment containing an 'N' cigar operation.  F
 all potential junctions portcullis makes a number of observations about how the
 reads align around the region.  The complete list of observations (or metrics) are
 described in this section.  Before we do that, here is a small glossary of terms
-that we will use throughout::
+that we will use throughout:
 
 * Splice junction - Splice junctions are points on a DNA sequence at which `superfluous' DNA is removed during the process of protein creation in higher organisms.  For the purposes of this tool a splice junction is essentially the same as an intron.
 * Splice site - A junction has both a 5' donor and 3' acceptor site, which mark the start and end of the junction.  Both donor and acceptor sites are 2bp long, and usually contain a canonical motif `GT*AG`, or its reverse complement on the negative strand.
