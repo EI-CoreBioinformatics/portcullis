@@ -104,9 +104,6 @@ protected:
 
         // Append junctions found in tempJs to this.
         junctionSystem.append(*js);
-
-        js.reset();        
-        js = make_shared<JunctionSystem>(refs);
     }
     
 
@@ -251,7 +248,8 @@ public:
         while(reader.GetNextAlignment(al)) {
             
             if (al.RefID != lastRefId && !start) {
-                updateJS(tempJs, lastRefId);                
+                updateJS(tempJs, lastRefId);
+                tempJs = make_shared<JunctionSystem>(refs);
             }
             
             lastRefId = al.RefID;
