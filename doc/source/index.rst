@@ -9,8 +9,17 @@ Welcome to portcullis' documentation!
 #.. image:: images/spectre.png
 #    :scale: 50%
 
-The aim of portcullis is to create an RNAseq driven junction prediction tool.
-
+Portcullis is designed to predict junctions from aligned RNA-seq data.  We expect
+the user to have already generated a BAM file using a splice aware aligner of their
+choice.  For example, Tophat, Gsnap, STAR or HISAT will work fine.  Portcullis
+will then analyse the BAM file to look for alignments containing gaps ('N' cigar ops)
+and create a detailed analysis of all distinct gaps found in the BAM file, these
+are considered as potential junctions.  Portcullis provides various means (both 
+manual and/or automatic) of filtering these potential junctions in order to remove 
+false positives.  Portcullis can also filter the original BAM file removing alignments 
+associated with `bad` junctions.  Both the filtered junctions and BAM files are cleaner
+and more usable resources which can more effectively be used to assist in downstream 
+analyses such as gene prediction and genome annotation.
 
 
 Contents:
@@ -20,8 +29,17 @@ Contents:
     :maxdepth: 2
 
     installation
+    using
     metrics
+    
 
+.. _system:
+System requirements
+===================
+
+Portcullis supports Unix, linux or Mac systems.  Windows may work but hasn't been
+tested.  A minimum of 8GB RAM, which will enable you to process small datasets.  
+Medium to large datasets will require more RAM, potentially a lot more!
 
 
 .. _issues:

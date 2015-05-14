@@ -653,6 +653,8 @@ public:
         nbUpstreamJunctions = 0;
         nbDownstreamJunctions = 0;
         
+        //cout << junctionAlignments.size() << endl;
+        
         for(BamAlignment ba : junctionAlignments) {
             
             int32_t start = ba.Position;

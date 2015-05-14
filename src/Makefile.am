@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS = subdir-objects
 # Create portculis binary
 bin_PROGRAMS = portcullis
 
-portcullis_CXXFLAGS = -g3 -O2 @AM_CXXFLAGS@
+portcullis_CXXFLAGS = -g3 -O3 @AM_CXXFLAGS@
 portcullis_CPPFLAGS =	-I$(top_srcdir)/deps/htslib-1.2.1 \
 			-I$(top_srcdir)/deps/samtools-1.2 \
 			-I$(top_srcdir)/include \
