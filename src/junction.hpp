@@ -432,7 +432,8 @@ public:
         
         // Just access the whole junction region
         int seqLen = -1;
-        string region(genomeMapper->fetchBases(intron->ref.Name.c_str(), leftFlankStart, rightFlankEnd, &seqLen));        
+        string region(genomeMapper->fetchBases(intron->ref.Name.c_str(), leftFlankStart, rightFlankEnd, &seqLen));
+        boost::to_upper(region);    // Removes any lowercase bases representing repeats
         if (seqLen == -1) 
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Can't find genomic region for junction")));
