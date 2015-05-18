@@ -93,6 +93,46 @@ v = venn3_unweighted([trueset, alignedset, filteredset], set_labels = (sys.argv[
 #c = venn3_circles([trueset, alignedset, filteredset], linestyle='dashed')
 #c[0].set_lw(1.0)
 #c[0].set_ls('dotted')
+
+# Work out the scores
+true_juncs = trueset.intersection(alignedset)
+false_juncs = alignedset.difference(trueset)
+true_positives = filteredset.intersection(true_juncs)
+false_positives = filteredset.intersection(false_juncs)
+unrecoverable_juncs = trueset.difference(alignedset)
+
+true_negatives = false_juncs.difference(filteredset)
+false_negatives = true_juncs.difference(filteredset)
+
+tp = len(true_positives)
+fp = len(false_positives)
+tn = len(true_negatives)
+fn = len(false_negatives)
+
+print "Total true junctions: " + str(len(trueset))
+print "Potential true junctions: " + str(len(true_juncs))
+print "Unrecoverable true junctions: " + str(len(unrecoverable_juncs))
+print "False junctions: " + str(len(false_juncs))
+
+print "True positives: " + str(tp)
+print "False positives: " + str(fp)
+print "True negatives: " + str(tn)
+print "False negatives: " + str(fn)
+
+sen = float(tp) / float(tp + fn)
+spc = float(tn) / float(tn + fp)
+prc = float(tp) / float(tp + fp)
+
+print "Sensitivity: " + str(sen)
+print "Specificity: " + str(spc)
+print "Precision:" + str(prc)
+
+acc = float(tp + tn) / float(tp + fp + tn + fn)
+f1 = float(2 * tp) / float(2 * tp + fp + fn)
+
+print "Accuracy: " + str(acc)
+print "F1 Score: " + str(f1)
+
 plt.title(sys.argv[4])
 plt.savefig(sys.argv[4])
 
