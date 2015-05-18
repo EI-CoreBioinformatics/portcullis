@@ -35,3 +35,4 @@ callgrind*
 /.pydevproject
 *.cproject
 *.project
+/portcullis-0.*/

@@ -26,10 +26,10 @@ HTSDIR = ../htslib-1.2.1
 
 CC       = gcc
 #CPPFLAGS = @AM_CPPFLAGS@ $(DFLAGS) $(INCLUDES)
-CPPFLAGS = $(DFLAGS) $(INCLUDES)
+CPPFLAGS = @ZLIB_CPPFLAGS@ $(DFLAGS) $(INCLUDES)
 CFLAGS   = -g -Wall -O2
-LDFLAGS  = #@AM_LDFLAGS@
-LDLIBS   =
+LDFLAGS  = @ZLIB_LDFLAGS@ #@AM_LDFLAGS@
+LDLIBS   = @ZLIB_LIB@
 DFLAGS=     -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -D_CURSES_LIB=0
 LOBJS=      bam_aux.o bam.o bam_import.o sam.o \
             sam_header.o bam_plbuf.o
