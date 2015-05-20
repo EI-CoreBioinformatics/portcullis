@@ -237,7 +237,7 @@ public:
         
         while(reader.GetNextAlignment(al)) {
             
-            while (!junctionSystem->getJunctions()->empty() && 
+            while (!junctionSystem.getJunctions()->empty() && 
                     al.Position > junctionSystem.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end) {
                 JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);
             
@@ -272,7 +272,7 @@ public:
             }
         }
         
-        while (!junctionSystem->getJunctions()->empty() && lastCalculatedJunctionIndex < junctionSystem->getJunctions()->size()) {
+        while (!junctionSystem.getJunctions()->empty() && lastCalculatedJunctionIndex < junctionSystem.getJunctions()->size()) {
             
             JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);
             j->calcMetrics(splicedAlignmentMap);

@@ -190,7 +190,7 @@ public:
     
     static bool isMultiplySplicedRead(BamAlignment& ba) {
         
-        return getNbJunctionsInRead() > 1;
+        return getNbJunctionsInRead(ba) > 1;
     }
     
     static uint16_t calcMinimalMatchInCigarDataSubset(BamAlignment& ba, int32_t start, int32_t end) {

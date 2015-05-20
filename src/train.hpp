@@ -177,7 +177,7 @@ public:
         uint32_t no = 0;
         uint32_t yes = 0;
         
-        for(JunctionPtr j : js.getJunctions()) {
+        for(JunctionPtr j : *(js.getJunctions()) {
             sample_type m(6);
         
             // Calculate the metrics and add them into the vector

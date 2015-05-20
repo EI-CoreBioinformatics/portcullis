@@ -117,8 +117,8 @@ public:
         junctionList.clear();
     }
     
-    JunctionList getJunctions() {
-        return junctionList;
+    shared_ptr<JunctionList> getJunctions() {
+        return make_shared<JunctionList>(junctionList);
     }
     
     size_t size() {
