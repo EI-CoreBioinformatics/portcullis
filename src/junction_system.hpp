@@ -60,7 +60,6 @@ private:
     int32_t maxQueryLength;
     
     RefVector refs;
-    SplicedAlignmentMap splicedAlignmentMap;
     
     
     size_t createJunctionGroup(size_t index, vector<JunctionPtr>& group) {
@@ -116,7 +115,6 @@ public:
     virtual ~JunctionSystem() {
         distinctJunctions.clear();     
         junctionList.clear();
-        splicedAlignmentMap.clear();
     }
     
     JunctionList getJunctions() {
@@ -160,6 +158,7 @@ public:
     void setRefs(RefVector refs) {
         this->refs = refs;
     }
+    
     
     bool addJunction(JunctionPtr j) {
      
@@ -269,13 +268,6 @@ public:
                 
                 // Ignore any other op types not already covered
             }
-        }
-        
-        // Record alignment name in map
-        if (foundJunction) {            
-            
-            string name = BamUtils::deriveName(al);
-            splicedAlignmentMap[name]++;
         }
         
         return foundJunction;        
@@ -458,53 +450,6 @@ public:
         }
     }
     
-    
-    
-    /**
-     * Call this method to recalculate all junction metrics based on the current location
-     * and alignment information present in this junction
-     */
-    void calcAllRemainingMetrics() {
-        calcAllRemainingMetrics(false);
-    }
-    
-    /**
-     * Call this method to recalculate all junction metrics based on the current location
-     * and alignment information present in this junction
-     */
-    void calcAllRemainingMetrics(bool verbose) {
-       
-        if (verbose) {
-            auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n"); 
-
-            cout << " - Calculating ... ";
-            cout.flush();
-        }
-        
-        for(JunctionPtr j : junctionList) {
-            j->calcAllRemainingMetrics(splicedAlignmentMap);
-        }
-        
-        if (verbose) {
-            cout << "done." << endl;
-        }
-    }
-    
-    void calculateMetrics(path genomeFile, path unsplicedBamFile, StrandSpecific strandSpecific, bool verbose) {
-        
-        // Acquires donor / acceptor info from indexed genome file
-        //cout << "Stage 1: Scanning reference sequences:" << endl;
-        GenomeMapper gmap(genomeFile);
-        gmap.loadFastaIndex();
-        scanReference(&gmap, refs, verbose);
-           
-        //cout << "Stage 2: Calculating junction status flags:" << endl;
-        calcJunctionStats(verbose);
-        
-        // Calculate all remaining metrics
-        //cout << "Stage 4: Calculating remaining junction metrics:" << endl;
-        calcAllRemainingMetrics(verbose);
-    }
     
     void saveAll(string outputPrefix) {
         

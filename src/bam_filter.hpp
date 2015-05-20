@@ -48,6 +48,41 @@ namespace portcullis {
 typedef boost::error_info<struct BamFilterError,string> BamFilterErrorInfo;
 struct BamFilterException: virtual boost::exception, virtual std::exception { };
 
+enum ClipMode {
+    HARD,
+    SOFT,
+    COMPLETE
+};
+
+static string clipToString(ClipMode cm) {
+    
+    switch(cm) {
+        case HARD:
+            return "HARD";
+        case SOFT:
+            return "SOFT";
+        case COMPLETE:
+            return "COMPLETE";
+    }
+
+    return "COMPLETE";
+}
+
+static ClipMode stringToClip(string cm) {
+    
+    if (boost::iequals(cm, "HARD")) {
+        return HARD;
+    }
+    else if (boost::iequals(cm, "SOFT")) {
+        return SOFT;
+    }
+    else if (boost::iequals(cm, "COMPLETE")) {
+        return COMPLETE;
+    }
+    
+    BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
+                    "Unrecognised clip mode: ") + cm));
+}
 
 class BamFilter {
 
@@ -57,6 +92,7 @@ private:
     string bamFile;
     string outputBam;
     StrandSpecific strandSpecific;
+    ClipMode clipMode;
     bool verbose;
     
 public:
@@ -67,6 +103,7 @@ public:
         outputBam = _outputBam;
         verbose = _verbose;
         strandSpecific = StrandSpecific::UNSTRANDED;
+        clipMode = ClipMode::HARD;
         
         // Test if provided genome exists
         if (!exists(junctionFile)) {
@@ -84,6 +121,83 @@ public:
     virtual ~BamFilter() {
     }
     
+    
+protected:
+    
+    /**
+     * Checks a given alignment to see if it exists in the given junction system
+     * @param al Alignment to check
+     * @param refs References
+     * @param js The junction system containing good junctions to keep
+     * @return Whether or not the alignment contains a junction found in the junction system
+     */
+    bool containsJunctionInSystem(BamAlignment& al, RefVector& refs, JunctionSystem& js) {
+        
+        int32_t refId = al.RefID;
+        string refName = refs[refId].RefName;
+        int32_t refLength = refs[refId].RefLength;
+        int32_t lStart = al.Position;        
+        int32_t lEnd = lStart;
+        int32_t rStart = lStart;
+        int32_t rEnd = lStart;
+
+        for(size_t i = 0; i < al.CigarData.size(); i++) {
+
+            CigarOp op = al.CigarData[i];
+            if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
+                rStart = lEnd + op.Length;
+                
+                // Create the intron
+                shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
+                    strandFromBool(al.IsReverseStrand())));                        
+
+                if (js.getJunction(*location) != nullptr) {
+                    // Break out of the loop leaving write set to true
+                    return true;
+                }                    
+            }
+            else if (BamUtils::opFollowsReference(op.Type)) {
+                lEnd += op.Length;                
+            }
+        }
+        
+        return false;
+    }
+    
+    shared_ptr<BamAlignment> clipMSR(BamAlignment& al, RefVector& refs, JunctionSystem& js) {
+        
+        int32_t refId = al.RefID;
+        string refName = refs[refId].RefName;
+        int32_t refLength = refs[refId].RefLength;
+        int32_t lStart = al.Position;        
+        int32_t lEnd = lStart;
+        int32_t rStart = lStart;
+        int32_t rEnd = lStart;
+        
+        shared_ptr<BamAlignment> modifiedAlignment = make_shared<BamAlignment>(al);
+
+        for(size_t i = 0; i < modifiedAlignment->CigarData.size(); i++) {
+
+            CigarOp op = al.CigarData[i];
+            if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
+                rStart = lEnd + op.Length;
+                
+                // Create the intron
+                shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
+                    strandFromBool(modifiedAlignment->IsReverseStrand())));                        
+
+                if (js.getJunction(*location) != nullptr) {
+                    // Break out of the loop leaving write set to true
+                    return true;
+                }                    
+            }
+            else if (BamUtils::opFollowsReference(op.Type)) {
+                lEnd += op.Length;                
+            }
+        }
+        
+        return modifiedAlignment;
+    }
        
 
 public:
@@ -119,6 +233,15 @@ public:
     void setStrandSpecific(StrandSpecific strandSpecific) {
         this->strandSpecific = strandSpecific;
     }
+    
+    ClipMode getClipMode() const {
+        return clipMode;
+    }
+
+    void setClipMode(ClipMode clipMode) {
+        this->clipMode = clipMode;
+    }
+
 
     
     void filter() {
@@ -139,7 +262,7 @@ public:
         BamReader reader;
         
         if (!reader.Open(bamFile)) {
-            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+            BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
                     "Could not open BAM reader for input: ") + bamFile));
         }
         
@@ -155,7 +278,7 @@ public:
         
         // Opens the index for this BAM file
         if ( !reader.OpenIndex(indexFile) ) {            
-            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+            BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
                     "Could not open index for BAM: ") + indexFile));             
         }
         
@@ -164,7 +287,7 @@ public:
         BamWriter writer;
         
         if (!writer.Open(outputBam, header, refs)) {
-            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+            BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
                     "Could not open BAM writer for non-spliced file: ") + outputBam));
         }
 
@@ -173,8 +296,8 @@ public:
         BamAlignment al;
         uint64_t nbReadsIn = 0;
         uint64_t nbReadsOut = 0;
+        uint64_t nbReadsModifiedOut = 0;
         uint32_t nbJunctionsFound = 0;
-        uint32_t nbSkipRefsFound = 0;
         
         while(reader.GetNextAlignment(al)) {
             
@@ -183,45 +306,26 @@ public:
                 
             if (BamUtils::isSplicedRead(al)) {
                 
-                int32_t refId = al.RefID;
-                string refName = refs[refId].RefName;
-                int32_t refLength = refs[refId].RefLength;
-                int32_t lStart = al.Position;        
-                int32_t lEnd = lStart;
-                int32_t rStart = lStart;
-                int32_t rEnd = lStart;
+                // If we are in complete clip mode, or this is a single spliced read, then keep the alignment
+                // if its junction is found in the junctions system, otherwise discard it
+                if (clipMode == COMPLETE || !BamUtils::isMultiplySplicedRead(al)) {
+                    if (containsJunctionInSystem(al, refs, js)) {
+                        writer.SaveAlignment(al);
+                        nbReadsOut++;
+                    }
+                }
+                // Else we are in HARD or SOFT clip mode and this is an MSR
+                else {
+                    shared_ptr<BamAlignment> clipped = clipMSR(al, clipMode);
+                    writer.SaveAlignment(*clipped);
+                    nbReadsModifiedOut++;
+                }
                 
-                for(size_t i = 0; i < al.CigarData.size(); i++) {
-            
-                    CigarOp op = al.CigarData[i];
-                    if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
-                        rStart = lEnd + op.Length;
-                        nbSkipRefsFound++;
-                        
-                        // Create the intron
-                        shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
-                            //strandSpecific ? strandFromBool(al.IsReverseStrand()) : UNKNOWN));
-                                UNKNOWN));
-                        
-                        if (js.getJunction(*location) != nullptr) {
-                            // Break out of the loop leaving write set to true
-                            write = true;
-                            break;
-                        }
-                    }
-                    else if (BamUtils::opFollowsReference(op.Type)) {
-                        lEnd += op.Length;                
-                    }
-                }                
             }
-            else {
-                write = true;
-            }            
-            
-            if (write) {
+            else {  // Unspliced read so add it to the output
                 writer.SaveAlignment(al);
                 nbReadsOut++;
-            }
+            }            
         }
         
         reader.Close();
@@ -247,6 +351,7 @@ public:
         string bamFile;
         string output;
         string strandSpecific;
+        string clipMode;
         bool verbose;
         bool help;
         
@@ -257,6 +362,8 @@ public:
                     "Output BAM file generated by this program.")
                 ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(SSToString(StrandSpecific::UNSTRANDED)), 
                     "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unstranded\"")
+                ("clip_mode,c", po::value<string>(&clipMode)->default_value(clipToString(ClipMode::HARD)), 
+                    "How to clip reads associated with bad junctions: \"HARD\" (Hard clip reads at junction boundary - suitable for cufflinks); \"SOFT\" (Soft clip reads at junction boundaries); \"COMPLETE\" (Remove reads associated exclusively with bad junctions, MSRs covering both good and bad junctions are kept)  Default: \"HARD\"")
                 ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                     "Print extra information")
                 ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -301,6 +408,7 @@ public:
         // Create the prepare class
         BamFilter filter(junctionFile, bamFile, output, verbose);
         filter.setStrandSpecific(SSFromString(strandSpecific));
+        filter.setClipMode(clipFromString(clipMode));
         filter.filter();
         
         return 0;

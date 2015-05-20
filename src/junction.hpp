@@ -497,18 +497,16 @@ public:
         this->setFlankingAlignmentCounts(nbLeftFlankingAlignments, nbRightFlankingAlignments);
     }
     
-    /**
-     * Call this method to recalculate all junction metrics based on the current location
-     * and alignment information present in this junction
-     */
-    void calcAllRemainingMetrics(SplicedAlignmentMap& map) {
-       
+    
+    void calcMetrics(SplicedAlignmentMap& map) {
+        
         calcAnchorStats();      // Metrics 5 and 7
         calcEntropy();          // Metric 6
         calcAlignmentStats();   // Metrics 8, 9 and 19
         calcMaxMMES();          // Metric 12
-        calcMultipleMappingScore(map); // Metric 18
+        calcMultipleMappingScore(map); // Metric 18        
     }
+    
     
     /**
      * Metric 5 and 7: Diff Anchor and # Distinct Anchors

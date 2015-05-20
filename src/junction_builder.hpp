@@ -79,6 +79,8 @@ private:
     
     // The set of distinct junctions found in the BAM file
     JunctionSystem junctionSystem;
+    SplicedAlignmentMap splicedAlignmentMap;
+    
     
 
 protected:
@@ -94,18 +96,7 @@ protected:
     string getAssociatedIndexFile(string bamFile) {
         return string(bamFile) + ".bti";
     }
-    
-    void updateJS(shared_ptr<JunctionSystem> js, int32_t lastRefId) {
         
-        cout << " - " << refs[lastRefId].RefName << endl;
-        
-        // Target sequence changed so calculate junction metrics for this sequence
-        js->calculateMetrics(prepData->getGenomeFilePath(), getUnsplicedBamFile(), strandSpecific, verbose);
-
-        // Append junctions found in tempJs to this.
-        junctionSystem.append(*js);
-    }
-    
 
 public:
 
@@ -167,6 +158,8 @@ public:
     
     virtual ~JunctionBuilder() {
 
+        splicedAlignmentMap.clear();
+        
         if (prepData != nullptr) {
             delete prepData;
         }        
@@ -237,23 +230,27 @@ public:
         int32_t minQueryLength = 100000;
         int32_t maxQueryLength = 0;
         
-        bool start = true;
-        
-        shared_ptr<JunctionSystem> tempJs(make_shared<JunctionSystem>(refs));
-        
         int32_t lastRefId = -1;
+        int32_t lastCalculatedJunctionIndex = 0;
         
         cout << endl << "Processing alignments and calculating metrics for reference sequence: " << endl;
         
         while(reader.GetNextAlignment(al)) {
             
-            if (al.RefID != lastRefId && !start) {
-                updateJS(tempJs, lastRefId);
-                tempJs = make_shared<JunctionSystem>(refs);
+            while (!junctionSystem->getJunctions()->empty() && 
+                    al.Position > junctionSystem.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end) {
+                JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);
+            
+                j->calcMetrics(splicedAlignmentMap);
+                j->clearAlignments();
+                lastCalculatedJunctionIndex++;
+            }
+            
+            if (al.RefID != lastRefId) {
+                cout << " - " << refs[lastRefId].RefName << endl;
             }
             
             lastRefId = al.RefID;
-            start = false;     
             
             int32_t len = al.Length;
             minQueryLength = min(minQueryLength, len);
@@ -261,9 +258,13 @@ public:
             
             sumQueryLengths += len;
             
-            if (tempJs->addJunctions(al, false)) {//strandSpecific)) {
+            if (junctionSystem.addJunctions(al, false)) {//strandSpecific)) {
                 splicedWriter.SaveAlignment(al);
-                splicedCount++;                
+                splicedCount++;
+                
+                // Record alignment name in map
+                string name = BamUtils::deriveName(al);
+                splicedAlignmentMap[name]++;
             }
             else {
                 unsplicedWriter.SaveAlignment(al);
@@ -271,12 +272,26 @@ public:
             }
         }
         
-        // Update the last set of junctions
-        updateJS(tempJs, lastRefId);
+        while (!junctionSystem->getJunctions()->empty() && lastCalculatedJunctionIndex < junctionSystem->getJunctions()->size()) {
+            
+            JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);
+            j->calcMetrics(splicedAlignmentMap);
+            j->clearAlignments();
+            lastCalculatedJunctionIndex++;
+        }
         
         reader.Close();
         unsplicedWriter.Close();
         splicedWriter.Close();
+        
+        
+        cout << endl << "Calculating metrics that require analysis of reference genome..." << endl;
+        GenomeMapper gmap(prepData->getGenomeFilePath());
+        gmap.loadFastaIndex();
+        junctionSystem.scanReference(&gmap, refs, verbose);
+        
+        cout << endl << "Grouping junctions..." << endl;
+        junctionSystem.calcJunctionStats();
         
         if (fast) {
             //cout << "skipped due to user request to run in fast mode" << endl << endl;
