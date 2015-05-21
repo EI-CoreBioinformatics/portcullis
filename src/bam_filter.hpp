@@ -26,6 +26,8 @@ using std::ifstream;
 using std::string;
 using std::vector;
 
+#include <api/BamAlignment.h>
+
 #include <boost/exception/all.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
@@ -93,6 +95,7 @@ private:
     string outputBam;
     StrandSpecific strandSpecific;
     ClipMode clipMode;
+    bool saveMSRs;
     bool verbose;
     
 public:
@@ -104,6 +107,7 @@ public:
         verbose = _verbose;
         strandSpecific = StrandSpecific::UNSTRANDED;
         clipMode = ClipMode::HARD;
+        saveMSRs = false;
         
         // Test if provided genome exists
         if (!exists(junctionFile)) {
@@ -164,7 +168,7 @@ protected:
         return false;
     }
     
-    shared_ptr<BamAlignment> clipMSR(BamAlignment& al, RefVector& refs, JunctionSystem& js) {
+    shared_ptr<BamAlignment> clipMSR(BamAlignment& al, RefVector& refs, JunctionSystem& js, bool& allBad) {
         
         int32_t refId = al.RefID;
         string refName = refs[refId].RefName;
@@ -173,11 +177,16 @@ protected:
         int32_t lEnd = lStart;
         int32_t rStart = lStart;
         int32_t rEnd = lStart;
+        size_t opStart = 0;
+        bool lastGood = false;
+        bool ab = true;
         
         shared_ptr<BamAlignment> modifiedAlignment = make_shared<BamAlignment>(al);
-        vector<CigarOp> active;
+        const char modOp = clipMode == ClipMode::HARD ? Constants::BAM_CIGAR_HARDCLIP_CHAR :
+            clipMode == clipMode == ClipMode::SOFT ? Constants::BAM_CIGAR_SOFTCLIP_CHAR : 
+                Constants::BAM_CIGAR_DEL_CHAR;
 
-        for(size_t i = 0; i < modifiedAlignment->CigarData.size(); i++) {
+        for(size_t i = 0; i < al.CigarData.size(); i++) {
 
             CigarOp op = al.CigarData[i];
             
@@ -190,15 +199,34 @@ protected:
 
                 if (js.getJunction(*location) != nullptr) {
                     // Found a good junction, so region from start should be left as is, reset start to after junction
-                    //lStart
+                    ab = false;
+                    lastGood = true;
+                }
+                else {
+                    if (lastGood) {
+                        opStart = i;
+                    }
                     
-                }                     
+                    for(size_t j = opStart; j < i; j++) {
+                        modifiedAlignment->CigarData[j] = CigarOp(modOp, al.CigarData[j].Length);
+                    }
+                    lastGood = false;
+                }
+                
+                opStart = i+1;
             }
             else if (BamUtils::opFollowsReference(op.Type)) {
                 lEnd += op.Length;                
             }
         }
         
+        if (!lastGood) {
+            for(size_t j = opStart; j < al.CigarData.size(); j++) {
+                modifiedAlignment->CigarData[j] = CigarOp(modOp, al.CigarData[j].Length);
+            }
+        }
+        
+        allBad = ab;
         return modifiedAlignment;
     }
        
@@ -244,6 +272,15 @@ public:
     void setClipMode(ClipMode clipMode) {
         this->clipMode = clipMode;
     }
+    
+    bool isSaveMSRs() const {
+        return saveMSRs;
+    }
+
+    void setSaveMSRs(bool saveMSRs) {
+        this->saveMSRs = saveMSRs;
+    }
+
 
 
     
@@ -291,10 +328,28 @@ public:
         
         if (!writer.Open(outputBam, header, refs)) {
             BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
-                    "Could not open BAM writer for non-spliced file: ") + outputBam));
+                    "Could not open BAM writer for output file: ") + outputBam));
         }
-
+        
         cout << " - Saving filtered alignments to: " << outputBam << endl;
+        
+        BamWriter mod;
+        BamWriter unmod;
+        
+        if (saveMSRs) {
+        
+            if (!mod.Open(outputBam + ".mod.bam", header, refs)) {
+                BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
+                        "Could not open BAM writer for modified MSRs output file: ") + outputBam + ".mod.bam"));
+            }
+            
+            if (!unmod.Open(outputBam + ".unmod.bam", header, refs)) {
+                BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
+                        "Could not open BAM writer for unmodified MSRs output file: ") + outputBam + ".unmod.bam"));
+            }
+
+            cout << " - Saving modified MSRs to: " << outputBam << ".mod.bam" << endl;
+        }
         
         BamAlignment al;
         uint64_t nbReadsIn = 0;
@@ -319,9 +374,17 @@ public:
                 }
                 // Else we are in HARD or SOFT clip mode and this is an MSR
                 else {
-                    shared_ptr<BamAlignment> clipped = clipMSR(al, refs, js);
-                    writer.SaveAlignment(*clipped);
-                    nbReadsModifiedOut++;
+                    bool allBad = false;
+                    shared_ptr<BamAlignment> clipped = clipMSR(al, refs, js, allBad);
+                    if (!allBad) {
+                        writer.SaveAlignment(*clipped);
+                        if (saveMSRs) {
+                            mod.SaveAlignment(*clipped);
+                            unmod.SaveAlignment(al);
+                        }
+                        nbReadsModifiedOut++;
+                        nbReadsOut++;
+                    }
                 }
                 
             }
@@ -333,11 +396,17 @@ public:
         
         reader.Close();
         writer.Close();
+        
+        if (saveMSRs) {
+            mod.Close();
+            unmod.Close();
+        }
+        
         cout << "done." << endl;
         
         uint32_t diff = nbReadsIn - nbReadsOut;
         
-        cout << "Filtered out " << diff << " alignments.  In: " << nbReadsIn << "; Out: " << nbReadsOut << ";" << endl << endl;        
+        cout << "Filtered out " << diff << " alignments.  In: " << nbReadsIn << "; Out: " << nbReadsOut << " (Modified: " << nbReadsModifiedOut << ");" << endl << endl;        
     }
   
     static string helpMessage() {
@@ -355,6 +424,7 @@ public:
         string output;
         string strandSpecific;
         string clipMode;
+        bool saveMSRs; 
         bool verbose;
         bool help;
         
@@ -367,6 +437,8 @@ public:
                     "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unstranded\"")
                 ("clip_mode,c", po::value<string>(&clipMode)->default_value(clipToString(ClipMode::HARD)), 
                     "How to clip reads associated with bad junctions: \"HARD\" (Hard clip reads at junction boundary - suitable for cufflinks); \"SOFT\" (Soft clip reads at junction boundaries); \"COMPLETE\" (Remove reads associated exclusively with bad junctions, MSRs covering both good and bad junctions are kept)  Default: \"HARD\"")
+                ("save_msrs,m", po::bool_switch(&saveMSRs)->default_value(false), 
+                    "Whether or not to output modified MSRs to a separate file.  If true will output to a file with name specified by output with \".msr.bam\" extension")
                 ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                     "Print extra information")
                 ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -412,6 +484,7 @@ public:
         BamFilter filter(junctionFile, bamFile, output, verbose);
         filter.setStrandSpecific(SSFromString(strandSpecific));
         filter.setClipMode(clipFromString(clipMode));
+        filter.setSaveMSRs(saveMSRs);
         filter.filter();
         
         return 0;

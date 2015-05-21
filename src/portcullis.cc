@@ -60,8 +60,6 @@ using portcullis::Train;
 using portcullis::Test;
 using portcullis::PortcullisFS;
 
-#include "train.hpp"
-
 typedef boost::error_info<struct PortcullisError,string> PortcullisErrorInfo;
 struct PortcullisException: virtual boost::exception, virtual std::exception { };
 

@@ -9,6 +9,7 @@ check_portcullis_CPPFLAGS = -I$(top_srcdir)/deps/htslib-1.2.1 -I$(top_srcdir)/de
 check_portcullis_LDFLAGS = -L$(top_srcdir)/src @AM_LDFLAGS@
 check_portcullis_LDADD = $(top_srcdir)/deps/htslib-1.2.1/libhts.a @AM_LIBS@ -lboost_unit_test_framework 
 check_portcullis_SOURCES =  bam_utils_tests.cpp \
+			    bam_filter_tests.cpp \
 			    seq_utils_tests.cpp \
 			    intron_tests.cpp \
 			    junction_tests.cpp \
