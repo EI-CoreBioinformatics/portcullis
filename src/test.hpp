@@ -77,7 +77,7 @@ public:
         // Load junction system
         JunctionSystem js(junctionFile);
         
-        cout << " - Loaded " << js.getJunctions().size() << " samples to test" << endl;
+        cout << " - Loaded " << js.size() << " samples to test" << endl;
         
         // Load one-class SVM decision function
         typedef matrix<double,0,1> sample_type;
@@ -95,7 +95,7 @@ public:
         JunctionSystem good;
         JunctionSystem bad;
         
-        for(JunctionPtr j : js.getJunctions()) {
+        for(JunctionPtr j : *(js.getJunctions())) {
             sample_type m(6);
         
             // Calculate the metrics and add them into the vector
@@ -115,8 +115,8 @@ public:
             
         }
         
-        cout << "Found " << bad.getJunctions().size() << " bad junctions to discard" << endl;
-        cout << "Found " << good.getJunctions().size() << " good junctions to keep" << endl;
+        cout << "Found " << bad.size() << " bad junctions to discard" << endl;
+        cout << "Found " << good.size() << " good junctions to keep" << endl;
         
         // Print junction stats to file
         string goodFile = resultsFile + ".good";

@@ -122,6 +122,9 @@ public:
     }
     
     size_t size() {
+        
+        assert(distinctJunctions.size() == junctionList.size());
+        
         return distinctJunctions.size();
     }
     
@@ -175,7 +178,7 @@ public:
      */
     void append(JunctionSystem& other) {
         
-        for(JunctionPtr j : other.getJunctions()) {
+        for(JunctionPtr j : *(other.getJunctions())) {
             this->addJunction(j);
         }
     }
@@ -411,6 +414,17 @@ public:
         }
         
         cout << "done." << endl;
+    }
+    
+    void calcMultipleMappingStats(SplicedAlignmentMap& map) {
+        calcMultipleMappingStats(map, false);
+    }
+    
+    void calcMultipleMappingStats(SplicedAlignmentMap& map, bool verbose) {
+        
+        for(JunctionPtr j : junctionList) {
+            j->calcMultipleMappingScore(map);
+        }        
     }
     
     void calcJunctionStats() {

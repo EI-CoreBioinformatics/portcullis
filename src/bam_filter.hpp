@@ -68,7 +68,7 @@ static string clipToString(ClipMode cm) {
     return "COMPLETE";
 }
 
-static ClipMode stringToClip(string cm) {
+static ClipMode clipFromString(string cm) {
     
     if (boost::iequals(cm, "HARD")) {
         return HARD;
@@ -175,10 +175,12 @@ protected:
         int32_t rEnd = lStart;
         
         shared_ptr<BamAlignment> modifiedAlignment = make_shared<BamAlignment>(al);
+        vector<CigarOp> active;
 
         for(size_t i = 0; i < modifiedAlignment->CigarData.size(); i++) {
 
             CigarOp op = al.CigarData[i];
+            
             if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
                 rStart = lEnd + op.Length;
                 
@@ -187,9 +189,10 @@ protected:
                     strandFromBool(modifiedAlignment->IsReverseStrand())));                        
 
                 if (js.getJunction(*location) != nullptr) {
-                    // Break out of the loop leaving write set to true
-                    return true;
-                }                    
+                    // Found a good junction, so region from start should be left as is, reset start to after junction
+                    //lStart
+                    
+                }                     
             }
             else if (BamUtils::opFollowsReference(op.Type)) {
                 lEnd += op.Length;                
@@ -253,7 +256,7 @@ public:
         // Load junction system
         JunctionSystem js(junctionFile);
         
-        cout << " - Found " << js.getJunctions().size() << " junctions" << endl << endl;
+        cout << " - Found " << js.size() << " junctions" << endl << endl;
         
         // Sam header and refs info from the input bam    
         SamHeader header;    
@@ -316,7 +319,7 @@ public:
                 }
                 // Else we are in HARD or SOFT clip mode and this is an MSR
                 else {
-                    shared_ptr<BamAlignment> clipped = clipMSR(al, clipMode);
+                    shared_ptr<BamAlignment> clipped = clipMSR(al, refs, js);
                     writer.SaveAlignment(*clipped);
                     nbReadsModifiedOut++;
                 }

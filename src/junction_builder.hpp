@@ -237,17 +237,17 @@ public:
         
         while(reader.GetNextAlignment(al)) {
             
-            while (!junctionSystem.getJunctions()->empty() && 
+            while (junctionSystem.size() > 0 && lastCalculatedJunctionIndex < junctionSystem.size() && 
                     al.Position > junctionSystem.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end) {
-                JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);
-            
-                j->calcMetrics(splicedAlignmentMap);
+
+                JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);            
+                j->calcMetrics();
                 j->clearAlignments();
                 lastCalculatedJunctionIndex++;
             }
             
-            if (al.RefID != lastRefId) {
-                cout << " - " << refs[lastRefId].RefName << endl;
+            if (lastRefId == -1 || al.RefID != lastRefId) {
+                cout << " - " << refs[al.RefID].RefName << endl;
             }
             
             lastRefId = al.RefID;
@@ -263,8 +263,7 @@ public:
                 splicedCount++;
                 
                 // Record alignment name in map
-                string name = BamUtils::deriveName(al);
-                splicedAlignmentMap[name]++;
+                splicedAlignmentMap[BamUtils::deriveName(al)]++;
             }
             else {
                 unsplicedWriter.SaveAlignment(al);
@@ -272,10 +271,10 @@ public:
             }
         }
         
-        while (!junctionSystem.getJunctions()->empty() && lastCalculatedJunctionIndex < junctionSystem.getJunctions()->size()) {
+        while (junctionSystem.size() > 0 && lastCalculatedJunctionIndex < junctionSystem.size()) {
             
             JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);
-            j->calcMetrics(splicedAlignmentMap);
+            j->calcMetrics();
             j->clearAlignments();
             lastCalculatedJunctionIndex++;
         }
@@ -285,13 +284,28 @@ public:
         splicedWriter.Close();
         
         
-        cout << endl << "Calculating metrics that require analysis of reference genome..." << endl;
+        cout << endl << "Calculating metrics that require analysis of reference genome";
+        if (verbose) {
+            cout << endl;
+        }
+        else {
+            cout << "...";
+            cout.flush();
+        }
+        
         GenomeMapper gmap(prepData->getGenomeFilePath());
         gmap.loadFastaIndex();
         junctionSystem.scanReference(&gmap, refs, verbose);
+       
+        if (!verbose) {
+            cout << " done" << endl;
+        }
         
-        cout << endl << "Grouping junctions..." << endl;
+        cout << endl << "Calculating junctions stats that require comparisons with other junctions...";
+        cout.flush();
         junctionSystem.calcJunctionStats();
+        junctionSystem.calcMultipleMappingStats(splicedAlignmentMap);
+        cout << " done" << endl;
         
         if (fast) {
             //cout << "skipped due to user request to run in fast mode" << endl << endl;
