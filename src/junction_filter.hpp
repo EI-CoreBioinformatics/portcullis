@@ -168,12 +168,12 @@ public:
         // Load junction system
         JunctionSystem filteredJunc(tmpOutputTabFile);
         
-        uint32_t diff = originalJuncs.getJunctions().size() - filteredJunc.getJunctions().size();
+        size_t diff = originalJuncs.size() - filteredJunc.size();
         
         cout << endl 
-             << "Original junction file contained " << originalJuncs.getJunctions().size() << " junctions." << endl
+             << "Original junction file contained " << originalJuncs.size() << " junctions." << endl
              << "Filtered out " << diff << " junctions." << endl 
-             << filteredJunc.getJunctions().size() << " junctions remaining" << endl << endl
+             << filteredJunc.size() << " junctions remaining" << endl << endl
              << "Saving junctions in suitable file formats:" << endl;
         
         filteredJunc.saveAll(outputDir + "/" + outputPrefix);        

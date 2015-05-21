@@ -176,6 +176,23 @@ public:
         return false;
     }
     
+    static int32_t getNbJunctionsInRead(BamAlignment& ba) {
+        
+        int32_t nbJunctions = 0;
+        for(CigarOp op : ba.CigarData) {
+            if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
+                nbJunctions++;
+            }
+        }
+        
+        return nbJunctions;
+    }
+    
+    static bool isMultiplySplicedRead(BamAlignment& ba) {
+        
+        return getNbJunctionsInRead(ba) > 1;
+    }
+    
     static uint16_t calcMinimalMatchInCigarDataSubset(BamAlignment& ba, int32_t start, int32_t end) {
         
         if (start > ba.Position + ba.AlignedBases.size() || end < ba.Position)

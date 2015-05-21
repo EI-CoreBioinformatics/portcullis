@@ -151,6 +151,7 @@ private:
     // **** Properties that describe where the junction is ****
     shared_ptr<Intron> intron;
     vector<BamAlignment> junctionAlignments;
+    vector<string> junctionAlignmentNames;
         
     
     // **** Junction metrics ****
@@ -331,12 +332,17 @@ public:
             for(BamAlignment ba : j.junctionAlignments) {
                 this->junctionAlignments.push_back(ba);
             }
+            
+            for(string baName : j.junctionAlignmentNames) {
+                this->junctionAlignmentNames.push_back(baName);
+            }
         }
     }
     
     // **** Destructor ****
     virtual ~Junction() {
-        junctionAlignments.clear(); 
+        junctionAlignments.clear();
+        junctionAlignmentNames.clear();
     }
     
     void clearAlignments() {
@@ -356,6 +362,7 @@ public:
     
     void addJunctionAlignment(const BamAlignment& al) {
         this->junctionAlignments.push_back(al);
+        this->junctionAlignmentNames.push_back(BamUtils::deriveName(al));
         this->nbJunctionAlignments = this->junctionAlignments.size();
         
         uint16_t nbGaps = 0;
@@ -403,6 +410,8 @@ public:
     bool sharesDonorOrAcceptor(shared_ptr<Junction> other) {
         return this->intron->sharesDonorOrAcceptor(*(other->intron));
     }
+    
+    
 
     
     /**
@@ -497,18 +506,15 @@ public:
         this->setFlankingAlignmentCounts(nbLeftFlankingAlignments, nbRightFlankingAlignments);
     }
     
-    /**
-     * Call this method to recalculate all junction metrics based on the current location
-     * and alignment information present in this junction
-     */
-    void calcAllRemainingMetrics(SplicedAlignmentMap& map) {
-       
+    
+    void calcMetrics() {
+        
         calcAnchorStats();      // Metrics 5 and 7
         calcEntropy();          // Metric 6
         calcAlignmentStats();   // Metrics 8, 9 and 19
         calcMaxMMES();          // Metric 12
-        calcMultipleMappingScore(map); // Metric 18
     }
+    
     
     /**
      * Metric 5 and 7: Diff Anchor and # Distinct Anchors
@@ -817,11 +823,9 @@ public:
         size_t N = this->getNbJunctionAlignments();
         
         uint32_t M = 0;
-        for(BamAlignment ba : junctionAlignments) {
+        for(string baName : junctionAlignmentNames) {
             
-            string name = BamUtils::deriveName(ba);
-            
-            M += map[name];  // Number of multiple splitting patterns
+            M += map[baName];  // Number of multiple splitting patterns
         }
         
         this->multipleMappingScore = (double)N / (double)M;

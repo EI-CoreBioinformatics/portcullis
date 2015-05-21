@@ -60,7 +60,6 @@ private:
     int32_t maxQueryLength;
     
     RefVector refs;
-    SplicedAlignmentMap splicedAlignmentMap;
     
     
     size_t createJunctionGroup(size_t index, vector<JunctionPtr>& group) {
@@ -116,14 +115,16 @@ public:
     virtual ~JunctionSystem() {
         distinctJunctions.clear();     
         junctionList.clear();
-        splicedAlignmentMap.clear();
     }
     
-    JunctionList getJunctions() {
-        return junctionList;
+    shared_ptr<JunctionList> getJunctions() {
+        return make_shared<JunctionList>(junctionList);
     }
     
     size_t size() {
+        
+        assert(distinctJunctions.size() == junctionList.size());
+        
         return distinctJunctions.size();
     }
     
@@ -161,6 +162,7 @@ public:
         this->refs = refs;
     }
     
+    
     bool addJunction(JunctionPtr j) {
      
         j->clearAlignments();
@@ -176,7 +178,7 @@ public:
      */
     void append(JunctionSystem& other) {
         
-        for(JunctionPtr j : other.getJunctions()) {
+        for(JunctionPtr j : *(other.getJunctions())) {
             this->addJunction(j);
         }
     }
@@ -269,13 +271,6 @@ public:
                 
                 // Ignore any other op types not already covered
             }
-        }
-        
-        // Record alignment name in map
-        if (foundJunction) {            
-            
-            string name = BamUtils::deriveName(al);
-            splicedAlignmentMap[name]++;
         }
         
         return foundJunction;        
@@ -421,6 +416,17 @@ public:
         cout << "done." << endl;
     }
     
+    void calcMultipleMappingStats(SplicedAlignmentMap& map) {
+        calcMultipleMappingStats(map, false);
+    }
+    
+    void calcMultipleMappingStats(SplicedAlignmentMap& map, bool verbose) {
+        
+        for(JunctionPtr j : junctionList) {
+            j->calcMultipleMappingScore(map);
+        }        
+    }
+    
     void calcJunctionStats() {
         calcJunctionStats(false);
     }
@@ -458,53 +464,6 @@ public:
         }
     }
     
-    
-    
-    /**
-     * Call this method to recalculate all junction metrics based on the current location
-     * and alignment information present in this junction
-     */
-    void calcAllRemainingMetrics() {
-        calcAllRemainingMetrics(false);
-    }
-    
-    /**
-     * Call this method to recalculate all junction metrics based on the current location
-     * and alignment information present in this junction
-     */
-    void calcAllRemainingMetrics(bool verbose) {
-       
-        if (verbose) {
-            auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n"); 
-
-            cout << " - Calculating ... ";
-            cout.flush();
-        }
-        
-        for(JunctionPtr j : junctionList) {
-            j->calcAllRemainingMetrics(splicedAlignmentMap);
-        }
-        
-        if (verbose) {
-            cout << "done." << endl;
-        }
-    }
-    
-    void calculateMetrics(path genomeFile, path unsplicedBamFile, StrandSpecific strandSpecific, bool verbose) {
-        
-        // Acquires donor / acceptor info from indexed genome file
-        //cout << "Stage 1: Scanning reference sequences:" << endl;
-        GenomeMapper gmap(genomeFile);
-        gmap.loadFastaIndex();
-        scanReference(&gmap, refs, verbose);
-           
-        //cout << "Stage 2: Calculating junction status flags:" << endl;
-        calcJunctionStats(verbose);
-        
-        // Calculate all remaining metrics
-        //cout << "Stage 4: Calculating remaining junction metrics:" << endl;
-        calcAllRemainingMetrics(verbose);
-    }
     
     void saveAll(string outputPrefix) {
         
