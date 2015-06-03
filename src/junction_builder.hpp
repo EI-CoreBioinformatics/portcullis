@@ -263,7 +263,8 @@ public:
                 splicedCount++;
                 
                 // Record alignment name in map
-                splicedAlignmentMap[BamUtils::deriveName(al)]++;
+                size_t code = std::hash<string>()(BamUtils::deriveName(al));
+                splicedAlignmentMap[code]++;
             }
             else {
                 unsplicedWriter.SaveAlignment(al);

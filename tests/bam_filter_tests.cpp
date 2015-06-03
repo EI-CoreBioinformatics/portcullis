@@ -38,23 +38,23 @@ BOOST_AUTO_TEST_SUITE(bam_filter)
 BOOST_AUTO_TEST_CASE(completePass) {
     
     vector<CigarOp> completeOkCigar;
-    completeOkCigar.push_back(CigarOp(M,10));
-    completeOkCigar.push_back(CigarOp(I,2));
-    completeOkCigar.push_back(CigarOp(M,10));
-    completeOkCigar.push_back(CigarOp(D,10));
-    completeOkCigar.push_back(CigarOp(M,10));
-    completeOkCigar.push_back(CigarOp(N,10));
-    completeOkCigar.push_back(CigarOp(M,10));    
+    completeOkCigar.push_back(CigarOp('M',10));
+    completeOkCigar.push_back(CigarOp('I',2));
+    completeOkCigar.push_back(CigarOp('M',10));
+    completeOkCigar.push_back(CigarOp('D',10));
+    completeOkCigar.push_back(CigarOp('M',10));
+    completeOkCigar.push_back(CigarOp('N',10));
+    completeOkCigar.push_back(CigarOp('M',10));    
     
     BamAlignment completeOk;
     completeOk.CigarData = completeOkCigar;
     completeOk.Name = "completeOk";
     completeOk.Length = 40;
     
-    BamFilter filter();
+    //BamFilter filter();
     
     // Check the merged bam file exists
-    BOOST_CHECK(boost::filesystem::exists(mergedBam));    
+    //BOOST_CHECK(boost::filesystem::exists(mergedBam));    
 }
 
 BOOST_AUTO_TEST_SUITE_END()

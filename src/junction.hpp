@@ -30,7 +30,7 @@ using std::size_t;
 using std::vector;
 using std::shared_ptr;
 
-typedef std::unordered_map<string, uint16_t> SplicedAlignmentMap;
+typedef std::unordered_map<size_t, uint16_t> SplicedAlignmentMap;
 
 #include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
@@ -825,7 +825,8 @@ public:
         uint32_t M = 0;
         for(string baName : junctionAlignmentNames) {
             
-            M += map[baName];  // Number of multiple splitting patterns
+            size_t code = std::hash<std::string>()(baName);
+            M += map[code];  // Number of multiple splitting patterns
         }
         
         this->multipleMappingScore = (double)N / (double)M;
