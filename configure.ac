@@ -19,7 +19,10 @@ AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 
 # Automake initialisation.  Sets some default flags.  We use 'foreign' because we have a markdown README file.
-# I've only tried this with automake 1.11 and above, so you require at least that version installed on your machine if you want to regenerate 'the Makefile.in's.  If you're looking at this comment in the 'configure' script then this the am__api_version, will be set to whatever I used to create this file.  Or it might be whatever you used if you made it yourself with autoconf (or autoreconf, or the autogen.sh script)
+# I've only tried this with automake 1.11 and above, so you require at least that version installed on your 
+# machine if you want to regenerate 'the Makefile.in's.  If you're looking at this comment in the 'configure' 
+#script then this the am__api_version, will be set to whatever I used to create this file.  Or it might be 
+#whatever you used if you made it yourself with autoconf (or autoreconf, or the autogen.sh script)
 AM_INIT_AUTOMAKE([1.11 foreign -Wall no-define])
 
 # Most of portcullis is written in C++.  This is what this macro means: "Do compilation tests using CXX and CXXCPP and use extension .C for test programs. Use compilation flags: CPPFLAGS with CXXCPP, and both CPPFLAGS and CXXFLAGS with CXX."
