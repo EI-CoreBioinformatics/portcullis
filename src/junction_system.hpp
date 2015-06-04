@@ -189,17 +189,17 @@ public:
      * @param al The alignment to search for junctions
      * @return Whether a junction was found in this alignment or not
      */
-    bool addJunctions(const BamAlignment& al, bool strandSpecific) {
-        return addJunctions(al, 0, al.Position, strandSpecific);
+    bool addJunctions(BamAlignmentPtr al, bool strandSpecific) {
+        return addJunctions(al, 0, al->Position, strandSpecific);
     }
     
-    bool addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset, bool strandSpecific) {
+    bool addJunctions(BamAlignmentPtr al, const size_t startOp, const int32_t offset, bool strandSpecific) {
         
         bool foundJunction = false;
         
-        size_t nbOps = al.CigarData.size();
+        size_t nbOps = al->CigarData.size();
         
-        int32_t refId = al.RefID;
+        int32_t refId = al->RefID;
         string refName = refs[refId].RefName;
         int32_t refLength = refs[refId].RefLength;
         int32_t lStart = offset;        
@@ -209,7 +209,7 @@ public:
         
         for(size_t i = startOp; i < nbOps; i++) {
             
-            CigarOp op = al.CigarData[i];
+            CigarOp op = al->CigarData[i];
             if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
                 foundJunction = true;
                 
@@ -217,9 +217,9 @@ public:
                 rEnd = rStart;
                 
                 size_t j = i+1;
-                while (j < nbOps && al.CigarData[j].Type != Constants::BAM_CIGAR_REFSKIP_CHAR) {
+                while (j < nbOps && al->CigarData[j].Type != Constants::BAM_CIGAR_REFSKIP_CHAR) {
                     
-                    CigarOp rOp = al.CigarData[j++];
+                    CigarOp rOp = al->CigarData[j++];
                     if (BamUtils::opFollowsReference(rOp.Type)) {
                         rEnd += rOp.Length;
                     }
@@ -232,7 +232,7 @@ public:
                 
                 // Create the intron
                 shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
-                        strandSpecific ? strandFromBool(al.IsReverseStrand()) : UNKNOWN));
+                        strandSpecific ? strandFromBool(al->IsReverseStrand()) : UNKNOWN));
                 
                 // We should now have the complete junction location information
                 JunctionMapIterator it = distinctJunctions.find(*location);

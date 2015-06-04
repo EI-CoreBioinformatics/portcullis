@@ -39,6 +39,7 @@ using boost::lexical_cast;
 
 #include <api/BamAlignment.h>
 using namespace BamTools;
+typedef shared_ptr<BamAlignment> BamAlignmentPtr;
 
 #include "intron.hpp"
 #include "genome_mapper.hpp"
@@ -150,8 +151,8 @@ private:
     
     // **** Properties that describe where the junction is ****
     shared_ptr<Intron> intron;
-    vector<BamAlignment> junctionAlignments;
-    vector<string> junctionAlignmentNames;
+    vector<shared_ptr<BamAlignment>> junctionAlignments;
+    vector<size_t> junctionAlignmentNames;
         
     
     // **** Junction metrics ****
@@ -329,12 +330,12 @@ public:
         
         if (withAlignments) {
             
-            for(BamAlignment ba : j.junctionAlignments) {
+            for(shared_ptr<BamAlignment> ba : j.junctionAlignments) {
                 this->junctionAlignments.push_back(ba);
             }
             
-            for(string baName : j.junctionAlignmentNames) {
-                this->junctionAlignmentNames.push_back(baName);
+            for(size_t baNameCode : j.junctionAlignmentNames) {
+                this->junctionAlignmentNames.push_back(baNameCode);
             }
         }
     }
@@ -360,13 +361,16 @@ public:
 
     
     
-    void addJunctionAlignment(const BamAlignment& al) {
+    void addJunctionAlignment(BamAlignmentPtr al) {
         this->junctionAlignments.push_back(al);
-        this->junctionAlignmentNames.push_back(BamUtils::deriveName(al));
+        
+        size_t code = std::hash<std::string>()(BamUtils::deriveName(*al));
+        
+        this->junctionAlignmentNames.push_back(code);
         this->nbJunctionAlignments = this->junctionAlignments.size();
         
         uint16_t nbGaps = 0;
-        for(CigarOp op : al.CigarData) {
+        for(CigarOp op : al->CigarData) {
             if (op.Type == 'N') {
                 nbGaps++;
             }
@@ -531,7 +535,9 @@ public:
         uint32_t nbDistinctLeftAnchors = 0, nbDistinctRightAnchors = 0;
         int32_t lastLStart = -1, lastREnd = -1;
                 
-        for(BamAlignment ba : junctionAlignments) {
+        for(shared_ptr<BamAlignment> bap : junctionAlignments) {
+            
+            BamAlignment ba = *bap;
             
             int32_t leftSize = BamUtils::alignedBasesBetween(ba, ba.Position, lEnd);
             int32_t rightSize = BamUtils::alignedBasesBetween(ba, rStart, ba.Position + (int32_t)ba.AlignedBases.size());
@@ -579,8 +585,8 @@ public:
         
         vector<int32_t> junctionPositions;
         
-        for(BamAlignment ba : junctionAlignments) {
-            junctionPositions.push_back(ba.Position);
+        for(shared_ptr<BamAlignment> ba : junctionAlignments) {
+            junctionPositions.push_back(ba->Position);
         }
         
         return calcEntropy(junctionPositions);        
@@ -662,10 +668,10 @@ public:
         
         //cout << junctionAlignments.size() << endl;
         
-        for(BamAlignment ba : junctionAlignments) {
+        for(shared_ptr<BamAlignment> ba : junctionAlignments) {
             
-            int32_t start = ba.Position;
-            int32_t end = ba.Position + ba.AlignedBases.size();
+            int32_t start = ba->Position;
+            int32_t end = ba->Position + ba->AlignedBases.size();
             
             if (start != lastStart || end != lastEnd ) {
                 nbDistinctAlignments++;                
@@ -677,7 +683,7 @@ public:
             // This doesn't seem intuitive but this is how they recommend finding
             // "reliable" (i.e. unique) alignments in samtools.  They do this
             // because apparently "uniqueness" is not a well defined concept.
-            if (ba.MapQuality >= MAP_QUALITY_THRESHOLD) {
+            if (ba->MapQuality >= MAP_QUALITY_THRESHOLD) {
                 nbReliableAlignments++;
             }
             
@@ -687,7 +693,7 @@ public:
             uint16_t downjuncs = 0;
             int32_t pos = start;
             
-            for (CigarOp op : ba.CigarData) {
+            for (CigarOp op : ba->CigarData) {
                 
                 if (BamUtils::opFollowsReference(op.Type)) {
                     pos += op.Length;                    
@@ -802,10 +808,10 @@ public:
         
         uint16_t maxmmes = 0;
         
-        for(BamAlignment ba : junctionAlignments) {
+        for(shared_ptr<BamAlignment> ba : junctionAlignments) {
             
-            uint16_t leftMM = BamUtils::calcMinimalMatchInCigarDataSubset(ba, leftFlankStart, intron->start);
-            uint16_t rightMM = BamUtils::calcMinimalMatchInCigarDataSubset(ba, intron->end, rightFlankEnd);
+            uint16_t leftMM = BamUtils::calcMinimalMatchInCigarDataSubset(*ba, leftFlankStart, intron->start);
+            uint16_t rightMM = BamUtils::calcMinimalMatchInCigarDataSubset(*ba, intron->end, rightFlankEnd);
             
             uint16_t mmes = min(leftMM, rightMM);
 
@@ -823,10 +829,8 @@ public:
         size_t N = this->getNbJunctionAlignments();
         
         uint32_t M = 0;
-        for(string baName : junctionAlignmentNames) {
-            
-            size_t code = std::hash<std::string>()(baName);
-            M += map[code];  // Number of multiple splitting patterns
+        for(size_t baNameCode : junctionAlignmentNames) {
+            M += map[baNameCode];  // Number of multiple splitting patterns
         }
         
         this->multipleMappingScore = (double)N / (double)M;

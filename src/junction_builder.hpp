@@ -258,7 +258,9 @@ public:
             
             sumQueryLengths += len;
             
-            if (junctionSystem.addJunctions(al, false)) {//strandSpecific)) {
+            BamAlignmentPtr bap = make_shared<BamAlignment>(al);
+            
+            if (junctionSystem.addJunctions(bap, false)) {//strandSpecific)) {
                 splicedWriter.SaveAlignment(al);
                 splicedCount++;
                 
