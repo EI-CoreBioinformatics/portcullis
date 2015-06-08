@@ -32,10 +32,25 @@ using boost::filesystem::exists;
 using boost::filesystem::path;
 using boost::lexical_cast;
 
+#include <bam.h>
+
 namespace portcullis {
 
 typedef boost::error_info<struct SamtoolsError,string> SamtoolsErrorInfo;
 struct SamtoolsException: virtual boost::exception, virtual std::exception { };
+
+class BamAlignment {
+    
+private:
+    
+    bam1_t b;
+    
+public:
+    BamAlignment() {
+        b = bam_init1();
+    }
+    
+};
 
 class SamtoolsHelper {
         
@@ -67,11 +82,33 @@ private:
     
     path bamFile;
     
+    bam_hdr_t* header;
+    bam1_t* current;
+    
+    
+public:
+    
+    SamtoolsHelper(const path& _bamFile) {
+        bamFile = _bamFile;
+        header = nullptr;        
+    }
+    
+    virtual ~SamtoolsHelper;
+    
+    void open();
+    
+    next();
+    
+    void close();
+    
+    bool isCoordSortedBam();
     
 // ***** Static stuff
     
 public:
     
+    
+    static bool isCoordSortedBam(const path& bamFile);
     
     /**
      * Creates a command that can be used to merge multiple BAM files with samtools
@@ -122,7 +159,7 @@ public:
     
     
     
-    static bool isCoordSortedBam(const path& bamFile);
+    
     
     static inline bool opAlignsToReference(char type) {
         

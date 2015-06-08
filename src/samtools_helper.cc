@@ -29,7 +29,78 @@ using boost::filesystem::exists;
 using boost::filesystem::path;
 using boost::lexical_cast;
 
+#include <bam.h>
+
 #include "samtools_helper.hpp"
+
+
+portcullis::SamtoolsHelper::~SamtoolsHelper {
+    
+    if (header != nullptr) {
+        bam_hdr_destroy(header);
+    }
+}
+
+void portcullis::SamtoolsHelper::open() {
+    
+    BGZF *fp;
+    
+    // split
+    fp = bam_open(bamFile.c_str(), "r");
+    if (fp == NULL) {
+        BOOST_THROW_EXCEPTION(BamUtilsException() << BamUtilsErrorInfo(string(
+                "Could not open input BAM files: ") + bamFile.string()));
+    }
+    
+    header = bam_hdr_read(fp);
+    current = bam_init1();
+}
+
+bool next(bam_t* bamAlignment) {
+    
+    bool res = bam_read1(bamFile, current);
+    bamAlignment = current;    
+    return res;
+}
+
+void portcullis::SamtoolsHelper::close() {
+    
+    if (header != nullptr) {
+        bam_hdr_destroy(header);
+    }
+    
+}
+
+
+bool portcullis::SamtoolsHelper::isCoordSortedBam() {    
+    string headerText = header->text;   
+    return headerText.find("SO:coordinate") != std::string::npos;
+}
+
+static bool portcullis::SamtoolsHelper::isCoordSortedBam(const path& bamFile) {
+
+    BGZF *fp;
+    
+    // split
+    fp = strcmp(bamFile.c_str(), "-")? bgzf_open(bamFile.c_str(), "r") : bgzf_dopen(fileno(stdin), "r");
+    if (fp == NULL) {
+        BOOST_THROW_EXCEPTION(BamUtilsException() << BamUtilsErrorInfo(string(
+                "Could not open input BAM files: ") + bamFile.string()));
+    }
+    
+    bam_hdr_t* header = bam_hdr_read(fp);
+    
+    string headerText = header->text;
+   
+    bool found = false;
+    if (headerText.find("SO:coordinate") != std::string::npos) {
+        found = true;        
+    }
+    
+    bam_hdr_destroy(header);
+        
+    return found;
+}
 
 /**
  * Creates a command that can be used to merge multiple BAM files with samtools
@@ -89,28 +160,5 @@ string portcullis::SamtoolsHelper::createIndexBamCmd(const path& samtoolsExe, co
 }
 
 
-bool portcullis::SamtoolsHelper::isCoordSortedBam(const path& bamFile) {
 
-    BGZF *fp;
-    
-    // split
-    fp = strcmp(bamFile.c_str(), "-")? bgzf_open(bamFile.c_str(), "r") : bgzf_dopen(fileno(stdin), "r");
-    if (fp == NULL) {
-        BOOST_THROW_EXCEPTION(BamUtilsException() << BamUtilsErrorInfo(string(
-                "Could not open input BAM files: ") + bamFile.string()));
-    }
-    
-    bam_hdr_t * header = bam_hdr_read(fp);
-    
-    string headerText = header->text;
-   
-    bool found = false;
-    if (headerText.find("SO:coordinate") != std::string::npos) {
-        found = true;        
-    }
-    
-    bam_hdr_destroy(header);
-        
-    return found;
-}
     
