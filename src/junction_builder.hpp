@@ -28,12 +28,16 @@ using std::cerr;
 using std::endl;
 using std::ofstream;
 
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
 #include <boost/timer/timer.hpp>
 using boost::timer::auto_cpu_timer;
 using boost::lexical_cast;
+using namespace boost::filesystem;
+using boost::filesystem::path;
 namespace po = boost::program_options;
 
 #include <api/BamReader.h>
@@ -139,7 +143,7 @@ public:
         // Test if we have all the requried data
         if (!prepData->valid()) {
             BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                        "Prepared data is not complete: ") + prepData->getPrepDir()));
+                        "Prepared data is not complete: ") + prepData->getPrepDir().string()));
         }
         
         if (verbose) {
@@ -178,11 +182,11 @@ public:
         
         BamReader reader;
         
-        const string sortedBamFile = prepData->getSortedBamFilePath();
+        const path sortedBamFile = prepData->getSortedBamFilePath();
         
-        if (!reader.Open(sortedBamFile)) {
+        if (!reader.Open(sortedBamFile.string())) {
             BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                    "Could not open BAM reader for input: ") + sortedBamFile));
+                    "Could not open BAM reader for input: ") + sortedBamFile.string()));
         }
         
         // Sam header and refs info from the input bam
@@ -193,12 +197,12 @@ public:
        
         cout << " - Reading alignments from: " << sortedBamFile << endl;
         
-        string indexFile = prepData->getBamIndexFilePath();
+        path indexFile = prepData->getBamIndexFilePath();
         
         // Opens the index for this BAM file
-        if ( !reader.OpenIndex(indexFile) ) {            
+        if ( !reader.OpenIndex(indexFile.string()) ) {            
             BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                    "Could not open index for BAM: ") + indexFile));             
+                    "Could not open index for BAM: ") + indexFile.string()));             
         }
         
         cout << " - Using BAM index: " << indexFile << endl;
@@ -241,9 +245,27 @@ public:
                     al.Position > junctionSystem.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end) {
 
                 JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);            
+                
+                size_t nbJABefore = j->getNbJunctionAlignmentFromVector();
+                BamAlignmentPtr j0 = j->getFirstAlignment();
+                size_t refBefore = j0.use_count() - 1;
+                size_t alignSize = sizeof(*j0);
+                size_t juncSizeBefore = sizeof(*j);
+                
                 j->calcMetrics();
                 j->clearAlignments();
                 lastCalculatedJunctionIndex++;
+                
+                size_t nbJAAfter = j->getNbJunctionAlignmentFromVector();
+                size_t refAfter = j0.use_count() - 1;
+                size_t juncSizeAfter = sizeof(*j);
+                
+                cout << "Junction " << lastCalculatedJunctionIndex << " shut down.  Intron start: " << j->getIntron()->start 
+                        << ". Alignments: " << nbJABefore << "/" << nbJAAfter 
+                        << ". Refcount: " << refBefore << "/" << refAfter 
+                        << ". Size: " << juncSizeBefore << "/" << juncSizeAfter
+                        << ". Alignment size: " << alignSize << "." << endl;
+                
             }
             
             if (lastRefId == -1 || al.RefID != lastRefId) {
@@ -260,6 +282,8 @@ public:
             
             BamAlignmentPtr bap = make_shared<BamAlignment>(al);
             
+            //cout << "Before junction add (outer): " << bap.use_count() << endl;
+            
             if (junctionSystem.addJunctions(bap, false)) {//strandSpecific)) {
                 splicedWriter.SaveAlignment(al);
                 splicedCount++;
@@ -272,6 +296,8 @@ public:
                 unsplicedWriter.SaveAlignment(al);
                 unsplicedCount++;
             }
+            
+            //cout << "After junction add (outer): " << bap.use_count() << endl;
         }
         
         while (junctionSystem.size() > 0 && lastCalculatedJunctionIndex < junctionSystem.size()) {
@@ -458,3 +484,4 @@ public:
     }
 };
 }
+

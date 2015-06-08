@@ -3,12 +3,12 @@
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
 # ADDITIONAL FILES TO INSTALL
-EXTRA_DIST = include \
-etc \
+EXTRA_DIST = etc \
 README.md \
 COPYING \
 AUTHORS \
 tests/resources \
+deps/dlib-18.16 \
 deps/htslib-1.2.1/*.c \
 deps/htslib-1.2.1/*.h \
 deps/htslib-1.2.1/*.mk \

@@ -90,9 +90,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_boost_base.m4 \
 	$(top_srcdir)/m4/ax_boost_timer.m4 \
 	$(top_srcdir)/m4/ax_boost_unit_test_framework.m4 \
 	$(top_srcdir)/m4/ax_check_zlib.m4 \
-	$(top_srcdir)/m4/ax_cpp_check_lib.m4 \
 	$(top_srcdir)/m4/ax_cxx_compile_stdcxx_11.m4 \
-	$(top_srcdir)/m4/ax_lib_bamtools.m4 \
 	$(top_srcdir)/m4/ax_pthread.m4 $(top_srcdir)/m4/libtool.m4 \
 	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
 	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \

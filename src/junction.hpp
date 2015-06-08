@@ -347,7 +347,12 @@ public:
     }
     
     void clearAlignments() {
+        
         junctionAlignments.clear();  
+    }
+    
+    BamAlignmentPtr getFirstAlignment() const {
+        return junctionAlignments[0];
     }
     
    
@@ -380,7 +385,7 @@ public:
             this->nbMultipleSplicedReads++;
         }
     }
-
+    
     void setNbJunctionAlignments(uint32_t nbJunctionAlignments) {
         this->nbJunctionAlignments = nbJunctionAlignments;
     }
@@ -898,6 +903,9 @@ public:
     }
 
     
+    size_t getNbJunctionAlignmentFromVector() const {
+        return this->junctionAlignments.size();
+    }
     
     // **** Metric getters ****
     

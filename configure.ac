@@ -3,7 +3,7 @@
 ##########################################################################
 
 # Autoconf initialistion.  Sets package name version and contact details
-AC_INIT([Portcullis],[0.5.1],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
+AC_INIT([Portcullis],[0.6.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
 
 # I built this with autoconf 2.53 and have only tested it on 2.69 systems.  You can change this but I don't
 # make any guarentees
@@ -85,9 +85,6 @@ SAVED_LIBS="${LIBS}"
 # Check pthreads and zlib exist and are available
 AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
 AX_CHECK_ZLIB(, [AC_MSG_ERROR([Zlib not found.  Please ensure that zlib is properly built and configured.])])
-
-# Check for bamtools
-AX_LIB_BAMTOOLS
 
 ## Check for boost
 AX_BOOST_BASE([1.52],, [AC_MSG_ERROR([Boost not found.  Please ensure that boost is properly built and the BOOST_ROOT environment variable is set.  Alternatively you can override BOOST_ROOT with the --with-boost option.])])

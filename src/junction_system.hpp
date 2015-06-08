@@ -237,6 +237,8 @@ public:
                 // We should now have the complete junction location information
                 JunctionMapIterator it = distinctJunctions.find(*location);
                 
+                //cout << "Before junction add (inner): " << al.use_count() << endl;
+                
                 // If we couldn't find this location in the hashmap, add a new
                 // location / junction pair.  If we've seen this location before
                 // then add this alignment to the existing junction
@@ -244,14 +246,16 @@ public:
                     JunctionPtr junction(new Junction(location, lStart, rEnd));
                     junction->addJunctionAlignment(al);
                     distinctJunctions[*location] = junction;
-                    junctionList.push_back(junction);
+                    junctionList.push_back(junction);                    
                 }
                 else {
                     
                     JunctionPtr junction = it->second;
-                    junction->addJunctionAlignment(al);
+                    junction->addJunctionAlignment(al);                    
                     junction->extendFlanks(lStart, rEnd);
                 }
+                
+                //cout << "After junction add (inner): " << al.use_count() << endl;
                 
                 // Check if we have fully processed the cigar or not.  If not, then
                 // that means that this cigar contains additional junctions, so 
