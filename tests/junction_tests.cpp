@@ -19,16 +19,17 @@
 #ifdef STAND_ALONE
 #define BOOST_TEST_MODULE PORTCULLIS
 #endif
-#include <boost/test/unit_test.hpp>
 
-#include <boost/filesystem.hpp>
-
-#include <junction.hpp>
-using portcullis::CanonicalSS;
-
+#include <iostream>
 using std::cout;
 using std::endl;
 
+#include <boost/test/unit_test.hpp>
+#include <boost/filesystem.hpp>
+
+#include "../src/intron.hpp"
+#include "../src/junction.hpp"
+using portcullis::CanonicalSS;
 using portcullis::RefSeq;
 using portcullis::Intron;
 using portcullis::Junction;

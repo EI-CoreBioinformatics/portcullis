@@ -101,7 +101,7 @@ protected:
 public:
 
     
-    JunctionBuilder(string _prepDir, string _outputDir, string _outputPrefix, uint16_t _threads, bool _fast, bool _verbose) {
+    JunctionBuilder(const path& _prepDir, const path& _outputDir, string _outputPrefix, uint16_t _threads, bool _fast, bool _verbose) {
         prepData = new PreparedFiles(_prepDir);
         outputDir = _outputDir;
         outputPrefix = _outputPrefix;

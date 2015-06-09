@@ -160,7 +160,11 @@ public:
     bam1_t* getRaw() const {
         return b;
     }
-        
+     
+    void setCigar(vector<CigarOp>& cig) {
+        cigar = cig;
+    }
+    
     vector<CigarOp> getCigar() const {
         return cigar;
     }
@@ -449,6 +453,64 @@ public:
     void close() {
         bam_close(fp);
     }
+};
+
+typedef struct {     // auxiliary data structure
+	bamFile fp;      // the file handler
+	bam_iter_t iter; // NULL if a region not specified
+	int min_mapQ, min_len; // mapQ filter; length filter
+} aux_t;
+
+typedef struct {
+    int ref;
+    int32_t pos;
+    uint32_t depth;    
+} depth;
+
+class DepthParser {
+private:
+ 
+    // Path to the original genome file in fasta format
+    path bamFile;
+    uint8_t strandSpecific;
+    bool allowGappedAlignments;
+    
+    bam_header_t *header;
+    aux_t** data;
+    bam_mplp_t mplp;
+        
+    depth last;
+    bool start;
+    int res;
+    
+protected:
+    
+    // This function reads a BAM alignment from one BAM file.
+    static int read_bam(void *data, bam1_t *b);
+    
+    // This function reads a BAM alignment from one BAM file.
+    static int read_bam_skip_gapped(void *data, bam1_t *b);
+    
+    
+public:
+    
+    DepthParser(path _bamFile, uint8_t _strandSpecific, bool _allowGappedAlignments);
+    
+    virtual ~DepthParser();
+    
+     
+    string getCurrentRefName() const {
+        return string(header->target_name[last.ref]);
+    }
+    
+    int32_t getCurrentRefIndex() const {
+        return last.ref;
+    }
+    
+    
+
+    bool loadNextBatch(vector<uint32_t>& depths);
+    
 };
     
 // ***** Static stuff

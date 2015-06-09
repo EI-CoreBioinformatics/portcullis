@@ -19,17 +19,15 @@
 #ifdef STAND_ALONE
 #define BOOST_TEST_MODULE PORTCULLIS
 #endif
-#include <boost/test/unit_test.hpp>
 
-#include <boost/filesystem.hpp>
-
-#include <bam_utils.hpp>
-
-#include "seq_utils.hpp"
-
+#include <iostream>
 using std::cout;
 using std::endl;
 
+#include <boost/test/unit_test.hpp>
+#include <boost/filesystem.hpp>
+
+#include "seq_utils.hpp"
 using portcullis::SeqUtils;
 
 BOOST_AUTO_TEST_SUITE(seq_utils)

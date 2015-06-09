@@ -35,7 +35,6 @@ using boost::timer::auto_cpu_timer;
 #include "intron.hpp"
 #include "junction.hpp"
 #include "genome_mapper.hpp"
-#include "depth_parser.hpp"
 using portcullis::SamtoolsHelper;
 using portcullis::BamAlignment;
 using portcullis::BamReader;

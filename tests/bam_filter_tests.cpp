@@ -19,17 +19,21 @@
 #ifdef STAND_ALONE
 #define BOOST_TEST_MODULE PORTCULLIS
 #endif
-#include <boost/test/unit_test.hpp>
 
-#include <boost/filesystem.hpp>
-
-#include <api/BamAlignment.h>
-
-#include <bam_filter.hpp>
-
+#include <iostream>
+#include <vector>
 using std::cout;
 using std::endl;
+using std::vector;
 
+#include <boost/test/unit_test.hpp>
+#include <boost/filesystem.hpp>
+
+#include "../src/samtools_helper.hpp"
+using portcullis::CigarOp;
+using portcullis::BamAlignment;
+
+#include "../src/bam_filter.hpp"
 using portcullis::BamFilter;
 
 
@@ -47,9 +51,7 @@ BOOST_AUTO_TEST_CASE(completePass) {
     completeOkCigar.push_back(CigarOp('M',10));    
     
     BamAlignment completeOk;
-    completeOk.CigarData = completeOkCigar;
-    completeOk.Name = "completeOk";
-    completeOk.Length = 40;
+    completeOk.setCigar(completeOkCigar);
     
     //BamFilter filter();
     

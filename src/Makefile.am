@@ -18,14 +18,14 @@ portcullis_LDFLAGS = @AM_LDFLAGS@
 portcullis_LDADD = $(top_srcdir)/deps/htslib-1.2.1/libhts.a @AM_LIBS@
 
 portcullis_HEADERS =	samtools_helper.hpp \
+			junction.hpp \
 			prepare.hpp
 
 portcullis_SOURCES =	portcullis_fs.hpp \
 			samtools_helper.cc \
-			depth_parser.hpp \
 			genome_mapper.hpp \
 			intron.hpp \
-			junction.hpp \
+			junction.cc \
 			junction_builder.hpp \
 			junction_system.hpp \
 			prepare.cc \
