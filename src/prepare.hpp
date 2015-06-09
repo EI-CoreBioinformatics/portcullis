@@ -42,8 +42,8 @@ using bfs::path;
 namespace po = boost::program_options;
 
 #include "samtools_helper.hpp"
-#include "genome_mapper.hpp"
 #include "portcullis_fs.hpp"
+using portcullis::GenomeMapper;
 using portcullis::SamtoolsHelper;
 using portcullis::PortcullisFS;
 

@@ -35,6 +35,7 @@ using boost::filesystem::exists;
 using boost::filesystem::path;
 using boost::lexical_cast;
 
+#include <htslib/faidx.h>
 #include <bam.h>
 
 namespace portcullis {
@@ -510,6 +511,83 @@ public:
     
 
     bool loadNextBatch(vector<uint32_t>& depths);
+    
+};
+
+class GenomeMapper {
+private:
+ 
+    // Path to the original genome file in fasta format
+    path genomeFile;
+    
+    // Handle to genome map.  Created by constructor.
+    faidx_t* fastaIndex;
+    
+protected:
+    
+    
+public:
+    
+    /**
+     * Creates a Genome Mapper object for a genome file in fasta format.  This
+     * uses Samtools to create a fasta index for the genome file and then
+     * manages the data structure returned after loading the index.
+     */
+    GenomeMapper(path _genomeFile);
+    
+    virtual ~GenomeMapper();
+    
+    
+    path getFastaIndexFile() const {
+        return path(genomeFile.parent_path()) /= path(genomeFile.leaf().string() + ".fai");
+    }
+    
+    
+    /**
+     * Constructs the index for this fasta genome file
+     */
+    void buildFastaIndex();
+    
+    /**
+     * Loads the index for this genome file.  This must be done before using any
+     * of the fetch commands.
+     */
+    void loadFastaIndex();
+    
+    
+    /**
+     * @abstract    Fetch the sequence in a region.
+     * @param  reg  Region in the format "chr2:20,000-30,000"
+     * @param  len  Length of the region
+     * @return      Pointer to the sequence; null on failure
+     * @discussion The returned sequence is allocated by malloc family
+     * and should be destroyed by end users by calling free() on it.
+     */
+    char* fetchBases(const char* reg, int* len) {
+        return fai_fetch(fastaIndex, reg, len);        
+    }
+    
+    /**
+     * @abstract    Fetch the sequence in a region.
+     * @param  name Region name
+     * @param  start    Start location on region (zero-based)
+     * @param  end  End position (zero-based)
+     * @param  len  Length of the region
+     * @return      Pointer to the sequence; null on failure
+     * @discussion The returned sequence is allocated by malloc family
+     * and should be destroyed by end users by calling free() on it.
+     */
+    char* fetchBases(const char* name, int start, int end, int* len) {
+        return faidx_fetch_seq(fastaIndex, name, start, end, len);        
+    }
+    
+    /**
+     * Get the number of sequences / contigs / scaffolds in the genome
+     * @return 
+     */
+    int getNbSeqs() {
+        return faidx_nseq(fastaIndex); 
+    }
     
 };
     

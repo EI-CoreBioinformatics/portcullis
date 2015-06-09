@@ -11,12 +11,13 @@ check_portcullis_LDADD = $(top_srcdir)/deps/htslib-1.2.1/libhts.a @AM_LIBS@ -lbo
 check_portcullis_SOURCES =  ../src/samtools_helper.cc \
 			    ../src/junction.cc \
 			    ../src/prepare.cc \
+			    ../src/junction_builder.cc \
+			    ../src/bam_filter.cc \
 			    bam_tests.cpp \
 			    bam_filter_tests.cpp \
 			    seq_utils_tests.cpp \
 			    intron_tests.cpp \
 			    junction_tests.cpp \
 			    portcullis_tests.cpp \
-			    genome_mapper_tests.cpp \
 			    check_portcullis.cc
 	

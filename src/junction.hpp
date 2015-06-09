@@ -38,10 +38,10 @@ typedef std::unordered_map<size_t, uint16_t> SplicedAlignmentMap;
 using boost::lexical_cast;
 
 #include "intron.hpp"
-#include "genome_mapper.hpp"
 #include "samtools_helper.hpp"
 #include "seq_utils.hpp"
 #include "prepare.hpp"
+using portcullis::GenomeMapper;
 using portcullis::Intron;
 using portcullis::Strand;
 using portcullis::SamtoolsHelper;

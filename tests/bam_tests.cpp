@@ -161,5 +161,42 @@ BOOST_AUTO_TEST_CASE(depth_test_1)
     BOOST_CHECK(count2 <= count1);
 }
 
+BOOST_AUTO_TEST_CASE(genome_mapper_ecoli)
+{
+    // Create a new faidx
+    portcullis::GenomeMapper genomeMapper("resources/ecoli.fa");
+    genomeMapper.buildFastaIndex();
+    genomeMapper.loadFastaIndex();
+    
+    // Check faidx file exists
+    path faidxFile = genomeMapper.getFastaIndexFile();    
+    BOOST_CHECK(boost::filesystem::exists(faidxFile));
+    
+    // Check number of seqs is what we expect
+    int nbSeqs = genomeMapper.getNbSeqs();    
+    BOOST_CHECK(nbSeqs == 1);
+    
+    // Get seq
+    string name = "gi|556503834|ref|NC_000913.3|";
+    int len = -1;
+    char* fullSeq = genomeMapper.fetchBases(name.c_str(), &len);    
+    BOOST_CHECK(len == 4641652);
+    BOOST_CHECK(fullSeq != NULL);
+    
+    string partialSeqExpected = "TCTGACTGCA";
+    
+    // Get partial seq (method 1 - 1 based)
+    char* partialSeq1 = genomeMapper.fetchBases((name + ":11-20").c_str(), &len);
+    BOOST_CHECK(partialSeqExpected.compare(partialSeq1) == 0);
+    BOOST_CHECK(len == 10);
+    
+    // Get partial seq (method 2 - 0 based)
+    char* partialSeq2 = genomeMapper.fetchBases((char*)name.c_str(), 10, 19, &len);
+    BOOST_CHECK(partialSeqExpected.compare(partialSeq2) == 0);
+    BOOST_CHECK(len == 10);
+    
+    // Delete the faidx file
+    boost::filesystem::remove(faidxFile);
+}
 
 BOOST_AUTO_TEST_SUITE_END()

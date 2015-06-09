@@ -33,6 +33,7 @@ using boost::filesystem::exists;
 using boost::filesystem::path;
 using boost::lexical_cast;
 
+#include <htslib/faidx.h>
 #include <bam.h>
 
 #include "samtools_helper.hpp"
@@ -264,6 +265,61 @@ bool portcullis::DepthParser::loadNextBatch(vector<uint32_t>& depths) {
     return true;
 }
 
+
+// ******** Genome mapper ********
+
+/**
+ * Creates a Genome Mapper object for a genome file in fasta format.  This
+ * uses Samtools to create a fasta index for the genome file and then
+ * manages the data structure returned after loading the index.
+ */
+portcullis::GenomeMapper::GenomeMapper(path _genomeFile) : 
+    genomeFile(_genomeFile) {
+        fastaIndex = nullptr;
+}
+
+portcullis::GenomeMapper::~GenomeMapper() {        
+
+    if (fastaIndex != nullptr) {
+        fai_destroy(fastaIndex);
+    }
+}
+    
+    
+    
+/**
+ * Constructs the index for this fasta genome file
+ */
+void portcullis::GenomeMapper::buildFastaIndex() {
+
+    int faiRes = fai_build(genomeFile.c_str());
+
+    if (faiRes != 0) {
+        BOOST_THROW_EXCEPTION(SamtoolsException() << SamtoolsErrorInfo(string(
+                "Genome indexing failed: ") + genomeFile.string()));
+    }
+}
+    
+/**
+ * Loads the index for this genome file.  This must be done before using any
+ * of the fetch commands.
+ */
+void portcullis::GenomeMapper::loadFastaIndex() {
+
+    if (!exists(genomeFile)) {
+       BOOST_THROW_EXCEPTION(SamtoolsException() << SamtoolsErrorInfo(string(
+                "Genome file does not exist: ") + genomeFile.string())); 
+    }
+
+    path fastaIndexFile = getFastaIndexFile();
+    if (!exists(fastaIndexFile)) {
+       BOOST_THROW_EXCEPTION(SamtoolsException() << SamtoolsErrorInfo(string(
+                "Genome index file does not exist: ") + fastaIndexFile.string())); 
+    }
+
+    fastaIndex = fai_load(genomeFile.c_str());
+}
+ 
 
 
 

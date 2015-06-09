@@ -19,17 +19,18 @@ portcullis_LDADD = $(top_srcdir)/deps/htslib-1.2.1/libhts.a @AM_LIBS@
 
 portcullis_HEADERS =	samtools_helper.hpp \
 			junction.hpp \
-			prepare.hpp
+			prepare.hpp \
+			junction_builder.hpp \
+			bam_filter.hpp
 
 portcullis_SOURCES =	portcullis_fs.hpp \
 			samtools_helper.cc \
-			genome_mapper.hpp \
 			intron.hpp \
 			junction.cc \
-			junction_builder.hpp \
 			junction_system.hpp \
 			prepare.cc \
-			bam_filter.hpp \
+			junction_builder.cc \
+			bam_filter.cc \
 			junction_filter.hpp \
 			cluster.hpp \
 			test.hpp \

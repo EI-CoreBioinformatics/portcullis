@@ -42,7 +42,6 @@ namespace po = boost::program_options;
 #include "samtools_helper.hpp"
 #include "portcullis_fs.hpp"
 #include "junction_builder.hpp"
-#include "genome_mapper.hpp"
 #include "prepare.hpp"
 #include "junction_filter.hpp"
 #include "bam_filter.hpp"
