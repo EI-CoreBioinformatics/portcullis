@@ -39,9 +39,8 @@ using boost::to_upper_copy;
 using boost::timer::auto_cpu_timer;
 namespace po = boost::program_options;
 
-#include <api/BamReader.h>
-#include <api/BamWriter.h>
-
+#include "samtools_helper.hpp"
+#include "portcullis_fs.hpp"
 #include "junction_builder.hpp"
 #include "genome_mapper.hpp"
 #include "prepare.hpp"
@@ -50,7 +49,8 @@ namespace po = boost::program_options;
 #include "cluster.hpp"
 #include "train.hpp"
 #include "test.hpp"
-#include "portcullis_fs.hpp"
+using portcullis::SamtoolsHelper;
+using portcullis::PortcullisFS;
 using portcullis::JunctionBuilder;
 using portcullis::Prepare;
 using portcullis::JunctionFilter;
@@ -58,7 +58,6 @@ using portcullis::BamFilter;
 using portcullis::Cluster;
 using portcullis::Train;
 using portcullis::Test;
-using portcullis::PortcullisFS;
 
 typedef boost::error_info<struct PortcullisError,string> PortcullisErrorInfo;
 struct PortcullisException: virtual boost::exception, virtual std::exception { };
@@ -134,7 +133,7 @@ static string fullHelp() {
 }
 
 
-int mainFull(int argc, char *argv[], PortcullisFS& fs) {
+int mainFull(int argc, char *argv[]) {
     
     // Portcullis args
     std::vector<path> bamFiles;
@@ -230,8 +229,7 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
 
     // Create the prepare class
     Prepare prep(prepDir, portcullis::SSFromString(strandSpecific), true, false, threads, verbose);
-    prep.setFs(fs);
-
+    
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information
     prep.prepare(transformedBams, genomeFile);
@@ -259,10 +257,7 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
     path filtDir = outputDir.string() + "/filtered_junctions";
     path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
     
-    path defaultFilterFile = path(fs.GetEtcDir());
-    defaultFilterFile /= "default_filter.json";
-    
-    JunctionFilter filter(juncTab.string(), defaultFilterFile.c_str(), filtDir.string(), "portcullis_filtered", verbose, fs);
+    JunctionFilter filter(juncTab, JunctionFilter::defaultFilterFile, filtDir, "portcullis_filtered", verbose);
     filter.filter();
 
     
@@ -293,12 +288,14 @@ int main(int argc, char *argv[]) {
         // Portcullis args
         string modeStr;
         std::vector<string> others;
+        bool verbose;
         bool version;
         bool help;
 
         // Declare the supported options.
         po::options_description generic_options(helpHeader());
         generic_options.add_options()
+                ("verbose", po::bool_switch(&verbose)->default_value(false), "Print extra information")
                 ("version", po::bool_switch(&version)->default_value(false), "Print version string")
                 ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
                 ;
@@ -338,7 +335,7 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.4.0"
+#define PACKAGE_VERSION "0.6.0"
 #endif
         cout << PACKAGE_NAME << " V" << PACKAGE_VERSION << endl;
         
@@ -353,26 +350,31 @@ int main(int argc, char *argv[]) {
         char** modeArgV = argv+1;
         
         PortcullisFS fs(argv[0]);
+        SamtoolsHelper::samtoolsExe = fs.getSamtoolsExe();
+        JunctionFilter::defaultFilterFile = path(fs.getEtcDir().string() + "/default_filter.json");
+        JunctionFilter::filterJuncsPy = fs.getFilterJuncsPy();
         
-        cout << endl 
-             << "Project filesystem" << endl 
-             << "------------------" << endl
-             << fs << endl;
+        if (verbose) {
+            cout << endl 
+                 << "Project filesystem" << endl 
+                 << "------------------" << endl
+                 << fs << endl;
+        }
         
         if (mode == PREP) {
-            Prepare::main(modeArgC, modeArgV, fs);
+            Prepare::main(modeArgC, modeArgV);
         }
         else if(mode == JUNC) {
             JunctionBuilder::main(modeArgC, modeArgV);
         }
         else if (mode == FILTER) {
-            JunctionFilter::main(modeArgC, modeArgV, fs);
+            JunctionFilter::main(modeArgC, modeArgV);
         }
         else if (mode == BAM_FILT) {
             BamFilter::main(modeArgC, modeArgV);
         }
         else if (mode == FULL) {
-            mainFull(modeArgC, modeArgV, fs);
+            mainFull(modeArgC, modeArgV);
         }
         else if (mode == CLUSTER) {
             Cluster::main(modeArgC, modeArgV);            

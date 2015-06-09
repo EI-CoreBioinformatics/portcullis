@@ -26,24 +26,16 @@ using std::ifstream;
 using std::string;
 using std::vector;
 
-#include <api/BamAlignment.h>
-
 #include <boost/exception/all.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
-
-#include "junction_system.hpp"
+#include <boost/program_options.hpp>
 using boost::timer::auto_cpu_timer;
 using boost::lexical_cast;
-using boost::filesystem::absolute;
-using boost::filesystem::copy_file;
-using boost::filesystem::remove;
-using boost::filesystem::exists;
-using boost::filesystem::create_symlink;
-using boost::filesystem::create_directory;
-using boost::filesystem::symbolic_link_exists;
+namespace bfs = boost::filesystem;
 namespace po = boost::program_options;
 
+#include "junction_system.hpp"
 
 namespace portcullis {
     
@@ -110,13 +102,13 @@ public:
         saveMSRs = false;
         
         // Test if provided genome exists
-        if (!exists(junctionFile)) {
+        if (!bfs::exists(junctionFile)) {
             BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
                         "Could not find junction file at: ") + junctionFile));
         }
         
         // Test if provided genome exists
-        if (!exists(bamFile)) {
+        if (!bfs::exists(bamFile)) {
             BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
                         "Could not find BAM file at: ") + bamFile));
         }
@@ -135,45 +127,45 @@ protected:
      * @param js The junction system containing good junctions to keep
      * @return Whether or not the alignment contains a junction found in the junction system
      */
-    bool containsJunctionInSystem(BamAlignment& al, RefVector& refs, JunctionSystem& js) {
+    bool containsJunctionInSystem(BamAlignmentPtr al, vector<RefSeq>& refs, JunctionSystem& js) {
         
-        int32_t refId = al.RefID;
-        string refName = refs[refId].RefName;
-        int32_t refLength = refs[refId].RefLength;
-        int32_t lStart = al.Position;        
+        int32_t refId = al->getReferenceId();
+        string refName = refs[refId].name;
+        int32_t refLength = refs[refId].length;
+        int32_t lStart = al->getPosition();        
         int32_t lEnd = lStart;
         int32_t rStart = lStart;
         int32_t rEnd = lStart;
 
-        for(size_t i = 0; i < al.CigarData.size(); i++) {
+        for(size_t i = 0; i < al->getNbCigarOps(); i++) {
 
-            CigarOp op = al.CigarData[i];
-            if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
-                rStart = lEnd + op.Length;
+            CigarOp op = al->getCigarOpAt(i);
+            if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
+                rStart = lEnd + op.length;
                 
                 // Create the intron
                 shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
-                    strandFromBool(al.IsReverseStrand())));                        
+                    strandFromBool(al->isReverseStrand())));                        
 
                 if (js.getJunction(*location) != nullptr) {
                     // Break out of the loop leaving write set to true
                     return true;
                 }                    
             }
-            else if (BamUtils::opFollowsReference(op.Type)) {
-                lEnd += op.Length;                
+            else if (CigarOp::opConsumesReference(op.type)) {
+                lEnd += op.length;                
             }
         }
         
         return false;
     }
     
-    shared_ptr<BamAlignment> clipMSR(BamAlignment& al, RefVector& refs, JunctionSystem& js, bool& allBad) {
+    BamAlignmentPtr clipMSR(BamAlignmentPtr al, vector<RefSeq>& refs, JunctionSystem& js, bool& allBad) {
         
-        int32_t refId = al.RefID;
-        string refName = refs[refId].RefName;
-        int32_t refLength = refs[refId].RefLength;
-        int32_t lStart = al.Position;        
+        int32_t refId = al->getReferenceId();
+        string refName = refs[refId].name;
+        int32_t refLength = refs[refId].length;
+        int32_t lStart = al->getPosition();        
         int32_t lEnd = lStart;
         int32_t rStart = lStart;
         int32_t rEnd = lStart;
@@ -181,21 +173,21 @@ protected:
         bool lastGood = false;
         bool ab = true;
         
-        shared_ptr<BamAlignment> modifiedAlignment = make_shared<BamAlignment>(al);
-        const char modOp = clipMode == ClipMode::HARD ? Constants::BAM_CIGAR_HARDCLIP_CHAR :
-            clipMode == clipMode == ClipMode::SOFT ? Constants::BAM_CIGAR_SOFTCLIP_CHAR : 
-                Constants::BAM_CIGAR_DEL_CHAR;
+        BamAlignmentPtr modifiedAlignment = make_shared<BamAlignment>(*al);
+        const char modOp = clipMode == ClipMode::HARD ? BAM_CIGAR_HARDCLIP_CHAR :
+            clipMode == clipMode == ClipMode::SOFT ? BAM_CIGAR_SOFTCLIP_CHAR : 
+                BAM_CIGAR_DEL_CHAR;
 
-        for(size_t i = 0; i < al.CigarData.size(); i++) {
+        for(size_t i = 0; i < al->getNbCigarOps(); i++) {
 
-            CigarOp op = al.CigarData[i];
+            CigarOp op = al->getCigarOpAt(i);
             
-            if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
-                rStart = lEnd + op.Length;
+            if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
+                rStart = lEnd + op.length;
                 
                 // Create the intron
                 shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
-                    strandFromBool(modifiedAlignment->IsReverseStrand())));                        
+                    strandFromBool(modifiedAlignment->isReverseStrand())));                        
 
                 if (js.getJunction(*location) != nullptr) {
                     // Found a good junction, so region from start should be left as is, reset start to after junction
@@ -208,21 +200,21 @@ protected:
                     }
                     
                     for(size_t j = opStart; j < i; j++) {
-                        modifiedAlignment->CigarData[j] = CigarOp(modOp, al.CigarData[j].Length);
+                        modifiedAlignment->setCigarOpAt(j, CigarOp(modOp, al->getCigarOpAt(j).length));
                     }
                     lastGood = false;
                 }
                 
                 opStart = i+1;
             }
-            else if (BamUtils::opFollowsReference(op.Type)) {
-                lEnd += op.Length;                
+            else if (CigarOp::opConsumesReference(op.type)) {
+                lEnd += op.length;                
             }
         }
         
         if (!lastGood) {
-            for(size_t j = opStart; j < al.CigarData.size(); j++) {
-                modifiedAlignment->CigarData[j] = CigarOp(modOp, al.CigarData[j].Length);
+            for(size_t j = opStart; j < al->getNbCigarOps(); j++) {
+                modifiedAlignment->setCigarOpAt(j, CigarOp(modOp, al->getCigarOpAt(j).length));
             }
         }
         
@@ -295,92 +287,62 @@ public:
         
         cout << " - Found " << js.size() << " junctions" << endl << endl;
         
-        // Sam header and refs info from the input bam    
-        SamHeader header;    
-        RefVector refs;
+        BamReader reader(bamFile, 1);
+        reader.open();
         
-        BamReader reader;
-        
-        if (!reader.Open(bamFile)) {
-            BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
-                    "Could not open BAM reader for input: ") + bamFile));
-        }
-        
-        // Sam header and refs info from the input bam
-        header = reader.GetHeader();
-        refs = reader.GetReferenceData();
-
+        vector<RefSeq> refs = reader.getRefs();
         js.setRefs(refs);
        
         cout << " - Processing alignments from: " << bamFile << endl;
         
-        string indexFile = bamFile + BAM_INDEX_EXTENSION;
-        
-        // Opens the index for this BAM file
-        if ( !reader.OpenIndex(indexFile) ) {            
-            BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
-                    "Could not open index for BAM: ") + indexFile));             
-        }
-        
-        cout << " - Using BAM index: " << indexFile << endl;
-        
-        BamWriter writer;
-        
-        if (!writer.Open(outputBam, header, refs)) {
-            BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
-                    "Could not open BAM writer for output file: ") + outputBam));
-        }
+        BamWriter writer(outputBam);
+        writer.open(reader.getHeader());
         
         cout << " - Saving filtered alignments to: " << outputBam << endl;
         
-        BamWriter mod;
-        BamWriter unmod;
+        BamWriter mod(outputBam + ".mod.bam");
+        BamWriter unmod(outputBam + ".unmod.bam");
         
         if (saveMSRs) {
         
-            if (!mod.Open(outputBam + ".mod.bam", header, refs)) {
-                BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
-                        "Could not open BAM writer for modified MSRs output file: ") + outputBam + ".mod.bam"));
-            }
-            
-            if (!unmod.Open(outputBam + ".unmod.bam", header, refs)) {
-                BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
-                        "Could not open BAM writer for unmodified MSRs output file: ") + outputBam + ".unmod.bam"));
-            }
+            mod.open(reader.getHeader());
+            unmod.open(reader.getHeader());
 
             cout << " - Saving modified MSRs to: " << outputBam << ".mod.bam" << endl;
+            cout << " - Saving unmodified MSRs to: " << outputBam << ".unmod.bam" << endl;
         }
         
-        BamAlignment al;
         uint64_t nbReadsIn = 0;
         uint64_t nbReadsOut = 0;
         uint64_t nbReadsModifiedOut = 0;
         uint32_t nbJunctionsFound = 0;
         
-        while(reader.GetNextAlignment(al)) {
+        while(reader.next()) {
+            
+            BamAlignmentPtr al = reader.current();
             
             nbReadsIn++;
             bool write = false;
                 
-            if (BamUtils::isSplicedRead(al)) {
+            if (al->isSplicedRead()) {
                 
                 // If we are in complete clip mode, or this is a single spliced read, then keep the alignment
                 // if its junction is found in the junctions system, otherwise discard it
-                if (clipMode == COMPLETE || !BamUtils::isMultiplySplicedRead(al)) {
+                if (clipMode == COMPLETE || !al->isMultiplySplicedRead()) {
                     if (containsJunctionInSystem(al, refs, js)) {
-                        writer.SaveAlignment(al);
+                        writer.write(al);
                         nbReadsOut++;
                     }
                 }
                 // Else we are in HARD or SOFT clip mode and this is an MSR
                 else {
                     bool allBad = false;
-                    shared_ptr<BamAlignment> clipped = clipMSR(al, refs, js, allBad);
+                    BamAlignmentPtr clipped = clipMSR(al, refs, js, allBad);
                     if (!allBad) {
-                        writer.SaveAlignment(*clipped);
+                        writer.write(clipped);
                         if (saveMSRs) {
-                            mod.SaveAlignment(*clipped);
-                            unmod.SaveAlignment(al);
+                            mod.write(clipped);
+                            unmod.write(al);
                         }
                         nbReadsModifiedOut++;
                         nbReadsOut++;
@@ -389,17 +351,17 @@ public:
                 
             }
             else {  // Unspliced read so add it to the output
-                writer.SaveAlignment(al);
+                writer.write(al);
                 nbReadsOut++;
             }            
         }
         
-        reader.Close();
-        writer.Close();
+        reader.close();
+        writer.close();
         
         if (saveMSRs) {
-            mod.Close();
-            unmod.Close();
+            mod.close();
+            unmod.close();
         }
         
         cout << "done." << endl;

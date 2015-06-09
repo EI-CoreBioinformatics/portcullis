@@ -17,13 +17,14 @@
 
 #pragma once
 
+#include <string>
+using std::string;
+
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
-
-namespace fs = boost::filesystem;
-
-using fs::exists;
-using fs::path;
+namespace bfs = boost::filesystem;
+using bfs::exists;
+using bfs::path;
 
 namespace portcullis {
     
@@ -78,7 +79,7 @@ namespace portcullis {
                 //cout << "Absolute" << endl;
                 
                 // Easy job... nothing special to do, resolve symlink then take two levels up
-                portcullisExe = fs::canonical(exe);
+                portcullisExe = bfs::canonical(exe);
                 rootDir = portcullisExe.parent_path().parent_path();
             }
             else if (exe.string().find('/') != string::npos) {
@@ -86,7 +87,7 @@ namespace portcullis {
                 //cout << "Relative" << endl;
                 
                 // Relative with some parent paths... get absolute path, resolving symlinks then take two levels up
-                portcullisExe = fs::canonical(fs::system_complete(exe));
+                portcullisExe = bfs::canonical(bfs::system_complete(exe));
                 rootDir = portcullisExe.parent_path().parent_path();
             }
             else {
@@ -99,7 +100,7 @@ namespace portcullis {
                 string fullpath = res.substr(0, res.length() - 1);
 
                 //cout << "fullpath" << fullpath << endl;
-                portcullisExe = fs::canonical(path(fullpath));
+                portcullisExe = bfs::canonical(path(fullpath));
                 rootDir = portcullisExe.parent_path().parent_path();
             }
             
@@ -153,31 +154,31 @@ namespace portcullis {
 
         }
         
-        path GetBinDir() const {
+        path getBinDir() const {
             return binDir;
         }
 
-        path GetEtcDir() const {
+        path getEtcDir() const {
             return etcDir;
         }
 
-        path GetFilterJuncsPy() const {
+        path getFilterJuncsPy() const {
             return filterJuncsPy;
         }
 
-        path GetPortcullisExe() const {
+        path getPortcullisExe() const {
             return portcullisExe;
         }
 
-        path GetRootDir() const {
+        path getRootDir() const {
             return rootDir;
         }
 
-        path GetSamtoolsExe() const {
+        path getSamtoolsExe() const {
             return samtoolsExe;
         }
 
-        path GetScriptsDir() const {
+        path getScriptsDir() const {
             return scriptsDir;
         }
 

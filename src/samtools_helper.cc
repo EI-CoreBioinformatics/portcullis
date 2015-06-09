@@ -15,9 +15,13 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
+using std::make_shared;
+using std::shared_ptr;
+using std::string;
 using std::vector;
 using std::stringstream;
 
@@ -32,59 +36,105 @@ using boost::lexical_cast;
 #include <bam.h>
 
 #include "samtools_helper.hpp"
+using portcullis::BamAlignment;
+using portcullis::BamAlignmentPtr;
 
 
-portcullis::SamtoolsHelper::~SamtoolsHelper {
+// ****** BamReader methods *********
+
+portcullis::BamReader::BamReader(const path& _bamFile, const uint16_t _threads) {
+    bamFile = _bamFile;
+    threads = _threads;
+    
+    header = nullptr;    
+    index = nullptr;
+    iter = nullptr;
+    
+    c = nullptr;    
+}
+
+portcullis::BamReader::~BamReader() {
     
     if (header != nullptr) {
         bam_hdr_destroy(header);
     }
+    
+    if (c != nullptr) {
+        bam_destroy1(c);
+    }
+        
+    if (index != nullptr) {
+        hts_idx_destroy(index);
+    }
+    
+    if (iter != nullptr) {
+        free(iter->off); 
+        free(iter->bins.a); 
+        free(iter);
+    }
 }
 
-void portcullis::SamtoolsHelper::open() {
-    
-    BGZF *fp;
+void portcullis::BamReader::open() {
     
     // split
     fp = bam_open(bamFile.c_str(), "r");
     if (fp == NULL) {
-        BOOST_THROW_EXCEPTION(BamUtilsException() << BamUtilsErrorInfo(string(
+        BOOST_THROW_EXCEPTION(SamtoolsException() << SamtoolsErrorInfo(string(
                 "Could not open input BAM files: ") + bamFile.string()));
     }
     
-    header = bam_hdr_read(fp);
-    current = bam_init1();
-}
-
-bool next(bam_t* bamAlignment) {
+    // Load header
+    header = bam_hdr_read(fp);    
     
-    bool res = bam_read1(bamFile, current);
-    bamAlignment = current;    
-    return res;
-}
-
-void portcullis::SamtoolsHelper::close() {
-    
-    if (header != nullptr) {
-        bam_hdr_destroy(header);
+    // Identify all the reference sequences in the BAM
+    for(uint32_t i = 0; i < header->n_targets; i++) {
+        refs.push_back(RefSeq(i, string(header->target_name[i]), header->target_len[i]));
     }
     
+    // Load the index
+    index = bam_index_load(bamFile.c_str());
+    
+    // Initialise an empty bam alignment
+    c = bam_init1();
 }
 
+void portcullis::BamReader::close() {
+    bam_close(fp);
+}
 
-bool portcullis::SamtoolsHelper::isCoordSortedBam() {    
+bool portcullis::BamReader::next() {    
+    return bam_iter_read(fp, iter, c) >= 0;    
+}
+
+BamAlignmentPtr portcullis::BamReader::current() {
+    return make_shared<BamAlignment>(c, false);
+}
+
+void portcullis::BamReader::setRegion(const int32_t seqIndex, const int32_t start, const int32_t end) {
+    iter = sam_itr_queryi(index, seqIndex, start, end);
+}
+    
+
+bool portcullis::BamReader::isCoordSortedBam() {    
     string headerText = header->text;   
     return headerText.find("SO:coordinate") != std::string::npos;
 }
 
-static bool portcullis::SamtoolsHelper::isCoordSortedBam(const path& bamFile) {
+
+
+
+// ****** Samtools Helper methods *********
+
+path portcullis::SamtoolsHelper::samtoolsExe = "samtools";
+
+bool portcullis::SamtoolsHelper::isCoordSortedBam(const path& bamFile) {
 
     BGZF *fp;
     
     // split
     fp = strcmp(bamFile.c_str(), "-")? bgzf_open(bamFile.c_str(), "r") : bgzf_dopen(fileno(stdin), "r");
     if (fp == NULL) {
-        BOOST_THROW_EXCEPTION(BamUtilsException() << BamUtilsErrorInfo(string(
+        BOOST_THROW_EXCEPTION(SamtoolsException() << SamtoolsErrorInfo(string(
                 "Could not open input BAM files: ") + bamFile.string()));
     }
     
@@ -110,8 +160,7 @@ static bool portcullis::SamtoolsHelper::isCoordSortedBam(const path& bamFile) {
  * @param threads Number of threads to use during merging
  * @return Command line
  */
-string portcullis::SamtoolsHelper::createMergeBamCmd(const path& samtoolsExe, 
-                                                     const vector<path>& bamFiles, 
+string portcullis::SamtoolsHelper::createMergeBamCmd(const vector<path>& bamFiles, 
                                                      const path& mergedBamFile, 
                                                      uint16_t threads) {
 
@@ -136,8 +185,7 @@ string portcullis::SamtoolsHelper::createMergeBamCmd(const path& samtoolsExe,
  * @param memory Amount of memory to request
  * @return The command that can be used to sort the bam file
  */
-string portcullis::SamtoolsHelper::createSortBamCmd(const path& samtoolsExe, 
-                                                    const path& unsortedFile, 
+string portcullis::SamtoolsHelper::createSortBamCmd(const path& unsortedFile, 
                                                     const path& sortedFile, 
                                                     bool sortByName, 
                                                     uint16_t threads, 
@@ -154,7 +202,7 @@ string portcullis::SamtoolsHelper::createSortBamCmd(const path& samtoolsExe,
  * @param sortedBam Path to a sorted bam file to index
  * @return The command that can be used to index the sorted bam file
  */
-string portcullis::SamtoolsHelper::createIndexBamCmd(const path& samtoolsExe, const path& sortedBam) {
+string portcullis::SamtoolsHelper::createIndexBamCmd(const path& sortedBam) {
 
     return samtoolsExe.string() + " index " + sortedBam.string();        
 }

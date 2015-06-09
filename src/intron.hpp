@@ -30,6 +30,9 @@ using std::shared_ptr;
 #include <boost/functional/hash.hpp>
 using boost::lexical_cast;
 
+#include "samtools_helper.hpp"
+using portcullis::RefSeq;
+
 namespace portcullis {    
     
 enum Strand {
@@ -82,22 +85,6 @@ static string strandToString(Strand strand) {
 
     return string("UNKNOWN");
 }
-    
-struct RefSeq {
-   
-    int32_t     Id;     //!< id of the reference sequence
-    std::string Name;    //!< name of reference sequence
-    int32_t     Length;  //!< length of reference sequence
-    
-    //! constructor
-    RefSeq(const int32_t& id = -1,
-            const std::string& name = "",
-            const int32_t& length = 0)
-        : Id(id)
-        , Name(name)
-        , Length(length)
-    { }
-};
 
 typedef boost::error_info<struct IntronError,string> IntronErrorInfo;
 struct IntronException: virtual boost::exception, virtual std::exception { };
@@ -134,7 +121,7 @@ public:
      */
     bool operator==(const Intron &other) const
     { 
-        return (ref.Id == other.ref.Id &&
+        return (ref.index == other.ref.index &&
                 start == other.start &&
                 end == other.end &&
                 strand == other.strand);
@@ -161,7 +148,7 @@ public:
      * @return 
      */
     bool sharesDonorOrAcceptor(const Intron& other) {
-        return ref.Id == other.ref.Id && 
+        return ref.index == other.ref.index && 
                 (start == other.start || end == other.end);
     }
     
@@ -193,16 +180,16 @@ public:
     }
     
     void outputDescription(std::ostream &strm, string delimiter) {
-        strm << "RefId: " << ref.Id << delimiter
-             << "RefName: " << ref.Name << delimiter
-             << "RefLength: " << ref.Length << delimiter
+        strm << "RefId: " << ref.index << delimiter
+             << "RefName: " << ref.name << delimiter
+             << "RefLength: " << ref.length << delimiter
              << "Start: " << start << delimiter
              << "End: " << end << delimiter
              << "Strand: " << strandToString(strand);
     }
     
     friend std::ostream& operator<<(std::ostream &strm, const Intron& l) {
-        return strm << l.ref.Id << "\t" << l.ref.Name << "\t" << l.ref.Length 
+        return strm << l.ref.index << "\t" << l.ref.name << "\t" << l.ref.length 
                 << "\t" << l.start << "\t" << l.end << "\t" << strandToChar(l.strand);
     }
     
@@ -231,7 +218,7 @@ struct IntronHasher {
 
        // Modify 'seed' by XORing and bit-shifting in
        // one member of 'Key' after the other:
-       hash_combine(seed, hash_value(l.ref.Id));
+       hash_combine(seed, hash_value(l.ref.index));
        hash_combine(seed, hash_value(l.start));
        hash_combine(seed, hash_value(l.end));
        hash_combine(seed, hash_value(l.strand));

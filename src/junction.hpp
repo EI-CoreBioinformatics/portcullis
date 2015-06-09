@@ -37,18 +37,15 @@ typedef std::unordered_map<size_t, uint16_t> SplicedAlignmentMap;
 #include <boost/lexical_cast.hpp>
 using boost::lexical_cast;
 
-#include <api/BamAlignment.h>
-using namespace BamTools;
-typedef shared_ptr<BamAlignment> BamAlignmentPtr;
-
 #include "intron.hpp"
 #include "genome_mapper.hpp"
-#include "bam_utils.hpp"
+#include "samtools_helper.hpp"
 #include "seq_utils.hpp"
 #include "prepare.hpp"
 using portcullis::Intron;
 using portcullis::Strand;
-using portcullis::bamtools::BamUtils;
+using portcullis::SamtoolsHelper;
+using portcullis::CigarOp;
 
 namespace portcullis {    
 
@@ -367,21 +364,17 @@ public:
     
     
     void addJunctionAlignment(BamAlignmentPtr al) {
-        this->junctionAlignments.push_back(al);
         
-        size_t code = std::hash<std::string>()(BamUtils::deriveName(*al));
+        // Make sure we take a proper copy of this alignment for safe storage
+        this->junctionAlignments.push_back(make_shared<BamAlignment>(*al));
+        
+        // Calculate a hash of the alignment name
+        size_t code = std::hash<std::string>()(al->deriveName());
         
         this->junctionAlignmentNames.push_back(code);
         this->nbJunctionAlignments = this->junctionAlignments.size();
         
-        uint16_t nbGaps = 0;
-        for(CigarOp op : al->CigarData) {
-            if (op.Type == 'N') {
-                nbGaps++;
-            }
-        }
-        
-        if (nbGaps > 1) {
+        if (al->getNbJunctionsInRead() > 1) {
             this->nbMultipleSplicedReads++;
         }
     }
@@ -446,11 +439,11 @@ public:
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Can't find genomic sequence for this junction as no intron is defined")));
                 
-        int32_t refid = intron->ref.Id;
+        int32_t refid = intron->ref.index;
         
         // Just access the whole junction region
         int seqLen = -1;
-        string region(genomeMapper->fetchBases(intron->ref.Name.c_str(), leftFlankStart, rightFlankEnd, &seqLen));
+        string region(genomeMapper->fetchBases(intron->ref.name.c_str(), leftFlankStart, rightFlankEnd, &seqLen));
         boost::to_upper(region);    // Removes any lowercase bases representing repeats
         if (seqLen == -1) 
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -459,7 +452,7 @@ public:
         if (seqLen != rightFlankEnd - leftFlankStart + 1)
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                     "Retrieved sequence is not of the expected length.") +
-                    "\nSequence Name: " + intron->ref.Name + 
+                    "\nSequence Name: " + intron->ref.name + 
                     "\nSequence Length: " + lexical_cast<string>(seqLen) + 
                     "\nLeft flank start: " + lexical_cast<string>(leftFlankStart) + 
                     "\nRight flank end: " + lexical_cast<string>(rightFlankEnd) + "\n"));
@@ -478,36 +471,33 @@ public:
     
     void processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, StrandSpecific strandSpecific) {
         
-        int32_t refId = intron->ref.Id;
+        int32_t refId = intron->ref.index;
         Strand strand = intron->strand;
 
         uint32_t nbLeftFlankingAlignments = 0, nbRightFlankingAlignments = 0;
 
         int32_t regionStart = leftFlankStart - maxQueryLength - 1; regionStart < 0 ? 0 : regionStart;
         int32_t regionEnd = rightFlankEnd + maxQueryLength + 1; regionEnd >= refLength ? refLength - 1 : regionEnd;
-        BamRegion region(refId, regionStart, refId, regionEnd);
-        
-        BamAlignment ba;
         
         // Focus only on the (expanded... to be safe...) region of interest
-        if (!reader.SetRegion(region)) {
-            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                    "Could not set region")));
-        }
+        reader.setRegion(refId, regionStart, regionEnd);
         
-        while(reader.GetNextAlignment(ba)) {
+        while(reader.next()) {
+            
+            BamAlignmentPtr ba = reader.current();
+            int32_t pos = ba->getPosition();
             
             //TODO: Should we consider strand specific reads differently here?
             
             // Look for left flanking alignments
-            if (    intron->start > ba.Position && 
-                    leftFlankStart <= ba.Position + ba.AlignedBases.size()) {
+            if (    intron->start > pos && 
+                    leftFlankStart <= pos + ba->calcNbAlignedBases()) {
                 nbLeftFlankingAlignments++;
             }
             
             // Look for right flanking alignments
-            if (    rightFlankEnd >= ba.Position && 
-                    intron->end < ba.Position) {
+            if (    rightFlankEnd >= pos && 
+                    intron->end < pos) {
                 nbRightFlankingAlignments++;
             }
         }
@@ -540,20 +530,21 @@ public:
         uint32_t nbDistinctLeftAnchors = 0, nbDistinctRightAnchors = 0;
         int32_t lastLStart = -1, lastREnd = -1;
                 
-        for(shared_ptr<BamAlignment> bap : junctionAlignments) {
+        for(BamAlignmentPtr ba : junctionAlignments) {
             
-            BamAlignment ba = *bap;
+            const int32_t pos = ba->getPosition();
+            const int32_t alignedBases = (int32_t)ba->calcNbAlignedBases();
             
-            int32_t leftSize = BamUtils::alignedBasesBetween(ba, ba.Position, lEnd);
-            int32_t rightSize = BamUtils::alignedBasesBetween(ba, rStart, ba.Position + (int32_t)ba.AlignedBases.size());
+            int32_t leftSize = ba->alignedBasesBetween(pos, lEnd);
+            int32_t rightSize = ba->alignedBasesBetween(rStart, pos + alignedBases);
             
             maxLeftSize = max(maxLeftSize, leftSize);
             minLeftSize = min(minLeftSize, leftSize);
             maxRightSize = max(maxRightSize, rightSize);
             minRightSize = min(minRightSize, rightSize);
             
-            int32_t lStart = ba.Position;
-            int32_t rEnd = ba.Position + (int32_t)ba.AlignedBases.size();
+            int32_t lStart = pos;
+            int32_t rEnd = pos + alignedBases;
             
             if (lStart != lastLStart) {
                 nbDistinctLeftAnchors++;
@@ -590,8 +581,8 @@ public:
         
         vector<int32_t> junctionPositions;
         
-        for(shared_ptr<BamAlignment> ba : junctionAlignments) {
-            junctionPositions.push_back(ba->Position);
+        for(BamAlignmentPtr ba : junctionAlignments) {
+            junctionPositions.push_back(ba->getPosition());
         }
         
         return calcEntropy(junctionPositions);        
@@ -673,10 +664,13 @@ public:
         
         //cout << junctionAlignments.size() << endl;
         
-        for(shared_ptr<BamAlignment> ba : junctionAlignments) {
+        for(BamAlignmentPtr ba : junctionAlignments) {
             
-            int32_t start = ba->Position;
-            int32_t end = ba->Position + ba->AlignedBases.size();
+            const int32_t bapos = ba->getPosition();
+            const int32_t alignedBases = (int32_t)ba->calcNbAlignedBases();
+            
+            int32_t start = bapos;
+            int32_t end = bapos + alignedBases;
             
             if (start != lastStart || end != lastEnd ) {
                 nbDistinctAlignments++;                
@@ -688,7 +682,7 @@ public:
             // This doesn't seem intuitive but this is how they recommend finding
             // "reliable" (i.e. unique) alignments in samtools.  They do this
             // because apparently "uniqueness" is not a well defined concept.
-            if (ba->MapQuality >= MAP_QUALITY_THRESHOLD) {
+            if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD) {
                 nbReliableAlignments++;
             }
             
@@ -698,13 +692,13 @@ public:
             uint16_t downjuncs = 0;
             int32_t pos = start;
             
-            for (CigarOp op : ba->CigarData) {
+            for (CigarOp op : ba->getCigar()) {
                 
-                if (BamUtils::opFollowsReference(op.Type)) {
-                    pos += op.Length;                    
+                if (CigarOp::opConsumesReference(op.type)) {
+                    pos += op.length;                    
                 }
                 
-                if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
+                if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
                     if (pos < intron->start) {
                         upjuncs++;
                     }
@@ -715,7 +709,7 @@ public:
                 
                 // Looks for a mismatch at any point along the spliced read
                 // (even if it's the otherside of another junction in the case of an MSR)
-                if (op.Type == Constants::BAM_CIGAR_MISMATCH_CHAR) {
+                if (op.type == BAM_CIGAR_DIFF_CHAR) {
                     nbMismatches++;
                 }
             }
@@ -813,10 +807,10 @@ public:
         
         uint16_t maxmmes = 0;
         
-        for(shared_ptr<BamAlignment> ba : junctionAlignments) {
+        for(BamAlignmentPtr ba : junctionAlignments) {
             
-            uint16_t leftMM = BamUtils::calcMinimalMatchInCigarDataSubset(*ba, leftFlankStart, intron->start);
-            uint16_t rightMM = BamUtils::calcMinimalMatchInCigarDataSubset(*ba, intron->end, rightFlankEnd);
+            uint16_t leftMM = ba->calcMinimalMatchInCigarDataSubset(leftFlankStart, intron->start);
+            uint16_t rightMM = ba->calcMinimalMatchInCigarDataSubset(intron->end, rightFlankEnd);
             
             uint16_t mmes = min(leftMM, rightMM);
 
@@ -1260,7 +1254,7 @@ public:
         string juncId = string("junc_") + lexical_cast<string>(id);
         
         // Output junction parent
-        strm << intron->ref.Name << "\t"
+        strm << intron->ref.name << "\t"
              << "portcullis" << "\t"    // source
              << "intron" << "\t"        // type (may change later)
              << intron->start << "\t"   // start
@@ -1291,7 +1285,7 @@ public:
         string juncId = string("junc_") + lexical_cast<string>(id);
         
         // Output junction parent
-        strm << intron->ref.Name << "\t"
+        strm << intron->ref.name << "\t"
              << "portcullis" << "\t"    // source
              << "junction" << "\t"      // type (may change later)
              << leftFlankStart << "\t"  // start
@@ -1306,7 +1300,7 @@ public:
         strm << endl;
 
         // Output left exonic region
-        strm << intron->ref.Name << "\t"
+        strm << intron->ref.name << "\t"
              << "portcullis" << "\t"
              << "partial_exon" << "\t"
              << leftFlankStart << "\t"
@@ -1318,7 +1312,7 @@ public:
              << "Parent=" << juncId << endl;
                 
         // Output right exonic region
-        strm << intron->ref.Name << "\t"
+        strm << intron->ref.name << "\t"
              << "portcullis" << "\t"
              << "partial_exon" << "\t"
              << (intron->end + 1) << "\t"
@@ -1352,7 +1346,7 @@ public:
         string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end - leftFlankStart);
         
         // Output junction parent
-        strm << intron->ref.Name << "\t"         // chrom
+        strm << intron->ref.name << "\t"         // chrom
              << leftFlankStart << "\t"  // chromstart
              << rightFlankEnd << "\t"   // chromend
              << juncId << "\t"          // name

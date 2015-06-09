@@ -39,10 +39,10 @@ namespace bfs = boost::filesystem;
 using bfs::path;
 namespace po = boost::program_options;
 
-#include "bam_utils.hpp"
+#include "samtools_helper.hpp"
 #include "genome_mapper.hpp"
 #include "portcullis_fs.hpp"
-using portcullis::bamtools::BamUtils;
+using portcullis::SamtoolsHelper;
 using portcullis::PortcullisFS;
 
 #include "prepare.hpp"
@@ -224,14 +224,27 @@ bool portcullis::Prepare::bamMerge(vector<path> bamFiles) {
     else {
 
         if (verbose) {
-            cout << "Found " << bamFiles.size() << " BAM files." << endl 
-                 << "Merging BAMS...";
+            cout << "Found " << bamFiles.size() << " BAM files." << endl;
+        }
+
+        string mergeCmd = SamtoolsHelper::createMergeBamCmd(bamFiles, mergedBam, threads);
+
+        if (verbose) {
+            cout << "Merging BAM using command \"" << mergeCmd << "\" ... ";
             cout.flush();
         }
 
-        BamUtils::mergeBams(bamFiles, mergedBam);
+        int exitCode = system(mergeCmd.c_str());
 
-        if (verbose) cout << "done." << endl;
+        if (exitCode != 0 || !bfs::exists(mergedBam)) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                    "Failed to successfully merge: ") + mergedBam.string()));
+        }
+
+        if (verbose) {
+        cout << "done." << endl
+             << "Merged BAM file created at: " << mergedBam << endl;
+        }
     }
 
     // Return true if the merged BAM exists now, which is should do
@@ -257,7 +270,7 @@ bool portcullis::Prepare::bamSort() {
     }
     else {
 
-        if (BamUtils::isSortedBam(unsortedBam.string()) && !force) {
+        if (SamtoolsHelper::isCoordSortedBam(unsortedBam.string()) && !force) {
 
             if (verbose) cout << "Provided BAM appears to be sorted already, just creating symlink instead." << endl;
             bfs::create_symlink(bfs::canonical(unsortedBam), sortedBam);            
@@ -266,7 +279,7 @@ bool portcullis::Prepare::bamSort() {
         else {
 
             // Sort the BAM file by coordinate
-            string sortCmd = BamUtils::createSortBamCmd(fs.GetSamtoolsExe(), unsortedBam, sortedBam, false, threads, "1G");
+            string sortCmd = SamtoolsHelper::createSortBamCmd(unsortedBam, sortedBam, false, threads, "1G");
 
             if (verbose) {
                 cout << "Sorting BAM using command \"" << sortCmd << "\" ... ";
@@ -281,7 +294,7 @@ bool portcullis::Prepare::bamSort() {
                 boost::filesystem::rename(badNameMergeFile, sortedBam);
             }
 
-            if (exitCode != 0 || !exists(sortedBam) || !BamUtils::isSortedBam(sortedBam)) {
+            if (exitCode != 0 || !bfs::exists(sortedBam) || !SamtoolsHelper::isCoordSortedBam(sortedBam)) {
                 BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                         "Failed to successfully sort: ") + unsortedBam.string()));
             }
@@ -313,7 +326,7 @@ bool portcullis::Prepare::bamIndex() {
     else {
 
         // Create BAM index
-        string indexCmd = BamUtils::createIndexBamCmd(fs.GetSamtoolsExe(), sortedBam);                
+        string indexCmd = SamtoolsHelper::createIndexBamCmd(sortedBam);                
 
         if (verbose) {
             cout << "Indexing BAM using command \"" << indexCmd << "\" ... ";
@@ -426,7 +439,7 @@ vector<path> portcullis::Prepare::globFiles(vector<path> input) {
     return transformedBams;
 }
     
-int portcullis::Prepare::main(int argc, char *argv[], PortcullisFS& fs) {
+int portcullis::Prepare::main(int argc, char *argv[]) {
 
     // Portcullis args
     vector<path> bamFiles;
@@ -516,8 +529,7 @@ int portcullis::Prepare::main(int argc, char *argv[], PortcullisFS& fs) {
 
     // Create the prepare class
     Prepare prep(outputDir, SSFromString(strandSpecific), force, useLinks, threads, verbose);
-    prep.setFs(fs);
-
+    
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information
     prep.prepare(transformedBams, genomeFile);

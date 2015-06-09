@@ -41,10 +41,10 @@ namespace bfs = boost::filesystem;
 using bfs::path;
 namespace po = boost::program_options;
 
-#include "bam_utils.hpp"
+#include "samtools_helper.hpp"
 #include "genome_mapper.hpp"
 #include "portcullis_fs.hpp"
-using portcullis::bamtools::BamUtils;
+using portcullis::SamtoolsHelper;
 using portcullis::PortcullisFS;
 
 
@@ -168,8 +168,7 @@ private:
     bool useLinks;
     uint16_t threads;
     bool verbose;
-    PortcullisFS fs;
-
+    
     
 public:
     
@@ -213,16 +212,6 @@ public:
     
     void prepare(vector<path> bamFiles, const path& originalGenomeFile);
     
-    PortcullisFS getFs() const {
-        return fs;
-    }
-
-    void setFs(PortcullisFS fs) {
-        this->fs = fs;
-    }
-
-    
-
     bool outputDetails();
 
   
@@ -234,7 +223,7 @@ public:
     
     
     
-    static int main(int argc, char *argv[], PortcullisFS& fs);
+    static int main(int argc, char *argv[]);
     
 };
 }

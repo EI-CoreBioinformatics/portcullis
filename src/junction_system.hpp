@@ -17,18 +17,12 @@
 
 #pragma once
 
-#include "bam_utils.hpp"
-#include "intron.hpp"
-#include "junction.hpp"
-#include "genome_mapper.hpp"
-#include "depth_parser.hpp"
-using portcullis::bamtools::BamUtils;
-using portcullis::DepthParser;
-using portcullis::GenomeMapper;
-using portcullis::Intron;
-using portcullis::IntronHasher;
-using portcullis::Junction;
-using portcullis::JunctionPtr;
+#include <fstream>
+#include <vector>
+#include <memory>
+#include <unordered_map>
+using std::ofstream;
+using std::shared_ptr;
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/exception/all.hpp>
@@ -37,12 +31,20 @@ using boost::split;
 using boost::lexical_cast;
 using boost::timer::auto_cpu_timer;
 
-#include <fstream>
-#include <vector>
-#include <memory>
-#include <unordered_map>
-using std::ofstream;
-using std::shared_ptr;
+#include "samtools_helper.hpp"
+#include "intron.hpp"
+#include "junction.hpp"
+#include "genome_mapper.hpp"
+#include "depth_parser.hpp"
+using portcullis::SamtoolsHelper;
+using portcullis::BamAlignment;
+using portcullis::BamReader;
+using portcullis::DepthParser;
+using portcullis::GenomeMapper;
+using portcullis::Intron;
+using portcullis::IntronHasher;
+using portcullis::Junction;
+using portcullis::JunctionPtr;
 
 typedef std::unordered_map<Intron, JunctionPtr, IntronHasher> DistinctJunctions;
 typedef std::unordered_map<Intron, JunctionPtr, IntronHasher>::iterator JunctionMapIterator;
@@ -58,9 +60,8 @@ private:
     int32_t minQueryLength;
     double meanQueryLength;
     int32_t maxQueryLength;
-    
-    RefVector refs;
-    
+
+    vector<RefSeq> refs;
     
     size_t createJunctionGroup(size_t index, vector<JunctionPtr>& group) {
         
@@ -88,7 +89,7 @@ private:
         
         subset.clear();
         for(JunctionPtr j : junctionList) {
-            if (j->getIntron()->ref.Id == refId) {
+            if (j->getIntron()->ref.index == refId) {
                 subset.push_back(j);
             }    
         }        
@@ -104,11 +105,11 @@ public:
         maxQueryLength = 0;        
     }
     
-    JunctionSystem(RefVector refs) : JunctionSystem() {
+    JunctionSystem(vector<RefSeq> refs) : JunctionSystem() {
         this->refs = refs;
     }
     
-    JunctionSystem(string junctionFile) : JunctionSystem() {
+    JunctionSystem(path junctionFile) : JunctionSystem() {
         load(junctionFile);
     }
     
@@ -158,7 +159,7 @@ public:
         this->maxQueryLength = max;
     }
     
-    void setRefs(RefVector refs) {
+    void setRefs(vector<RefSeq> refs) {
         this->refs = refs;
     }
     
@@ -190,18 +191,18 @@ public:
      * @return Whether a junction was found in this alignment or not
      */
     bool addJunctions(BamAlignmentPtr al, bool strandSpecific) {
-        return addJunctions(al, 0, al->Position, strandSpecific);
+        return addJunctions(al, 0, al->getPosition(), strandSpecific);
     }
     
     bool addJunctions(BamAlignmentPtr al, const size_t startOp, const int32_t offset, bool strandSpecific) {
         
         bool foundJunction = false;
         
-        size_t nbOps = al->CigarData.size();
+        size_t nbOps = al->getNbCigarOps();
         
-        int32_t refId = al->RefID;
-        string refName = refs[refId].RefName;
-        int32_t refLength = refs[refId].RefLength;
+        int32_t refId = al->getReferenceId();
+        string refName = refs[refId].name;
+        int32_t refLength = refs[refId].length;
         int32_t lStart = offset;        
         int32_t lEnd = lStart;
         int32_t rStart = lStart;
@@ -209,19 +210,19 @@ public:
         
         for(size_t i = startOp; i < nbOps; i++) {
             
-            CigarOp op = al->CigarData[i];
-            if (op.Type == Constants::BAM_CIGAR_REFSKIP_CHAR) {
+            CigarOp op = al->getCigarOpAt(i);
+            if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
                 foundJunction = true;
                 
-                rStart = lEnd + op.Length;
+                rStart = lEnd + op.length;
                 rEnd = rStart;
                 
                 size_t j = i+1;
-                while (j < nbOps && al->CigarData[j].Type != Constants::BAM_CIGAR_REFSKIP_CHAR) {
+                while (j < nbOps && al->getCigarOpAt(j).type != BAM_CIGAR_REFSKIP_CHAR) {
                     
-                    CigarOp rOp = al->CigarData[j++];
-                    if (BamUtils::opFollowsReference(rOp.Type)) {
-                        rEnd += rOp.Length;
+                    CigarOp rOp = al->getCigarOpAt(j++);
+                    if (CigarOp::opConsumesReference(rOp.type)) {
+                        rEnd += rOp.length;
                     }
                 }
                 
@@ -232,7 +233,7 @@ public:
                 
                 // Create the intron
                 shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
-                        strandSpecific ? strandFromBool(al->IsReverseStrand()) : UNKNOWN));
+                        strandSpecific ? strandFromBool(al->isReverseStrand()) : UNKNOWN));
                 
                 // We should now have the complete junction location information
                 JunctionMapIterator it = distinctJunctions.find(*location);
@@ -265,8 +266,8 @@ public:
                     break;
                 }                
             }
-            else if (BamUtils::opFollowsReference(op.Type)) {
-                lEnd += op.Length;                
+            else if (CigarOp::opConsumesReference(op.type)) {
+                lEnd += op.length;                
             }
             else {
                 
@@ -288,7 +289,7 @@ public:
      * @param refs
      * @return 
      */
-    void scanReference(GenomeMapper* genomeMapper, RefVector& refs) {
+    void scanReference(GenomeMapper* genomeMapper, vector<RefSeq>& refs) {
         scanReference(genomeMapper, refs, false);
     }
     
@@ -301,7 +302,7 @@ public:
      * @param verbose
      * @return 
      */
-    void scanReference(GenomeMapper* genomeMapper, RefVector& refs, bool verbose) {
+    void scanReference(GenomeMapper* genomeMapper, vector<RefSeq>& refs, bool verbose) {
         
         if (verbose) {
             auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");        
@@ -352,27 +353,11 @@ public:
              << " - Acquiring all alignments in each junction's vicinity ... ";
         cout.flush();
 
-        // Maybe try to multi-thread this part
-        
-        BamReader reader;
-        
-        if (!reader.Open(alignmentsFile.string())) {
-            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                    "Could not open bam reader for alignments file: ") + alignmentsFile.string()));
-        }
-        // Sam header and refs info from the input bam
-        SamHeader header = reader.GetHeader();
-        RefVector refs = reader.GetReferenceData();
+        // Maybe try to multi-thread this part        
+        BamReader reader(alignmentsFile, 1);
 
-        // Opens the index for this BAM file
-        string indexFile = alignmentsFile.string() + ".bti";
-        if ( !reader.OpenIndex(indexFile) ) {            
-            if ( !reader.CreateIndex(BamIndex::BAMTOOLS) ) {
-                BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                        "Error creating BAM index for alignments file: ") + indexFile));
-            }            
-        }
-        
+        // Open the file
+        reader.open();
         
         // Read the alignments around every junction and set appropriate metrics
         size_t count = 0;
@@ -380,16 +365,13 @@ public:
         for(JunctionPtr j : junctionList) {            
             j->processJunctionVicinity(
                     reader, 
-                    j->getIntron()->ref.Length, 
+                    j->getIntron()->ref.length, 
                     meanQueryLength, 
                     maxQueryLength,
                     strandSpecific);
             
             //cout << count++ << endl;
         }
-        
-        // Reset the reader for future use.
-        reader.Close();
         
         cout << "done." << endl;
     }
@@ -469,15 +451,15 @@ public:
     }
     
     
-    void saveAll(string outputPrefix) {
+    void saveAll(path outputPrefix) {
         
         auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n"); 
         
-        string junctionReportPath = outputPrefix + ".junctions.txt";
-        string junctionFilePath = outputPrefix + ".junctions.tab";
-        string junctionGFFPath = outputPrefix + ".junctions.gff3";
-        string intronGFFPath = outputPrefix + ".introns.gff3";
-        string junctionBEDAllPath = outputPrefix + ".junctions.bed";
+        string junctionReportPath = outputPrefix.string() + ".junctions.txt";
+        string junctionFilePath = outputPrefix.string() + ".junctions.tab";
+        string junctionGFFPath = outputPrefix.string() + ".junctions.gff3";
+        string intronGFFPath = outputPrefix.string() + ".introns.gff3";
+        string junctionBEDAllPath = outputPrefix.string() + ".junctions.bed";
         
         cout << " - Saving junction report to: " << junctionReportPath << " ... ";
         cout.flush();
@@ -585,7 +567,7 @@ public:
         }
     }
     
-    void load(string junctionTabFile) {
+    void load(const path& junctionTabFile) {
         
         ifstream ifs(junctionTabFile.c_str());
         

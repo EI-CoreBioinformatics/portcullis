@@ -17,12 +17,10 @@ portcullis_LDFLAGS = @AM_LDFLAGS@
 
 portcullis_LDADD = $(top_srcdir)/deps/htslib-1.2.1/libhts.a @AM_LIBS@
 
-portcullis_HEADERS =	htslib_helper.hpp \
-			samtools_helper.hpp \
+portcullis_HEADERS =	samtools_helper.hpp \
 			prepare.hpp
 
 portcullis_SOURCES =	portcullis_fs.hpp \
-			htslib_helper.cc \
 			samtools_helper.cc \
 			depth_parser.hpp \
 			genome_mapper.hpp \

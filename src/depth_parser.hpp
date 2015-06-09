@@ -27,9 +27,6 @@ using std::cout;
 #include <boost/filesystem/path.hpp>
 using boost::filesystem::path;
 
-#include <api/BamReader.h>
-using namespace BamTools;
-
 #include <bam.h>
 
 namespace portcullis {
