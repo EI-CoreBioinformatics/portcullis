@@ -103,7 +103,7 @@ void portcullis::BamReader::close() {
     bam_close(fp);
 }
 
-bool portcullis::BamReader::next() {    
+bool portcullis::BamReader::next() {
     return bam_iter_read(fp, iter, c) >= 0;    
 }
 

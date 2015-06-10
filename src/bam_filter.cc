@@ -86,8 +86,8 @@ bool portcullis::BamFilter::containsJunctionInSystem(BamAlignmentPtr al, vector<
             rStart = lEnd + op.length;
 
             // Create the intron
-            shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
-                strandFromBool(al->isReverseStrand())));                        
+            shared_ptr<Intron> location = make_shared<Intron>(RefSeq(refId, refName, refLength), lEnd, rStart, 
+                strandFromBool(al->isReverseStrand()));                        
 
             if (js.getJunction(*location) != nullptr) {
                 // Break out of the loop leaving write set to true
@@ -128,8 +128,8 @@ BamAlignmentPtr portcullis::BamFilter::clipMSR(BamAlignmentPtr al, vector<RefSeq
             rStart = lEnd + op.length;
 
             // Create the intron
-            shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
-                strandFromBool(modifiedAlignment->isReverseStrand())));                        
+            shared_ptr<Intron> location = make_shared<Intron>(RefSeq(refId, refName, refLength), lEnd, rStart, 
+                strandFromBool(modifiedAlignment->isReverseStrand()));     
 
             if (js.getJunction(*location) != nullptr) {
                 // Found a good junction, so region from start should be left as is, reset start to after junction

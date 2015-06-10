@@ -230,8 +230,8 @@ public:
                 }
                 
                 // Create the intron
-                shared_ptr<Intron> location(new Intron(RefSeq(refId, refName, refLength), lEnd, rStart, 
-                        strandSpecific ? strandFromBool(al->isReverseStrand()) : UNKNOWN));
+                shared_ptr<Intron> location = make_shared<Intron>(RefSeq(refId, refName, refLength), lEnd, rStart, 
+                        strandSpecific ? strandFromBool(al->isReverseStrand()) : UNKNOWN);
                 
                 // We should now have the complete junction location information
                 JunctionMapIterator it = distinctJunctions.find(*location);
@@ -242,7 +242,7 @@ public:
                 // location / junction pair.  If we've seen this location before
                 // then add this alignment to the existing junction
                 if (it == distinctJunctions.end()) {
-                    JunctionPtr junction(new Junction(location, lStart, rEnd));
+                    JunctionPtr junction = make_shared<Junction>(location, lStart, rEnd);
                     junction->addJunctionAlignment(al);
                     distinctJunctions[*location] = junction;
                     junctionList.push_back(junction);                    

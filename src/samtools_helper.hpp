@@ -144,6 +144,16 @@ public:
      * Makes a deep copy of an existing BamAlignment
      * @param other
      */
+    BamAlignment(const shared_ptr<BamAlignment> other) {
+        b = bam_dup1(other->b);
+        managed = true;
+        init();
+    }
+    
+    /**
+     * Makes a deep copy of an existing BamAlignment
+     * @param other
+     */
     BamAlignment(const BamAlignment& other) {
         b = bam_dup1(other.b);
         managed = true;
@@ -155,7 +165,8 @@ public:
      * by this object
      */
     virtual ~BamAlignment() {
-        if (managed) bam_destroy1(b);
+        if (managed) 
+            bam_destroy1(b);
     }
     
     bam1_t* getRaw() const {
@@ -559,12 +570,14 @@ public:
      * @abstract    Fetch the sequence in a region.
      * @param  reg  Region in the format "chr2:20,000-30,000"
      * @param  len  Length of the region
-     * @return      Pointer to the sequence; null on failure
-     * @discussion The returned sequence is allocated by malloc family
-     * and should be destroyed by end users by calling free() on it.
+     * @return      The sequence as a string; empty string if no seq found
      */
-    char* fetchBases(const char* reg, int* len) {
-        return fai_fetch(fastaIndex, reg, len);        
+    string fetchBases(const char* reg, int* len) {
+        char* cseq = fai_fetch(fastaIndex, reg, len);
+        string strseq = cseq == NULL ? string("") : string(cseq);
+        if (cseq != NULL)
+            free(cseq);
+        return strseq;        
     }
     
     /**
@@ -573,12 +586,14 @@ public:
      * @param  start    Start location on region (zero-based)
      * @param  end  End position (zero-based)
      * @param  len  Length of the region
-     * @return      Pointer to the sequence; null on failure
-     * @discussion The returned sequence is allocated by malloc family
-     * and should be destroyed by end users by calling free() on it.
+     * @return      The sequence as a string; empty string if no seq found
      */
-    char* fetchBases(const char* name, int start, int end, int* len) {
-        return faidx_fetch_seq(fastaIndex, name, start, end, len);        
+    string fetchBases(const char* name, int start, int end, int* len) {
+        char* cseq = faidx_fetch_seq(fastaIndex, name, start, end, len);
+        string strseq = cseq == NULL ? string("") : string(cseq);
+        if (cseq != NULL)
+            free(cseq);
+        return strseq;        
     }
     
     /**

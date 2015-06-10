@@ -194,8 +194,8 @@ void portcullis::Junction::clearAlignments() {
 void portcullis::Junction::addJunctionAlignment(BamAlignmentPtr al) {
 
     // Make sure we take a proper copy of this alignment for safe storage
-    this->junctionAlignments.push_back(make_shared<BamAlignment>(*al));
-
+    this->junctionAlignments.push_back(make_shared<BamAlignment>(al));
+    
     // Calculate a hash of the alignment name
     size_t code = std::hash<std::string>()(al->deriveName());
 
@@ -250,7 +250,7 @@ portcullis::CanonicalSS portcullis::Junction::processJunctionWindow(GenomeMapper
 
     // Just access the whole junction region
     int seqLen = -1;
-    string region(genomeMapper->fetchBases(intron->ref.name.c_str(), leftFlankStart, rightFlankEnd, &seqLen));
+    string region = genomeMapper->fetchBases(intron->ref.name.c_str(), leftFlankStart, rightFlankEnd, &seqLen);
     boost::to_upper(region);    // Removes any lowercase bases representing repeats
     if (seqLen == -1) 
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -884,19 +884,19 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     }
 
     // Create intron
-    IntronPtr i(new Intron(
+    IntronPtr i = make_shared<Intron>(
         RefSeq(lexical_cast<int32_t>(parts[1]), parts[2], lexical_cast<int32_t>(parts[3])),
         lexical_cast<int32_t>(parts[4]),
         lexical_cast<int32_t>(parts[5]),
         strandFromChar(parts[6][0])
-    ));
+    );
 
     // Create basic junction
-    shared_ptr<Junction> j(new Junction(
+    shared_ptr<Junction> j = make_shared<Junction>(
         i,
         lexical_cast<int32_t>(parts[7]),
         lexical_cast<int32_t>(parts[8])
-    ));
+    );
 
     // Splice site strings
     j->setDa1(parts[9]);

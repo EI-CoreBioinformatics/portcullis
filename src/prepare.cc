@@ -111,7 +111,7 @@ portcullis::StrandSpecific portcullis::PreparedFiles::loadSettings() {
 
     
 portcullis::Prepare::Prepare(const path& _outputPrefix, StrandSpecific _strandSpecific, bool _force, bool _useLinks, uint16_t _threads, bool _verbose) {
-    output = new PreparedFiles(_outputPrefix);
+    output = make_shared<PreparedFiles>(_outputPrefix);
     strandSpecific = _strandSpecific;
     force = _force;
     useLinks = _useLinks;

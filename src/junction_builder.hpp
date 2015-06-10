@@ -67,7 +67,7 @@ class JunctionBuilder {
 private:
 
     // Can set these from the outside via the constructor
-    PreparedFiles* prepData;
+    shared_ptr<PreparedFiles> prepData;
     path outputDir;
     string outputPrefix;
     StrandSpecific strandSpecific;

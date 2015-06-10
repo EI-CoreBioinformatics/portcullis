@@ -53,7 +53,7 @@ using portcullis::JunctionSystem;
 #include "junction_builder.hpp"
 
 portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _outputDir, string _outputPrefix, uint16_t _threads, bool _fast, bool _verbose) {
-    prepData = new PreparedFiles(_prepDir);
+    prepData = make_shared<PreparedFiles>(_prepDir);
     outputDir = _outputDir;
     outputPrefix = _outputPrefix;
     threads = _threads;
@@ -110,10 +110,6 @@ portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _
 portcullis::JunctionBuilder::~JunctionBuilder() {
 
     splicedAlignmentMap.clear();
-
-    if (prepData != nullptr) {
-        delete prepData;
-    }        
 }
     
     
@@ -169,21 +165,21 @@ void portcullis::JunctionBuilder::process() {
 
             JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);            
 
-            size_t nbJABefore = j->getNbJunctionAlignmentFromVector();
+            /*size_t nbJABefore = j->getNbJunctionAlignmentFromVector();
             BamAlignmentPtr j0 = j->getFirstAlignment();
             size_t refBefore = j0.use_count() - 1;
             size_t alignSize = sizeof(*j0);
-            size_t juncSizeBefore = sizeof(*j);
+            size_t juncSizeBefore = sizeof(*j);*/
 
             j->calcMetrics();
             j->clearAlignments();
             lastCalculatedJunctionIndex++;
 
-            size_t nbJAAfter = j->getNbJunctionAlignmentFromVector();
+            /*size_t nbJAAfter = j->getNbJunctionAlignmentFromVector();
             size_t refAfter = j0.use_count() - 1;
             size_t juncSizeAfter = sizeof(*j);
 
-            /*cout << "Junction " << lastCalculatedJunctionIndex << " shut down.  Intron start: " << j->getIntron()->start 
+            cout << "Junction " << lastCalculatedJunctionIndex << " shut down.  Intron start: " << j->getIntron()->start 
                     << ". Alignments: " << nbJABefore << "/" << nbJAAfter 
                     << ". Refcount: " << refBefore << "/" << refAfter 
                     << ". Size: " << juncSizeBefore << "/" << juncSizeAfter
@@ -217,6 +213,8 @@ void portcullis::JunctionBuilder::process() {
             unsplicedCount++;
         }
 
+        // Force remove bam alignment
+        al.reset();
         //cout << "After junction add (outer): " << bap.use_count() << endl;
     }
 
@@ -264,10 +262,10 @@ void portcullis::JunctionBuilder::process() {
         // regions for each junction
         cout << endl << endl << "Analysing unspliced alignments around junctions:" << endl;
         junctionSystem.findFlankingAlignments(unsplicedFile, strandSpecific);
+        
+        cout << endl << "Calculating unspliced alignment coverage around junctions..." << endl;
+        junctionSystem.calcCoverage(unsplicedFile, strandSpecific);
     }
-
-    cout << endl << "Calculating unspliced alignment coverage around junctions..." << endl;
-    junctionSystem.calcCoverage(unsplicedFile, strandSpecific);
 
     // Calculate some stats
     uint64_t totalAlignments = splicedCount + unsplicedCount;

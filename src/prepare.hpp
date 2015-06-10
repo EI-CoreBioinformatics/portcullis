@@ -162,7 +162,7 @@ class Prepare {
 
 private:
     
-    PreparedFiles* output;
+    shared_ptr<PreparedFiles> output;
     StrandSpecific strandSpecific;
     bool force;
     bool useLinks;
@@ -177,8 +177,7 @@ public:
     
     Prepare(const path& _outputPrefix, StrandSpecific _strandSpecific, bool _force, bool _useLinks, uint16_t _threads, bool _verbose);
     
-    virtual ~Prepare() {
-        delete output;
+    virtual ~Prepare() {       
     }
     
     
