@@ -18,11 +18,14 @@
 #include <glob.h>
 #include <fstream>
 #include <string>
+#include <memory>
 #include <iostream>
 #include <vector>
 using std::boolalpha;
 using std::ifstream;
 using std::string;
+using std::shared_ptr;
+using std::make_shared;
 using std::vector;
 
 #include <boost/algorithm/string.hpp>
@@ -39,24 +42,26 @@ namespace bfs = boost::filesystem;
 using bfs::path;
 namespace po = boost::program_options;
 
-#include "samtools_helper.hpp"
+#include "bam/bam_master.hpp"
+#include "bam/genome_mapper.hpp"
+using portcullis::bam::BamHelper;
+using portcullis::bam::GenomeMapper;
+
 #include "portcullis_fs.hpp"
-using portcullis::GenomeMapper;
-using portcullis::SamtoolsHelper;
 using portcullis::PortcullisFS;
 
 #include "prepare.hpp"
 
-bool portcullis::PreparedFiles::valid() {
+bool portcullis::PreparedFiles::valid(bool useCsi) const {
         
     if (!bfs::exists(getSortedBamFilePath()) && !bfs::symbolic_link_exists(getSortedBamFilePath())) {
         BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                 "Could not find sorted BAM files at: ") + getSortedBamFilePath().string()));
     }
 
-    if (!bfs::exists(getBamIndexFilePath()) && !bfs::symbolic_link_exists(getBamIndexFilePath())) {
+    if (!bfs::exists(getBamIndexFilePath(useCsi)) && !bfs::symbolic_link_exists(getBamIndexFilePath(useCsi))) {
         BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                "Could not find BAM index at: ") + getBamIndexFilePath().string()));
+                "Could not find BAM index at: ") + getBamIndexFilePath(useCsi).string()));
     }
 
     if (!bfs::exists(getGenomeFilePath()) && !bfs::symbolic_link_exists(getGenomeFilePath())) {
@@ -81,7 +86,8 @@ void portcullis::PreparedFiles::clean() {
 
     bfs::remove(getUnsortedBamFilePath());
     bfs::remove(getSortedBamFilePath());
-    bfs::remove(getBamIndexFilePath());
+    bfs::remove(getBamIndexFilePath(false));
+    bfs::remove(getBamIndexFilePath(true));
     bfs::remove(getGenomeFilePath());
     bfs::remove(getGenomeIndexFilePath());
     bfs::remove(getBcfFilePath());
@@ -89,9 +95,10 @@ void portcullis::PreparedFiles::clean() {
     bfs::remove(getSettingsFilePath());
 }
     
-portcullis::StrandSpecific portcullis::PreparedFiles::loadSettings() {
+portcullis::Settings portcullis::PreparedFiles::loadSettings() {
     ifstream ifs(getSettingsFilePath().c_str());
     string line;
+    Settings settings;
     while ( std::getline(ifs, line) ) {
         if ( !line.empty() ) {
            if (line.find("SS") == 0) {
@@ -102,19 +109,33 @@ portcullis::StrandSpecific portcullis::PreparedFiles::loadSettings() {
                    std::istringstream is(val);
                    string ss;
                    is >> ss;
-                   return SSFromString(ss);
+                   settings.ss = SSFromString(ss);
+               }
+           } 
+           if (line.find("INDEX") == 0) {
+               size_t eqPos = line.find("=");                   
+               if (eqPos > 0) {
+                   string val = (line.substr(eqPos+1)); 
+                   boost::trim(val);
+                   std::istringstream is(val);
+                   string idx;
+                   is >> idx;
+                   settings.useCsi = boost::iequals(idx, "CSI");
                }
            } 
         }
     }
+    
+    return settings;
 }
 
     
-portcullis::Prepare::Prepare(const path& _outputPrefix, StrandSpecific _strandSpecific, bool _force, bool _useLinks, uint16_t _threads, bool _verbose) {
+portcullis::Prepare::Prepare(const path& _outputPrefix, StrandSpecific _strandSpecific, bool _force, bool _useLinks, bool _useCsi, uint16_t _threads, bool _verbose) {
     output = make_shared<PreparedFiles>(_outputPrefix);
     strandSpecific = _strandSpecific;
     force = _force;
     useLinks = _useLinks;
+    useCsi = _useCsi;
     threads = _threads;
     verbose = _verbose;
 
@@ -124,6 +145,7 @@ portcullis::Prepare::Prepare(const path& _outputPrefix, StrandSpecific _strandSp
              << " - Strand specific library: " << SSToString(strandSpecific) << endl
              << " - Force prep (cleans output directory): " << boolalpha << force << endl
              << " - Use symbolic links instead of copy where possible: " << boolalpha << useLinks << endl
+             << " - Indexing type: " << (useCsi ? "CSI" : "BAI") << endl
              << " - Threads (for sorting BAM): " << threads << endl << endl;
     }
 
@@ -227,7 +249,7 @@ bool portcullis::Prepare::bamMerge(vector<path> bamFiles) {
             cout << "Found " << bamFiles.size() << " BAM files." << endl;
         }
 
-        string mergeCmd = SamtoolsHelper::createMergeBamCmd(bamFiles, mergedBam, threads);
+        string mergeCmd = BamHelper::createMergeBamCmd(bamFiles, mergedBam, threads);
 
         if (verbose) {
             cout << "Merging BAM using command \"" << mergeCmd << "\" ... ";
@@ -270,7 +292,7 @@ bool portcullis::Prepare::bamSort() {
     }
     else {
 
-        if (SamtoolsHelper::isCoordSortedBam(unsortedBam.string()) && !force) {
+        if (BamHelper::isCoordSortedBam(unsortedBam.string())  && !force) {
 
             if (verbose) cout << "Provided BAM appears to be sorted already, just creating symlink instead." << endl;
             bfs::create_symlink(bfs::canonical(unsortedBam), sortedBam);            
@@ -279,7 +301,7 @@ bool portcullis::Prepare::bamSort() {
         else {
 
             // Sort the BAM file by coordinate
-            string sortCmd = SamtoolsHelper::createSortBamCmd(unsortedBam, sortedBam, false, threads, "1G");
+            string sortCmd = BamHelper::createSortBamCmd(unsortedBam, sortedBam, false, threads, "1G");
 
             if (verbose) {
                 cout << "Sorting BAM using command \"" << sortCmd << "\" ... ";
@@ -294,7 +316,7 @@ bool portcullis::Prepare::bamSort() {
                 boost::filesystem::rename(badNameMergeFile, sortedBam);
             }
 
-            if (exitCode != 0 || !bfs::exists(sortedBam) || !SamtoolsHelper::isCoordSortedBam(sortedBam)) {
+            if (exitCode != 0 || !bfs::exists(sortedBam) || !BamHelper::isCoordSortedBam(sortedBam)) {
                 BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                         "Failed to successfully sort: ") + unsortedBam.string()));
             }
@@ -316,7 +338,7 @@ bool portcullis::Prepare::bamIndex() {
     auto_cpu_timer timer(1, " - BAM Index - Wall time taken: %ws\n\n");
 
     const path sortedBam = output->getSortedBamFilePath();
-    const path indexedFile = output->getBamIndexFilePath();
+    const path indexedFile = output->getBamIndexFilePath(useCsi);
 
     bool indexedBamExists = bfs::exists(indexedFile) || bfs::symbolic_link_exists(indexedFile);
 
@@ -326,7 +348,7 @@ bool portcullis::Prepare::bamIndex() {
     else {
 
         // Create BAM index
-        string indexCmd = SamtoolsHelper::createIndexBamCmd(sortedBam);                
+        string indexCmd = BamHelper::createIndexBamCmd(sortedBam, useCsi);                
 
         if (verbose) {
             cout << "Indexing BAM using command \"" << indexCmd << "\" ... ";
@@ -335,14 +357,14 @@ bool portcullis::Prepare::bamIndex() {
 
         int exitCode = system(indexCmd.c_str());                    
 
-        if (exitCode != 0 || !exists(output->getBamIndexFilePath())) {
+        if (exitCode != 0 || !exists(output->getBamIndexFilePath(useCsi))) {
                 BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                         "Failed to successfully index: ") + sortedBam.string()));
         }
 
         if (verbose) {
             cout << "done." << endl
-                 << "BAM index created at: " << output->getBamIndexFilePath() << endl;
+                 << "BAM index created at: " << output->getBamIndexFilePath(useCsi) << endl;
         }
     }
 
@@ -415,6 +437,7 @@ bool portcullis::Prepare::outputDetails() {
     }
 
     outfile << "SS=" << SSToString(strandSpecific) << endl;
+    outfile << "INDEX=" << useCsi ? "CSI" : "BAI";
     outfile.close();
 }
 
@@ -448,21 +471,24 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
     bool force;
     string strandSpecific;
     bool useLinks;
+    bool useCsi;
     uint16_t threads;
     bool verbose;
     bool help;
 
     // Declare the supported options.
-    po::options_description generic_options(helpMessage());
+    po::options_description generic_options(helpMessage(), 100);
     generic_options.add_options()
             ("output,o", po::value<path>(&outputDir)->default_value(DEFAULT_PREP_OUTPUT_DIR), 
                 (string("Output directory for prepared files. Default: ") + DEFAULT_PREP_OUTPUT_DIR).c_str())
             ("force,f", po::bool_switch(&force)->default_value(false), 
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
-            ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(SSToString(StrandSpecific::UNSTRANDED)), 
+            ("strand_specific,s", po::value<string>(&strandSpecific)->default_value(SSToString(StrandSpecific::UNSTRANDED)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unstranded\"")
             ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
                 "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
+            ("use_csi,c", po::bool_switch(&useCsi)->default_value(false), 
+                "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_PREP_THREADS),
                 (string("The number of threads to used to sort the BAM file (if required).  Default: ") + lexical_cast<string>(DEFAULT_PREP_THREADS)).c_str())
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
@@ -528,7 +554,7 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
          << "----------------------------------" << endl << endl;
 
     // Create the prepare class
-    Prepare prep(outputDir, SSFromString(strandSpecific), force, useLinks, threads, verbose);
+    Prepare prep(outputDir, SSFromString(strandSpecific), force, useLinks, useCsi, threads, verbose);
     
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information

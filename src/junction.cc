@@ -36,15 +36,17 @@ typedef std::unordered_map<size_t, uint16_t> SplicedAlignmentMap;
 #include <boost/lexical_cast.hpp>
 using boost::lexical_cast;
 
+#include "bam/bam_alignment.hpp"
+#include "bam/genome_mapper.hpp"
+using portcullis::bam::CigarOp;
+using portcullis::bam::GenomeMapper;
+
 #include "intron.hpp"
-#include "samtools_helper.hpp"
 #include "seq_utils.hpp"
 #include "prepare.hpp"
-using portcullis::GenomeMapper;
 using portcullis::Intron;
 using portcullis::Strand;
-using portcullis::SamtoolsHelper;
-using portcullis::CigarOp;
+
 
 #include "junction.hpp"
 
@@ -170,8 +172,8 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 
     if (withAlignments) {
 
-        for(shared_ptr<BamAlignment> ba : j.junctionAlignments) {
-            this->junctionAlignments.push_back(ba);
+        for(const auto& ba : j.junctionAlignments) {
+            this->junctionAlignments.push_back(BamAlignment(ba));
         }
 
         for(size_t baNameCode : j.junctionAlignmentNames) {
@@ -191,10 +193,10 @@ void portcullis::Junction::clearAlignments() {
 }
        
     
-void portcullis::Junction::addJunctionAlignment(BamAlignment& al) {
+void portcullis::Junction::addJunctionAlignment(const BamAlignment& al) {
 
     // Make sure we take a proper copy of this alignment for safe storage
-    this->junctionAlignments.push_back(make_shared<BamAlignment>(al));
+    this->junctionAlignments.push_back(al);
     
     // Calculate a hash of the alignment name
     size_t code = std::hash<std::string>()(al.deriveName());
@@ -240,7 +242,7 @@ void portcullis::Junction::extendFlanks(int32_t otherStart, int32_t otherEnd) {
 }
         
     
-portcullis::CanonicalSS portcullis::Junction::processJunctionWindow(GenomeMapper* genomeMapper) {
+portcullis::CanonicalSS portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMapper) {
 
     if (intron == nullptr) 
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -250,7 +252,7 @@ portcullis::CanonicalSS portcullis::Junction::processJunctionWindow(GenomeMapper
 
     // Just access the whole junction region
     int seqLen = -1;
-    string region = genomeMapper->fetchBases(intron->ref.name.c_str(), leftFlankStart, rightFlankEnd, &seqLen);
+    string region = genomeMapper.fetchBases(intron->ref.name.c_str(), leftFlankStart, rightFlankEnd, &seqLen);
     boost::to_upper(region);    // Removes any lowercase bases representing repeats
     if (seqLen == -1) 
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -289,9 +291,10 @@ void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t re
     // Focus only on the (expanded... to be safe...) region of interest
     reader.setRegion(refId, regionStart, regionEnd);
 
-    BamAlignment ba;
-    while(reader.next(ba)) {
+    while(reader.next()) {
 
+        const BamAlignment& ba = reader.current();
+        
         int32_t pos = ba.getPosition();
 
         //TODO: Should we consider strand specific reads differently here?
@@ -337,13 +340,13 @@ void portcullis::Junction::calcAnchorStats() {
     uint32_t nbDistinctLeftAnchors = 0, nbDistinctRightAnchors = 0;
     int32_t lastLStart = -1, lastREnd = -1;
 
-    for(BamAlignmentPtr ba : junctionAlignments) {
+    for(const BamAlignment& ba : junctionAlignments) {
 
-        const int32_t pos = ba->getPosition();
-        const int32_t alignedBases = (int32_t)ba->calcNbAlignedBases();
+        const int32_t pos = ba.getPosition();
+        const int32_t alignedBases = (int32_t)ba.calcNbAlignedBases();
 
-        int32_t leftSize = ba->alignedBasesBetween(pos, lEnd);
-        int32_t rightSize = ba->alignedBasesBetween(rStart, pos + alignedBases);
+        int32_t leftSize = ba.alignedBasesBetween(pos, lEnd);
+        int32_t rightSize = ba.alignedBasesBetween(rStart, pos + alignedBases);
 
         maxLeftSize = max(maxLeftSize, leftSize);
         minLeftSize = min(minLeftSize, leftSize);
@@ -388,8 +391,8 @@ double portcullis::Junction::calcEntropy() {
 
     vector<int32_t> junctionPositions;
 
-    for(BamAlignmentPtr ba : junctionAlignments) {
-        junctionPositions.push_back(ba->getPosition());
+    for(const auto& ba : junctionAlignments) {
+        junctionPositions.push_back(ba.getPosition());
     }
 
     return calcEntropy(junctionPositions);        
@@ -471,10 +474,10 @@ void portcullis::Junction::calcAlignmentStats() {
 
     //cout << junctionAlignments.size() << endl;
 
-    for(BamAlignmentPtr ba : junctionAlignments) {
+    for(auto& ba : junctionAlignments) {
 
-        const int32_t bapos = ba->getPosition();
-        const int32_t alignedBases = (int32_t)ba->calcNbAlignedBases();
+        const int32_t bapos = ba.getPosition();
+        const int32_t alignedBases = (int32_t)ba.calcNbAlignedBases();
 
         int32_t start = bapos;
         int32_t end = bapos + alignedBases;
@@ -489,7 +492,7 @@ void portcullis::Junction::calcAlignmentStats() {
         // This doesn't seem intuitive but this is how they recommend finding
         // "reliable" (i.e. unique) alignments in samtools.  They do this
         // because apparently "uniqueness" is not a well defined concept.
-        if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD) {
+        if (ba.getMapQuality() >= MAP_QUALITY_THRESHOLD) {
             nbReliableAlignments++;
         }
 
@@ -499,7 +502,7 @@ void portcullis::Junction::calcAlignmentStats() {
         uint16_t downjuncs = 0;
         int32_t pos = start;
 
-        for (CigarOp op : ba->getCigar()) {
+        for (CigarOp op : ba.getCigar()) {
 
             if (CigarOp::opConsumesReference(op.type)) {
                 pos += op.length;                    
@@ -614,10 +617,10 @@ void portcullis::Junction::calcMaxMMES() {
 
     uint16_t maxmmes = 0;
 
-    for(BamAlignmentPtr ba : junctionAlignments) {
+    for(auto& ba : junctionAlignments) {
 
-        uint16_t leftMM = ba->calcMinimalMatchInCigarDataSubset(leftFlankStart, intron->start);
-        uint16_t rightMM = ba->calcMinimalMatchInCigarDataSubset(intron->end, rightFlankEnd);
+        uint16_t leftMM = ba.calcMinimalMatchInCigarDataSubset(leftFlankStart, intron->start);
+        uint16_t rightMM = ba.calcMinimalMatchInCigarDataSubset(intron->end, rightFlankEnd);
 
         uint16_t mmes = min(leftMM, rightMM);
 

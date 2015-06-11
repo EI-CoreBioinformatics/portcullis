@@ -39,7 +39,9 @@ using boost::to_upper_copy;
 using boost::timer::auto_cpu_timer;
 namespace po = boost::program_options;
 
-#include "samtools_helper.hpp"
+#include "bam/bam_master.hpp"
+using portcullis::bam::BamHelper;
+
 #include "portcullis_fs.hpp"
 #include "junction_builder.hpp"
 #include "prepare.hpp"
@@ -48,7 +50,6 @@ namespace po = boost::program_options;
 #include "cluster.hpp"
 #include "train.hpp"
 #include "test.hpp"
-using portcullis::SamtoolsHelper;
 using portcullis::PortcullisFS;
 using portcullis::JunctionBuilder;
 using portcullis::Prepare;
@@ -140,20 +141,27 @@ int mainFull(int argc, char *argv[]) {
     path outputDir;
     string strandSpecific;
     uint16_t threads;
+    bool useLinks;
+    bool force;
+    bool useCsi;
     bool verbose;
     bool help;
 
     // Declare the supported options.
-    po::options_description generic_options(fullHelp());
+    po::options_description generic_options(fullHelp(), 100);
     generic_options.add_options()
             ("output,o", po::value<path>(&outputDir)->default_value("portcullis_out"), 
                 "Output directory for prepared files. Default: portcullis_out")
-            ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(portcullis::SSToString(portcullis::StrandSpecific::UNSTRANDED)), 
-                (string("Whether BAM alignments were generated using a strand specific RNAseq library: ") +
-                        "\"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\"" +
-                        "(Ligation, Standard SOLiD, flux sim reads)  Default: \"unstranded\"").c_str())
+            ("force,f", po::bool_switch(&force)->default_value(false), 
+                "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
+            ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(SSToString(StrandSpecific::UNSTRANDED)), 
+                "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unstranded\"")
+            ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
+                "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
+            ("use_csi,c", po::bool_switch(&useCsi)->default_value(false), 
+                "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(1),
-                "The number of threads to used to sort the BAM file (if required).  Default: 1")
+                "The number of threads to use.  Default: 1")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                 "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -227,7 +235,7 @@ int mainFull(int argc, char *argv[]) {
     path prepDir = path(outputDir.string() + "/prepare");
 
     // Create the prepare class
-    Prepare prep(prepDir, portcullis::SSFromString(strandSpecific), true, false, threads, verbose);
+    Prepare prep(prepDir, portcullis::SSFromString(strandSpecific), force, useLinks, useCsi, threads, verbose);
     
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information
@@ -292,7 +300,7 @@ int main(int argc, char *argv[]) {
         bool help;
 
         // Declare the supported options.
-        po::options_description generic_options(helpHeader());
+        po::options_description generic_options(helpHeader(), 100);
         generic_options.add_options()
                 ("verbose", po::bool_switch(&verbose)->default_value(false), "Print extra information")
                 ("version", po::bool_switch(&version)->default_value(false), "Print version string")
@@ -334,9 +342,9 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.6.0"
+#define PACKAGE_VERSION "0.7.0"
 #endif
-        cout << PACKAGE_NAME << " V" << PACKAGE_VERSION << endl;
+        cout << PACKAGE_NAME << " V" << PACKAGE_VERSION << endl << endl;
         
         if (version) {    
             return 0;
@@ -349,7 +357,7 @@ int main(int argc, char *argv[]) {
         char** modeArgV = argv+1;
         
         PortcullisFS fs(argv[0]);
-        SamtoolsHelper::samtoolsExe = fs.getSamtoolsExe();
+        BamHelper::samtoolsExe = fs.getSamtoolsExe();
         JunctionFilter::defaultFilterFile = path(fs.getEtcDir().string() + "/default_filter.json");
         JunctionFilter::filterJuncsPy = fs.getFilterJuncsPy();
         

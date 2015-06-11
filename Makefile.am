@@ -62,10 +62,16 @@ deps/samtools-1.2/NEWS
 # FILES NOT TO INSTALL
 dist_noinst_SCRIPTS = autogen.sh clean.sh
 
+dist_bin_SCRIPTS =  scripts/filter_junctions.py \
+		    scripts/fs2bed.py \
+		    scripts/fs2gff.py \
+		    scripts/venn.py \
+		    scripts/gff2bed.py
+
 # 
-sysconf_DATA = etc/default_filter.json
+dist_sysconf_DATA = etc/default_filter.json
 
 # SRC DIRS
-SUBDIRS = deps/htslib-1.2.1 deps/samtools-1.2 src tests scripts
+SUBDIRS = deps/htslib-1.2.1 deps/samtools-1.2 src tests
 
 

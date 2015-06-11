@@ -3,9 +3,10 @@ AUTOMAKE_OPTIONS = subdir-objects
 # Create portculis binary
 bin_PROGRAMS = portcullis
 
-portcullisdir = $(top_srcdir)/src
+portcullisbamdir = $(top_srcdir)/bam
+portcullisdir = $(top_srcdir)
 
-portcullis_CXXFLAGS = -g3 -O3 @AM_CXXFLAGS@
+portcullis_CXXFLAGS = -g -g3 -gdwarf-4 -O3 @AM_CXXFLAGS@
 
 portcullis_CPPFLAGS =	-I$(top_srcdir)/deps/htslib-1.2.1 \
 			-I$(top_srcdir)/deps/samtools-1.2 \
@@ -17,17 +18,29 @@ portcullis_LDFLAGS = @AM_LDFLAGS@
 
 portcullis_LDADD = $(top_srcdir)/deps/htslib-1.2.1/libhts.a @AM_LIBS@
 
-portcullis_HEADERS =	samtools_helper.hpp \
-			junction.hpp \
-			prepare.hpp \
-			junction_builder.hpp \
-			bam_filter.hpp
+portcullisbam_HEADERS =	bam/bam_master.hpp \
+				bam/bam_alignment.hpp \
+				bam/bam_reader.hpp \
+				bam/bam_writer.hpp \
+				bam/depth_parser.hpp \
+				bam/genome_mapper.hpp
+portcullis_HEADERS =	intron.hpp \
+				junction.hpp \
+				junction_system.hpp \
+				prepare.hpp \
+				junction_builder.hpp \
+				bam_filter.hpp
 
-portcullis_SOURCES =	portcullis_fs.hpp \
-			samtools_helper.cc \
-			intron.hpp \
+portcullis_SOURCES =	bam/bam_master.cc \
+			bam/bam_alignment.cc \
+			bam/bam_reader.cc \
+			bam/bam_writer.cc \
+			bam/depth_parser.cc \
+			bam/genome_mapper.cc \
+			portcullis_fs.hpp \
+			intron.cc \
 			junction.cc \
-			junction_system.hpp \
+			junction_system.cc \
 			prepare.cc \
 			junction_builder.cc \
 			bam_filter.cc \

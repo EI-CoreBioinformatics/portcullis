@@ -95,7 +95,7 @@ public:
         JunctionSystem good;
         JunctionSystem bad;
         
-        for(JunctionPtr j : *(js.getJunctions())) {
+        for(const auto& j : js.getJunctions()) {
             sample_type m(6);
         
             // Calculate the metrics and add them into the vector

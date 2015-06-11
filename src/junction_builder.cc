@@ -38,14 +38,16 @@ using namespace boost::filesystem;
 using boost::filesystem::path;
 namespace po = boost::program_options;
 
-#include "samtools_helper.hpp"
+#include "bam/bam_reader.hpp"
+#include "bam/bam_writer.hpp"
+#include "bam/depth_parser.hpp"
+#include "bam/genome_mapper.hpp"
+using namespace portcullis::bam;
+
 #include "intron.hpp"
 #include "junction.hpp"
 #include "junction_system.hpp"
 #include "prepare.hpp"
-using portcullis::BamAlignment;
-using portcullis::BamReader;
-using portcullis::GenomeMapper;
 using portcullis::Intron;
 using portcullis::Junction;
 using portcullis::JunctionSystem;
@@ -53,7 +55,7 @@ using portcullis::JunctionSystem;
 #include "junction_builder.hpp"
 
 portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _outputDir, string _outputPrefix, uint16_t _threads, bool _fast, bool _verbose) {
-    prepData = make_shared<PreparedFiles>(_prepDir);
+    prepData = PreparedFiles(_prepDir);
     outputDir = _outputDir;
     outputPrefix = _outputPrefix;
     threads = _threads;
@@ -62,7 +64,7 @@ portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _
 
     if (verbose) {
         cout << "Initialised Portcullis instance with settings:" << endl
-             << " - Prep data dir: " << prepData->getPrepDir() << endl
+             << " - Prep data dir: " << prepData.getPrepDir() << endl
              << " - Output directory: " << outputDir << endl
              << " - Output file name prefix: " << outputPrefix << endl
              << " - Threads: " << threads << endl 
@@ -86,24 +88,20 @@ portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _
              << "Checking prepared data ... ";
         cout.flush();
     }
-
-    // Test if we have all the requried data
-    if (!prepData->valid()) {
-        BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                    "Prepared data is not complete: ") + prepData->getPrepDir().string()));
-    }
-
-    if (verbose) {
-        cout << "done." << endl << endl
-             << "Loading settings stored in prep data ... ";
-    }
-
+    
     // Loading settings stored in prep data
-    strandSpecific = prepData->loadSettings();
+    settings = prepData.loadSettings();
+
+    // Test if we have all the required data
+    if (!prepData.valid(settings.useCsi)) {
+        BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                    "Prepared data is not complete: ") + prepData.getPrepDir().string()));
+    }
 
     if (verbose) {
         cout << "done." << endl
-             << " - Strand specific input data: " << SSToString(strandSpecific) << endl << endl;
+             << " - Strand specific input data: " << SSToString(settings.ss) << endl
+             << " - Indexing format: " << (settings.useCsi ? "CSI" : "BAI") << endl << endl;
     }
 }
     
@@ -123,7 +121,7 @@ void portcullis::JunctionBuilder::process() {
 
     auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");
 
-    const path sortedBamFile = prepData->getSortedBamFilePath();
+    const path sortedBamFile = prepData.getSortedBamFilePath();
 
     BamReader reader(sortedBamFile, 1);
     reader.open();
@@ -153,43 +151,44 @@ void portcullis::JunctionBuilder::process() {
 
     int32_t lastRefId = -1;
     int32_t lastCalculatedJunctionIndex = 0;
+    int32_t lastSeqCount = 0;
 
     cout << endl << "Processing alignments and calculating metrics for reference sequence: " << endl;
 
     // The contents inside the pointer will automatically alter as reader.next() is called
-    BamAlignment al;
     
-    while(reader.next(al)) {
+    while(reader.next()) {
 
+        const BamAlignment& al = reader.current();
+        
         while (junctionSystem.size() > 0 && lastCalculatedJunctionIndex < junctionSystem.size() && 
-                al.getPosition() > junctionSystem.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end) {
+                (al.getReferenceId() != lastRefId || al.getPosition() > junctionSystem.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end)) {
 
             JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);            
 
             /*size_t nbJABefore = j->getNbJunctionAlignmentFromVector();
-            BamAlignmentPtr j0 = j->getFirstAlignment();
-            size_t refBefore = j0.use_count() - 1;
-            size_t alignSize = sizeof(*j0);
-            size_t juncSizeBefore = sizeof(*j);*/
-
+            const BamAlignment& j0 = j->getFirstAlignment();*/
+            
             j->calcMetrics();
             j->clearAlignments();
-            lastCalculatedJunctionIndex++;
-
+            
             /*size_t nbJAAfter = j->getNbJunctionAlignmentFromVector();
-            size_t refAfter = j0.use_count() - 1;
-            size_t juncSizeAfter = sizeof(*j);
-
+            
             cout << "Junction " << lastCalculatedJunctionIndex << " shut down.  Intron start: " << j->getIntron()->start 
-                    << ". Alignments: " << nbJABefore << "/" << nbJAAfter 
-                    << ". Refcount: " << refBefore << "/" << refAfter 
-                    << ". Size: " << juncSizeBefore << "/" << juncSizeAfter
-                    << ". Alignment size: " << alignSize << "." << endl;*/
-
+                    << ". Alignments: " << nbJABefore << "/" << nbJAAfter << endl;*/
+            
+            lastCalculatedJunctionIndex++;
+            lastSeqCount++;
         }
 
         if (lastRefId == -1 || al.getReferenceId() != lastRefId) {
-            cout << " - " << refs[al.getReferenceId()].name << endl;
+            if (lastRefId > -1)
+                cout << lastSeqCount << " potential junctions found." << endl;
+            
+            cout << " - " << refs[al.getReferenceId()].name << " ... ";
+            cout.flush();
+            
+            lastSeqCount = 0;
         }
 
         lastRefId = al.getReferenceId();
@@ -223,7 +222,10 @@ void portcullis::JunctionBuilder::process() {
         j->calcMetrics();
         j->clearAlignments();
         lastCalculatedJunctionIndex++;
+        lastSeqCount++;
     }
+    
+    cout << lastSeqCount << " potential junctions found." << endl;
 
     reader.close();
     unsplicedWriter.close();
@@ -239,9 +241,9 @@ void portcullis::JunctionBuilder::process() {
         cout.flush();
     }
 
-    GenomeMapper gmap(prepData->getGenomeFilePath());
+    GenomeMapper gmap(prepData.getGenomeFilePath());
     gmap.loadFastaIndex();
-    junctionSystem.scanReference(&gmap, refs, verbose);
+    junctionSystem.scanReference(gmap, refs, verbose);
 
     if (!verbose) {
         cout << " done" << endl;
@@ -260,10 +262,10 @@ void portcullis::JunctionBuilder::process() {
         // Count the number of alignments found in upstream and downstream flanking 
         // regions for each junction
         cout << endl << endl << "Analysing unspliced alignments around junctions:" << endl;
-        junctionSystem.findFlankingAlignments(unsplicedFile, strandSpecific);
+        junctionSystem.findFlankingAlignments(unsplicedFile, settings.ss);
         
         cout << endl << "Calculating unspliced alignment coverage around junctions..." << endl;
-        junctionSystem.calcCoverage(unsplicedFile, strandSpecific);
+        junctionSystem.calcCoverage(unsplicedFile, settings.ss);
     }
 
     // Calculate some stats
@@ -280,7 +282,7 @@ void portcullis::JunctionBuilder::process() {
     cout << " - unspliced alignments ... ";
 
     // Create BAM index
-    string unsplicedIndexCmd = SamtoolsHelper::createIndexBamCmd(unsplicedFile);                
+    string unsplicedIndexCmd = BamHelper::createIndexBamCmd(unsplicedFile, settings.useCsi);                
 
     int unsExitCode = system(unsplicedIndexCmd.c_str());                    
 
@@ -289,7 +291,7 @@ void portcullis::JunctionBuilder::process() {
     cout.flush();
 
     // Create BAM index
-    string splicedIndexCmd = SamtoolsHelper::createIndexBamCmd(splicedFile);                
+    string splicedIndexCmd = BamHelper::createIndexBamCmd(splicedFile, settings.useCsi);                
 
     int sExitCode = system(splicedIndexCmd.c_str());                    
 
@@ -311,7 +313,7 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
     bool help;
 
     // Declare the supported options.
-    po::options_description generic_options(helpMessage());
+    po::options_description generic_options(helpMessage(), 100);
     generic_options.add_options()
             ("output_dir,o", po::value<string>(&outputDir)->default_value(DEFAULT_JUNC_OUTPUT_DIR), 
                 "Output directory for files generated by this program.")
@@ -365,7 +367,7 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
 
     // Do the work ...
     JunctionBuilder jb(prepDir, outputDir, outputPrefix, threads, fast, verbose);
-    jb.setSamtoolsExe(SamtoolsHelper::samtoolsExe);
+    jb.setSamtoolsExe(BamHelper::samtoolsExe);
     jb.process();
 
     return 0;

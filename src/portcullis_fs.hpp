@@ -75,7 +75,7 @@ namespace portcullis {
             
             path exe(argv);
             
-            cout << exe << endl;
+            //cout << exe << endl;
             
             if(exe.is_absolute()) {
                 
