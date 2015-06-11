@@ -191,18 +191,18 @@ void portcullis::Junction::clearAlignments() {
 }
        
     
-void portcullis::Junction::addJunctionAlignment(BamAlignmentPtr al) {
+void portcullis::Junction::addJunctionAlignment(BamAlignment& al) {
 
     // Make sure we take a proper copy of this alignment for safe storage
     this->junctionAlignments.push_back(make_shared<BamAlignment>(al));
     
     // Calculate a hash of the alignment name
-    size_t code = std::hash<std::string>()(al->deriveName());
+    size_t code = std::hash<std::string>()(al.deriveName());
 
     this->junctionAlignmentNames.push_back(code);
     this->nbJunctionAlignments = this->junctionAlignments.size();
 
-    if (al->getNbJunctionsInRead() > 1) {
+    if (al.getNbJunctionsInRead() > 1) {
         this->nbMultipleSplicedReads++;
     }
 }
@@ -289,16 +289,16 @@ void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t re
     // Focus only on the (expanded... to be safe...) region of interest
     reader.setRegion(refId, regionStart, regionEnd);
 
-    while(reader.next()) {
+    BamAlignment ba;
+    while(reader.next(ba)) {
 
-        BamAlignmentPtr ba = reader.current();
-        int32_t pos = ba->getPosition();
+        int32_t pos = ba.getPosition();
 
         //TODO: Should we consider strand specific reads differently here?
 
         // Look for left flanking alignments
         if (    intron->start > pos && 
-                leftFlankStart <= pos + ba->calcNbAlignedBases()) {
+                leftFlankStart <= pos + ba.calcNbAlignedBases()) {
             nbLeftFlankingAlignments++;
         }
 

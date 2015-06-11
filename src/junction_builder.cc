@@ -156,12 +156,13 @@ void portcullis::JunctionBuilder::process() {
 
     cout << endl << "Processing alignments and calculating metrics for reference sequence: " << endl;
 
-    while(reader.next()) {
-
-        BamAlignmentPtr al = reader.current();
+    // The contents inside the pointer will automatically alter as reader.next() is called
+    BamAlignment al;
+    
+    while(reader.next(al)) {
 
         while (junctionSystem.size() > 0 && lastCalculatedJunctionIndex < junctionSystem.size() && 
-                al->getPosition() > junctionSystem.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end) {
+                al.getPosition() > junctionSystem.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end) {
 
             JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);            
 
@@ -187,13 +188,13 @@ void portcullis::JunctionBuilder::process() {
 
         }
 
-        if (lastRefId == -1 || al->getReferenceId() != lastRefId) {
-            cout << " - " << refs[al->getReferenceId()].name << endl;
+        if (lastRefId == -1 || al.getReferenceId() != lastRefId) {
+            cout << " - " << refs[al.getReferenceId()].name << endl;
         }
 
-        lastRefId = al->getReferenceId();
+        lastRefId = al.getReferenceId();
 
-        int32_t len = al->getLength();
+        int32_t len = al.getLength();
         minQueryLength = min(minQueryLength, len);
         maxQueryLength = max(maxQueryLength, len);
 
@@ -205,7 +206,7 @@ void portcullis::JunctionBuilder::process() {
             splicedCount++;
 
             // Record alignment name in map
-            size_t code = std::hash<string>()(al->deriveName());
+            size_t code = std::hash<string>()(al.deriveName());
             splicedAlignmentMap[code]++;
         }
         else {
@@ -213,8 +214,6 @@ void portcullis::JunctionBuilder::process() {
             unsplicedCount++;
         }
 
-        // Force remove bam alignment
-        al.reset();
         //cout << "After junction add (outer): " << bap.use_count() << endl;
     }
 

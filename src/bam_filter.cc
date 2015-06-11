@@ -69,25 +69,25 @@ portcullis::BamFilter::BamFilter(const string& _junctionFile, const string& _bam
  * @param js The junction system containing good junctions to keep
  * @return Whether or not the alignment contains a junction found in the junction system
  */
-bool portcullis::BamFilter::containsJunctionInSystem(BamAlignmentPtr al, vector<RefSeq>& refs, JunctionSystem& js) {
+bool portcullis::BamFilter::containsJunctionInSystem(BamAlignment& al, vector<RefSeq>& refs, JunctionSystem& js) {
 
-    int32_t refId = al->getReferenceId();
+    int32_t refId = al.getReferenceId();
     string refName = refs[refId].name;
     int32_t refLength = refs[refId].length;
-    int32_t lStart = al->getPosition();        
+    int32_t lStart = al.getPosition();        
     int32_t lEnd = lStart;
     int32_t rStart = lStart;
     int32_t rEnd = lStart;
 
-    for(size_t i = 0; i < al->getNbCigarOps(); i++) {
+    for(size_t i = 0; i < al.getNbCigarOps(); i++) {
 
-        CigarOp op = al->getCigarOpAt(i);
+        CigarOp op = al.getCigarOpAt(i);
         if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
             rStart = lEnd + op.length;
 
             // Create the intron
             shared_ptr<Intron> location = make_shared<Intron>(RefSeq(refId, refName, refLength), lEnd, rStart, 
-                strandFromBool(al->isReverseStrand()));                        
+                strandFromBool(al.isReverseStrand()));                        
 
             if (js.getJunction(*location) != nullptr) {
                 // Break out of the loop leaving write set to true
@@ -102,12 +102,12 @@ bool portcullis::BamFilter::containsJunctionInSystem(BamAlignmentPtr al, vector<
     return false;
 }
     
-BamAlignmentPtr portcullis::BamFilter::clipMSR(BamAlignmentPtr al, vector<RefSeq>& refs, JunctionSystem& js, bool& allBad) {
+BamAlignmentPtr portcullis::BamFilter::clipMSR(BamAlignment& al, vector<RefSeq>& refs, JunctionSystem& js, bool& allBad) {
 
-    int32_t refId = al->getReferenceId();
+    int32_t refId = al.getReferenceId();
     string refName = refs[refId].name;
     int32_t refLength = refs[refId].length;
-    int32_t lStart = al->getPosition();        
+    int32_t lStart = al.getPosition();        
     int32_t lEnd = lStart;
     int32_t rStart = lStart;
     int32_t rEnd = lStart;
@@ -115,14 +115,14 @@ BamAlignmentPtr portcullis::BamFilter::clipMSR(BamAlignmentPtr al, vector<RefSeq
     bool lastGood = false;
     bool ab = true;
 
-    BamAlignmentPtr modifiedAlignment = make_shared<BamAlignment>(*al);
+    BamAlignmentPtr modifiedAlignment = make_shared<BamAlignment>(al);
     const char modOp = clipMode == ClipMode::HARD ? BAM_CIGAR_HARDCLIP_CHAR :
         clipMode == clipMode == ClipMode::SOFT ? BAM_CIGAR_SOFTCLIP_CHAR : 
             BAM_CIGAR_DEL_CHAR;
 
-    for(size_t i = 0; i < al->getNbCigarOps(); i++) {
+    for(size_t i = 0; i < al.getNbCigarOps(); i++) {
 
-        CigarOp op = al->getCigarOpAt(i);
+        CigarOp op = al.getCigarOpAt(i);
 
         if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
             rStart = lEnd + op.length;
@@ -142,7 +142,7 @@ BamAlignmentPtr portcullis::BamFilter::clipMSR(BamAlignmentPtr al, vector<RefSeq
                 }
 
                 for(size_t j = opStart; j < i; j++) {
-                    modifiedAlignment->setCigarOpAt(j, CigarOp(modOp, al->getCigarOpAt(j).length));
+                    modifiedAlignment->setCigarOpAt(j, CigarOp(modOp, al.getCigarOpAt(j).length));
                 }
                 lastGood = false;
             }
@@ -155,8 +155,8 @@ BamAlignmentPtr portcullis::BamFilter::clipMSR(BamAlignmentPtr al, vector<RefSeq
     }
 
     if (!lastGood) {
-        for(size_t j = opStart; j < al->getNbCigarOps(); j++) {
-            modifiedAlignment->setCigarOpAt(j, CigarOp(modOp, al->getCigarOpAt(j).length));
+        for(size_t j = opStart; j < al.getNbCigarOps(); j++) {
+            modifiedAlignment->setCigarOpAt(j, CigarOp(modOp, al.getCigarOpAt(j).length));
         }
     }
 
@@ -204,18 +204,17 @@ void portcullis::BamFilter::filter() {
     uint64_t nbReadsModifiedOut = 0;
     uint32_t nbJunctionsFound = 0;
 
-    while(reader.next()) {
-
-        BamAlignmentPtr al = reader.current();
+    BamAlignment al;
+    while(reader.next(al)) {
 
         nbReadsIn++;
         bool write = false;
 
-        if (al->isSplicedRead()) {
+        if (al.isSplicedRead()) {
 
             // If we are in complete clip mode, or this is a single spliced read, then keep the alignment
             // if its junction is found in the junctions system, otherwise discard it
-            if (clipMode == COMPLETE || !al->isMultiplySplicedRead()) {
+            if (clipMode == COMPLETE || !al.isMultiplySplicedRead()) {
                 if (containsJunctionInSystem(al, refs, js)) {
                     writer.write(al);
                     nbReadsOut++;
@@ -226,9 +225,9 @@ void portcullis::BamFilter::filter() {
                 bool allBad = false;
                 BamAlignmentPtr clipped = clipMSR(al, refs, js, allBad);
                 if (!allBad) {
-                    writer.write(clipped);
+                    writer.write(*clipped);
                     if (saveMSRs) {
-                        mod.write(clipped);
+                        mod.write(*clipped);
                         unmod.write(al);
                     }
                     nbReadsModifiedOut++;

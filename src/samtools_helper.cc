@@ -103,8 +103,10 @@ void portcullis::BamReader::close() {
     bam_close(fp);
 }
 
-bool portcullis::BamReader::next() {
-    return bam_iter_read(fp, iter, c) >= 0;    
+bool portcullis::BamReader::next(BamAlignment& al) {
+    bool res = bam_iter_read(fp, iter, c) >= 0;
+    al.setRaw(c);    
+    return res;    
 }
 
 BamAlignmentPtr portcullis::BamReader::current() {

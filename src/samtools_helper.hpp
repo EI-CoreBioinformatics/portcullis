@@ -169,6 +169,12 @@ public:
             bam_destroy1(b);
     }
     
+    void setRaw(bam1_t* b) {
+        this->b = b;
+        managed = false;
+        init();
+    }
+    
     bam1_t* getRaw() const {
         return b;
     }
@@ -413,7 +419,7 @@ public:
     
     void close();
     
-    bool next();
+    bool next(BamAlignment& al);
     
     /**
      * Returns an unmanaged BamAlignment pointer.  By unmanaged this means that
@@ -458,8 +464,8 @@ public:
         }
     }
     
-    int write(BamAlignmentPtr ba) {
-         return bam_write1(fp, ba->getRaw());       
+    int write(BamAlignment& ba) {
+         return bam_write1(fp, ba.getRaw());       
     }
     
     void close() {

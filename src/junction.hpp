@@ -246,7 +246,7 @@ public:
 
     
     
-    void addJunctionAlignment(BamAlignmentPtr al);
+    void addJunctionAlignment(BamAlignment& al);
     
     void setNbJunctionAlignments(uint32_t nbJunctionAlignments) {
         this->nbJunctionAlignments = nbJunctionAlignments;
