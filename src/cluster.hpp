@@ -116,7 +116,7 @@ public:
         std::vector<sample_type> initial_centers;
         
         // Load feature vector from junction file into matrix
-        for(JunctionPtr j : *(js.getJunctions())) {
+        for(const auto& j : js.getJunctions()) {
             sample_type m;
             m(0) = j->getNbJunctionAlignments();
             m(1) = j->getEntropy();

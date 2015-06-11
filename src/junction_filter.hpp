@@ -51,33 +51,35 @@ struct JuncFilterException: virtual boost::exception, virtual std::exception { }
 
 const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
 const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
+const string DEFAULT_FILTER_FILE = "default_filter.json";
 
 
 class JunctionFilter {
 
 private:
     
-    string junctionFile;
-    string filterFile;
-    string outputDir;
+    path junctionFile;
+    path filterFile;
+    path outputDir;
     string outputPrefix;
-    bool verbose;
-    PortcullisFS fs;
+    bool verbose;    
+    
     
 public:
     
-    JunctionFilter( const string& _junctionFile, 
-                    const string& _filterFile, 
-                    const string& _outputDir, 
+    static path defaultFilterFile;
+    static path filterJuncsPy;
+    
+    JunctionFilter( const path& _junctionFile, 
+                    const path& _filterFile, 
+                    const path& _outputDir, 
                     const string& _outputPrefix, 
-                    bool _verbose, 
-                    const PortcullisFS& _fs) {
+                    bool _verbose) {
         junctionFile = _junctionFile;
         filterFile = _filterFile;
         outputDir = _outputDir;
         outputPrefix = _outputPrefix;
         verbose = _verbose;
-        fs = _fs;        
     }
     
     virtual ~JunctionFilter() {
@@ -87,27 +89,27 @@ public:
 
 public:
     
-    string getFilterFile() const {
+    path getFilterFile() const {
         return filterFile;
     }
 
-    void setFilterFile(string filterFile) {
+    void setFilterFile(path filterFile) {
         this->filterFile = filterFile;
     }
 
-    string getJunctionFile() const {
+    path getJunctionFile() const {
         return junctionFile;
     }
 
-    void setJunctionFile(string junctionFile) {
+    void setJunctionFile(path junctionFile) {
         this->junctionFile = junctionFile;
     }
 
-    string getOutputDir() const {
+    path getOutputDir() const {
         return outputDir;
     }
 
-    void setOutputDir(string outputDir) {
+    void setOutputDir(path outputDir) {
         this->outputDir = outputDir;
     }
 
@@ -127,24 +129,24 @@ public:
         // Test if provided genome exists
         if (!exists(junctionFile)) {
             BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                        "Could not find junction file at: ") + junctionFile));
+                        "Could not find junction file at: ") + junctionFile.string()));
         }
         
         // Test if provided filter config file exists
         if (!exists(filterFile)) {
             BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                        "Could not find filter configuration file at: ") + filterFile));
+                        "Could not find filter configuration file at: ") + filterFile.string()));
         }
         
         if (!exists(outputDir)) {
             create_directory(outputDir);
         }        
         
-        string tmpOutputTabFile = outputDir + "/tmp.tab";
+        string tmpOutputTabFile = outputDir.string() + "/tmp.tab";
         
-        string filterCmd = string("python3 ") + fs.GetFilterJuncsPy().c_str() +
-               " --input " + junctionFile + 
-               " --json " + filterFile +
+        string filterCmd = string("python3 ") + filterJuncsPy.string() +
+               " --input " + junctionFile.string() + 
+               " --json " + filterFile.string() +
                " --out " + tmpOutputTabFile;
         
         if (verbose) {
@@ -159,7 +161,7 @@ public:
             
         if (exitCode != 0 || !exists(tmpOutputTabFile)) {
                 BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                        "Failed to successfully filter: ") + junctionFile));
+                        "Failed to successfully filter: ") + junctionFile.string()));
         }
         
         // Load junction system
@@ -176,7 +178,7 @@ public:
              << filteredJunc.size() << " junctions remaining" << endl << endl
              << "Saving junctions in suitable file formats:" << endl;
         
-        filteredJunc.saveAll(outputDir + "/" + outputPrefix);        
+        filteredJunc.saveAll(outputDir.string() + "/" + outputPrefix);        
         
         // Remove temporary file
         boost::filesystem::remove(tmpOutputTabFile);
@@ -188,7 +190,7 @@ public:
                       "Allowed options";
     }
     
-    static int main(int argc, char *argv[], PortcullisFS& fs) {
+    static int main(int argc, char *argv[]) {
         
         // Portcullis args
         string junctionFile;
@@ -199,17 +201,14 @@ public:
         bool verbose;
         bool help;
         
-        path defaultFilterFile = path(fs.GetEtcDir());
-        defaultFilterFile /= "default_filter.json";
-        
         // Declare the supported options.
-        po::options_description generic_options(helpMessage());
+        po::options_description generic_options(helpMessage(), 100);
         generic_options.add_options()
                 ("output_dir,o", po::value<string>(&outputDir)->default_value(DEFAULT_FILTER_OUTPUT_DIR), 
                     "Output directory for files generated by this program.")
                 ("output_prefix,p", po::value<string>(&outputPrefix)->default_value(DEFAULT_FILTER_OUTPUT_PREFIX), 
                     "File name prefix for files generated by this program.")
-                ("filter_file,f", po::value<string>(&filterFile)->default_value(defaultFilterFile.c_str()), 
+                ("filter_file,f", po::value<string>(&filterFile)->default_value(DEFAULT_FILTER_FILE), 
                     "The filter configuration file to use.")
                 ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                     "Print extra information")
@@ -251,10 +250,14 @@ public:
              << "--------------------------------" << endl << endl;
         
         // Create the prepare class
-        JunctionFilter filter(junctionFile, filterFile, outputDir, outputPrefix, verbose, fs);
+        JunctionFilter filter(junctionFile, filterFile, outputDir, outputPrefix, verbose);
         filter.filter();
         
         return 0;
     }
 };
+
+path portcullis::JunctionFilter::defaultFilterFile = DEFAULT_FILTER_FILE;
+path portcullis::JunctionFilter::filterJuncsPy = "";
+
 }

@@ -32,32 +32,29 @@ using portcullis::Prepare;
 using portcullis::PortcullisFS;
 using portcullis::JunctionBuilder;
 
-const string samtoolsExe = "../deps/samtools-1.2/samtools";
-
 BOOST_AUTO_TEST_SUITE(interface)
 
 BOOST_AUTO_TEST_CASE(test1)
 {
-    vector<string> bams;
+    SamtoolsHelper::samtoolsExe = "../deps/samtools-1.2/samtools";
+
+    vector<path> bams;
     bams.push_back("resources/clipped3.bam");
     
-    string outdir = "resources/temp";
+    path outdir = "resources/temp";
     create_directory(outdir);
     
-    string prepdir = "resources/temp/prep";
+    path prepdir = "resources/temp/prep";
     create_directory(prepdir);
     
-    string juncdir = "resources/temp/junc";
+    path juncdir = "resources/temp/junc";
     create_directory(juncdir);
     
-    PortcullisFS fs("./check_portcullis");
-    
     Prepare prep(prepdir);
-    prep.setFs(fs);
-    prep.prepare(bams, "resources/artha_chr4.fa");
+    prep.prepare(bams, path("resources/artha_chr4.fa"));
     prep.outputDetails(); // Outputs settings file
     
-    JunctionBuilder(prepdir, juncdir, "test", 1, false, true).process();
+    //JunctionBuilder(prepdir, juncdir, "test", 1, false, true).process();
     remove_all(outdir);
     
     BOOST_CHECK(true);
@@ -65,10 +62,10 @@ BOOST_AUTO_TEST_CASE(test1)
 
 BOOST_AUTO_TEST_CASE(glob1)
 {
-    vector<string> bams;
+    vector<path> bams;
     bams.push_back("resources/*.bam");
     
-    vector<string> globbedFiles = portcullis::Prepare::globFiles(bams);
+    vector<path> globbedFiles = portcullis::Prepare::globFiles(bams);
     
     BOOST_CHECK(globbedFiles.size() >= 5);
     BOOST_CHECK(globbedFiles.size() < 10);
@@ -76,11 +73,11 @@ BOOST_AUTO_TEST_CASE(glob1)
 
 BOOST_AUTO_TEST_CASE(glob2)
 {
-    vector<string> bams;
+    vector<path> bams;
     bams.push_back("resources/*.bam");
     bams.push_back("resources/*.bam");
     
-    vector<string> globbedFiles = portcullis::Prepare::globFiles(bams);
+    vector<path> globbedFiles = portcullis::Prepare::globFiles(bams);
     
     BOOST_CHECK(globbedFiles.size() >= 10);
 }

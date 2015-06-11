@@ -39,18 +39,18 @@ using boost::to_upper_copy;
 using boost::timer::auto_cpu_timer;
 namespace po = boost::program_options;
 
-#include <api/BamReader.h>
-#include <api/BamWriter.h>
+#include "bam/bam_master.hpp"
+using portcullis::bam::BamHelper;
 
+#include "portcullis_fs.hpp"
 #include "junction_builder.hpp"
-#include "genome_mapper.hpp"
 #include "prepare.hpp"
 #include "junction_filter.hpp"
 #include "bam_filter.hpp"
 #include "cluster.hpp"
 #include "train.hpp"
 #include "test.hpp"
-#include "portcullis_fs.hpp"
+using portcullis::PortcullisFS;
 using portcullis::JunctionBuilder;
 using portcullis::Prepare;
 using portcullis::JunctionFilter;
@@ -58,7 +58,6 @@ using portcullis::BamFilter;
 using portcullis::Cluster;
 using portcullis::Train;
 using portcullis::Test;
-using portcullis::PortcullisFS;
 
 typedef boost::error_info<struct PortcullisError,string> PortcullisErrorInfo;
 struct PortcullisException: virtual boost::exception, virtual std::exception { };
@@ -134,28 +133,35 @@ static string fullHelp() {
 }
 
 
-int mainFull(int argc, char *argv[], PortcullisFS& fs) {
+int mainFull(int argc, char *argv[]) {
     
     // Portcullis args
-    std::vector<string> bamFiles;
-    string genomeFile;
-    string outputDir;
+    std::vector<path> bamFiles;
+    path genomeFile;
+    path outputDir;
     string strandSpecific;
     uint16_t threads;
+    bool useLinks;
+    bool force;
+    bool useCsi;
     bool verbose;
     bool help;
 
     // Declare the supported options.
-    po::options_description generic_options(fullHelp());
+    po::options_description generic_options(fullHelp(), 100);
     generic_options.add_options()
-            ("output,o", po::value<string>(&outputDir)->default_value("portcullis_out"), 
+            ("output,o", po::value<path>(&outputDir)->default_value("portcullis_out"), 
                 "Output directory for prepared files. Default: portcullis_out")
-            ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(portcullis::SSToString(portcullis::StrandSpecific::UNSTRANDED)), 
-                (string("Whether BAM alignments were generated using a strand specific RNAseq library: ") +
-                        "\"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\"" +
-                        "(Ligation, Standard SOLiD, flux sim reads)  Default: \"unstranded\"").c_str())
+            ("force,f", po::bool_switch(&force)->default_value(false), 
+                "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
+            ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(SSToString(StrandSpecific::UNSTRANDED)), 
+                "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unstranded\"")
+            ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
+                "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
+            ("use_csi,c", po::bool_switch(&useCsi)->default_value(false), 
+                "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(1),
-                "The number of threads to used to sort the BAM file (if required).  Default: 1")
+                "The number of threads to use.  Default: 1")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                 "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -165,8 +171,8 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
     // in config file, but will not be shown to the user.
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
-            ("bam-files,i", po::value< std::vector<string> >(&bamFiles), "Path to the BAM files to process.")
-            ("genome-file,g", po::value<string>(&genomeFile), "Path to the genome file to process.")
+            ("bam-files,i", po::value< std::vector<path> >(&bamFiles), "Path to the BAM files to process.")
+            ("genome-file,g", po::value<path>(&genomeFile), "Path to the genome file to process.")
             ;
 
     // Positional option for the input bam file
@@ -191,22 +197,22 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
 
     // Acquire path to bam file
     if (vm.count("bam-files")) {
-        bamFiles = vm["bam-files"].as<std::vector<string> >();
+        bamFiles = vm["bam-files"].as<std::vector<path> >();
     }
 
     // Acquire path to genome file
     if (vm.count("genome-file")) {
-        genomeFile = vm["genome-file"].as<string>();
+        genomeFile = vm["genome-file"].as<path>();
     }
 
     // Test if provided genome exists
     if (!exists(genomeFile) && !symbolic_link_exists(genomeFile)) {
         BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
-                    "Could not find genome file at: ") + genomeFile));
+                    "Could not find genome file at: ") + genomeFile.string()));
     }
 
     // Glob the input bam files
-    std::vector<string> transformedBams = Prepare::globFiles(bamFiles);
+    std::vector<path> transformedBams = Prepare::globFiles(bamFiles);
 
     auto_cpu_timer timer(1, "\nPortcullis completed.\nTotal runtime: %ws\n\n");        
 
@@ -217,7 +223,7 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
     if (!exists(outputDir)) {
         if (!create_directory(outputDir)) {
             BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
-                    "Could not create output directory: ") + outputDir));
+                    "Could not create output directory: ") + outputDir.string()));
         }
     }
     
@@ -226,12 +232,11 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
     cout << "Preparing input data (BAMs + genome)" << endl
          << "----------------------------------" << endl << endl;
     
-    string prepDir = string(outputDir) + "/prepare";
+    path prepDir = path(outputDir.string() + "/prepare");
 
     // Create the prepare class
-    Prepare prep(prepDir, portcullis::SSFromString(strandSpecific), true, false, threads, verbose);
-    prep.setFs(fs);
-
+    Prepare prep(prepDir, portcullis::SSFromString(strandSpecific), force, useLinks, useCsi, threads, verbose);
+    
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information
     prep.prepare(transformedBams, genomeFile);
@@ -245,10 +250,10 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
     cout << "Identifying junctions and calculating metrics" << endl
          << "---------------------------------------------" << endl << endl;
     
-    string juncDir = string(outputDir) + "/all_junctions";
+    path juncDir = outputDir.string() + "/all_junctions";
     
     // Identify junctions and calculate metrics
-    JunctionBuilder(prepDir, juncDir, "portcullis_all", threads, true, verbose).process();
+    JunctionBuilder(prepDir.string(), juncDir.string(), "portcullis_all", threads, true, verbose).process();
     
 
     // ************ Use default filtering strategy *************
@@ -256,13 +261,10 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
     cout << "Filtering junctions" << endl
          << "-------------------" << endl << endl;
     
-    string filtDir = string(outputDir) + "/filtered_junctions";
-    string juncTab = string(juncDir) + "/portcullis_all.junctions.tab";
+    path filtDir = outputDir.string() + "/filtered_junctions";
+    path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
     
-    path defaultFilterFile = path(fs.GetEtcDir());
-    defaultFilterFile /= "default_filter.json";
-    
-    JunctionFilter filter(juncTab, defaultFilterFile.c_str(), filtDir, "portcullis_filtered", verbose, fs);
+    JunctionFilter filter(juncTab, JunctionFilter::defaultFilterFile, filtDir, "portcullis_filtered", verbose);
     filter.filter();
 
     
@@ -271,11 +273,11 @@ int mainFull(int argc, char *argv[], PortcullisFS& fs) {
     cout << "Filtering BAMs" << endl
          << "--------------" << endl << endl;
     
-    string filtJuncTab = string(filtDir) + "/portcullis_filtered.junctions.tab";
-    string bamFile = string(prepDir) + "/portcullis.sorted.alignments.bam";
-    string filteredBam = string(outputDir) + "/portcullis.filtered.bam";
+    path filtJuncTab = path(filtDir.string() + "/portcullis_filtered.junctions.tab");
+    path bamFile = path(prepDir.string() + "/portcullis.sorted.alignments.bam");
+    path filteredBam = path(outputDir.string() + "/portcullis.filtered.bam");
     
-    BamFilter bamFilter(filtJuncTab, bamFile, filteredBam, verbose);
+    BamFilter bamFilter(filtJuncTab.string(), bamFile.string(), filteredBam.string(), verbose);
     bamFilter.setStrandSpecific(portcullis::SSFromString(strandSpecific));
     bamFilter.filter();
 
@@ -293,12 +295,14 @@ int main(int argc, char *argv[]) {
         // Portcullis args
         string modeStr;
         std::vector<string> others;
+        bool verbose;
         bool version;
         bool help;
 
         // Declare the supported options.
-        po::options_description generic_options(helpHeader());
+        po::options_description generic_options(helpHeader(), 100);
         generic_options.add_options()
+                ("verbose", po::bool_switch(&verbose)->default_value(false), "Print extra information")
                 ("version", po::bool_switch(&version)->default_value(false), "Print version string")
                 ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
                 ;
@@ -338,9 +342,9 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.4.0"
+#define PACKAGE_VERSION "0.7.0"
 #endif
-        cout << PACKAGE_NAME << " V" << PACKAGE_VERSION << endl;
+        cout << PACKAGE_NAME << " V" << PACKAGE_VERSION << endl << endl;
         
         if (version) {    
             return 0;
@@ -353,26 +357,31 @@ int main(int argc, char *argv[]) {
         char** modeArgV = argv+1;
         
         PortcullisFS fs(argv[0]);
+        BamHelper::samtoolsExe = fs.getSamtoolsExe();
+        JunctionFilter::defaultFilterFile = path(fs.getEtcDir().string() + "/default_filter.json");
+        JunctionFilter::filterJuncsPy = fs.getFilterJuncsPy();
         
-        cout << endl 
-             << "Project filesystem" << endl 
-             << "------------------" << endl
-             << fs << endl;
+        if (verbose) {
+            cout << endl 
+                 << "Project filesystem" << endl 
+                 << "------------------" << endl
+                 << fs << endl;
+        }
         
         if (mode == PREP) {
-            Prepare::main(modeArgC, modeArgV, fs);
+            Prepare::main(modeArgC, modeArgV);
         }
         else if(mode == JUNC) {
             JunctionBuilder::main(modeArgC, modeArgV);
         }
         else if (mode == FILTER) {
-            JunctionFilter::main(modeArgC, modeArgV, fs);
+            JunctionFilter::main(modeArgC, modeArgV);
         }
         else if (mode == BAM_FILT) {
             BamFilter::main(modeArgC, modeArgV);
         }
         else if (mode == FULL) {
-            mainFull(modeArgC, modeArgV, fs);
+            mainFull(modeArgC, modeArgV);
         }
         else if (mode == CLUSTER) {
             Cluster::main(modeArgC, modeArgV);            

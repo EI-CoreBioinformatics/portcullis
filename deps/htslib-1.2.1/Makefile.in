@@ -316,13 +316,14 @@ test/test_view.o: test/test_view.c $(cram_h) $(htslib_sam_h)
 test/test-vcf-api.o: test/test-vcf-api.c $(htslib_hts_h) $(htslib_vcf_h) htslib/kstring.h
 test/test-vcf-sweep.o: test/test-vcf-sweep.c $(htslib_vcf_sweep_h)
 
-
-install: libhts.a $(BUILT_PROGRAMS) installdirs install-$(SHLIB_FLAVOUR) install-pkgconfig
-	$(INSTALL_PROGRAM) $(BUILT_PROGRAMS) $(DESTDIR)$(bindir)
-	$(INSTALL_DATA) htslib/*.h $(DESTDIR)$(includedir)/htslib
-	$(INSTALL_DATA) libhts.a $(DESTDIR)$(libdir)/libhts.a
-	$(INSTALL_DATA) htsfile.1 tabix.1 $(DESTDIR)$(man1dir)
-	$(INSTALL_DATA) faidx.5 sam.5 vcf.5 $(DESTDIR)$(man5dir)
+# Modified this because portcullis will static link htslib, so there's no need to install this separately
+install:
+#install: libhts.a $(BUILT_PROGRAMS) installdirs install-$(SHLIB_FLAVOUR) install-pkgconfig
+#	$(INSTALL_PROGRAM) $(BUILT_PROGRAMS) $(DESTDIR)$(bindir)
+#	$(INSTALL_DATA) htslib/*.h $(DESTDIR)$(includedir)/htslib
+#	$(INSTALL_DATA) libhts.a $(DESTDIR)$(libdir)/libhts.a
+#	$(INSTALL_DATA) htsfile.1 tabix.1 $(DESTDIR)$(man1dir)
+#	$(INSTALL_DATA) faidx.5 sam.5 vcf.5 $(DESTDIR)$(man5dir)
 
 installdirs:
 	$(INSTALL_DIR) $(DESTDIR)$(bindir) $(DESTDIR)$(includedir) $(DESTDIR)$(includedir)/htslib $(DESTDIR)$(libdir) $(DESTDIR)$(man1dir) $(DESTDIR)$(man5dir) $(DESTDIR)$(pkgconfigdir)
@@ -331,21 +332,24 @@ installdirs:
 # with symlinks libhts.so (used via -lhts during linking of client programs)
 # and libhts.so.NN (used by client executables at runtime).
 
-install-so: libhts.so installdirs
-	$(INSTALL_DATA) libhts.so $(DESTDIR)$(libdir)/libhts.so.$(PACKAGE_VERSION)
-	ln -sf libhts.so.$(PACKAGE_VERSION) $(DESTDIR)$(libdir)/libhts.so
-	ln -sf libhts.so.$(PACKAGE_VERSION) $(DESTDIR)$(libdir)/libhts.so.$(LIBHTS_SOVERSION)
+install-so:
+#install-so: libhts.so installdirs
+#	$(INSTALL_DATA) libhts.so $(DESTDIR)$(libdir)/libhts.so.$(PACKAGE_VERSION)
+#	ln -sf libhts.so.$(PACKAGE_VERSION) $(DESTDIR)$(libdir)/libhts.so
+#	ln -sf libhts.so.$(PACKAGE_VERSION) $(DESTDIR)$(libdir)/libhts.so.$(LIBHTS_SOVERSION)
 
-install-dylib: libhts.dylib installdirs
-	$(INSTALL_PROGRAM) libhts.dylib $(DESTDIR)$(libdir)/libhts.$(PACKAGE_VERSION).dylib
-	ln -sf libhts.$(PACKAGE_VERSION).dylib $(DESTDIR)$(libdir)/libhts.dylib
-	ln -sf libhts.$(PACKAGE_VERSION).dylib $(DESTDIR)$(libdir)/libhts.$(LIBHTS_SOVERSION).dylib
+install-dylib:
+#install-dylib: libhts.dylib installdirs
+#	$(INSTALL_PROGRAM) libhts.dylib $(DESTDIR)$(libdir)/libhts.$(PACKAGE_VERSION).dylib
+#	ln -sf libhts.$(PACKAGE_VERSION).dylib $(DESTDIR)$(libdir)/libhts.dylib
+#	ln -sf libhts.$(PACKAGE_VERSION).dylib $(DESTDIR)$(libdir)/libhts.$(LIBHTS_SOVERSION).dylib
 
 # Substitute these pseudo-autoconf variables only at install time
 # so that "make install prefix=/prefix/path" etc continue to work.
-install-pkgconfig: installdirs
-	sed -e 's#@includedir@#$(includedir)#g;s#@libdir@#$(libdir)#g;s#@PACKAGE_VERSION@#$(PACKAGE_VERSION)#g' htslib.pc.in > $(DESTDIR)$(pkgconfigdir)/htslib.pc
-	chmod 644 $(DESTDIR)$(pkgconfigdir)/htslib.pc
+install-pkgconfig:
+#install-pkgconfig: installdirs
+#	sed -e 's#@includedir@#$(includedir)#g;s#@libdir@#$(libdir)#g;s#@PACKAGE_VERSION@#$(PACKAGE_VERSION)#g' htslib.pc.in > $(DESTDIR)$(pkgconfigdir)/htslib.pc
+#	chmod 644 $(DESTDIR)$(pkgconfigdir)/htslib.pc
 
 # A pkg-config file (suitable for copying to $PKG_CONFIG_PATH) that provides
 # flags for building against the uninstalled library in this build directory.

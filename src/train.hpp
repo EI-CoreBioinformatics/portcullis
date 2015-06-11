@@ -93,7 +93,7 @@ public:
         sample_type m(6);
         
         // Load feature vector from junction file into matrix
-        for(JunctionPtr j : *(js.getJunctions())) {
+        for(const auto& j : js.getJunctions()) {
         
             // Calculate the metrics and add them into the vector
             m(0) = j->getCoverage();
@@ -177,7 +177,7 @@ public:
         uint32_t no = 0;
         uint32_t yes = 0;
         
-        for(JunctionPtr j : *(js.getJunctions())) {
+        for(const auto& j : js.getJunctions()) {
             sample_type m(6);
         
             // Calculate the metrics and add them into the vector
