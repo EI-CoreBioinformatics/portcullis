@@ -224,6 +224,8 @@ public:
     
     string deriveName() const;
     
+    string getQuerySeq() const;
+    
     bool isSplicedRead() const;
     
     uint32_t getNbJunctionsInRead() const;
@@ -234,9 +236,13 @@ public:
     
     uint32_t calcNbAlignedBases() const;
     
+    uint32_t calcNbAlignedBases(int32_t start, int32_t end) const;
+    
     uint16_t calcMinimalMatchInCigarDataSubset(uint32_t start, uint32_t end) const;
     
-    uint16_t alignedBasesBetween(int32_t start, int32_t end) const;
+    string getSeq(uint32_t start, uint32_t end) const;
+    
+    
     
 };
 

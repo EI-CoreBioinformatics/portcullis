@@ -153,7 +153,15 @@ void portcullis::JunctionBuilder::process() {
     int32_t lastCalculatedJunctionIndex = 0;
     int32_t lastSeqCount = 0;
 
-    cout << endl << "Processing alignments and calculating metrics for reference sequence: " << endl;
+    cout << endl << "Loading reference index ... ";
+    cout.flush();
+    
+    GenomeMapper gmap(prepData.getGenomeFilePath());
+    gmap.loadFastaIndex();
+    
+    cout << "done." << endl << endl;
+        
+    cout << "Processing alignments and calculating metrics for reference sequence: " << endl;
 
     // The contents inside the pointer will automatically alter as reader.next() is called
     
@@ -170,6 +178,7 @@ void portcullis::JunctionBuilder::process() {
             const BamAlignment& j0 = j->getFirstAlignment();*/
             
             j->calcMetrics();
+            j->processJunctionWindow(gmap);
             j->clearAlignments();
             
             /*size_t nbJAAfter = j->getNbJunctionAlignmentFromVector();
@@ -220,6 +229,7 @@ void portcullis::JunctionBuilder::process() {
 
         JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);
         j->calcMetrics();
+        j->processJunctionWindow(gmap);
         j->clearAlignments();
         lastCalculatedJunctionIndex++;
         lastSeqCount++;
@@ -231,23 +241,6 @@ void portcullis::JunctionBuilder::process() {
     unsplicedWriter.close();
     splicedWriter.close();
 
-
-    cout << endl << "Calculating metrics that require analysis of reference genome";
-    if (verbose) {
-        cout << endl;
-    }
-    else {
-        cout << "...";
-        cout.flush();
-    }
-
-    GenomeMapper gmap(prepData.getGenomeFilePath());
-    gmap.loadFastaIndex();
-    junctionSystem.scanReference(gmap, refs, verbose);
-
-    if (!verbose) {
-        cout << " done" << endl;
-    }
 
     cout << endl << "Calculating junctions stats that require comparisons with other junctions...";
     cout.flush();

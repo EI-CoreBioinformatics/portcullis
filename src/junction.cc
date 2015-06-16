@@ -15,6 +15,7 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+#include <cstdint>
 #include <iostream>
 #include <math.h>
 #include <string>
@@ -242,7 +243,7 @@ void portcullis::Junction::extendFlanks(int32_t otherStart, int32_t otherEnd) {
 }
         
     
-portcullis::CanonicalSS portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMapper) {
+void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMapper) {
 
     if (intron == nullptr) 
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -270,12 +271,10 @@ portcullis::CanonicalSS portcullis::Junction::processJunctionWindow(const Genome
     // Process the predicted donor / acceptor regions and update junction
     string daSeq1 = region.substr(intron->start - leftFlankStart, 2);
     string daSeq2 = region.substr(intron->end - 2 - leftFlankStart, 2);
-    CanonicalSS validDA = setDonorAndAcceptorMotif(daSeq1, daSeq2);
-
-    // Create strings for hamming analysis
-    calcHammingScores(region);
-
-    return validDA;
+    
+    this->setDonorAndAcceptorMotif(daSeq1, daSeq2);
+    this->calcHammingScores(region);
+    this->calcMaxMMES(region);
 }
     
 void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, StrandSpecific strandSpecific) {
@@ -321,7 +320,6 @@ void portcullis::Junction::calcMetrics() {
     calcAnchorStats();      // Metrics 5 and 7
     calcEntropy();          // Metric 6
     calcAlignmentStats();   // Metrics 8, 9 and 19
-    calcMaxMMES();          // Metric 12
 }
     
     
@@ -331,47 +329,40 @@ void portcullis::Junction::calcMetrics() {
  */
 void portcullis::Junction::calcAnchorStats() {
 
-    int32_t lEnd = intron->start;
-    int32_t rStart = intron->end;
-    int32_t minLeftSize = intron->start - leftFlankStart; 
-    int32_t minRightSize = rightFlankEnd - intron->end; 
+    int32_t minLeftSize = INT32_MAX, minRightSize = INT32_MAX; 
     int32_t maxLeftSize = 0, maxRightSize = 0;
-    size_t nbAlignments = junctionAlignments.size();
-    uint32_t nbDistinctLeftAnchors = 0, nbDistinctRightAnchors = 0;
     int32_t lastLStart = -1, lastREnd = -1;
 
+    nbDistinctAnchors = 0;    
+    
     for(const BamAlignment& ba : junctionAlignments) {
 
         const int32_t pos = ba.getPosition();
-        const int32_t alignedBases = (int32_t)ba.calcNbAlignedBases();
-
-        int32_t leftSize = ba.alignedBasesBetween(pos, lEnd);
-        int32_t rightSize = ba.alignedBasesBetween(rStart, pos + alignedBases);
+        
+        int32_t lStart = pos;
+        int32_t rEnd = pos + ba.calcNbAlignedBases();
+        
+        int32_t leftSize = ba.calcNbAlignedBases(lStart, intron->start - 1);
+        int32_t rightSize = ba.calcNbAlignedBases(intron->end, rEnd);   // Will auto crop for end of alignment
 
         maxLeftSize = max(maxLeftSize, leftSize);
         minLeftSize = min(minLeftSize, leftSize);
         maxRightSize = max(maxRightSize, rightSize);
         minRightSize = min(minRightSize, rightSize);
-
-        int32_t lStart = pos;
-        int32_t rEnd = pos + alignedBases;
-
-        if (lStart != lastLStart) {
-            nbDistinctLeftAnchors++;
+        
+        if (lStart != lastLStart || rEnd != lastREnd) {
+            nbDistinctAnchors++;
             lastLStart = lStart;
-        }
-        if (rEnd != lastREnd) {
-            nbDistinctRightAnchors++;
             lastREnd = rEnd;
-        }
+        }        
     }
 
-    int32_t diffLeftSize = maxLeftSize - minLeftSize;
-    int32_t diffRightSize = maxRightSize - minRightSize;
+    int32_t diffLeftSize = maxLeftSize - minLeftSize; diffLeftSize = diffLeftSize < 0 ? 0 : diffLeftSize;
+    int32_t diffRightSize = maxRightSize - minRightSize; diffLeftSize = diffRightSize < 0 ? 0 : diffRightSize;   
+    
     leftAncSize = maxLeftSize;
     rightAncSize = maxRightSize;            
-    diffAnchor = min(diffLeftSize, diffRightSize);
-    nbDistinctAnchors = min(nbDistinctLeftAnchors, nbDistinctRightAnchors);
+    diffAnchor = min(diffLeftSize, diffRightSize);    
 }
     
     
@@ -534,7 +525,7 @@ void portcullis::Junction::calcAlignmentStats() {
  * region represented by this junction
  * @param junctionSeq The DNA sequence representing this junction on the genome
  */
-void portcullis::Junction::calcHammingScores(string& junctionSeq) {
+void portcullis::Junction::calcHammingScores(const string& junctionSeq) {
 
     // Default region length is 10, however this may get modified if we have
     // particularly short anchors
@@ -613,16 +604,32 @@ void portcullis::Junction::calcHammingScores(string& junctionSeq) {
 /**
  * Calculates metric 12.  MaxMMES.
  */
-void portcullis::Junction::calcMaxMMES() {
+void portcullis::Junction::calcMaxMMES(const string& junctionSeq) {
 
+    Strand s = intron->strand != UNKNOWN ? intron->strand : predictedStrand;                
+
+    string fullAnchor5p = junctionSeq.substr(0, this->leftAncSize);
+    string fullAnchor3p = junctionSeq.substr(intron->end - leftFlankStart, this->rightAncSize);
+        
+    // If on negative strand we probably need to RC these anchors
+    
     uint16_t maxmmes = 0;
-
+    
     for(auto& ba : junctionAlignments) {
 
-        uint16_t leftMM = ba.calcMinimalMatchInCigarDataSubset(leftFlankStart, intron->start);
-        uint16_t rightMM = ba.calcMinimalMatchInCigarDataSubset(intron->end, rightFlankEnd);
-
-        uint16_t mmes = min(leftMM, rightMM);
+        string qAnchor5p = ba.getSeq(leftFlankStart, intron->start);
+        string qAnchor3p = ba.getSeq(intron->end, rightFlankEnd);
+    
+        string gAnchor5p = fullAnchor5p.substr(leftAncSize - qAnchor5p.size(), qAnchor5p.size());
+        string gAnchor3p = fullAnchor3p.substr(0, qAnchor3p.size());
+        
+        int16_t hdAnc5p = SeqUtils::hammingDistance(qAnchor5p, gAnchor5p);
+        int16_t hdAnc3p = SeqUtils::hammingDistance(qAnchor3p, gAnchor3p);
+        
+        uint16_t nb5pMatches = this->leftAncSize - hdAnc5p;
+        uint16_t nb3pMatches = this->rightAncSize - hdAnc3p;
+        
+        uint16_t mmes = min(nb5pMatches, nb3pMatches);
 
         maxmmes = max(maxmmes, mmes);
     }

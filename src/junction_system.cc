@@ -178,7 +178,7 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
             }
 
             // Create the intron
-            shared_ptr<Intron> location = make_shared<Intron>(RefSeq(refId, refName, refLength), lEnd, rStart, 
+            shared_ptr<Intron> location = make_shared<Intron>(RefSeq(refId, refName, refLength), lEnd + 1, rStart, 
                     strandSpecific ? strandFromBool(al.isReverseStrand()) : UNKNOWN);
 
             // We should now have the complete junction location information
@@ -226,55 +226,6 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
 
     return foundJunction;        
 }
-
-
-/**
- * This will look for donor acceptor sites and find hamming distances around
- * the junctions.  In both cases we need to consult the genome, so both
- * parts of the junction analysis are handled in this function
- * @param genomeMapper
- * @param refs
- * @param verbose
- * @return 
- */
-void portcullis::JunctionSystem::scanReference(GenomeMapper& genomeMapper, vector<RefSeq>& refs, bool verbose) {
-
-    if (verbose) {
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");        
-
-        cout << " - Acquiring junction sequence sites from genome ... ";
-        cout.flush();
-    }
-
-    uint64_t canonicalSites = 0;
-    uint64_t semiCanonicalSites = 0;
-    uint64_t nonCanonicalSites = 0;
-    for(JunctionPtr j : junctionList) {
-
-        CanonicalSS css = j->processJunctionWindow(genomeMapper);
-
-        switch(css) {
-            case CANONICAL:
-                canonicalSites++;
-                break;
-            case SEMI_CANONICAL:
-                semiCanonicalSites++;
-                break;
-            case NO:
-                nonCanonicalSites++;
-                break;
-        }
-
-    }
-
-    if (verbose) {
-        cout << "done." << endl
-             << " - Found " << canonicalSites << " canonical splice sites." << endl
-             << " - Found " << semiCanonicalSites << " semi-canonical splice sites." << endl
-             << " - Found " << nonCanonicalSites << " non-canonical splice sites." << endl;
-    }
-}
-
 
 
 void portcullis::JunctionSystem::findFlankingAlignments(const path& alignmentsFile, StrandSpecific strandSpecific, bool verbose) {
