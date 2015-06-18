@@ -161,6 +161,12 @@ public:
     
     void outputDescription(ostream& strm, string delimiter);
     
+    string toString() {
+        stringstream ss;
+        ss << ref.name << "(" << start << "," << end << ")" << strandToChar(strand);
+        return ss.str();
+    }
+    
     friend ostream& operator<<(ostream& strm, Intron& l) {
         return strm << l.ref.index << "\t" << l.ref.name << "\t" << l.ref.length 
                 << "\t" << l.start << "\t" << l.end << "\t" << strandToChar(l.strand);

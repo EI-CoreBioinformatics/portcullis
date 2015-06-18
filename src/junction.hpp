@@ -352,14 +352,14 @@ public:
     /**
      * Metric 13 and 14: Calculates the 5' and 3' hamming distances from a genomic
      * region represented by this junction
-     * @param junctionSeq The DNA sequence representing this junction on the genome
      */
-    void calcHammingScores(const string& junctionSeq);
+    void calcHammingScores( const string& leftAnchor, const string& leftIntron, 
+                            const string& rightIntron, const string& rightAnchor);
     
     /**
      * Calculates metric 12.  MaxMMES.
      */
-    void calcMaxMMES(const string& junctionSeq);
+    void calcMaxMMES(const string& anc5p, const string& anc3p);
     
     /**
      * Calculates metric 18.  Multiple mapping score

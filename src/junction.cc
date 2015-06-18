@@ -248,33 +248,105 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
     if (intron == nullptr) 
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                 "Can't find genomic sequence for this junction as no intron is defined")));
-
-    int32_t refid = intron->ref.index;
-
-    // Just access the whole junction region
-    int seqLen = -1;
-    string region = genomeMapper.fetchBases(intron->ref.name.c_str(), leftFlankStart, rightFlankEnd, &seqLen);
-    boost::to_upper(region);    // Removes any lowercase bases representing repeats
-    if (seqLen == -1) 
-        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "Can't find genomic region for junction")));
-
-    if (seqLen != rightFlankEnd - leftFlankStart + 1)
-        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "Retrieved sequence is not of the expected length.") +
-                "\nSequence Name: " + intron->ref.name + 
-                "\nSequence Length: " + lexical_cast<string>(seqLen) + 
-                "\nLeft flank start: " + lexical_cast<string>(leftFlankStart) + 
-                "\nRight flank end: " + lexical_cast<string>(rightFlankEnd) + "\n"));
-
-
-    // Process the predicted donor / acceptor regions and update junction
-    string daSeq1 = region.substr(intron->start - leftFlankStart - 1, 2);
-    string daSeq2 = region.substr(intron->end - 2 - leftFlankStart, 2);
     
-    this->setDonorAndAcceptorMotif(daSeq1, daSeq2);
-    this->calcHammingScores(region);
-    this->calcMaxMMES(region);
+    // For testing
+    //int seqLen = -1;
+    //string testFull = genomeMapper.fetchBases(intron->ref.name.c_str(), leftFlankStart, rightFlankEnd, &seqLen);
+    
+    // Process the predicted donor / acceptor regions and update junction
+    int donorLen = -1;
+    int acceptorLen = -1;
+    string donor = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->start, intron->start + 1, &donorLen);
+    string acceptor = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end - 1, intron->end, &acceptorLen);
+    
+    if (donorLen == -1) 
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Can't find donor site (left side splice site) region for junction: ") + this->intron->toString()));
+    
+    if (donorLen != 2)
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Retrieved sequence for left side splice site of junction ") + this->intron->toString() + " is not the expected length" +
+                "\nRetrieved sequence Length: " + lexical_cast<string>(donorLen) + 
+                "\nExpected sequence length: " + lexical_cast<string>(2) + "\n"));
+        
+    if (acceptorLen == -1) 
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Can't find acceptor site (right side splice site) region for junction: ") + this->intron->toString()));
+    
+    if (acceptorLen != 2)
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Retrieved sequence for right side splice site of junction ") + this->intron->toString() + " is not the expected length" +
+                "\nRetrieved sequence Length: " + lexical_cast<string>(acceptorLen) + 
+                "\nExpected sequence length: " + lexical_cast<string>(2) + "\n"));
+        
+    boost::to_upper(donor);    // Removes any lowercase bases representing repeats
+    boost::to_upper(acceptor);    // Removes any lowercase bases representing repeats
+    this->setDonorAndAcceptorMotif(donor, acceptor);
+    
+    // Just access the whole junction region
+    int leftAncLen = -1;
+    int leftIntLen = -1;
+    int rightAncLen = -1;
+    int rightIntLen = -1;
+    string leftAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), leftFlankStart, intron->start - 1, &leftAncLen);
+    string rightAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end + 1, rightFlankEnd, &rightAncLen);
+    string leftInt = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->start, intron->start + 9, &leftIntLen);
+    string rightInt = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end - 9, intron->end, &rightIntLen);
+
+    if (leftAncLen == -1) 
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Can't find left anchor region for junction: ") + this->intron->toString()));
+
+    if (rightAncLen == -1) 
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Can't find right anchor region for junction: ") + this->intron->toString()));
+    
+    if (leftIntLen == -1) 
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Can't find left intron region for junction: ") + this->intron->toString()));
+
+    if (rightIntLen == -1) 
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Can't find right intron region for junction: ") + this->intron->toString()));
+
+    int expLeftLen = intron->start - leftFlankStart;
+    if (leftAncLen != expLeftLen)
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Retrieved sequence for left anchor of junction ") + this->intron->toString() + " is not the expected length" +
+                "\nRetrieved sequence Length: " + lexical_cast<string>(leftAncLen) + 
+                "\nExpected sequence length: " + lexical_cast<string>(expLeftLen) + "\n"));
+
+    int expRightLen = rightFlankEnd - intron->end;
+    if (rightAncLen != expRightLen)
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Retrieved sequence for right anchor of junction ") + this->intron->toString() + " is not the expected length" +
+                "\nRetrieved sequence Length: " + lexical_cast<string>(rightAncLen) + 
+                "\nExpected sequence length: " + lexical_cast<string>(expRightLen) + "\n"));
+        
+    if (leftIntLen != 10)
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Retrieved sequence for left intron region of junction ") + this->intron->toString() + " is not the expected length" +
+                "\nRetrieved sequence Length: " + lexical_cast<string>(leftIntLen) + 
+                "\nExpected sequence length: " + lexical_cast<string>(10) + "\n"));
+
+    if (rightIntLen != 10)
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "Retrieved sequence for right intron region of junction ") + this->intron->toString() + " is not the expected length" +
+                "\nRetrieved sequence Length: " + lexical_cast<string>(rightIntLen) + 
+                "\nExpected sequence length: " + lexical_cast<string>(10) + "\n"));
+
+    // Removes any lowercase bases representing repeats
+    boost::to_upper(leftAnc);
+    boost::to_upper(rightAnc);
+    boost::to_upper(leftInt);
+    boost::to_upper(rightInt);
+    
+    string leftAnchor10 = leftAncLen < 10 ? leftAnc : leftAnc.substr(leftAncLen - 10, 10);
+    string rightAnchor10 = rightAncLen < 10 ? rightAnc : rightAnc.substr(0, 10);
+    
+    this->calcHammingScores(leftAnchor10, leftInt, rightInt, rightAnchor10);
+    
+    this->calcMaxMMES(leftAnc, rightAnc);
 }
     
 void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, StrandSpecific strandSpecific) {
@@ -300,7 +372,7 @@ void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t re
 
         // Look for left flanking alignments
         if (    intron->start > pos && 
-                leftFlankStart <= pos + ba.calcNbAlignedBases()) {
+                leftFlankStart <= ba.getEnd()) {
             nbLeftFlankingAlignments++;
         }
 
@@ -337,13 +409,11 @@ void portcullis::Junction::calcAnchorStats() {
     
     for(const BamAlignment& ba : junctionAlignments) {
 
-        const int32_t pos = ba.getPosition();
-        
-        int32_t lStart = pos;
-        int32_t rEnd = pos + ba.calcNbAlignedBases();
+        const int32_t lStart = ba.getPosition();
+        const int32_t rEnd = ba.getEnd();
         
         int32_t leftSize = ba.calcNbAlignedBases(lStart, intron->start - 1);
-        int32_t rightSize = ba.calcNbAlignedBases(intron->end, rEnd);   // Will auto crop for end of alignment
+        int32_t rightSize = ba.calcNbAlignedBases(intron->end + 1, rEnd);   // Will auto crop for end of alignment
 
         maxLeftSize = max(maxLeftSize, leftSize);
         minLeftSize = min(minLeftSize, leftSize);
@@ -467,11 +537,8 @@ void portcullis::Junction::calcAlignmentStats() {
 
     for(auto& ba : junctionAlignments) {
 
-        const int32_t bapos = ba.getPosition();
-        const int32_t alignedBases = (int32_t)ba.calcNbAlignedBases();
-
-        int32_t start = bapos;
-        int32_t end = bapos + alignedBases;
+        const int32_t start = ba.getPosition();
+        const int32_t end = ba.getEnd();
 
         if (start != lastStart || end != lastEnd ) {
             nbDistinctAlignments++;                
@@ -487,8 +554,6 @@ void portcullis::Junction::calcAlignmentStats() {
             nbReliableAlignments++;
         }
 
-        uint16_t leftSize = 0;
-        uint16_t rightSize = 0;
         uint16_t upjuncs = 0;
         uint16_t downjuncs = 0;
         int32_t pos = start;
@@ -523,88 +588,63 @@ void portcullis::Junction::calcAlignmentStats() {
 /**
  * Metric 13 and 14: Calculates the 5' and 3' hamming distances from a genomic
  * region represented by this junction
- * @param junctionSeq The DNA sequence representing this junction on the genome
+ * 
+ * Note, the logic in here is quite complex (and initially looks weird) but it is 
+ * correct... only change it if you know what you are doing!
  */
-void portcullis::Junction::calcHammingScores(const string& junctionSeq) {
+void portcullis::Junction::calcHammingScores(   const string& leftAnchor, const string& leftIntron, 
+                                                const string& rightIntron, const string& rightAnchor) {
 
-    // Default region length is 10, however this may get modified if we have
-    // particularly short anchors
-    uint16_t REGION_LENGTH = 10;
+    const int32_t leftDelta = leftAnchor.size() - rightIntron.size();
+    const int32_t leftOffset = leftDelta <= 0 ? 0 : leftDelta;
+    const int32_t leftLen = min(leftAnchor.size(), rightIntron.size());
+    const int32_t rightLen = min(leftIntron.size(), rightAnchor.size());
+    
+    Strand s = intron->strand != UNKNOWN ? intron->strand : predictedStrand;                
 
+    const string la = leftAnchor.size() > leftLen ? leftAnchor.substr(leftOffset, leftLen) : leftAnchor;
+    const string li = leftIntron.size() > rightLen ? leftIntron.substr(0, rightLen) : leftIntron;
+    const string ri = rightIntron.size() > leftLen ? rightIntron.substr(leftOffset, leftLen) : rightIntron;
+    const string ra = rightAnchor.size() > rightLen ? rightAnchor.substr(0, rightLen) : rightAnchor;
+
+    string anchor5p;
     string intron5p;
     string intron3p;
-    string anchor5p;
     string anchor3p;
-
-    int32_t diffAnchor5p = intron->start - leftFlankStart;
-    int32_t diffAnchor3p = rightFlankEnd - intron->end;
-
-    // Shorten region to look for based on size of the anchors (flanking region).  i.e. if the 
-    // smallest anchor is less than the default region length, we shrink the region length
-    // to the size of the smallest anchor
-    REGION_LENGTH = diffAnchor5p < REGION_LENGTH ? diffAnchor5p : REGION_LENGTH;
-    REGION_LENGTH = diffAnchor3p < REGION_LENGTH ? diffAnchor3p : REGION_LENGTH;
-
-    //cout << "region length: " << REGION_LENGTH << endl;
-
-    int32_t intronStartOffset = intron->start - leftFlankStart;
-    int32_t anchor3pStartOffset = intron->end - leftFlankStart + 1;
-
-    // The first parts of this if statement are for debugging purposes.  We
-    // don't actually expect these to be set for real
-    if (intron->size() < REGION_LENGTH) {
-        hammingDistance5p = -1;
-        hammingDistance3p = -1;
+    
+    switch(s) {
+        case POSITIVE:
+            anchor5p = la;
+            intron5p = li;
+            intron3p = ri;
+            anchor3p = ra;
+            break;
+        case NEGATIVE:
+            anchor5p = SeqUtils::reverseComplement(ra);
+            intron5p = SeqUtils::reverseComplement(ri);
+            intron3p = SeqUtils::reverseComplement(li);
+            anchor3p = SeqUtils::reverseComplement(la);
+            break;
+        default:
+            //Error
+            hammingDistance5p = -1;
+            hammingDistance3p = -1;
+            return;
     }
-    else if (intronStartOffset - REGION_LENGTH < 0) {
-        hammingDistance5p = -2;
-        hammingDistance3p = -2;
-    }
-    else if (anchor3pStartOffset + REGION_LENGTH > size()) {
-        hammingDistance5p = -3;
-        hammingDistance3p = -3;
-    }
-    else if (anchor3pStartOffset + REGION_LENGTH > junctionSeq.size()) {
-        hammingDistance5p = -4;
-        hammingDistance3p = -4;
-    }
-    else {
 
-        Strand s = intron->strand != UNKNOWN ? intron->strand : predictedStrand;                
+    /*cout << "anchor 5': " << anchor5p << endl;
+    cout << "intron 5': " << intron5p << endl;
+    cout << "intron 3': " << intron3p << endl;
+    cout << "anchor 3': " << anchor3p << endl;*/
 
-        switch(s) {
-            case POSITIVE:
-                intron5p = junctionSeq.substr(intronStartOffset, REGION_LENGTH);
-                intron3p = junctionSeq.substr(anchor3pStartOffset - REGION_LENGTH, REGION_LENGTH);
-                anchor5p = junctionSeq.substr(intronStartOffset - REGION_LENGTH, REGION_LENGTH);
-                anchor3p = junctionSeq.substr(anchor3pStartOffset, REGION_LENGTH);
-                break;
-            case NEGATIVE:
-                intron5p = SeqUtils::reverseComplement(junctionSeq.substr(anchor3pStartOffset - REGION_LENGTH, REGION_LENGTH));
-                intron3p = SeqUtils::reverseComplement(junctionSeq.substr(intronStartOffset, REGION_LENGTH));
-                anchor5p = SeqUtils::reverseComplement(junctionSeq.substr(anchor3pStartOffset, REGION_LENGTH));
-                anchor3p = SeqUtils::reverseComplement(junctionSeq.substr(intronStartOffset - REGION_LENGTH, REGION_LENGTH));
-                break;
-            default:
-                hammingDistance5p = -5;
-                hammingDistance3p = -5;
-                return;
-        }
-
-        /*cout << "anchor 5': " << anchor5p << endl;
-        cout << "intron 5': " << intron5p << endl;
-        cout << "intron 3': " << intron3p << endl;
-        cout << "anchor 3': " << anchor3p << endl;*/
-
-        hammingDistance5p = SeqUtils::hammingDistance(anchor5p, intron3p);
-        hammingDistance3p = SeqUtils::hammingDistance(anchor3p, intron5p);  
-    }
+    hammingDistance5p = SeqUtils::hammingDistance(anchor5p, intron3p);
+    hammingDistance3p = SeqUtils::hammingDistance(anchor3p, intron5p);  
 }
     
 /**
  * Calculates metric 12.  MaxMMES.
  */
-void portcullis::Junction::calcMaxMMES(const string& junctionSeq) {
+void portcullis::Junction::calcMaxMMES(const string& anc5p, const string& anc3p) {
 
     Strand s = intron->strand != UNKNOWN ? intron->strand : predictedStrand;                
 
@@ -615,10 +655,10 @@ void portcullis::Junction::calcMaxMMES(const string& junctionSeq) {
     for(auto& ba : junctionAlignments) {
 
         string qAnchor5p = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1);
-        string qAnchor3p = ba.getPaddedQuerySeq(intron->end, rightFlankEnd);
+        string qAnchor3p = ba.getPaddedQuerySeq(intron->end + 1, rightFlankEnd);
     
-        string gAnchor5p = ba.getPaddedGenomeSeq(junctionSeq, leftFlankStart, intron->start - 1);
-        string gAnchor3p = ba.getPaddedGenomeSeq(junctionSeq, intron->end, rightFlankEnd);
+        string gAnchor5p = ba.getPaddedGenomeSeq(anc5p, leftFlankStart, intron->start - 1);
+        string gAnchor3p = ba.getPaddedGenomeSeq(anc3p, intron->end + 1, rightFlankEnd);
         
         int16_t hdAnc5p = SeqUtils::hammingDistance(qAnchor5p, gAnchor5p);
         int16_t hdAnc3p = SeqUtils::hammingDistance(qAnchor3p, gAnchor3p);

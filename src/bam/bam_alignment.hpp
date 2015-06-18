@@ -102,6 +102,7 @@ private:
     
     uint32_t alFlag;
     int32_t position;
+    int32_t alignedLength;
     int32_t refId;
     vector<CigarOp> cigar;
     
@@ -222,6 +223,10 @@ public:
         return (alFlag & BAM_FREAD2) != 0;
     }
     
+    int32_t getEnd() const {
+        return position + alignedLength;
+    }
+    
     string deriveName() const;
     
     string getQuerySeq() const;
@@ -234,8 +239,6 @@ public:
         return getNbJunctionsInRead() > 1;
     }
     
-    uint32_t calcNbAlignedBases() const;
-    
     uint32_t calcNbAlignedBases(int32_t start, int32_t end) const;
     
     uint16_t calcMinimalMatchInCigarDataSubset(uint32_t start, uint32_t end) const;
@@ -243,7 +246,7 @@ public:
     string getPaddedQuerySeq(uint32_t start, uint32_t end) const;
     string getPaddedGenomeSeq(const string& fullGenomeSeq, uint32_t start, uint32_t end) const;
     
-    
+    string toString() const;
     
 };
 
