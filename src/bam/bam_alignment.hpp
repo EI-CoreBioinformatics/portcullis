@@ -106,7 +106,7 @@ private:
     vector<CigarOp> cigar;
     
     void init();
-    
+        
 public:
 
     /**
@@ -240,7 +240,8 @@ public:
     
     uint16_t calcMinimalMatchInCigarDataSubset(uint32_t start, uint32_t end) const;
     
-    string getSeq(uint32_t start, uint32_t end) const;
+    string getPaddedQuerySeq(uint32_t start, uint32_t end) const;
+    string getPaddedGenomeSeq(const string& fullGenomeSeq, uint32_t start, uint32_t end) const;
     
     
     

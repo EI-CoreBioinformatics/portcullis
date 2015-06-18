@@ -269,7 +269,7 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
 
 
     // Process the predicted donor / acceptor regions and update junction
-    string daSeq1 = region.substr(intron->start - leftFlankStart, 2);
+    string daSeq1 = region.substr(intron->start - leftFlankStart - 1, 2);
     string daSeq2 = region.substr(intron->end - 2 - leftFlankStart, 2);
     
     this->setDonorAndAcceptorMotif(daSeq1, daSeq2);
@@ -608,26 +608,23 @@ void portcullis::Junction::calcMaxMMES(const string& junctionSeq) {
 
     Strand s = intron->strand != UNKNOWN ? intron->strand : predictedStrand;                
 
-    string fullAnchor5p = junctionSeq.substr(0, this->leftAncSize);
-    string fullAnchor3p = junctionSeq.substr(intron->end - leftFlankStart, this->rightAncSize);
-        
     // If on negative strand we probably need to RC these anchors
     
     uint16_t maxmmes = 0;
     
     for(auto& ba : junctionAlignments) {
 
-        string qAnchor5p = ba.getSeq(leftFlankStart, intron->start);
-        string qAnchor3p = ba.getSeq(intron->end, rightFlankEnd);
+        string qAnchor5p = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1);
+        string qAnchor3p = ba.getPaddedQuerySeq(intron->end, rightFlankEnd);
     
-        string gAnchor5p = fullAnchor5p.substr(leftAncSize - qAnchor5p.size(), qAnchor5p.size());
-        string gAnchor3p = fullAnchor3p.substr(0, qAnchor3p.size());
+        string gAnchor5p = ba.getPaddedGenomeSeq(junctionSeq, leftFlankStart, intron->start - 1);
+        string gAnchor3p = ba.getPaddedGenomeSeq(junctionSeq, intron->end, rightFlankEnd);
         
         int16_t hdAnc5p = SeqUtils::hammingDistance(qAnchor5p, gAnchor5p);
         int16_t hdAnc3p = SeqUtils::hammingDistance(qAnchor3p, gAnchor3p);
         
-        uint16_t nb5pMatches = this->leftAncSize - hdAnc5p;
-        uint16_t nb3pMatches = this->rightAncSize - hdAnc3p;
+        uint16_t nb5pMatches = qAnchor5p.size() - hdAnc5p;
+        uint16_t nb3pMatches = qAnchor3p.size() - hdAnc3p;
         
         uint16_t mmes = min(nb5pMatches, nb3pMatches);
 

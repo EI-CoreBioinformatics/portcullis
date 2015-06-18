@@ -180,7 +180,7 @@ uint32_t portcullis::bam::BamAlignment::calcNbAlignedBases(int32_t start, int32_
     int32_t pos = position;
     for(const auto& op : cigar) {
 
-        if (pos > end) {
+        if (pos >= end) {
             break;
         }
         
@@ -196,7 +196,7 @@ uint32_t portcullis::bam::BamAlignment::calcNbAlignedBases(int32_t start, int32_
 }
 
 
-string portcullis::bam::BamAlignment::getSeq(uint32_t start, uint32_t end) const {
+string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t end) const {
     
     if (start > position + calcNbAlignedBases() || end < position)
         BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
@@ -210,15 +210,26 @@ string portcullis::bam::BamAlignment::getSeq(uint32_t start, uint32_t end) const
     
     for(const auto& op : cigar) {
 
-        if (rPos > end) {
-            break;
-        }
-
         bool consumesRef = CigarOp::opConsumesReference(op.type);
         bool consumesQuery = CigarOp::opConsumesQuery(op.type);
         
-        if (consumesRef && consumesQuery && rPos >= start) {
-            ss << query.substr(qPos, op.length);
+        // Skips any cigar ops before start position
+        if (rPos < start) {
+            if (consumesRef) rPos += op.length;
+            if (consumesQuery) qPos += op.length;            
+            continue;
+        }
+        
+        if (rPos >= end) break;
+        
+        if (consumesQuery) {
+            ss << query.substr(qPos, op.length);            
+        }
+        else if (consumesRef) {
+            string s;
+            s.resize(op.length);
+            std::fill(s.begin(), s.end(), 'N'); 
+            ss << s;
         }
         
         if (consumesRef) rPos += op.length;
@@ -228,4 +239,47 @@ string portcullis::bam::BamAlignment::getSeq(uint32_t start, uint32_t end) const
     return ss.str();
 }
 
+
+string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq, uint32_t start, uint32_t end) const {
+    
+    if (start > position + calcNbAlignedBases() || end < position)
+        BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                "Found an alignment that does not have a presence in the requested region")));
+
+    int32_t pos = 0;
+    int32_t qPos = 0;
+    int32_t rPos = position;
+    
+    stringstream ss;
+        
+    for(const auto& op : cigar) {
+
+        bool consumesRef = CigarOp::opConsumesReference(op.type);
+        bool consumesQuery = CigarOp::opConsumesQuery(op.type);
+        
+        // Skips any cigar ops before start position
+        if (rPos < start) {
+            if (consumesRef) rPos += op.length;
+            continue;
+        }
+        
+        // Ends cigar loop once we reach the end of the region
+        if (rPos >= end) break;
+        
+        if (consumesRef) {
+            ss << genomeSeq.substr(rPos - start + pos, op.length);             
+        }
+        else if (consumesQuery) {
+            string s;
+            s.resize(op.length);
+            std::fill(s.begin(), s.end(), 'N'); 
+            ss << s;
+        }     
+        
+        if (consumesRef) rPos += op.length;
+        if (consumesQuery) qPos += op.length;
+    } 
+
+    return ss.str();
+}
 
