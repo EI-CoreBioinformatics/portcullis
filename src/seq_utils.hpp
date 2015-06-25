@@ -79,8 +79,9 @@ public:
 
         if (s1.size() != s2.size())
             BOOST_THROW_EXCEPTION(SeqUtilsException() << SeqUtilsErrorInfo(string(
-                    "Can't find hamming distance of strings that are not the same length.  s1: \"") 
-                    + s1 + "\"; s2: \"" + s2 + "\""));
+                    "Can't find hamming distance of strings that are not the same length.  ") +
+                    "s1: " + lexical_cast<string>(s1.size()) + "\"" + s1 + "\"; " +
+                    "s2: " + lexical_cast<string>(s2.size()) + "\"" + s2 + "\""));
 
         string s1u = boost::to_upper_copy(s1);
         string s2u = boost::to_upper_copy(s2);

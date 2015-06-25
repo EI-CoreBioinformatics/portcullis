@@ -128,29 +128,6 @@ public:
     
     bool addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset, bool strandSpecific);
     
-    /**
-     * This will look for donor acceptor sites and find hamming distances around
-     * the junctions.  In both cases we need to consult the genome, so both
-     * parts of the junction analysis are handled in this function
-     * @param genomeMapper
-     * @param refs
-     * @return 
-     */
-    void scanReference(GenomeMapper& genomeMapper, vector<RefSeq>& refs) {
-        scanReference(genomeMapper, refs, false);
-    }
-    
-    /**
-     * This will look for donor acceptor sites and find hamming distances around
-     * the junctions.  In both cases we need to consult the genome, so both
-     * parts of the junction analysis are handled in this function
-     * @param genomeMapper
-     * @param refs
-     * @param verbose
-     * @return 
-     */
-    void scanReference(GenomeMapper& genomeMapper, vector<RefSeq>& refs, bool verbose);
-    
     
     void findFlankingAlignments(const path& alignmentsFile, StrandSpecific strandSpecific) {
         findFlankingAlignments(alignmentsFile, strandSpecific, false);

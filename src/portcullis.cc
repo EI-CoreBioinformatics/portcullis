@@ -284,8 +284,6 @@ int mainFull(int argc, char *argv[]) {
     return 0;        
 }
 
-
-
 /**
  * Start point for portcullis.
  */

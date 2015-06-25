@@ -94,8 +94,8 @@ public:
     /**
      * @abstract    Fetch the sequence in a region.
      * @param  name Region name
-     * @param  start    Start location on region (zero-based)
-     * @param  end  End position (zero-based)
+     * @param  start    Start location on region (zero-based, inclusive)
+     * @param  end  End position (zero-based, exclusive)
      * @param  len  Length of the region
      * @return      The sequence as a string; empty string if no seq found
      */

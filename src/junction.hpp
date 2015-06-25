@@ -188,8 +188,7 @@ private:
     
     int32_t leftFlankStart;
     int32_t rightFlankEnd;
-    string da1, da2;                    // These store the nucleotides found at the predicted donor / acceptor sites in the intron
-       
+    string da1, da2;                    // These store the dinucleotides found at the predicted donor / acceptor sites in the intron
     
     
 protected:
@@ -284,7 +283,7 @@ public:
     void extendFlanks(int32_t otherStart, int32_t otherEnd);
         
     
-    CanonicalSS processJunctionWindow(const GenomeMapper& genomeMapper);
+    void processJunctionWindow(const GenomeMapper& genomeMapper);
     
     void processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, StrandSpecific strandSpecific);
     
@@ -353,14 +352,14 @@ public:
     /**
      * Metric 13 and 14: Calculates the 5' and 3' hamming distances from a genomic
      * region represented by this junction
-     * @param junctionSeq The DNA sequence representing this junction on the genome
      */
-    void calcHammingScores(string& junctionSeq);
+    void calcHammingScores( const string& leftAnchor, const string& leftIntron, 
+                            const string& rightIntron, const string& rightAnchor);
     
     /**
      * Calculates metric 12.  MaxMMES.
      */
-    void calcMaxMMES();
+    void calcMaxMMES(const string& anc5p, const string& anc3p);
     
     /**
      * Calculates metric 18.  Multiple mapping score
@@ -673,9 +672,6 @@ public:
     void setNbMultipleSplicedReads(uint32_t nbMultipleSplicedReads) {
         this->nbMultipleSplicedReads = nbMultipleSplicedReads;
     }
-
-
-
 
     
     // **** Output methods ****

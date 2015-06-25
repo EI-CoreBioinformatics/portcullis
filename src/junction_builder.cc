@@ -152,8 +152,19 @@ void portcullis::JunctionBuilder::process() {
     int32_t lastRefId = -1;
     int32_t lastCalculatedJunctionIndex = 0;
     int32_t lastSeqCount = 0;
+    int32_t chunkSize = 0;
+    int32_t nextTarget = 0;
+    int32_t percentComplete;
 
-    cout << endl << "Processing alignments and calculating metrics for reference sequence: " << endl;
+    cout << endl << "Loading reference index ... ";
+    cout.flush();
+    
+    GenomeMapper gmap(prepData.getGenomeFilePath());
+    gmap.loadFastaIndex();
+    
+    cout << "done." << endl << endl;
+        
+    cout << "Processing alignments and calculating metrics for reference sequence: " << endl;
 
     // The contents inside the pointer will automatically alter as reader.next() is called
     
@@ -166,27 +177,28 @@ void portcullis::JunctionBuilder::process() {
 
             JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);            
 
-            /*size_t nbJABefore = j->getNbJunctionAlignmentFromVector();
-            const BamAlignment& j0 = j->getFirstAlignment();*/
-            
+            //cout << "Processing junction: " << lastCalculatedJunctionIndex << " - " << j->getIntron()->toString() << endl;
             j->calcMetrics();
+            j->processJunctionWindow(gmap);
             j->clearAlignments();
-            
-            /*size_t nbJAAfter = j->getNbJunctionAlignmentFromVector();
-            
-            cout << "Junction " << lastCalculatedJunctionIndex << " shut down.  Intron start: " << j->getIntron()->start 
-                    << ". Alignments: " << nbJABefore << "/" << nbJAAfter << endl;*/
             
             lastCalculatedJunctionIndex++;
             lastSeqCount++;
         }
 
         if (lastRefId == -1 || al.getReferenceId() != lastRefId) {
-            if (lastRefId > -1)
+            if (lastRefId > -1) {
                 cout << lastSeqCount << " potential junctions found." << endl;
+                nextTarget = 0;
+                percentComplete = 0;
+            }
             
             cout << " - " << refs[al.getReferenceId()].name << " ... ";
             cout.flush();
+            
+            chunkSize = refs[al.getReferenceId()].length / 10;
+            nextTarget += chunkSize;
+            percentComplete += 10;
             
             lastSeqCount = 0;
         }
@@ -213,13 +225,20 @@ void portcullis::JunctionBuilder::process() {
             unsplicedCount++;
         }
 
-        //cout << "After junction add (outer): " << bap.use_count() << endl;
+        while (al.getPosition() > nextTarget) {
+            cout << percentComplete << "% ... ";
+            cout.flush();
+            
+            nextTarget += chunkSize;
+            percentComplete += 10; 
+        }
     }
 
     while (junctionSystem.size() > 0 && lastCalculatedJunctionIndex < junctionSystem.size()) {
 
         JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);
         j->calcMetrics();
+        j->processJunctionWindow(gmap);
         j->clearAlignments();
         lastCalculatedJunctionIndex++;
         lastSeqCount++;
@@ -231,23 +250,6 @@ void portcullis::JunctionBuilder::process() {
     unsplicedWriter.close();
     splicedWriter.close();
 
-
-    cout << endl << "Calculating metrics that require analysis of reference genome";
-    if (verbose) {
-        cout << endl;
-    }
-    else {
-        cout << "...";
-        cout.flush();
-    }
-
-    GenomeMapper gmap(prepData.getGenomeFilePath());
-    gmap.loadFastaIndex();
-    junctionSystem.scanReference(gmap, refs, verbose);
-
-    if (!verbose) {
-        cout << " done" << endl;
-    }
 
     cout << endl << "Calculating junctions stats that require comparisons with other junctions...";
     cout.flush();

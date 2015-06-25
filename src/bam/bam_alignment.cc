@@ -15,10 +15,13 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+#include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
+using std::cout;
+using std::endl;
 using std::shared_ptr;
 using std::make_shared;
 using std::string;
@@ -43,11 +46,17 @@ void portcullis::bam::BamAlignment::init() {
     position = b->core.pos;
     refId = b->core.tid;
     uint32_t* c = bam_get_cigar(b);
+    alignedLength = 0;
 
     cigar.clear();
     for(uint32_t i = 0; i < b->core.n_cigar; i++) {
-        cigar.push_back(CigarOp(bam_cigar_opchr(c[i]), bam_cigar_oplen(c[i])));
+        CigarOp op(bam_cigar_opchr(c[i]), bam_cigar_oplen(c[i]));
+        cigar.push_back(op);
+        if (CigarOp::opConsumesReference(op.type)) {
+            alignedLength += op.length;
+        }
     }
+    
 }
    
 /**
@@ -58,6 +67,7 @@ portcullis::bam::BamAlignment::BamAlignment() {
     managed = true;
     alFlag = 0;
     position = -1;
+    alignedLength = 0;
     refId = -1;
 }
 
@@ -125,6 +135,16 @@ string portcullis::bam::BamAlignment::deriveName() const {
             qName;
 }
 
+string portcullis::bam::BamAlignment::getQuerySeq() const {
+    
+    stringstream ss;
+    for (uint32_t i = 0; i < b->core.l_qseq; ++i) {
+       ss << seq_nt16_str[bam_seqi(bam_get_seq(b),i)];
+    }
+    
+    return ss.str();
+}
+
 bool portcullis::bam::BamAlignment::isSplicedRead() const {
     for(const auto& op : cigar) {
         if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
@@ -147,77 +167,129 @@ uint32_t portcullis::bam::BamAlignment::getNbJunctionsInRead() const {
     return nbJunctions;
 }
 
-uint32_t portcullis::bam::BamAlignment::calcNbAlignedBases() const {
+uint32_t portcullis::bam::BamAlignment::calcNbAlignedBases(int32_t start, int32_t end) const {
 
-    uint32_t count = 0;
-    for (const auto& op : cigar) {
-
-        switch ( op.type ) {
-
-            // for 'M', 'I', '=', 'X' - write bases
-            case (BAM_CIGAR_MATCH_CHAR) :
-            case (BAM_CIGAR_INS_CHAR) :
-            case (BAM_CIGAR_EQUAL_CHAR) :
-            case (BAM_CIGAR_DIFF_CHAR) :
-            case (BAM_CIGAR_DEL_CHAR) :
-            case (BAM_CIGAR_PAD_CHAR) :
-            case (BAM_CIGAR_REFSKIP_CHAR) :
-                count += op.length;                    
-                break;
-        }
+    if (start > getEnd() || end < position) {
+        string align = this->toString();
+        BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                "Found an alignment that does not have a presence in the requested region.  Requested region: ") +
+                lexical_cast<string>(start) + "-" + lexical_cast<string>(end) + ".  Alignment: " + align));
     }
+
+    int32_t count = 0;
+    int32_t pos = position;
+    for(const auto& op : cigar) {
+
+        if (pos > end) {
+            break;
+        }
+        
+        if (CigarOp::opConsumesReference(op.type)) {
+            if (pos >= start) {
+                count += op.length;
+            }            
+            pos += op.length;
+        }
+    } 
 
     return count;
 }
 
-uint16_t portcullis::bam::BamAlignment::calcMinimalMatchInCigarDataSubset(uint32_t start, uint32_t end) const {
 
-    if (start > position + calcNbAlignedBases() || end < position)
+string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t end) const {
+    
+    if (start > getEnd() || end < position)
         BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
                 "Found an alignment that does not have a presence in the requested region")));
 
-    uint16_t mismatches = 0;
-    int32_t pos = position;
+    int32_t qPos = 0;
+    int32_t rPos = position;
+    
+    string query = this->getQuerySeq();
+    stringstream ss;
     
     for(const auto& op : cigar) {
 
-        if (pos > end) {
-            break;
+        bool consumesRef = CigarOp::opConsumesReference(op.type);
+        bool consumesQuery = CigarOp::opConsumesQuery(op.type);
+        
+        // Skips any cigar ops before start position
+        if (rPos < start) {
+            if (consumesRef) rPos += op.length;
+            if (consumesQuery) qPos += op.length;            
+            continue;
         }
-
-        if (CigarOp::opConsumesReference(op.type)) {
-            pos += op.length;
+        
+        if (rPos > end || op.type == BAM_CIGAR_REFSKIP_CHAR) break;
+        
+        if (consumesQuery) {
+            //cout << qPos << endl;
+            ss << query.substr(qPos, op.length);            
         }
-
-        if (pos >= start && op.type == BAM_CIGAR_DIFF_CHAR) {
-            mismatches++;
+        else if (consumesRef) {
+            string s;
+            s.resize((end < rPos + op.length) ? (rPos + op.length - end) : op.length);
+            std::fill(s.begin(), s.end(), 'N'); 
+            ss << s;
         }
-    } 
-
-    return end - start - mismatches;
+        
+        if (consumesRef) rPos += op.length;
+        if (consumesQuery) qPos += op.length;
+    }
+    
+    return ss.str();
 }
 
-uint16_t portcullis::bam::BamAlignment::alignedBasesBetween(int32_t start, int32_t end) const {
 
-    if (start > position + calcNbAlignedBases() || end < position)
+string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq, uint32_t start, uint32_t end) const {
+    
+    if (start > getEnd() || end < position)
         BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
                 "Found an alignment that does not have a presence in the requested region")));
 
-    int32_t length = 0;
-    uint32_t pos = position;
+    //int32_t pos = 0;
+    //int32_t qPos = 0;
+    int32_t rPos = position;
+    
+    stringstream ss;
+        
     for(const auto& op : cigar) {
 
-        if (pos > end) {
-            break;
+        bool consumesRef = CigarOp::opConsumesReference(op.type);
+        bool consumesQuery = CigarOp::opConsumesQuery(op.type);
+        
+        // Skips any cigar ops before start position
+        if (rPos < start) {
+            if (consumesRef) rPos += op.length;
+            //if (consumesQuery) qPos += op.length;            
+            continue;
         }
-
-        if (CigarOp::opConsumesReference(op.type)) {
-            pos += op.length;
-            if (pos >= start && op.type != BAM_CIGAR_REFSKIP_CHAR) {
-                length += op.length;
-            }
-        }            
+        
+        // Ends cigar loop once we reach the end of the region
+        if (rPos > end || op.type == BAM_CIGAR_REFSKIP_CHAR) break;
+        
+        if (consumesRef) {
+            int32_t seqOffset = rPos - start;
+            //cout << seqOffset << endl;
+            ss << genomeSeq.substr(seqOffset, op.length);             
+        }
+        else if (consumesQuery) {
+            string s;
+            s.resize(op.length);
+            std::fill(s.begin(), s.end(), 'N'); 
+            ss << s;
+        }     
+        
+        if (consumesRef) rPos += op.length;
+        //if (consumesQuery) qPos += op.length;
     } 
 
-    return length;
+    return ss.str();
+}
+
+string portcullis::bam::BamAlignment::toString() const {    
+    
+    stringstream ss;
+    ss << refId << "(" << position << "-" << getEnd() << ")";
+    return ss.str();
 }
