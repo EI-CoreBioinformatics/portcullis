@@ -264,7 +264,7 @@ int mainFull(int argc, char *argv[]) {
     path filtDir = outputDir.string() + "/filtered_junctions";
     path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
     
-    JunctionFilter filter(juncTab, JunctionFilter::defaultFilterFile, filtDir, "portcullis_filtered", verbose);
+    JunctionFilter filter(juncTab, JunctionFilter::defaultFilterFile, filtDir, "portcullis_filtered", false, verbose);
     filter.filter();
 
     
@@ -300,8 +300,8 @@ int main(int argc, char *argv[]) {
         // Declare the supported options.
         po::options_description generic_options(helpHeader(), 100);
         generic_options.add_options()
-                ("verbose", po::bool_switch(&verbose)->default_value(false), "Print extra information")
-                ("version", po::bool_switch(&version)->default_value(false), "Print version string")
+                ("verbose,v", po::bool_switch(&verbose)->default_value(false), "Print extra information")
+                ("version,V", po::bool_switch(&version)->default_value(false), "Print version string")
                 ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
                 ;
 
@@ -340,31 +340,36 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.7.0"
+#define PACKAGE_VERSION "0.8.0"
 #endif
         cout << PACKAGE_NAME << " V" << PACKAGE_VERSION << endl << endl;
         
+        // End if version was requested.
         if (version) {    
             return 0;
         }
         
-        
-        Mode mode = parseMode(modeStr);
-        
-        const int modeArgC = argc-1;
-        char** modeArgV = argv+1;
-        
         PortcullisFS fs(argv[0]);
-        BamHelper::samtoolsExe = fs.getSamtoolsExe();
-        JunctionFilter::defaultFilterFile = path(fs.getEtcDir().string() + "/default_filter.json");
-        JunctionFilter::filterJuncsPy = fs.getFilterJuncsPy();
         
+        // End if verbose was requested at this level, outputting file system details.
         if (verbose) {
             cout << endl 
                  << "Project filesystem" << endl 
                  << "------------------" << endl
                  << fs << endl;
-        }
+            //return 0;
+        }        
+        
+        // If we've got this far parse the command line properly
+        Mode mode = parseMode(modeStr);
+        
+        const int modeArgC = argc-1;
+        char** modeArgV = argv+1;
+        
+        // Set static variables in downstream subtools so they know where to get their resources from
+        BamHelper::samtoolsExe = fs.getSamtoolsExe();
+        JunctionFilter::defaultFilterFile = path(fs.getEtcDir().string() + "/default_filter.json");
+        JunctionFilter::filterJuncsPy = fs.getFilterJuncsPy();
         
         if (mode == PREP) {
             Prepare::main(modeArgC, modeArgV);

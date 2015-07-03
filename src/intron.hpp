@@ -189,5 +189,16 @@ struct IntronHasher {
     size_t operator()(const Intron& l) const;
 };
 
+/**
+    * Overload hash_value with Location so that boost know how to use this class
+    * as a key in some kind of hash table
+    * 
+    * @param other
+    * @return 
+    */
+struct IntronComparator {    
+    bool operator()(const Intron& l, const Intron& r) const;
+};
+
 typedef shared_ptr<Intron> IntronPtr;
 }

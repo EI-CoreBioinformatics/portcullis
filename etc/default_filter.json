@@ -1,33 +1,33 @@
 {
 	"parameters": {
 		"M2-nb_reads": {
-			"operator": "ge",
+			"operator": "gte",
 			"value": 10
 		},
                 "M3-nb_dist_aln": {
-			"operator": "ge",
+			"operator": "gte",
 			"value": 5
 		},
                 "M4-nb_rel_aln": {
-                        "operator": "ge",
+                        "operator": "gte",
                         "value": 5
                 },
                 "M8-max_min_anc": {
-                        "operator": "ge",
+                        "operator": "gte",
                         "value": 10
                 },
 		"M11-entropy": {
-			"operator": "ge",
+			"operator": "gte",
 			"value": 1.0
 		},
                 "M13-hamming5p": {
-                        "operator": "ge",
+                        "operator": "gte",
                         "value": 3
                 },
                 "M14-hamming3p": {
-                        "operator": "ge",
+                        "operator": "gte",
                         "value": 3
                 }
 	},
-	"expression": "M2-nb_reads and M3-nb_dist_aln and M4-nb_rel_aln and M8-max_min_anc and M11-entropy and M13-hamming5p and M14-hamming3p"  
+	"expression": "M2-nb_reads & M3-nb_dist_aln & M4-nb_rel_aln & M8-max_min_anc & M11-entropy & M13-hamming5p & M14-hamming3p"  
 }

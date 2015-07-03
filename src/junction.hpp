@@ -53,7 +53,8 @@ const uint16_t MAP_QUALITY_THRESHOLD = 30;
 typedef boost::error_info<struct JunctionError,string> JunctionErrorInfo;
 struct JunctionException: virtual boost::exception, virtual std::exception { };
 
-const string METRIC_NAMES[24] = {
+const size_t NB_METRICS = 24;
+const string METRIC_NAMES[NB_METRICS] = {
         "M1-canonical_ss",
         "M2-nb_reads",
         "M3-nb_dist_aln",
@@ -576,6 +577,15 @@ public:
     uint32_t getNbMultipleSplicedReads() const {
         return nbMultipleSplicedReads;
     }
+    
+    uint16_t getNbDownstreamJunctions() const {
+        return nbDownstreamJunctions;
+    }
+
+    uint16_t getNbUpstreamJunctions() const {
+        return nbUpstreamJunctions;
+    }
+
 
 
 

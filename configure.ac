@@ -3,7 +3,7 @@
 ##########################################################################
 
 # Autoconf initialistion.  Sets package name version and contact details
-AC_INIT([Portcullis],[0.8.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
+AC_INIT([Portcullis],[0.8.1],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
 
 # I built this with autoconf 2.53 and have only tested it on 2.69 systems.  You can change this but I don't
 # make any guarentees
@@ -23,7 +23,7 @@ AC_CONFIG_MACRO_DIR([m4])
 # machine if you want to regenerate 'the Makefile.in's.  If you're looking at this comment in the 'configure' 
 #script then this the am__api_version, will be set to whatever I used to create this file.  Or it might be 
 #whatever you used if you made it yourself with autoconf (or autoreconf, or the autogen.sh script)
-AM_INIT_AUTOMAKE([1.11 foreign -Wall no-define])
+AM_INIT_AUTOMAKE([1.11 subdir-objects foreign -Wall no-define tar-ustar])
 
 # Most of portcullis is written in C++.  This is what this macro means: "Do compilation tests using CXX and CXXCPP and use extension .C for test programs. Use compilation flags: CPPFLAGS with CXXCPP, and both CPPFLAGS and CXXFLAGS with CXX."
 AC_LANG_CPLUSPLUS

@@ -20,15 +20,30 @@
 #include <fstream>
 #include <string>
 #include <iostream>
+#include <unordered_map>
+#include <map>
+#include <unordered_set>
 #include <vector>
 using std::boolalpha;
 using std::ifstream;
 using std::string;
+using std::pair;
+using std::map;
+using std::unordered_map;
+using std::unordered_set;
 using std::vector;
 
+#include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/spirit/include/qi.hpp>
+#include <boost/spirit/include/phoenix.hpp>
+#include <boost/spirit/include/phoenix_operator.hpp>
+#include <boost/variant/recursive_wrapper.hpp>
+#include <boost/lexical_cast.hpp>
 using boost::timer::auto_cpu_timer;
 using boost::lexical_cast;
 using boost::filesystem::absolute;
@@ -38,20 +53,173 @@ using boost::filesystem::exists;
 using boost::filesystem::create_symlink;
 using boost::filesystem::create_directory;
 using boost::filesystem::symbolic_link_exists;
-namespace po = boost::program_options;
+using boost::property_tree::ptree;
+namespace qi    = boost::spirit::qi;
+namespace phx   = boost::phoenix;
 
+#include "intron.hpp"
 #include "junction_system.hpp"
 #include "portcullis_fs.hpp"
 using portcullis::PortcullisFS;
+using portcullis::Intron;
+using portcullis::IntronHasher;
 
 namespace portcullis {
     
 typedef boost::error_info<struct JuncFilterError,string> JuncFilterErrorInfo;
 struct JuncFilterException: virtual boost::exception, virtual std::exception { };
 
+
 const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
 const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
 const string DEFAULT_FILTER_FILE = "default_filter.json";
+
+
+const unordered_set<string> numericParams = {
+    "M2-nb_reads",
+    "M3-nb_dist_aln",
+    "M4-nb_rel_aln",
+    "M5-intron_size",
+    "M6-left_anc_size",
+    "M7-right_anc_size",
+    "M8-max_min_anc",
+    "M9-dif_anc",
+    "M10-dist_anc",
+    "M11-entropy",
+    "M12-maxmmes",
+    "M13-hamming5p",
+    "M14-hamming3p",
+    "M15-coverage",
+    "M16-uniq_junc",
+    "M17-primary_junc",
+    "M18-mm_score",
+    "M19-nb_mismatches",
+    "M20-nb_msrs",
+    "M21-nb_up_juncs",
+    "M22-nb_down_juncs",
+    "M23-up_aln",
+    "M24-down_aln"        
+};
+
+const unordered_set<string> stringParams = {
+    "M1-canonical_ss",
+    "refname"
+};
+
+
+struct op_or  {};
+struct op_and {};
+struct op_not {};
+
+typedef std::string var; 
+template <typename tag> struct binop;
+template <typename tag> struct unop;
+
+typedef boost::variant<var, 
+        boost::recursive_wrapper<unop <op_not> >, 
+        boost::recursive_wrapper<binop<op_and> >,
+        boost::recursive_wrapper<binop<op_or> >
+        > expr;
+
+template <typename tag> struct binop
+{
+    explicit binop(const expr& l, const expr& r) : oper1(l), oper2(r) { }
+    expr oper1, oper2;
+};
+
+template <typename tag> struct unop
+{
+    explicit unop(const expr& o) : oper1(o) { }
+    expr oper1;
+};
+
+enum Operator {
+    EQ,
+    GT,
+    LT,
+    GTE,
+    LTE,
+    IN,
+    NOT_IN
+};
+
+typedef unordered_map<string, pair<Operator, double>> NumericFilterMap;
+typedef unordered_map<string, pair<Operator, unordered_set<string>>> SetFilterMap;
+typedef map<Intron, vector<string>, IntronComparator> JuncResultMap;
+
+Operator stringToOp(const string& str);
+
+string opToString(const Operator op);
+
+bool isNumericOp(Operator op);
+
+struct eval : boost::static_visitor<bool> {
+    
+    eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap, const JunctionPtr _junc, JuncResultMap* _juncMap);
+
+    //
+    bool operator()(const var& v) const;
+
+    bool operator()(const binop<op_and>& b) const {        
+        return recurse(b.oper1) && recurse(b.oper2);
+    }
+    bool operator()(const binop<op_or>& b) const {
+        return recurse(b.oper1) || recurse(b.oper2);
+    }
+    bool operator()(const unop<op_not>& u) const {
+        return !recurse(u.oper1);
+    } 
+    
+    double getNumericFromJunc(const var& fullname) const;
+    
+    string getStringFromJunc(const var& fullname) const;
+    
+    bool evalNumberLeaf(Operator op, double threshold, double value) const;
+    
+    bool evalSetLeaf(Operator op, unordered_set<string>& set, string value) const;
+
+    private:
+        
+    NumericFilterMap numericmap;
+    SetFilterMap stringmap;
+    JunctionPtr junc;
+    JuncResultMap* juncMap;
+    
+    template<typename T>
+        bool recurse(T const& v) const 
+        { return boost::apply_visitor(*this, v); }
+};
+
+
+template <typename It, typename Skipper = qi::space_type>
+    struct parser : qi::grammar<It, expr(), Skipper>
+{
+        parser() : parser::base_type(expr_) {
+            using namespace qi;
+
+            expr_  = or_.alias();
+
+            or_  = (and_ >> '|'  >> or_ ) [ _val = phx::construct<binop<op_or > >(_1_type(), _2_type()) ] | and_   [ _val = _1_type() ];
+            and_ = (not_ >> '&' >> and_)  [ _val = phx::construct<binop<op_and> >(_1_type(), _2_type()) ] | not_   [ _val = _1_type() ];
+            not_ = ('!' > simple       )  [ _val = phx::construct<unop <op_not> >(_1_type())     ] | simple [ _val = _1_type() ];
+
+            simple = (('(' > expr_ > ')') | var_);
+            var_ = lexeme[+(alpha|digit|char_("-")|char_("_")|char_("."))];
+
+            BOOST_SPIRIT_DEBUG_NODE(expr_);
+            BOOST_SPIRIT_DEBUG_NODE(or_);
+            BOOST_SPIRIT_DEBUG_NODE(and_);
+            BOOST_SPIRIT_DEBUG_NODE(not_);
+            BOOST_SPIRIT_DEBUG_NODE(simple);
+            BOOST_SPIRIT_DEBUG_NODE(var_);
+        }
+
+        private:
+        qi::rule<It, var() , Skipper> var_;
+        qi::rule<It, expr(), Skipper> not_, and_, or_, simple, expr_; 
+};
+
+
 
 
 class JunctionFilter {
@@ -62,6 +230,7 @@ private:
     path filterFile;
     path outputDir;
     string outputPrefix;
+    bool saveBad;
     bool verbose;    
     
     
@@ -74,13 +243,8 @@ public:
                     const path& _filterFile, 
                     const path& _outputDir, 
                     const string& _outputPrefix, 
-                    bool _verbose) {
-        junctionFile = _junctionFile;
-        filterFile = _filterFile;
-        outputDir = _outputDir;
-        outputPrefix = _outputPrefix;
-        verbose = _verbose;
-    }
+                    const bool _saveBad,
+                    bool _verbose);
     
     virtual ~JunctionFilter() {
     }
@@ -121,68 +285,42 @@ public:
         this->outputPrefix = outputPrefix;
     }
 
+    bool isSaveBad() const {
+        return saveBad;
+    }
+
+    void setSaveBad(bool saveBad) {
+        this->saveBad = saveBad;
+    }
+
+    bool isVerbose() const {
+        return verbose;
+    }
+
+    void setVerbose(bool verbose) {
+        this->verbose = verbose;
+    }
 
     
     
-    void filter() {
+    void filter();
+    
+    void saveResults(JuncResultMap& results);
+    
+ 
+protected:
+    
+    /**
+     * This function evaluates the truth status of a row parameter given the configuration present in the JSON file.
+     * @param op Operation to be considered
+     * @param threshold Threshold
+     * @param param Value
+     * @return True if parameter passes operation and threshold, false otherwise
+     */
+    bool parse(const string& expression, JunctionPtr junc, NumericFilterMap& numericFilters, SetFilterMap& stringFilters, JuncResultMap* results);
         
-        // Test if provided genome exists
-        if (!exists(junctionFile)) {
-            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                        "Could not find junction file at: ") + junctionFile.string()));
-        }
-        
-        // Test if provided filter config file exists
-        if (!exists(filterFile)) {
-            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                        "Could not find filter configuration file at: ") + filterFile.string()));
-        }
-        
-        if (!exists(outputDir)) {
-            create_directory(outputDir);
-        }        
-        
-        string tmpOutputTabFile = outputDir.string() + "/tmp.tab";
-        
-        string filterCmd = string("python3 ") + filterJuncsPy.string() +
-               " --input " + junctionFile.string() + 
-               " --json " + filterFile.string() +
-               " --out " + tmpOutputTabFile;
-        
-        if (verbose) {
-            filterCmd += " --debug";
-        
-            cout << "Applying filter script: " << filterCmd << endl;
-        }
-        
-        cout << "Filtering junctions..." << endl << endl;
-                
-        int exitCode = system(filterCmd.c_str());                    
-            
-        if (exitCode != 0 || !exists(tmpOutputTabFile)) {
-                BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                        "Failed to successfully filter: ") + junctionFile.string()));
-        }
-        
-        // Load junction system
-        JunctionSystem originalJuncs(junctionFile);
-        
-        // Load junction system
-        JunctionSystem filteredJunc(tmpOutputTabFile);
-        
-        size_t diff = originalJuncs.size() - filteredJunc.size();
-        
-        cout << endl 
-             << "Original junction file contained " << originalJuncs.size() << " junctions." << endl
-             << "Filtered out " << diff << " junctions." << endl 
-             << filteredJunc.size() << " junctions remaining" << endl << endl
-             << "Saving junctions in suitable file formats:" << endl;
-        
-        filteredJunc.saveAll(outputDir.string() + "/" + outputPrefix);        
-        
-        // Remove temporary file
-        boost::filesystem::remove(tmpOutputTabFile);
-    }
+    
+public:
   
     static string helpMessage() {
         return string("\nPortcullis Filter Mode Help.\n\n") +
@@ -190,74 +328,7 @@ public:
                       "Allowed options";
     }
     
-    static int main(int argc, char *argv[]) {
-        
-        // Portcullis args
-        string junctionFile;
-        string filterFile;
-        
-        string outputDir;
-        string outputPrefix;
-        bool verbose;
-        bool help;
-        
-        // Declare the supported options.
-        po::options_description generic_options(helpMessage(), 100);
-        generic_options.add_options()
-                ("output_dir,o", po::value<string>(&outputDir)->default_value(DEFAULT_FILTER_OUTPUT_DIR), 
-                    "Output directory for files generated by this program.")
-                ("output_prefix,p", po::value<string>(&outputPrefix)->default_value(DEFAULT_FILTER_OUTPUT_PREFIX), 
-                    "File name prefix for files generated by this program.")
-                ("filter_file,f", po::value<string>(&filterFile)->default_value(DEFAULT_FILTER_FILE), 
-                    "The filter configuration file to use.")
-                ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
-                    "Print extra information")
-                ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
-                ;
-
-        // Hidden options, will be allowed both on command line and
-        // in config file, but will not be shown to the user.
-        po::options_description hidden_options("Hidden options");
-        hidden_options.add_options()
-                ("junction-file,g", po::value<string>(&junctionFile), "Path to the junction file to process.")
-                ;
-
-        // Positional option for the input bam file
-        po::positional_options_description p;
-        p.add("junction-file", 1);
-        
-        
-        // Combine non-positional options
-        po::options_description cmdline_options;
-        cmdline_options.add(generic_options).add(hidden_options);
-
-        // Parse command line
-        po::variables_map vm;
-        po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
-        po::notify(vm);
-
-        // Output help information the exit if requested
-        if (help || argc <= 1) {
-            cout << generic_options << endl;
-            return 1;
-        }
-        
-        
-
-        auto_cpu_timer timer(1, "\nPortcullis junction filter completed.\nTotal runtime: %ws\n\n");        
-
-        cout << "Running portcullis in junction filter mode" << endl
-             << "--------------------------------" << endl << endl;
-        
-        // Create the prepare class
-        JunctionFilter filter(junctionFile, filterFile, outputDir, outputPrefix, verbose);
-        filter.filter();
-        
-        return 0;
-    }
+    static int main(int argc, char *argv[]);
 };
-
-path portcullis::JunctionFilter::defaultFilterFile = DEFAULT_FILTER_FILE;
-path portcullis::JunctionFilter::filterJuncsPy = "";
 
 }

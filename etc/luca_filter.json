@@ -1,7 +1,7 @@
 {
 	"parameters": {
 		"M2-nb_reads":{
-			"operator": "ge",
+			"operator": "gte",
 			"value": 1000
 		},
 		"M15-coverage": {
@@ -13,21 +13,22 @@
 			"value": ["C"]
 		},
 		"M5-intron_size.1": {
-			"operator": "le",
+			"operator": "gte",
 			"value": 1000
 		},
 		"M5-intron_size.2": {
-			"operator": "le",
+			"operator": "lte",
 			"value": 10000
 		},
 		"M11-entropy": {
 			"operator": "gt",
-			"value": 2
+			"value": 2.0
 		},
 		"refname": {
-			"operator": "not in",
-			"value": ["Chr1"]
+			"operator": "not_in",
+			"value": ["I"]
 		}
 	},
-	"expression": "refname and M1-canonical_ss and M5-intron_size.2 and (M2-nb_reads or (M11-entropy and M15-coverage and M5-intron_size.1))"  
+	"expression": "refname & M1-canonical_ss & M5-intron_size.2 & (M2-nb_reads | (M11-entropy & M15-coverage & M5-intron_size.1))"
+        /*"expression": "refname & M1-canonical_ss"*/
 }
