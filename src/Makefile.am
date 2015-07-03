@@ -29,6 +29,7 @@ noinst_HEADERS =	bam/bam_master.hpp \
 			junction_system.hpp \
 			prepare.hpp \
 			junction_builder.hpp \
+			junction_filter.hpp \
 			bam_filter.hpp
 
 portcullis_SOURCES =	bam/bam_master.cc \
@@ -44,7 +45,7 @@ portcullis_SOURCES =	bam/bam_master.cc \
 			prepare.cc \
 			junction_builder.cc \
 			bam_filter.cc \
-			junction_filter.hpp \
+			junction_filter.cc \
 			cluster.hpp \
 			test.hpp \
 			train.hpp \
