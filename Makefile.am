@@ -8,7 +8,7 @@ README.md \
 COPYING \
 AUTHORS \
 tests/resources \
-deps/dlib-18.16 \
+deps/dlib-18.16/dlib \
 deps/htslib-1.2.1/*.c \
 deps/htslib-1.2.1/*.h \
 deps/htslib-1.2.1/*.mk \
