@@ -119,3 +119,22 @@ size_t portcullis::IntronHasher::operator()(const Intron& l) const
    return seed;
 }
 
+bool portcullis::IntronComparator::operator()(const Intron& l, const Intron& r) const
+{
+    if (l.ref.index < r.ref.index) {
+        return true;
+    }
+    else if (l.ref.index == r.ref.index) {
+        if (l.start < r.start) {
+            return true;
+        }
+        else if (l.start == r.start) {
+            if (l.end < r.end) {
+                return true;
+            }        
+        }
+    }
+    
+    return false;
+}
+

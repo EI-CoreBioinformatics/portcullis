@@ -23,7 +23,6 @@ deps/htslib-1.2.1/test/*.fa \
 deps/htslib-1.2.1/test/*.fai \
 deps/htslib-1.2.1/test/*.pl \
 deps/htslib-1.2.1/test/*.c \
-deps/htslib-1.2.1/test/*.out \
 deps/htslib-1.2.1/README \
 deps/htslib-1.2.1/LICENSE \
 deps/htslib-1.2.1/INSTALL \
@@ -57,6 +56,16 @@ deps/samtools-1.2/LICENSE \
 deps/samtools-1.2/INSTALL \
 deps/samtools-1.2/AUTHORS \
 deps/samtools-1.2/NEWS
+
+#dist-hook:
+#	rm -rf `find $(distdir)/deps/dlib-18.16 -type d -name .git`
+#	rm -rf $(distdir)/deps/dlib-18.16/.gitignore
+#	rm -rf `find $(distdir)/deps/htslib-1.2.1 -type d -name .git`
+#	rm -rf $(distdir)/deps/htslib-1.2.1/.gitignore
+#	rm -rf `find $(distdir)/deps/samtools-1.2 -type d -name .git`
+#	rm -rf $(distdir)/deps/samtools-1.2/.gitignore
+#	rm -rf `find $(distdir)/tests/resources -type d -name .git`
+#	rm -rf $(distdir)/tests/resources/.gitignore
 
 
 # FILES NOT TO INSTALL
