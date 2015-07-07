@@ -529,7 +529,6 @@ void portcullis::Junction::calcAlignmentStats() {
 
     nbDistinctAlignments = 0;
     nbReliableAlignments = 0;
-    nbMismatches = 0;
     nbUpstreamJunctions = 0;
     nbDownstreamJunctions = 0;
 
@@ -568,15 +567,9 @@ void portcullis::Junction::calcAlignmentStats() {
                 if (pos < intron->start) {
                     upjuncs++;
                 }
-                else if (pos > intron->end) {
+                else if (pos > intron->end + 1) {
                     downjuncs++;
                 }  
-            }
-
-            // Looks for a mismatch at any point along the spliced read
-            // (even if it's the otherside of another junction in the case of an MSR)
-            if (op.type == BAM_CIGAR_DIFF_CHAR) {
-                nbMismatches++;
             }
         }
 
@@ -651,6 +644,7 @@ void portcullis::Junction::calcMaxMMES(const string& anc5p, const string& anc3p)
     // If on negative strand we probably need to RC these anchors
     
     uint16_t maxmmes = 0;
+    nbMismatches = 0;
     
     for(auto& ba : junctionAlignments) {
 
@@ -663,6 +657,10 @@ void portcullis::Junction::calcMaxMMES(const string& anc5p, const string& anc3p)
         int16_t hdAnc5p = SeqUtils::hammingDistance(qAnchor5p, gAnchor5p);
         int16_t hdAnc3p = SeqUtils::hammingDistance(qAnchor3p, gAnchor3p);
         
+        // Add any differences to the nb of mismatches.
+        nbMismatches += hdAnc5p;
+        nbMismatches += hdAnc3p;
+                
         uint16_t nb5pMatches = qAnchor5p.size() - hdAnc5p;
         uint16_t nb3pMatches = qAnchor3p.size() - hdAnc3p;
         
