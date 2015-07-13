@@ -1,6 +1,6 @@
-__author__ = 'maplesod'
-
 import sys
+import os
+
 
 class Junction:
 
@@ -8,13 +8,15 @@ class Junction:
     start = 0
     end = 0
     strand = "."
-    rest = ""
-
+    cov = 0
+    
     def __init__(self):
         self.data = []
 
     def display(self):
-        print (self.seq + "\t" + str(self.start) + "\t" + str(self.end) + "\t" + self.strand + self.rest, end = "")
+        print (self.seq + "\t" + str(self.start) + "\t" + str(self.end) + "\t" + self.strand + "\t" + str(self.cov))
+
+
 
 junctions = list()
 
@@ -31,17 +33,12 @@ with open(sys.argv[1]) as f:
         parts1 = words[0].split(":")
         parts2 = parts1[1].split("_")
 
-        rest = ""
-
-        for i in range(1, len(words)):
-            rest += "\t" + words[i]
-
         j = Junction()
         j.seq = parts1[0]
         j.start = int(parts2[0])
         j.end = int(parts2[1])
         j.strand = parts1[2]
-        j.rest = rest
+        j.cov = int(words[9])
         junctions.append(j)
 
 # Sort by
@@ -49,8 +46,15 @@ junctions.sort(key=lambda x: x.end)
 junctions.sort(key=lambda x: x.start)
 junctions.sort(key=lambda x: x.seq)
 
-print ("refid\tstart\tend\tstrand\tdinucleotide\tintron_size\tannostatus\tgmcode\tregcode\tgeneassign\tgeneassignL\tgeneassignR\tunfilt_cov\tcov\tnormcov\toffsets\tentropy\thamming3\thamming5\tMAXmmes\tMAXminanc\tlirt\trirt\tirt\tdatrans\tdncov\tancov")
 
+#for j in junctions:
+#    j.display()
+
+print ("track name=\"junctions\"")
+
+index = 0;
 for j in junctions:
+    print (j.seq + "\t" + str(j.start - 1) + "\t" + str(j.end + 1) + "\tjunc_" + str(index) + "\t" + str(j.cov) + "\t" + j.strand + "\t" + str(j.start) + "\t" + str(j.end) + "\t255,0,0\t2\t1,1\t0," + str(j.end - j.start + 1))
 
-    j.display()
+    index += 1
+

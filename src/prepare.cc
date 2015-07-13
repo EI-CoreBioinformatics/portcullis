@@ -330,7 +330,7 @@ bool portcullis::Prepare::bamSort() {
     }
 
     // Return true if the sorted BAM exists now, which is should do
-    return bfs::exists(sortedBam) || bfs::symbolic_link_exists(sortedBam);        
+    return bfs::exists(sortedBam) || bfs::symbolic_link_exists(sortedBam);
 }
     
 bool portcullis::Prepare::bamIndex() {

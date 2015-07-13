@@ -17,7 +17,6 @@ that we will use throughout:
 * Multiple Spliced Reads (MSRs) - Reads that cover more than a single spliced junction.  These types of reads will become more common as sequencers become capable of producing longer reads.
 
 
-
 Metric 1 - Canonical splice site
 --------------------------------
 
