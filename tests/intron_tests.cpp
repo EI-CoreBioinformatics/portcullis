@@ -15,14 +15,18 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+
+#define BOOST_TEST_MAIN
 #define BOOST_TEST_DYN_LINK
-#ifdef STAND_ALONE
 #define BOOST_TEST_MODULE PORTCULLIS
-#endif
+#define BOOST_TEST_LOG_LEVEL all
+
 #include <boost/test/unit_test.hpp>
 
-#include <intron.hpp>
-using portcullis::RefSeq;
+#include "../src/bam/bam_master.hpp"
+using portcullis::bam::RefSeq;
+
+#include "../src/intron.hpp"
 using portcullis::Intron;
 using portcullis::POSITIVE;
 using portcullis::NEGATIVE;

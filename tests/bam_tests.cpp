@@ -15,10 +15,10 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+#define BOOST_TEST_MAIN
 #define BOOST_TEST_DYN_LINK
-#ifdef STAND_ALONE
 #define BOOST_TEST_MODULE PORTCULLIS
-#endif
+#define BOOST_TEST_LOG_LEVEL all
 
 #include <iostream>
 using std::cout;
@@ -27,15 +27,15 @@ using std::endl;
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include <bam/bam_master.hpp>
-#include <bam/bam_alignment.hpp>
-#include <bam/bam_reader.hpp>
-#include <bam/depth_parser.hpp>
-#include <bam/genome_mapper.hpp>
+#include "../src/bam/bam_master.hpp"
+#include "../src/bam/bam_alignment.hpp"
+#include "../src/bam/bam_reader.hpp"
+#include "../src/bam/depth_parser.hpp"
+#include "../src/bam/genome_mapper.hpp"
 using namespace portcullis::bam;
 
         
-BOOST_AUTO_TEST_SUITE(bam_tests)
+BOOST_AUTO_TEST_SUITE(BAM_TESTS)
 
 BOOST_AUTO_TEST_CASE(sort) {
     
@@ -91,28 +91,6 @@ BOOST_AUTO_TEST_CASE(is_sorted2)
     BOOST_CHECK(sorted);    
 }
 
-// This test doesn't actually do that much.  Refine it later.
-BOOST_AUTO_TEST_CASE(minmalMatch1)
-{
-    path bam = "resources/clipped3.bam";
-    
-    BamReader reader(bam, 1);
-    reader.open();
-    
-    // Sam header and refs info from the input bam
-    reader.next();
-    const BamAlignment& ba = reader.current();
-        
-    //cout << ba.AlignedBases << endl;
-    //cout << "Pos: " << ba.Position << endl;
-    
-    uint16_t mm = ba.calcMinimalMatchInCigarDataSubset(6441673 + 2, 6441673 + 10);
-    
-    //cout << mm << endl;
-    
-    // Check the minimal match result
-    BOOST_CHECK(mm == 8);    
-}
 
 BOOST_AUTO_TEST_CASE(depth_test_1)
 {
@@ -181,7 +159,7 @@ BOOST_AUTO_TEST_CASE(genome_mapper_ecoli)
     int len = -1;
     string fullSeq = genomeMapper.fetchBases(name.c_str(), &len);    
     BOOST_CHECK(len == 4641652);
-    BOOST_CHECK(fullSeq != NULL);
+    //BOOST_CHECK(fullSeq != NULL);
     
     string partialSeqExpected = "TCTGACTGCA";
     

@@ -22,6 +22,8 @@ using std::string;
 
 #include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
+#include <boost/lexical_cast.hpp>
+using boost::lexical_cast;
 
 
 namespace portcullis {

@@ -15,10 +15,12 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+
+#define BOOST_TEST_MAIN
 #define BOOST_TEST_DYN_LINK
-#ifdef STAND_ALONE
 #define BOOST_TEST_MODULE PORTCULLIS
-#endif
+#define BOOST_TEST_LOG_LEVEL all
+
 
 #include <iostream>
 using std::cout;
@@ -27,7 +29,7 @@ using std::endl;
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
 
-#include "seq_utils.hpp"
+#include "../src/seq_utils.hpp"
 using portcullis::SeqUtils;
 
 BOOST_AUTO_TEST_SUITE(seq_utils)

@@ -13,3 +13,8 @@
 /check_portcullis.trs
 /check_portcullis.log
 /check_portcullis
+/build.log
+check_bam*
+check_intron*
+check_junction*
+check_seq*
