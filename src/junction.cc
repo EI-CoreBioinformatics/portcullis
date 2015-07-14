@@ -648,6 +648,8 @@ void portcullis::Junction::calcMaxMMES(const string& anc5p, const string& anc3p)
     
     for(auto& ba : junctionAlignments) {
 
+        //cout << ba.getCigarAsString() << endl;
+        
         string qAnchor5p = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1);
         string qAnchor3p = ba.getPaddedQuerySeq(intron->end + 1, rightFlankEnd);
     
@@ -797,12 +799,14 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id) {
 
     string juncId = string("junc_") + lexical_cast<string>(id);
 
+    // Modify coordinates to 1-based end inclusive
+    
     // Output junction parent
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"    // source
          << "intron" << "\t"        // type (may change later)
-         << intron->start << "\t"   // start
-         << intron->end << "\t"     // end
+         << intron->start + 1 << "\t"   // start
+         << intron->end  + 1<< "\t"     // end
          << "0.0" << "\t"           // No score for the moment
          << strand << "\t"          // strand
          << "." << "\t"             // Just put "." for the phase
@@ -828,12 +832,14 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
 
     string juncId = string("junc_") + lexical_cast<string>(id);
 
+    // Modify coordinates to 1-based end inclusive
+    
     // Output junction parent
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"    // source
          << "junction" << "\t"      // type (may change later)
-         << leftFlankStart << "\t"  // start
-         << rightFlankEnd << "\t"   // end
+         << leftFlankStart + 1 << "\t"  // start
+         << rightFlankEnd + 1 << "\t"   // end
          << "0.0" << "\t"           // No score for the moment
          << strand << "\t"          // strand
          << "." << "\t"             // Just put "." for the phase
@@ -843,12 +849,14 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
     outputDescription(strm, ";");
     strm << endl;
 
+    // Make modifications to coordinates so they are suitable for GFF.  1-based with end positions inclusive.
+    
     // Output left exonic region
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"
          << "partial_exon" << "\t"
-         << leftFlankStart << "\t"
-         << (intron->start - 1) << "\t"
+         << leftFlankStart + 1 << "\t"
+         << (intron->start) << "\t"
          << "0.0" << "\t"
          << strand << "\t"
          << "." << "\t"
@@ -859,8 +867,8 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"
          << "partial_exon" << "\t"
-         << (intron->end + 1) << "\t"
-         << rightFlankEnd << "\t"
+         << (intron->end + 2) << "\t"
+         << rightFlankEnd + 1 << "\t"
          << "0.0" << "\t"
          << strand << "\t"
          << "." << "\t"
@@ -887,17 +895,17 @@ void portcullis::Junction::outputBED(std::ostream &strm, uint32_t id) {
     int32_t sz1 = intron->start - leftFlankStart;
     int32_t sz2 = rightFlankEnd - intron->end;
     string blockSizes = lexical_cast<string>(sz1) + "," + lexical_cast<string>(sz2);
-    string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end - leftFlankStart);
+    string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end - leftFlankStart + 1);
 
     // Output junction parent
     strm << intron->ref.name << "\t"         // chrom
          << leftFlankStart << "\t"  // chromstart
-         << rightFlankEnd << "\t"   // chromend
+         << rightFlankEnd + 1 << "\t"   // chromend (adding 1 as end position is exclusive)
          << juncId << "\t"          // name
          << this->getNbJunctionAlignments() << "\t"           // Use the depth as the score for the moment
          << strand << "\t"          // strand
          << intron->start << "\t"   // thickstart
-         << intron->end << "\t"     // thickend
+         << intron->end + 1 << "\t"     // thickend  (adding 1 as end position is exclusive)
          << "255,0,0" << "\t"       // Just use red for the moment
          << "2" << "\t"             // 2 blocks: Left and right block
          << blockSizes << "\t"

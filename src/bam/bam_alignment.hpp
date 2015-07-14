@@ -151,6 +151,15 @@ public:
         return cigar;
     }
     
+    const string getCigarAsString() const {
+        
+        stringstream ss;
+        for(const auto& c : cigar) {
+            ss << c.type << c.length;
+        }
+        return ss.str();
+    }
+    
     void setCigarOpAt(uint32_t index, CigarOp cigarOp) {
         cigar[index] = cigarOp;
     }
