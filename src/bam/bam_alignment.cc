@@ -187,7 +187,7 @@ uint32_t portcullis::bam::BamAlignment::calcNbAlignedBases(int32_t start, int32_
         if (CigarOp::opConsumesReference(op.type)) {
             if (pos >= start) {
                 count += op.length;
-            }            
+            }
             pos += op.length;
         }
     } 
@@ -214,7 +214,7 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t
         bool consumesQuery = CigarOp::opConsumesQuery(op.type);
         
         // Skips any cigar ops before start position
-        if (rPos < start) {
+        if (rPos < start - 1) {
             if (consumesRef) rPos += op.length;
             if (consumesQuery) qPos += op.length;            
             continue;
@@ -224,11 +224,11 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t
         
         if (consumesQuery) {
             //cout << qPos << endl;
-            ss << query.substr(qPos, op.length);            
+            ss << query.substr(qPos, op.length);
         }
-        else if (consumesRef) {
+        else if (consumesRef) { // i.e. consumes reference but not query (DEL op)
             string s;
-            s.resize((end < rPos + op.length) ? (rPos + op.length - end) : op.length);
+            s.resize(op.length);
             std::fill(s.begin(), s.end(), 'N'); 
             ss << s;
         }
@@ -259,7 +259,7 @@ string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq
         bool consumesQuery = CigarOp::opConsumesQuery(op.type);
         
         // Skips any cigar ops before start position
-        if (rPos < start) {
+        if (rPos < start - 1) {
             if (consumesRef) rPos += op.length;
             //if (consumesQuery) qPos += op.length;            
             continue;

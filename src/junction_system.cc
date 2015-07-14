@@ -178,7 +178,7 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
             }
 
             // Create the intron
-            shared_ptr<Intron> location = make_shared<Intron>(RefSeq(refId, refName, refLength), lEnd, rStart, 
+            shared_ptr<Intron> location = make_shared<Intron>(RefSeq(refId, refName, refLength), lEnd, rStart - 1, 
                     strandSpecific ? strandFromBool(al.isReverseStrand()) : UNKNOWN);
 
             // We should now have the complete junction location information
@@ -213,7 +213,7 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
             }                
         }
         else if (CigarOp::opConsumesReference(op.type)) {
-            lEnd += op.length;                
+            lEnd += op.length;
         }
         else {
 

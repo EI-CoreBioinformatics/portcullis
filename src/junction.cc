@@ -648,7 +648,7 @@ void portcullis::Junction::calcMaxMMES(const string& anc5p, const string& anc3p)
     
     for(auto& ba : junctionAlignments) {
 
-        //cout << ba.getCigarAsString() << endl;
+        string cigar = ba.getCigarAsString();
         
         string qAnchor5p = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1);
         string qAnchor3p = ba.getPaddedQuerySeq(intron->end + 1, rightFlankEnd);

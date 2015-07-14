@@ -136,18 +136,18 @@ fp = len(false_positives)
 tn = len(true_negatives)
 fn = len(false_negatives)
 
-print ()
+print
 print ("Junctions in reference: " + str(len(trueset)))
 print ("Potential true junctions: " + str(len(true_juncs)))
 print ("Unrecoverable junctions (not in aligned data): " + str(len(unrecoverable_juncs)))
 print ("False junctions (not in reference): " + str(len(false_juncs)))
-print ()
+print
 
 print ("True positives: " + str(tp))
 print ("False positives: " + str(fp))
 print ("True negatives: " + str(tn))
 print ("False negatives: " + str(fn))
-print ()
+print
 
 sen = float(tp) / float(tp + fn)
 spc = float(tn) / float(tn + fp)
@@ -156,7 +156,7 @@ prc = float(tp) / float(tp + fp)
 print ("Sensitivity: " + str(sen))
 print ("Specificity: " + str(spc))
 print ("Precision:" + str(prc))
-print ()
+print
 
 
 acc = float(tp + tn) / float(tp + fp + tn + fn)
