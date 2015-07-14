@@ -187,13 +187,20 @@ void portcullis::JunctionBuilder::process() {
         }
 
         if (lastRefId == -1 || al.getReferenceId() != lastRefId) {
+            
+            // Just check we haven't got any strange alignments that are not associated with ref seqs.
+            // End if we do
+            if (al.getReferenceId() >= refs.size()) {
+                break;
+            }
+            
             if (lastRefId > -1) {
                 cout << "100%\t" << lastSeqCount << " potential junctions found." << endl;
                 nextTarget = 0;
                 percentComplete = 0;
             }
             
-            cout << " - " << refs[al.getReferenceId()].name << "\t... ";
+            cout << " - " << refs[al.getReferenceId()].name << "\t0% ... ";
             cout.flush();
             
             chunkSize = refs[al.getReferenceId()].length / 10;
