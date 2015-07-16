@@ -250,8 +250,8 @@ public:
     
     uint32_t calcNbAlignedBases(int32_t start, int32_t end) const;
     
-    string getPaddedQuerySeq(uint32_t start, uint32_t end) const;
-    string getPaddedGenomeSeq(const string& fullGenomeSeq, uint32_t start, uint32_t end) const;
+    string getPaddedQuerySeq(uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end) const;
+    string getPaddedGenomeSeq(const string& fullGenomeSeq, uint32_t start, uint32_t end, uint32_t q_start, uint32_t q_end) const;
     
     string toString() const;
     

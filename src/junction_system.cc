@@ -190,7 +190,7 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
             // location / junction pair.  If we've seen this location before
             // then add this alignment to the existing junction
             if (it == distinctJunctions.end()) {
-                JunctionPtr junction = make_shared<Junction>(location, lStart, rEnd);
+                JunctionPtr junction = make_shared<Junction>(location, lStart, rEnd - 1);
                 junction->addJunctionAlignment(al);
                 distinctJunctions[*location] = junction;
                 junctionList.push_back(junction);                    
@@ -199,7 +199,7 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
 
                 JunctionPtr junction = it->second;
                 junction->addJunctionAlignment(al);                    
-                junction->extendFlanks(lStart, rEnd);
+                junction->extendFlanks(lStart, rEnd - 1);
             }
 
             //cout << "After junction add (inner): " << al.use_count() << endl;

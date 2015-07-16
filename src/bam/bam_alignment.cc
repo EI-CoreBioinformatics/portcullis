@@ -196,7 +196,7 @@ uint32_t portcullis::bam::BamAlignment::calcNbAlignedBases(int32_t start, int32_
 }
 
 
-string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t end) const {
+string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end) const {
     
     if (start > getEnd() || end < position)
         BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
@@ -214,19 +214,30 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t
         bool consumesQuery = CigarOp::opConsumesQuery(op.type);
         
         // Skips any cigar ops before start position
-        if (rPos < start - 1) {
+        if (rPos < start) {
             if (consumesRef) rPos += op.length;
             if (consumesQuery) qPos += op.length;            
             continue;
         }
         
-        if (rPos > end || op.type == BAM_CIGAR_REFSKIP_CHAR) break;
+        // Stop once we get to the end of the region, and make sure we don't end on a refskip
+        if (rPos >= end || (op.type == BAM_CIGAR_REFSKIP_CHAR && rPos + op.length >= end)) break;
         
         if (consumesQuery) {
+            
+            // Don't return anything that runs off the end cap
+            int32_t len = rPos + op.length > end ? end - rPos + 1 : op.length;
+            
             //cout << qPos << endl;
-            ss << query.substr(qPos, op.length);
+            if (qPos < 0 || qPos + len > query.size()) {
+                BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                    "Can't extract cigar op sequence from query string.  Current position in query: ") 
+                        + lexical_cast<string>(qPos) + " Cigar op: " + op.type + lexical_cast<string>(op.length)));
+            }
+            
+            ss << query.substr(qPos, len);
         }
-        else if (consumesRef) { // i.e. consumes reference but not query (DEL op)
+        else if (consumesRef) { // i.e. consumes reference but not query (DEL or REF_SKIP ops)
             string s;
             s.resize(op.length);
             std::fill(s.begin(), s.end(), 'N'); 
@@ -237,11 +248,14 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t
         if (consumesQuery) qPos += op.length;
     }
     
+    actual_start = position > start ? position : start;
+    actual_end = rPos < end ? rPos : end;
+    
     return ss.str();
 }
 
 
-string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq, uint32_t start, uint32_t end) const {
+string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq, uint32_t start, uint32_t end, uint32_t q_start, uint32_t q_end) const {
     
     if (start > getEnd() || end < position)
         BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
@@ -250,6 +264,19 @@ string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq
     //int32_t pos = 0;
     //int32_t qPos = 0;
     int32_t rPos = position;
+    int32_t startDelta = q_start - start;
+    int32_t endDelta = end - q_end;
+    
+    if (startDelta < 0) {
+        BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                "Query start position was before genomic region start position.  Query start: ") + lexical_cast<string>(q_start) + "; Genomic start: " + lexical_cast<string>(start)));
+    }
+    
+    if (endDelta < 0) {
+        BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                "Query end position was beyond genomic region end position.  Query end: ") + lexical_cast<string>(q_end) + "; Genomic end: " + lexical_cast<string>(end)));
+    }
+    
     
     stringstream ss;
         
@@ -259,24 +286,40 @@ string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq
         bool consumesQuery = CigarOp::opConsumesQuery(op.type);
         
         // Skips any cigar ops before start position
-        if (rPos < start - 1) {
+        if (rPos < q_start) {
             if (consumesRef) rPos += op.length;
-            //if (consumesQuery) qPos += op.length;            
+            //if (consumesQuery) qPos += op.length;
             continue;
         }
         
         // Ends cigar loop once we reach the end of the region
-        if (rPos > end || op.type == BAM_CIGAR_REFSKIP_CHAR) break;
+        if (rPos >= q_end) break;
         
         if (consumesRef) {
+            
             int32_t seqOffset = rPos - start;
+            int32_t len = rPos + op.length > q_end ? q_end - rPos + 1 : op.length;
+            
+            if (seqOffset < 0 || seqOffset + len > genomeSeq.size()) {
+                BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                    "Can't extract cigar op sequence from extracted genome region.\nCurrent position in extracted genome region: ") 
+                        + lexical_cast<string>(seqOffset) + 
+                        "; Genome region length: " + lexical_cast<string>(genomeSeq.size()) +
+                        "\nFull cigar: " + this->getCigarAsString() +
+                        "; Current cigar op: " + op.type + lexical_cast<string>(op.length) +
+                        "\nCurrent genomic position: " + lexical_cast<string>(rPos) +
+                        "\nAlignment region: " + lexical_cast<string>(position) + "," + lexical_cast<string>(position + alignedLength) +
+                        "\nGenome region: " + lexical_cast<string>(start) + "," + lexical_cast<string>(end) +
+                        "\nQuery region: " + lexical_cast<string>(q_start) + "," + lexical_cast<string>(q_end)));
+            }
+            
             //cout << seqOffset << endl;
-            ss << genomeSeq.substr(seqOffset, op.length);             
+            ss << genomeSeq.substr(seqOffset, len);
         }
-        else if (consumesQuery) {
+        else if (consumesQuery) {   // Consumes query but not reference ('I' op)
             string s;
             s.resize(op.length);
-            std::fill(s.begin(), s.end(), 'N'); 
+            std::fill(s.begin(), s.end(), 'N');
             ss << s;
         }     
         
@@ -287,7 +330,7 @@ string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq
     return ss.str();
 }
 
-string portcullis::bam::BamAlignment::toString() const {    
+string portcullis::bam::BamAlignment::toString() const {
     
     stringstream ss;
     ss << refId << "(" << position << "-" << getEnd() << ")";

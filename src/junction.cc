@@ -648,13 +648,32 @@ void portcullis::Junction::calcMaxMMES(const string& anc5p, const string& anc3p)
     
     for(auto& ba : junctionAlignments) {
 
-        string cigar = ba.getCigarAsString();
+        uint32_t q5pStart = leftFlankStart;
+        uint32_t q5pEnd = intron->start - 1;
+        uint32_t q3pStart = intron->end + 1;
+        uint32_t q3pEnd = rightFlankEnd;
+        string qAnchor5p = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1, q5pStart, q5pEnd);
+        string qAnchor3p = ba.getPaddedQuerySeq(intron->end + 1, rightFlankEnd, q3pStart, q3pEnd);
         
-        string qAnchor5p = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1);
-        string qAnchor3p = ba.getPaddedQuerySeq(intron->end + 1, rightFlankEnd);
-    
-        string gAnchor5p = ba.getPaddedGenomeSeq(anc5p, leftFlankStart, intron->start - 1);
-        string gAnchor3p = ba.getPaddedGenomeSeq(anc3p, intron->end + 1, rightFlankEnd);
+        string gAnchor5p = ba.getPaddedGenomeSeq(anc5p, leftFlankStart, intron->start - 1, q5pStart, q5pEnd);
+        string gAnchor3p = ba.getPaddedGenomeSeq(anc3p, intron->end + 1, rightFlankEnd, q3pStart, q3pEnd);
+        
+        if (qAnchor5p.size() != gAnchor5p.size()) {
+           BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "5' Anchor region for query and genome are not the same size.  Coords: ") + this->intron->toString() 
+                   + "; Cigar: " + ba.getCigarAsString()
+                   + "\nQuery seq:  \n" + qAnchor5p
+                   + "\nGenome seq: \n" + gAnchor5p));
+        }
+        
+        if (qAnchor3p.size() != gAnchor3p.size()) {
+           BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "3' Anchor region for query and genome are not the same size.  Coords: ") + this->intron->toString() 
+                   + "; Cigar: " + ba.getCigarAsString()
+                   + "\nQuery seq:  \n" + qAnchor3p
+                   + "\nGenome seq: \n" + gAnchor3p));
+        }
+        
         
         int16_t hdAnc5p = SeqUtils::hammingDistance(qAnchor5p, gAnchor5p);
         int16_t hdAnc3p = SeqUtils::hammingDistance(qAnchor3p, gAnchor3p);

@@ -200,7 +200,7 @@ void portcullis::JunctionBuilder::process() {
                 percentComplete = 0;
             }
             
-            cout << " - " << refs[al.getReferenceId()].name << "\t0% ... ";
+            cout << " - " << refs[al.getReferenceId()].name << "\t 0% ... ";
             cout.flush();
             
             chunkSize = refs[al.getReferenceId()].length / 10;
