@@ -637,55 +637,55 @@ void portcullis::Junction::calcHammingScores(   const string& leftAnchor, const 
 /**
  * Calculates metric 12.  MaxMMES.
  */
-void portcullis::Junction::calcMaxMMES(const string& anc5p, const string& anc3p) {
+void portcullis::Junction::calcMaxMMES(const string& ancLeft, const string& ancRight) {
 
-    Strand s = intron->strand != UNKNOWN ? intron->strand : predictedStrand;                
-
-    // If on negative strand we probably need to RC these anchors
-    
     uint16_t maxmmes = 0;
     nbMismatches = 0;
     
     for(auto& ba : junctionAlignments) {
 
-        uint32_t q5pStart = leftFlankStart;
-        uint32_t q5pEnd = intron->start - 1;
-        uint32_t q3pStart = intron->end + 1;
-        uint32_t q3pEnd = rightFlankEnd;
-        string qAnchor5p = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1, q5pStart, q5pEnd);
-        string qAnchor3p = ba.getPaddedQuerySeq(intron->end + 1, rightFlankEnd, q3pStart, q3pEnd);
+        uint32_t qLeftStart = leftFlankStart;
+        uint32_t qLeftEnd = intron->start - 1;
+        uint32_t qRightStart = intron->end + 1;
+        uint32_t qRightEnd = rightFlankEnd;
+        string qAnchorLeft = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1, qLeftStart, qLeftEnd);
+        string qAnchorRight = ba.getPaddedQuerySeq(intron->end + 1, rightFlankEnd, qRightStart, qRightEnd);
         
-        string gAnchor5p = ba.getPaddedGenomeSeq(anc5p, leftFlankStart, intron->start - 1, q5pStart, q5pEnd);
-        string gAnchor3p = ba.getPaddedGenomeSeq(anc3p, intron->end + 1, rightFlankEnd, q3pStart, q3pEnd);
+        string gAnchorLeft = ba.getPaddedGenomeSeq(ancLeft, leftFlankStart, intron->start - 1, qLeftStart, qLeftEnd);
+        string gAnchorRight = ba.getPaddedGenomeSeq(ancRight, intron->end + 1, rightFlankEnd, qRightStart, qRightEnd);
         
-        if (qAnchor5p.size() != gAnchor5p.size()) {
+        if (qAnchorLeft.size() != gAnchorLeft.size()) {
            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "5' Anchor region for query and genome are not the same size.  Coords: ") + this->intron->toString() 
-                   + "; Cigar: " + ba.getCigarAsString()
-                   + "\nQuery seq:  \n" + qAnchor5p
-                   + "\nGenome seq: \n" + gAnchor5p));
+                "Left anchor region for query and genome are not the same size.\nLeft anchor coords: ") + this->intron->toString() 
+                   + "\nAlignment coords: " + lexical_cast<string>(ba.getPosition()) + "," + lexical_cast<string>(ba.getEnd())
+                   + "\nRead seq: " + ba.getQuerySeq()
+                   + "\nCigar: " + ba.getCigarAsString()
+                   + "\nLeft Anchor query seq:  \n" + qAnchorLeft
+                   + "\nLeft Anchor genome seq: \n" + gAnchorLeft));
         }
         
-        if (qAnchor3p.size() != gAnchor3p.size()) {
+        if (qAnchorRight.size() != gAnchorRight.size()) {
            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "3' Anchor region for query and genome are not the same size.  Coords: ") + this->intron->toString() 
-                   + "; Cigar: " + ba.getCigarAsString()
-                   + "\nQuery seq:  \n" + qAnchor3p
-                   + "\nGenome seq: \n" + gAnchor3p));
+                "Right Anchor region for query and genome are not the same size.\nRight anchor coords: ") + this->intron->toString() 
+                   + "\nAlignment coords: " + lexical_cast<string>(ba.getPosition()) + "," + lexical_cast<string>(ba.getEnd())
+                   + "\nRead seq: " + ba.getQuerySeq()
+                   + "\nCigar: " + ba.getCigarAsString()
+                   + "\nRight Anchor query seq:  \n" + qAnchorRight
+                   + "\nRight Anchor genome seq: \n" + gAnchorRight));
         }
         
         
-        int16_t hdAnc5p = SeqUtils::hammingDistance(qAnchor5p, gAnchor5p);
-        int16_t hdAnc3p = SeqUtils::hammingDistance(qAnchor3p, gAnchor3p);
+        int16_t hdAncLeft = SeqUtils::hammingDistance(qAnchorLeft, gAnchorLeft);
+        int16_t hdAncRight = SeqUtils::hammingDistance(qAnchorRight, gAnchorRight);
         
         // Add any differences to the nb of mismatches.
-        nbMismatches += hdAnc5p;
-        nbMismatches += hdAnc3p;
+        nbMismatches += hdAncLeft;
+        nbMismatches += hdAncRight;
                 
-        uint16_t nb5pMatches = qAnchor5p.size() - hdAnc5p;
-        uint16_t nb3pMatches = qAnchor3p.size() - hdAnc3p;
+        uint16_t nbLeftMatches = qAnchorLeft.size() - hdAncLeft;
+        uint16_t nbRightMatches = qAnchorRight.size() - hdAncRight;
         
-        uint16_t mmes = min(nb5pMatches, nb3pMatches);
+        uint16_t mmes = min(nbLeftMatches, nbRightMatches);
 
         maxmmes = max(maxmmes, mmes);
     }

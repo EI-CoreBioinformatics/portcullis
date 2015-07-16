@@ -223,7 +223,7 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t
         // Stop once we get to the end of the region, and make sure we don't end on a refskip
         if (rPos >= end || (op.type == BAM_CIGAR_REFSKIP_CHAR && rPos + op.length >= end)) break;
         
-        if (consumesQuery) {
+        if (consumesQuery && op.type != BAM_CIGAR_SOFTCLIP_CHAR) {
             
             // Don't return anything that runs off the end cap
             int32_t len = rPos + op.length > end ? end - rPos + 1 : op.length;
@@ -316,7 +316,7 @@ string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq
             //cout << seqOffset << endl;
             ss << genomeSeq.substr(seqOffset, len);
         }
-        else if (consumesQuery) {   // Consumes query but not reference ('I' op)
+        else if (consumesQuery && op.type != BAM_CIGAR_SOFTCLIP_CHAR) {   // Consumes query but not reference ('I' op)
             string s;
             s.resize(op.length);
             std::fill(s.begin(), s.end(), 'N');
