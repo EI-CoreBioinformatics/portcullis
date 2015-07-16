@@ -29,7 +29,7 @@ def loadbed(filepath, usestrand, tophat) :
                 items.add(key)
             index += 1
     if len(items) != index - 1 :
-        print "non unique items in bed file " + filepath
+        print ("non unique items in bed file " + filepath)
     return items
 
 def filtbed(infile, outfile, keeplist, usestrand) :
@@ -68,7 +68,7 @@ def filttab(tabfile, bedfile, filttabfile) :
                 items.add(key)
             index +=1
 
-    print len(items)
+    print (len(items))
 
     o = open(filttabfile, 'w')
     with open(tabfile) as f:
@@ -105,10 +105,10 @@ parser.add_argument("-s", "--ignore_strand", action='store_true', default=False,
                     help="Use strand information in bed files")
 args=parser.parse_args()
 
-print "Reference: " + args.reference
-print "Potential aligned junctions: " + args.potential
-print "Filtered junctions: " + args.filtered
-print "Output PNG: " + args.out
+print ("Reference: " + args.reference)
+print ("Potential aligned junctions: " + args.potential)
+print ("Filtered junctions: " + args.filtered)
+print ("Output PNG: " + args.out)
 
 trueset = loadbed(args.reference, not args.ignore_strand, False)
 alignedset = loadbed(args.potential, not args.ignore_strand, False)
@@ -137,33 +137,33 @@ tn = len(true_negatives)
 fn = len(false_negatives)
 
 print
-print "Junctions in reference: " + str(len(trueset))
-print "Potential true junctions: " + str(len(true_juncs))
-print "Unrecoverable junctions (not in aligned data): " + str(len(unrecoverable_juncs))
-print "False junctions (not in reference): " + str(len(false_juncs))
+print ("Junctions in reference: " + str(len(trueset)))
+print ("Potential true junctions: " + str(len(true_juncs)))
+print ("Unrecoverable junctions (not in aligned data): " + str(len(unrecoverable_juncs)))
+print ("False junctions (not in reference): " + str(len(false_juncs)))
 print
 
-print "True positives: " + str(tp)
-print "False positives: " + str(fp)
-print "True negatives: " + str(tn)
-print "False negatives: " + str(fn)
+print ("True positives: " + str(tp))
+print ("False positives: " + str(fp))
+print ("True negatives: " + str(tn))
+print ("False negatives: " + str(fn))
 print
 
 sen = float(tp) / float(tp + fn)
 spc = float(tn) / float(tn + fp)
 prc = float(tp) / float(tp + fp)
 
-print "Sensitivity: " + str(sen)
-print "Specificity: " + str(spc)
-print "Precision:" + str(prc)
+print ("Sensitivity: " + str(sen))
+print ("Specificity: " + str(spc))
+print ("Precision:" + str(prc))
 print
 
 
 acc = float(tp + tn) / float(tp + fp + tn + fn)
 f1 = float(2 * tp) / float(2 * tp + fp + fn)
 
-print "Accuracy: " + str(acc)
-print "F1 Score: " + str(f1)
+print ("Accuracy: " + str(acc))
+print ("F1 Score: " + str(f1))
 
 plt.title(args.out)
 plt.savefig(args.out)

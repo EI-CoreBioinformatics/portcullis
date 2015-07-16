@@ -154,7 +154,7 @@ void portcullis::JunctionBuilder::process() {
     int32_t lastSeqCount = 0;
     int32_t chunkSize = 0;
     int32_t nextTarget = 0;
-    int32_t percentComplete;
+    int32_t percentComplete = 0;
 
     cout << endl << "Loading reference index ... ";
     cout.flush();
@@ -187,13 +187,20 @@ void portcullis::JunctionBuilder::process() {
         }
 
         if (lastRefId == -1 || al.getReferenceId() != lastRefId) {
+            
+            // Just check we haven't got any strange alignments that are not associated with ref seqs.
+            // End if we do
+            if (al.getReferenceId() >= refs.size()) {
+                break;
+            }
+            
             if (lastRefId > -1) {
-                cout << lastSeqCount << " potential junctions found." << endl;
+                cout << "100%\t" << lastSeqCount << " potential junctions found." << endl;
                 nextTarget = 0;
                 percentComplete = 0;
             }
             
-            cout << " - " << refs[al.getReferenceId()].name << " ... ";
+            cout << " - " << refs[al.getReferenceId()].name << "\t 0% ... ";
             cout.flush();
             
             chunkSize = refs[al.getReferenceId()].length / 10;
@@ -244,7 +251,7 @@ void portcullis::JunctionBuilder::process() {
         lastSeqCount++;
     }
     
-    cout << lastSeqCount << " potential junctions found." << endl;
+    cout << "100%\t" << lastSeqCount << " potential junctions found." << endl;
 
     reader.close();
     unsplicedWriter.close();

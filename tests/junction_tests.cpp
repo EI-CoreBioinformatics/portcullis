@@ -15,10 +15,10 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+#define BOOST_TEST_MAIN
 #define BOOST_TEST_DYN_LINK
-#ifdef STAND_ALONE
 #define BOOST_TEST_MODULE PORTCULLIS
-#endif
+#define BOOST_TEST_LOG_LEVEL all
 
 #include <iostream>
 using std::cout;
@@ -30,7 +30,6 @@ using std::endl;
 #include "../src/intron.hpp"
 #include "../src/junction.hpp"
 using portcullis::CanonicalSS;
-using portcullis::RefSeq;
 using portcullis::Intron;
 using portcullis::Junction;
 using portcullis::JunctionException;
@@ -136,105 +135,6 @@ BOOST_AUTO_TEST_CASE(coverage2) {
     BOOST_CHECK(cvg2 < 0);
 }
 
-BOOST_AUTO_TEST_CASE(hamming1) {
-    
-    shared_ptr<Intron> l(new Intron(rd5, 20, 29, portcullis::POSITIVE));
-    Junction j(l, 5, 45);    
-    //               ***************||||||||||***************
-    string region = "TTTTTTTTTTAAAAAAAAAAGGGGGGGGGGCCCCCCCCCC";
-    
-    j.calcHammingScores(region);
-    
-    int16_t h5p = j.getHammingDistance5p();
-    int16_t h3p = j.getHammingDistance3p();
-    
-    //cout << "5' hamming: " << h5p << endl;
-    //cout << "3' hamming: " << h3p << endl;
-    
-    BOOST_CHECK(h5p == 10);
-    BOOST_CHECK(h3p == 10);
-}
-
-BOOST_AUTO_TEST_CASE(hamming2) {
-    
-    shared_ptr<Intron> l(new Intron(rd5, 20, 29, portcullis::POSITIVE));
-    Junction j(l, 5, 45);    
-    
-    //               ***************||||||||||***************
-    string region = "CCCCCTTTTTAAAAATTTTTAAAAATTTTTAAAAAGGGGG";
-    
-    j.calcHammingScores(region);
-    
-    int16_t h5p = j.getHammingDistance5p();
-    int16_t h3p = j.getHammingDistance3p();
-    
-    //cout << "5' hamming: " << h5p << endl;
-    //cout << "3' hamming: " << h3p << endl;
-    
-    BOOST_CHECK(h5p == 0);
-    BOOST_CHECK(h3p == 0);
-}
-
-BOOST_AUTO_TEST_CASE(hamming3) {
-    
-    shared_ptr<Intron> l(new Intron(rd5, 20, 29, portcullis::NEGATIVE));
-    Junction j(l, 5, 45);    
-    
-    //               ***************||||||||||***************
-    string region = "CCCCCTTTTTAAAAATTTTTAAAAATTTTTAAAAAGGGGG";
-    
-    j.calcHammingScores(region);
-    
-    int16_t h5p = j.getHammingDistance5p();
-    int16_t h3p = j.getHammingDistance3p();
-    
-    //cout << "5' hamming: " << h5p << endl;
-    //cout << "3' hamming: " << h3p << endl;
-    
-    BOOST_CHECK(h5p == 0);
-    BOOST_CHECK(h3p == 0);
-}
-
-
-BOOST_AUTO_TEST_CASE(hamming4) {
-    
-    shared_ptr<Intron> l(new Intron(rd5, 20, 29, portcullis::POSITIVE));
-    Junction j(l, 15, 45);    
-    
-    //               *****||||||||||***************
-    string region = "AAAAATTTTTAAAAATTTTTAAAAAGGGGG";
-    
-    j.calcHammingScores(region);
-    
-    int16_t h5p = j.getHammingDistance5p();
-    int16_t h3p = j.getHammingDistance3p();
-    
-    //cout << "5' hamming: " << h5p << endl;
-    //cout << "3' hamming: " << h3p << endl;
-    
-    BOOST_CHECK(h5p == 0);
-    BOOST_CHECK(h3p == 0);
-}
-
-BOOST_AUTO_TEST_CASE(hamming5) {
-    
-    shared_ptr<Intron> l(new Intron(rd5, 20, 29, portcullis::POSITIVE));
-    Junction j(l, 5, 34);    
-    
-    //               ***************||||||||||*****
-    string region = "CCCCCTTTTTAAAAATTTTTAAAAATTTTT";
-    
-    j.calcHammingScores(region);
-    
-    int16_t h5p = j.getHammingDistance5p();
-    int16_t h3p = j.getHammingDistance3p();
-    
-    //cout << "5' hamming: " << h5p << endl;
-    //cout << "3' hamming: " << h3p << endl;
-    
-    BOOST_CHECK(h5p == 0);
-    BOOST_CHECK(h3p == 0);
-}
 
 
 BOOST_AUTO_TEST_SUITE_END()

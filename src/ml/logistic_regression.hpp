@@ -15,43 +15,24 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+#pragma once
 
-#define BOOST_TEST_MAIN
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE PORTCULLIS
-#define BOOST_TEST_LOG_LEVEL all
+namespace portcullis {
+    namespace ml {
 
+        class LogisticRegression {
+        public:
+            int N; // num of inputs
+            int n_in;
+            int n_out;
+            double **W;
+            double *b;
+            LogisticRegression(int, int, int);
+            ~LogisticRegression();
+            void train(int*, int*, const double);
+            void softmax(double*);
+            void predict(int*, double*);
+        };
 
-#include <iostream>
-using std::cout;
-using std::endl;
-
-#include <boost/test/unit_test.hpp>
-#include <boost/filesystem.hpp>
-
-#include "../src/seq_utils.hpp"
-using portcullis::SeqUtils;
-
-BOOST_AUTO_TEST_SUITE(seq_utils)
-
-BOOST_AUTO_TEST_CASE(hamming) {
-    
-    BOOST_CHECK(SeqUtils::hammingDistance("ATGC", "ATGC") == 0);
-    BOOST_CHECK(SeqUtils::hammingDistance("ATGC", "ATGG") == 1);
-    BOOST_CHECK(SeqUtils::hammingDistance("ATGC", "CGTA") == 4);
+    }
 }
-
-
-BOOST_AUTO_TEST_CASE(rev) {
-    
-    string seq("ATGC");
-    BOOST_CHECK(SeqUtils::reverseSeq(seq) == "CGTA");
-}
-
-BOOST_AUTO_TEST_CASE(rev_comp) {
-    
-    BOOST_CHECK(SeqUtils::reverseComplement("ATGC") == "GCAT");    
-}
-
-
-BOOST_AUTO_TEST_SUITE_END()

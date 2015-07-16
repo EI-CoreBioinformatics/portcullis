@@ -529,7 +529,6 @@ void portcullis::Junction::calcAlignmentStats() {
 
     nbDistinctAlignments = 0;
     nbReliableAlignments = 0;
-    nbMismatches = 0;
     nbUpstreamJunctions = 0;
     nbDownstreamJunctions = 0;
 
@@ -568,15 +567,9 @@ void portcullis::Junction::calcAlignmentStats() {
                 if (pos < intron->start) {
                     upjuncs++;
                 }
-                else if (pos > intron->end) {
+                else if (pos > intron->end + 1) {
                     downjuncs++;
                 }  
-            }
-
-            // Looks for a mismatch at any point along the spliced read
-            // (even if it's the otherside of another junction in the case of an MSR)
-            if (op.type == BAM_CIGAR_DIFF_CHAR) {
-                nbMismatches++;
             }
         }
 
@@ -651,18 +644,44 @@ void portcullis::Junction::calcMaxMMES(const string& anc5p, const string& anc3p)
     // If on negative strand we probably need to RC these anchors
     
     uint16_t maxmmes = 0;
+    nbMismatches = 0;
     
     for(auto& ba : junctionAlignments) {
 
-        string qAnchor5p = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1);
-        string qAnchor3p = ba.getPaddedQuerySeq(intron->end + 1, rightFlankEnd);
-    
-        string gAnchor5p = ba.getPaddedGenomeSeq(anc5p, leftFlankStart, intron->start - 1);
-        string gAnchor3p = ba.getPaddedGenomeSeq(anc3p, intron->end + 1, rightFlankEnd);
+        uint32_t q5pStart = leftFlankStart;
+        uint32_t q5pEnd = intron->start - 1;
+        uint32_t q3pStart = intron->end + 1;
+        uint32_t q3pEnd = rightFlankEnd;
+        string qAnchor5p = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1, q5pStart, q5pEnd);
+        string qAnchor3p = ba.getPaddedQuerySeq(intron->end + 1, rightFlankEnd, q3pStart, q3pEnd);
+        
+        string gAnchor5p = ba.getPaddedGenomeSeq(anc5p, leftFlankStart, intron->start - 1, q5pStart, q5pEnd);
+        string gAnchor3p = ba.getPaddedGenomeSeq(anc3p, intron->end + 1, rightFlankEnd, q3pStart, q3pEnd);
+        
+        if (qAnchor5p.size() != gAnchor5p.size()) {
+           BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "5' Anchor region for query and genome are not the same size.  Coords: ") + this->intron->toString() 
+                   + "; Cigar: " + ba.getCigarAsString()
+                   + "\nQuery seq:  \n" + qAnchor5p
+                   + "\nGenome seq: \n" + gAnchor5p));
+        }
+        
+        if (qAnchor3p.size() != gAnchor3p.size()) {
+           BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                "3' Anchor region for query and genome are not the same size.  Coords: ") + this->intron->toString() 
+                   + "; Cigar: " + ba.getCigarAsString()
+                   + "\nQuery seq:  \n" + qAnchor3p
+                   + "\nGenome seq: \n" + gAnchor3p));
+        }
+        
         
         int16_t hdAnc5p = SeqUtils::hammingDistance(qAnchor5p, gAnchor5p);
         int16_t hdAnc3p = SeqUtils::hammingDistance(qAnchor3p, gAnchor3p);
         
+        // Add any differences to the nb of mismatches.
+        nbMismatches += hdAnc5p;
+        nbMismatches += hdAnc3p;
+                
         uint16_t nb5pMatches = qAnchor5p.size() - hdAnc5p;
         uint16_t nb3pMatches = qAnchor3p.size() - hdAnc3p;
         
@@ -799,12 +818,14 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id) {
 
     string juncId = string("junc_") + lexical_cast<string>(id);
 
+    // Modify coordinates to 1-based end inclusive
+    
     // Output junction parent
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"    // source
          << "intron" << "\t"        // type (may change later)
-         << intron->start << "\t"   // start
-         << intron->end << "\t"     // end
+         << intron->start + 1 << "\t"   // start
+         << intron->end  + 1<< "\t"     // end
          << "0.0" << "\t"           // No score for the moment
          << strand << "\t"          // strand
          << "." << "\t"             // Just put "." for the phase
@@ -830,12 +851,14 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
 
     string juncId = string("junc_") + lexical_cast<string>(id);
 
+    // Modify coordinates to 1-based end inclusive
+    
     // Output junction parent
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"    // source
          << "junction" << "\t"      // type (may change later)
-         << leftFlankStart << "\t"  // start
-         << rightFlankEnd << "\t"   // end
+         << leftFlankStart + 1 << "\t"  // start
+         << rightFlankEnd + 1 << "\t"   // end
          << "0.0" << "\t"           // No score for the moment
          << strand << "\t"          // strand
          << "." << "\t"             // Just put "." for the phase
@@ -845,12 +868,14 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
     outputDescription(strm, ";");
     strm << endl;
 
+    // Make modifications to coordinates so they are suitable for GFF.  1-based with end positions inclusive.
+    
     // Output left exonic region
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"
          << "partial_exon" << "\t"
-         << leftFlankStart << "\t"
-         << (intron->start - 1) << "\t"
+         << leftFlankStart + 1 << "\t"
+         << (intron->start) << "\t"
          << "0.0" << "\t"
          << strand << "\t"
          << "." << "\t"
@@ -861,8 +886,8 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"
          << "partial_exon" << "\t"
-         << (intron->end + 1) << "\t"
-         << rightFlankEnd << "\t"
+         << (intron->end + 2) << "\t"
+         << rightFlankEnd + 1 << "\t"
          << "0.0" << "\t"
          << strand << "\t"
          << "." << "\t"
@@ -889,17 +914,17 @@ void portcullis::Junction::outputBED(std::ostream &strm, uint32_t id) {
     int32_t sz1 = intron->start - leftFlankStart;
     int32_t sz2 = rightFlankEnd - intron->end;
     string blockSizes = lexical_cast<string>(sz1) + "," + lexical_cast<string>(sz2);
-    string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end - leftFlankStart);
+    string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end - leftFlankStart + 1);
 
     // Output junction parent
     strm << intron->ref.name << "\t"         // chrom
          << leftFlankStart << "\t"  // chromstart
-         << rightFlankEnd << "\t"   // chromend
+         << rightFlankEnd + 1 << "\t"   // chromend (adding 1 as end position is exclusive)
          << juncId << "\t"          // name
          << this->getNbJunctionAlignments() << "\t"           // Use the depth as the score for the moment
          << strand << "\t"          // strand
          << intron->start << "\t"   // thickstart
-         << intron->end << "\t"     // thickend
+         << intron->end + 1 << "\t"     // thickend  (adding 1 as end position is exclusive)
          << "255,0,0" << "\t"       // Just use red for the moment
          << "2" << "\t"             // 2 blocks: Left and right block
          << blockSizes << "\t"

@@ -16,42 +16,37 @@
 //  *******************************************************************
 
 
-#define BOOST_TEST_MAIN
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE PORTCULLIS
-#define BOOST_TEST_LOG_LEVEL all
-
+#pragma once
 
 #include <iostream>
-using std::cout;
-using std::endl;
+#include <math.h>
+using namespace std;
 
-#include <boost/test/unit_test.hpp>
-#include <boost/filesystem.hpp>
+#include "da.hpp"
+#include "logistic_regression.hpp"
+#include "hidden_layer.hpp"
 
-#include "../src/seq_utils.hpp"
-using portcullis::SeqUtils;
+namespace portcullis {
+    namespace ml {
 
-BOOST_AUTO_TEST_SUITE(seq_utils)
+        class StackedDenoisingAutoencoder {
+        public:
+            int N;
+            int n_ins;
+            int *hidden_layer_sizes;
+            int n_outs;
+            int n_layers;
+            HiddenLayer **sigmoid_layers;
+            DenoisingAutoencoder **dA_layers;
+            LogisticRegression *log_layer;
+            StackedDenoisingAutoencoder(int, int, int*, int, int);
+            ~StackedDenoisingAutoencoder();
+            void pretrain(int*, double, double, int);
+            void finetune(int*, int*, double, int);
+            void predict(int*, double*);
+        };
 
-BOOST_AUTO_TEST_CASE(hamming) {
-    
-    BOOST_CHECK(SeqUtils::hammingDistance("ATGC", "ATGC") == 0);
-    BOOST_CHECK(SeqUtils::hammingDistance("ATGC", "ATGG") == 1);
-    BOOST_CHECK(SeqUtils::hammingDistance("ATGC", "CGTA") == 4);
+    }
 }
 
 
-BOOST_AUTO_TEST_CASE(rev) {
-    
-    string seq("ATGC");
-    BOOST_CHECK(SeqUtils::reverseSeq(seq) == "CGTA");
-}
-
-BOOST_AUTO_TEST_CASE(rev_comp) {
-    
-    BOOST_CHECK(SeqUtils::reverseComplement("ATGC") == "GCAT");    
-}
-
-
-BOOST_AUTO_TEST_SUITE_END()

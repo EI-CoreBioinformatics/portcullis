@@ -213,7 +213,7 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
             }                
         }
         else if (CigarOp::opConsumesReference(op.type)) {
-            lEnd += op.length;                
+            lEnd += op.length;
         }
         else {
 

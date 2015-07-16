@@ -151,6 +151,15 @@ public:
         return cigar;
     }
     
+    const string getCigarAsString() const {
+        
+        stringstream ss;
+        for(const auto& c : cigar) {
+            ss << c.type << c.length;
+        }
+        return ss.str();
+    }
+    
     void setCigarOpAt(uint32_t index, CigarOp cigarOp) {
         cigar[index] = cigarOp;
     }
@@ -241,10 +250,8 @@ public:
     
     uint32_t calcNbAlignedBases(int32_t start, int32_t end) const;
     
-    uint16_t calcMinimalMatchInCigarDataSubset(uint32_t start, uint32_t end) const;
-    
-    string getPaddedQuerySeq(uint32_t start, uint32_t end) const;
-    string getPaddedGenomeSeq(const string& fullGenomeSeq, uint32_t start, uint32_t end) const;
+    string getPaddedQuerySeq(uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end) const;
+    string getPaddedGenomeSeq(const string& fullGenomeSeq, uint32_t start, uint32_t end, uint32_t q_start, uint32_t q_end) const;
     
     string toString() const;
     
