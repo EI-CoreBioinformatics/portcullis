@@ -161,10 +161,14 @@ struct eval : boost::static_visitor<bool> {
     bool operator()(const var& v) const;
 
     bool operator()(const binop<op_and>& b) const {        
-        return recurse(b.oper1) && recurse(b.oper2);
+        bool op1Res = recurse(b.oper1);
+        bool op2Res = recurse(b.oper2);
+        return op1Res && op2Res;
     }
     bool operator()(const binop<op_or>& b) const {
-        return recurse(b.oper1) || recurse(b.oper2);
+        bool op1Res = recurse(b.oper1);
+        bool op2Res = recurse(b.oper2);
+        return op1Res || op2Res;
     }
     bool operator()(const unop<op_not>& u) const {
         return !recurse(u.oper1);
@@ -305,7 +309,7 @@ public:
     
     void filter();
     
-    void saveResults(JuncResultMap& results);
+    void saveResults(const JunctionSystem& js, JuncResultMap& results);
     
  
 protected:
