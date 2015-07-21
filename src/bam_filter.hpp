@@ -87,9 +87,9 @@ class BamFilter {
 
 private:
     
-    string junctionFile;
-    string bamFile;
-    string outputBam;
+    path junctionFile;
+    path bamFile;
+    path outputBam;
     StrandSpecific strandSpecific;
     ClipMode clipMode;
     bool saveMSRs;
@@ -97,7 +97,7 @@ private:
     
 public:
     
-    BamFilter(const string& _junctionFile, const string& _bamFile, const string& _outputBam, bool _verbose);
+    BamFilter(const path& _junctionFile, const path& _bamFile, const path& _outputBam, bool _verbose);
     
     virtual ~BamFilter() {
     }
@@ -119,27 +119,27 @@ protected:
 
 public:
     
-    string getBamFile() const {
+    path getBamFile() const {
         return bamFile;
     }
 
-    void setBamFile(string bamFile) {
+    void setBamFile(path bamFile) {
         this->bamFile = bamFile;
     }
 
-    string getJunctionFile() const {
+    path getJunctionFile() const {
         return junctionFile;
     }
 
-    void setJunctionFile(string junctionFile) {
+    void setJunctionFile(path junctionFile) {
         this->junctionFile = junctionFile;
     }
 
-    string getOutputBam() const {
+    path getOutputBam() const {
         return outputBam;
     }
 
-    void setOutputBam(string outputBam) {
+    void setOutputBam(path outputBam) {
         this->outputBam = outputBam;
     }
 

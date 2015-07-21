@@ -58,6 +58,7 @@ namespace qi    = boost::spirit::qi;
 namespace phx   = boost::phoenix;
 
 #include "intron.hpp"
+#include "junction.hpp"
 #include "junction_system.hpp"
 #include "portcullis_fs.hpp"
 using portcullis::PortcullisFS;
@@ -329,7 +330,7 @@ void portcullis::JunctionFilter::filter() {
             BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
                     "Could not create output directory at: ") + outputDir.string()));
         }
-    }        
+    }
 
     /*string tmpOutputTabFile = outputDir.string() + "/tmp.tab";
 
@@ -376,8 +377,8 @@ void portcullis::JunctionFilter::filter() {
 
     NumericFilterMap numericFilters;
     SetFilterMap stringFilters;
-    JuncResultMap junctionMap;
-
+    JuncResultMap junctionResultMap;
+    
     for(ptree::value_type& v : pt.get_child("parameters")) {
         string name = v.first;
         Operator op = stringToOp(v.second.get_child("operator").data());
@@ -398,20 +399,34 @@ void portcullis::JunctionFilter::filter() {
 
     const string expression = pt.get_child("expression").data();
 
+    map<string,int> filterCounts;
+    
     for (JunctionPtr junc : originalJuncs.getJunctions()) {
 
-        junctionMap[*(junc->getIntron())] = vector<string>();
+        junctionResultMap[*(junc->getIntron())] = vector<string>();
 
-        if (parse(expression, junc, numericFilters, stringFilters, &junctionMap)) {
+        if (parse(expression, junc, numericFilters, stringFilters, &junctionResultMap)) {
             passJunc.addJunction(junc);
         }
         else {
             failJunc.addJunction(junc);
+            
+            vector<string> failed = junctionResultMap[*(junc->getIntron())];
+            
+            for(string s : failed) {
+                filterCounts[s]++;
+            }
         }
     }        
 
-    cout << " done." << endl;
-
+    cout << " done." << endl << endl
+         << "Number of junctions failing for each filter: " << endl;
+    
+    for(map<string,int>::iterator iterator = filterCounts.begin(); iterator != filterCounts.end(); iterator++) {        
+        cout << iterator->first << ": " << iterator->second << endl;
+    }
+    
+    
     // Output stats
     size_t diff = originalJuncs.size() - passJunc.size();
 
@@ -429,15 +444,15 @@ void portcullis::JunctionFilter::filter() {
         failJunc.saveAll(outputDir.string() + "/" + outputPrefix + ".fail");
     }
 
-    saveResults(junctionMap);
+    saveResults(originalJuncs, junctionResultMap);
 }
     
-void portcullis::JunctionFilter::saveResults(JuncResultMap& results) {
+void portcullis::JunctionFilter::saveResults(const JunctionSystem& js, JuncResultMap& results) {
 
     // Print descriptive output to file
     ofstream out(outputDir.string() + "/" + outputPrefix + ".results");
 
-    out << Intron::locationOutputHeader() << "\t" << "Filter results..." << endl;
+    out << Intron::locationOutputHeader() << "\tpredicted_strand\t" << "filter_results..." << endl;
 
     for(auto& kv: results) {
 
@@ -445,6 +460,8 @@ void portcullis::JunctionFilter::saveResults(JuncResultMap& results) {
 
         out << i << "\t";
 
+        out << portcullis::strandToChar(js.getJunction(i)->getPredictedStrand()) << "\t";
+        
         if (kv.second.empty()) {
             out << "PASS";
         }
