@@ -310,18 +310,20 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
                 "Can't find right intron region for junction: ") + this->intron->toString()));
 
     int expLeftLen = intron->start - leftFlankStart;
-    if (leftAncLen != expLeftLen)
+    if (leftAncLen != expLeftLen && expLeftLen > 0)
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                 "Retrieved sequence for left anchor of junction ") + this->intron->toString() + " is not the expected length" +
                 "\nRetrieved sequence Length: " + lexical_cast<string>(leftAncLen) + 
-                "\nExpected sequence length: " + lexical_cast<string>(expLeftLen) + "\n"));
+                "\nExpected sequence length: " + lexical_cast<string>(expLeftLen) + 
+                "\nRetrieved sequence: " + leftAnc));
 
     int expRightLen = rightFlankEnd - intron->end;
-    if (rightAncLen != expRightLen)
+    if (rightAncLen != expRightLen && expRightLen > 0)
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "Retrieved sequence for right anchor of junction ") + this->intron->toString() + " is not the expected length" +
+                "Retrieved sequence for right anchor of junction ") + this->intron->toString() + " is not the expected length" +                
                 "\nRetrieved sequence Length: " + lexical_cast<string>(rightAncLen) + 
-                "\nExpected sequence length: " + lexical_cast<string>(expRightLen) + "\n"));
+                "\nExpected sequence length: " + lexical_cast<string>(expRightLen) + 
+                "\nRetrieved sequence: " + rightAnc));
         
     if (leftIntLen != 10)
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -412,8 +414,8 @@ void portcullis::Junction::calcAnchorStats() {
         const int32_t lStart = ba.getPosition();
         const int32_t rEnd = ba.getEnd();
         
-        int32_t leftSize = ba.calcNbAlignedBases(lStart, intron->start - 1);
-        int32_t rightSize = ba.calcNbAlignedBases(intron->end + 1, rEnd);   // Will auto crop for end of alignment
+        int32_t leftSize = ba.calcNbAlignedBases(lStart, intron->start - 1, false);
+        int32_t rightSize = ba.calcNbAlignedBases(intron->end + 1, rEnd, false);   // Will auto crop for end of alignment
 
         maxLeftSize = max(maxLeftSize, leftSize);
         minLeftSize = min(minLeftSize, leftSize);
@@ -648,17 +650,22 @@ void portcullis::Junction::calcMaxMMES(const string& ancLeft, const string& ancR
         uint32_t qLeftEnd = intron->start - 1;
         uint32_t qRightStart = intron->end + 1;
         uint32_t qRightEnd = rightFlankEnd;
-        string qAnchorLeft = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1, qLeftStart, qLeftEnd);
-        string qAnchorRight = ba.getPaddedQuerySeq(intron->end + 1, rightFlankEnd, qRightStart, qRightEnd);
+        string qAnchorLeft = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1, qLeftStart, qLeftEnd, false);
+        string qAnchorRight = ba.getPaddedQuerySeq(intron->end + 1, rightFlankEnd, qRightStart, qRightEnd, false);
         
-        string gAnchorLeft = ba.getPaddedGenomeSeq(ancLeft, leftFlankStart, intron->start - 1, qLeftStart, qLeftEnd);
-        string gAnchorRight = ba.getPaddedGenomeSeq(ancRight, intron->end + 1, rightFlankEnd, qRightStart, qRightEnd);
+        string gAnchorLeft = ba.getPaddedGenomeSeq(ancLeft, leftFlankStart, intron->start - 1, qLeftStart, qLeftEnd, false);
+        string gAnchorRight = ba.getPaddedGenomeSeq(ancRight, intron->end + 1, rightFlankEnd, qRightStart, qRightEnd, false);
         
         if (qAnchorLeft.size() != gAnchorLeft.size()) {
            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "Left anchor region for query and genome are not the same size.\nLeft anchor coords: ") + this->intron->toString() 
-                   + "\nAlignment coords: " + lexical_cast<string>(ba.getPosition()) + "," + lexical_cast<string>(ba.getEnd())
-                   + "\nRead seq: " + ba.getQuerySeq()
+                "Left anchor region for query and genome are not the same size.")
+                   + "\nLeft anchor coords: " + this->intron->toString() 
+                   + "\nFlanks extents: " + lexical_cast<string>(this->leftFlankStart) + "," + lexical_cast<string>(this->rightFlankEnd)
+                   + "\nGenomic sequence: " + ancLeft
+                   + "\nAlignment coords (before soft clipping): " + ba.toString(false)
+                   + "\nAlignment coords (after soft clipping): " + ba.toString(true)                   
+                   + "\nRead seq (before soft clipping): " + ba.getQuerySeq()
+                   + "\nRead seq (after soft clipping): " + ba.getQuerySeqAfterClipping()
                    + "\nCigar: " + ba.getCigarAsString()
                    + "\nLeft Anchor query seq:  \n" + qAnchorLeft
                    + "\nLeft Anchor genome seq: \n" + gAnchorLeft));
@@ -666,9 +673,14 @@ void portcullis::Junction::calcMaxMMES(const string& ancLeft, const string& ancR
         
         if (qAnchorRight.size() != gAnchorRight.size()) {
            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "Right Anchor region for query and genome are not the same size.\nRight anchor coords: ") + this->intron->toString() 
-                   + "\nAlignment coords: " + lexical_cast<string>(ba.getPosition()) + "," + lexical_cast<string>(ba.getEnd())
-                   + "\nRead seq: " + ba.getQuerySeq()
+                "Right Anchor region for query and genome are not the same size.")
+                   + "\nRight anchor coords: " + this->intron->toString() 
+                   + "\nFlanks extents: " + lexical_cast<string>(this->leftFlankStart) + "," + lexical_cast<string>(this->rightFlankEnd)
+                   + "\nGenomic sequence: " + ancRight
+                   + "\nAlignment coords (before soft clipping): " + ba.toString(false)
+                   + "\nAlignment coords (after soft clipping): " + ba.toString(true)
+                   + "\nRead seq (before soft clipping): " + ba.getQuerySeq()
+                   + "\nRead seq (after soft clipping): " + ba.getQuerySeqAfterClipping()
                    + "\nCigar: " + ba.getCigarAsString()
                    + "\nRight Anchor query seq:  \n" + qAnchorRight
                    + "\nRight Anchor genome seq: \n" + gAnchorRight));

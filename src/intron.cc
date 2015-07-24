@@ -68,21 +68,23 @@ bool portcullis::Intron::sharesDonorOrAcceptor(const Intron& other) {
  */
 int32_t portcullis::Intron::minAnchorLength(int32_t leftAnchorStart, int32_t rightAnchorEnd) {
 
-    if (leftAnchorStart >= start)
+    if (leftAnchorStart > start)
         BOOST_THROW_EXCEPTION(IntronException() << IntronErrorInfo(string(
                 "The intron start position must be greater than the left anchor start position: ") + 
                 lexical_cast<string>(leftAnchorStart) + " **** " + 
                 lexical_cast<string>(start) + "-" +
                 lexical_cast<string>(end) + " **** " +
-                lexical_cast<string>(rightAnchorEnd) + ")"));
+                lexical_cast<string>(rightAnchorEnd) + ") " +
+                "Reference seq: " + this->ref.toString()));
 
-    if (rightAnchorEnd <= end)
+    if (rightAnchorEnd < end)
         BOOST_THROW_EXCEPTION(IntronException() << IntronErrorInfo(string(
                 "The intron end position must be less than the right anchor end position: (") + 
                 lexical_cast<string>(leftAnchorStart) + " **** " + 
                 lexical_cast<string>(start) + "-" +
                 lexical_cast<string>(end) + " **** " +
-                lexical_cast<string>(rightAnchorEnd) + ")"));
+                lexical_cast<string>(rightAnchorEnd) + ") " +
+                "Reference seq: " + this->ref.toString()));
 
     int32_t lAnchor = start - leftAnchorStart;
     int32_t rAnchor = rightAnchorEnd - end;

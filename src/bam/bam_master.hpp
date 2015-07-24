@@ -56,6 +56,10 @@ struct RefSeq {
         name = _name;
         length = _length;
     }
+    
+    string toString() const {
+        return name + " (Index: " + lexical_cast<string>(index) + "; Length: " + lexical_cast<string>(length) + ")";
+    }
 };
 
 class BamHelper {
