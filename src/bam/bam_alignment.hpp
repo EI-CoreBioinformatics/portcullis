@@ -64,6 +64,14 @@ struct CigarOp {
         length = _length;
     }
     
+    CigarOp(const string& cigar);
+    
+    string toString() const {
+        return lexical_cast<string>(length) + type;
+    }
+    
+    static vector<CigarOp> createFullCigarFromString(const string& cigar);
+    
     static inline bool opConsumesQuery(char op) {
         
         switch (op) {
@@ -155,7 +163,7 @@ public:
         
         stringstream ss;
         for(const auto& c : cigar) {
-            ss << c.type << c.length;
+            ss << c.toString();
         }
         return ss.str();
     }
@@ -163,6 +171,19 @@ public:
     void setCigarOpAt(uint32_t index, CigarOp cigarOp) {
         cigar[index] = cigarOp;
     }
+    
+    void setAlignedLength(int32_t alignedLength) {
+        this->alignedLength = alignedLength;
+    }
+
+    void setPosition(int32_t position) {
+        this->position = position;
+    }
+
+    void setRefId(int32_t refId) {
+        this->refId = refId;
+    }
+
     
     const CigarOp& getCigarOpAt(uint32_t index) const {
         return cigar[index];
@@ -174,6 +195,22 @@ public:
     
     int32_t getPosition() const {
         return position;
+    }
+    
+    int32_t getStart() const {
+        return position;
+    }
+    
+    int32_t getStart(bool afterClipping) const {
+        return afterClipping && cigar.front().type == BAM_CIGAR_SOFTCLIP_CHAR ? position + cigar.front().length : position;    
+    }
+    
+    int32_t getEnd() const {
+        return position + alignedLength;
+    }
+    
+    int32_t getEnd(bool afterClipping) const {
+        return afterClipping && cigar.back().type == BAM_CIGAR_SOFTCLIP_CHAR ? getEnd() - cigar.back().length : getEnd();    
     }
     
     int32_t getReferenceId() const {
@@ -232,13 +269,13 @@ public:
         return (alFlag & BAM_FREAD2) != 0;
     }
     
-    int32_t getEnd() const {
-        return position + alignedLength;
-    }
+    
     
     string deriveName() const;
     
     string getQuerySeq() const;
+    string getQuerySeqAfterClipping() const;
+    string getQuerySeqAfterClipping(const string& query_seq) const;
     
     bool isSplicedRead() const;
     
@@ -248,12 +285,14 @@ public:
         return getNbJunctionsInRead() > 1;
     }
     
-    uint32_t calcNbAlignedBases(int32_t start, int32_t end) const;
+    uint32_t calcNbAlignedBases(int32_t start, int32_t end, bool includeSoftClips) const;
     
-    string getPaddedQuerySeq(uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end) const;
-    string getPaddedGenomeSeq(const string& fullGenomeSeq, uint32_t start, uint32_t end, uint32_t q_start, uint32_t q_end) const;
+    string getPaddedQuerySeq(uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end, const bool include_soft_clips) const;
+    string getPaddedQuerySeq(const string& querySeq, uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end, const bool include_soft_clips) const;
+    string getPaddedGenomeSeq(const string& fullGenomeSeq, uint32_t start, uint32_t end, uint32_t q_start, uint32_t q_end, const bool include_soft_clips) const;
     
     string toString() const;
+    string toString(bool afterClipping) const;
     
 };
 

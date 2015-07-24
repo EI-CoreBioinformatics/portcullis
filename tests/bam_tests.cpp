@@ -177,4 +177,52 @@ BOOST_AUTO_TEST_CASE(genome_mapper_ecoli)
     boost::filesystem::remove(faidxFile);
 }
 
+BOOST_AUTO_TEST_CASE(padding)
+{
+    vector<CigarOp> cigar = CigarOp::createFullCigarFromString("2S14M2I1M1737N8M14S");
+    
+    string query = "AGAAAGTGGAGAAAAGAATTTGGTGTGGATGATCTTATCACAACCATTCTTTCTGGTGAGACAGAAGC";
+    string genomic = "AAAGTGGAGAAAAGAATTTGGTGTGGATGATCTTATCACAACCATTCTTTCTGGTGAGACAGAAGC";
+    
+    BamAlignment ba;
+    ba.setCigar(cigar);
+    ba.setRefId(2);
+    ba.setPosition(609263);
+    ba.setAlignedLength(1787);
+    
+    uint32_t left = 609263;
+    uint32_t right = 609304;
+    string paddedQueryInRegion = ba.getPaddedQuerySeq(query, 609263, 609304, left, right, false);
+    string paddedGenomicInRegion = ba.getPaddedGenomeSeq(genomic, 609263, 609304, left, right, false);
+    
+    BOOST_CHECK(paddedQueryInRegion.size() == paddedGenomicInRegion.size());
+    BOOST_CHECK(boost::equals(paddedQueryInRegion, "AAAGTGGAGAAAAGAAT"));
+    BOOST_CHECK(boost::equals(paddedGenomicInRegion, "AAAGTGGAGAAAAGXXA"));
+}
+
+BOOST_AUTO_TEST_CASE(padding2)
+{
+    vector<CigarOp> cigar = CigarOp::createFullCigarFromString("14S13M1I2601N9M4918N13M18S");
+    
+    string query = "ATTGGGGTGTAGATAATTTTATAAAAATTTTTATTTAGGAGGAAAAAAAGGCCGTTTCCAAATATTAC";
+    string genomic = "AATTTTATAAAAAAACGGAACTCCGGC";
+    
+    BamAlignment ba;
+    ba.setCigar(cigar);
+    ba.setRefId(2);
+    ba.setPosition(750577);
+    ba.setAlignedLength(7586);
+    
+    uint32_t left = 750577;
+    uint32_t right = 750603;
+    string paddedQueryInRegion = ba.getPaddedQuerySeq(query, 750577, 750603, left, right, false);
+    string paddedGenomicInRegion = ba.getPaddedGenomeSeq(genomic, 750577, 750603, left, right, false);
+    
+    BOOST_CHECK(paddedQueryInRegion.size() == paddedGenomicInRegion.size());
+    BOOST_CHECK(boost::equals(paddedQueryInRegion, "AATTTTATAAAAAT"));
+    BOOST_CHECK(boost::equals(paddedGenomicInRegion, "AATTTTATAAAAAX"));
+}
+
+
+
 BOOST_AUTO_TEST_SUITE_END()

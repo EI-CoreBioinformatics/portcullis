@@ -157,26 +157,47 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
     for(size_t i = startOp; i < nbOps; i++) {
 
         CigarOp op = al.getCigarOpAt(i);
-        if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
+        
+        // If first op is a soft clip, then move on
+        if (i == startOp && op.type == BAM_CIGAR_SOFTCLIP_CHAR) {
+            lStart = offset + op.length;        
+            lEnd = lStart;
+            rStart = lStart;
+            rEnd = lStart;            
+        }
+        else if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
             foundJunction = true;
 
             rStart = lEnd + op.length;
             rEnd = rStart;
 
+            // Establish end position of right anchor in genomic coordinates
             size_t j = i+1;
-            while (j < nbOps && al.getCigarOpAt(j).type != BAM_CIGAR_REFSKIP_CHAR) {
+            while (j < nbOps 
+                    && rEnd < refLength 
+                    && al.getCigarOpAt(j).type != BAM_CIGAR_REFSKIP_CHAR 
+                    && al.getCigarOpAt(j).type != BAM_CIGAR_SOFTCLIP_CHAR) {
 
                 CigarOp rOp = al.getCigarOpAt(j++);
+                
                 if (CigarOp::opConsumesReference(rOp.type)) {
                     rEnd += rOp.length;
                 }
             }
+            
+            // The end of the flank will be one less than where we got to
+            rEnd--;
 
-            // Check here to make sure we are not running off the end of a sequence
-            if (rEnd >= refLength) {
+            // Do some sanity checking... make sure there are not any strange N cigar ops that
+            // drift over the edge of a reference sequence... seems like this can actually
+            // happen in GSNAP!
+            if (rStart - 1 >= refLength) {
+                rStart = refLength;
+            }            
+            if (rEnd - 1 >= refLength) {
                 rEnd = refLength - 1;
             }
-
+            
             // Create the intron
             shared_ptr<Intron> location = make_shared<Intron>(RefSeq(refId, refName, refLength), lEnd, rStart - 1, 
                     strandSpecific ? strandFromBool(al.isReverseStrand()) : UNKNOWN);
@@ -190,38 +211,36 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
             // location / junction pair.  If we've seen this location before
             // then add this alignment to the existing junction
             if (it == distinctJunctions.end()) {
-                JunctionPtr junction = make_shared<Junction>(location, lStart, rEnd - 1);
+                JunctionPtr junction = make_shared<Junction>(location, lStart, rEnd);
                 junction->addJunctionAlignment(al);
                 distinctJunctions[*location] = junction;
                 junctionList.push_back(junction);                    
             }
             else {
-
                 JunctionPtr junction = it->second;
                 junction->addJunctionAlignment(al);                    
-                junction->extendFlanks(lStart, rEnd - 1);
+                junction->extendFlanks(lStart, rEnd);
             }
 
-            //cout << "After junction add (inner): " << al.use_count() << endl;
-
+            // Don't try and go over the end of the reference
+            // Might happen in some aligners like GSNAP or STAR
+            if (rEnd >= refLength - 1) {
+                break;
+            }
+            
             // Check if we have fully processed the cigar or not.  If not, then
             // that means that this cigar contains additional junctions, so 
             // process those using recursion
             if (j < nbOps) {                    
                 addJunctions(al, i+1, rStart, strandSpecific);
                 break;
-            }                
+            }
         }
         else if (CigarOp::opConsumesReference(op.type)) {
             lEnd += op.length;
         }
-        else {
-
-            // Insertions, should be ignored
-            // if (op.Type == 'I')
-
-            // Ignore any other op types not already covered
-        }
+        
+        // Ignore any other op types not already covered        
     }
 
     return foundJunction;        

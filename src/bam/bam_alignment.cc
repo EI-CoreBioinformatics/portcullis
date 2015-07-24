@@ -40,7 +40,40 @@ using boost::lexical_cast;
 #include <bam.h>
 
 #include "bam_alignment.hpp"
+using portcullis::bam::CigarOp;
     
+portcullis::bam::CigarOp::CigarOp(const string& cigar) {
+
+    if (cigar.size() < 2) {
+        BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                "Can't extract cigar op from string when string length is < 2: ") 
+                    + cigar));
+    }
+
+    type = cigar[cigar.size() - 1];
+    string len = cigar.substr(0, cigar.size() - 1);
+    length = lexical_cast<uint32_t>(len);        
+}
+
+vector<CigarOp> portcullis::bam::CigarOp::createFullCigarFromString(const string& cigar) {
+    vector<CigarOp> c;
+
+    uint32_t i = 0;
+    while(i < cigar.size()) {
+        size_t next = cigar.find_first_not_of("0123456789", i+1);
+
+        string op;
+        if (next != string::npos) {
+            op = cigar.substr(i, next - i + 1);
+            i = next + 1;
+        }            
+
+        c.push_back(CigarOp(op));
+    }
+
+    return c;
+}
+
 void portcullis::bam::BamAlignment::init() {
     alFlag = b->core.flag;
     position = b->core.pos;
@@ -52,7 +85,7 @@ void portcullis::bam::BamAlignment::init() {
     for(uint32_t i = 0; i < b->core.n_cigar; i++) {
         CigarOp op(bam_cigar_opchr(c[i]), bam_cigar_oplen(c[i]));
         cigar.push_back(op);
-        if (CigarOp::opConsumesReference(op.type)) {
+        if (CigarOp::opConsumesReference(op.type) || op.type == BAM_CIGAR_SOFTCLIP_CHAR) {
             alignedLength += op.length;
         }
     }
@@ -145,6 +178,22 @@ string portcullis::bam::BamAlignment::getQuerySeq() const {
     return ss.str();
 }
 
+string portcullis::bam::BamAlignment::getQuerySeqAfterClipping() const {    
+    return getQuerySeqAfterClipping(getQuerySeq());
+}
+string portcullis::bam::BamAlignment::getQuerySeqAfterClipping(const string& seq) const {
+    
+    int32_t start = getStart();
+    int32_t end = getEnd();
+    int32_t clippedStart = getStart(true);
+    int32_t clippedEnd = getEnd(true);
+    int32_t deltaStart = clippedStart - start;
+    int32_t deltaEnd = end - clippedEnd;
+    
+    return seq.substr(deltaStart, seq.size() - deltaStart - deltaEnd);    
+}
+
+
 bool portcullis::bam::BamAlignment::isSplicedRead() const {
     for(const auto& op : cigar) {
         if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
@@ -167,7 +216,7 @@ uint32_t portcullis::bam::BamAlignment::getNbJunctionsInRead() const {
     return nbJunctions;
 }
 
-uint32_t portcullis::bam::BamAlignment::calcNbAlignedBases(int32_t start, int32_t end) const {
+uint32_t portcullis::bam::BamAlignment::calcNbAlignedBases(int32_t start, int32_t end, bool includeSoftClips) const {
 
     if (start > getEnd() || end < position) {
         string align = this->toString();
@@ -184,7 +233,8 @@ uint32_t portcullis::bam::BamAlignment::calcNbAlignedBases(int32_t start, int32_
             break;
         }
         
-        if (CigarOp::opConsumesReference(op.type)) {
+        // Include softclips in this calculation
+        if (CigarOp::opConsumesReference(op.type) || (includeSoftClips && op.type == BAM_CIGAR_SOFTCLIP_CHAR)) {
             if (pos >= start) {
                 count += op.length;
             }
@@ -196,7 +246,11 @@ uint32_t portcullis::bam::BamAlignment::calcNbAlignedBases(int32_t start, int32_
 }
 
 
-string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end) const {
+string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end, const bool include_soft_clips) const {
+    return getPaddedQuerySeq(this->getQuerySeq(), start, end, actual_start, actual_end, include_soft_clips);
+}
+
+string portcullis::bam::BamAlignment::getPaddedQuerySeq(const string& query_seq, uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end, const bool include_soft_clips) const {
     
     if (start > getEnd() || end < position)
         BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
@@ -205,13 +259,14 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t
     int32_t qPos = 0;
     int32_t rPos = position;
     
-    string query = this->getQuerySeq();
+    string query = include_soft_clips ? query_seq : this->getQuerySeqAfterClipping(query_seq);
+    
     stringstream ss;
     
     for(const auto& op : cigar) {
 
         bool consumesRef = CigarOp::opConsumesReference(op.type);
-        bool consumesQuery = CigarOp::opConsumesQuery(op.type);
+        bool consumesQuery = CigarOp::opConsumesQuery(op.type) && (include_soft_clips || op.type != BAM_CIGAR_SOFTCLIP_CHAR);
         
         // Skips any cigar ops before start position
         if (rPos < start) {
@@ -219,20 +274,38 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t
             if (consumesQuery) qPos += op.length;            
             continue;
         }
+                
+        // Stop once we get to the end of the region, and make sure we don't end on a refskip that exceeds our limit
+        if (((rPos > end && op.type != BAM_CIGAR_INS_CHAR) || (op.type == BAM_CIGAR_REFSKIP_CHAR && rPos + op.length > end))) break;
         
-        // Stop once we get to the end of the region, and make sure we don't end on a refskip
-        if (rPos >= end || (op.type == BAM_CIGAR_REFSKIP_CHAR && rPos + op.length >= end)) break;
-        
-        if (consumesQuery && op.type != BAM_CIGAR_SOFTCLIP_CHAR) {
+        if (consumesQuery) {
             
             // Don't return anything that runs off the end cap
-            int32_t len = rPos + op.length > end ? end - rPos + 1 : op.length;
+            int32_t len = rPos + op.length > end && op.type != BAM_CIGAR_INS_CHAR ? end - rPos + 1 : op.length;
+            
+            if (len == 0) {
+                BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                    "Can't extract cigar op sequence from query string when length has been calculated as 0.")
+                       + "\nLimits: " + lexical_cast<string>(start) + "," + lexical_cast<string>(end)
+                       + "\nQuery sequence: " + query
+                       + "\nCigar: " + getCigarAsString()
+                       + "\nCurrent op: " + op.toString()
+                       + "\nCurrent position in query: " + lexical_cast<string>(qPos)
+                       + "\nCurrent position in reference: " + lexical_cast<string>(rPos)
+                       + "\nCurrent output: " + ss.str()));
+            }
             
             //cout << qPos << endl;
             if (qPos < 0 || qPos + len > query.size()) {
                 BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
-                    "Can't extract cigar op sequence from query string.  Current position in query: ") 
-                        + lexical_cast<string>(qPos) + " Cigar op: " + op.type + lexical_cast<string>(op.length)));
+                    "Can't extract cigar op sequence from query string.")
+                       + "\nLimits: " + lexical_cast<string>(start) + "," + lexical_cast<string>(end)
+                       + "\nQuery sequence: " + query
+                       + "\nCigar: " + getCigarAsString()
+                       + "\nCurrent op: " + op.toString()
+                       + "\nCurrent position in query: " + lexical_cast<string>(qPos)
+                       + "\nCurrent position in reference: " + lexical_cast<string>(rPos)
+                       + "\nCurrent output: " + ss.str()));
             }
             
             ss << query.substr(qPos, len);
@@ -240,7 +313,7 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t
         else if (consumesRef) { // i.e. consumes reference but not query (DEL or REF_SKIP ops)
             string s;
             s.resize(op.length);
-            std::fill(s.begin(), s.end(), 'N'); 
+            std::fill(s.begin(), s.end(), BAM_CIGAR_DIFF_CHAR); 
             ss << s;
         }
         
@@ -249,13 +322,13 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t
     }
     
     actual_start = position > start ? position : start;
-    actual_end = rPos < end ? rPos : end;
+    actual_end = rPos <= end ? rPos - 1 : end;
     
     return ss.str();
 }
 
 
-string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq, uint32_t start, uint32_t end, uint32_t q_start, uint32_t q_end) const {
+string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq, uint32_t start, uint32_t end, uint32_t q_start, uint32_t q_end, const bool include_soft_clips) const {
     
     if (start > getEnd() || end < position)
         BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
@@ -283,7 +356,7 @@ string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq
     for(const auto& op : cigar) {
 
         bool consumesRef = CigarOp::opConsumesReference(op.type);
-        bool consumesQuery = CigarOp::opConsumesQuery(op.type);
+        bool consumesQuery = CigarOp::opConsumesQuery(op.type) && (include_soft_clips || op.type != BAM_CIGAR_SOFTCLIP_CHAR);
         
         // Skips any cigar ops before start position
         if (rPos < q_start) {
@@ -292,8 +365,8 @@ string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq
             continue;
         }
         
-        // Ends cigar loop once we reach the end of the region
-        if (rPos >= q_end) break;
+        // Ends cigar loop once we reach the end of the region (unless we have an insertion op here... then proceed)
+        if (rPos > q_end && op.type != BAM_CIGAR_INS_CHAR) break;
         
         if (consumesRef) {
             
@@ -306,7 +379,7 @@ string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq
                         + lexical_cast<string>(seqOffset) + 
                         "; Genome region length: " + lexical_cast<string>(genomeSeq.size()) +
                         "\nFull cigar: " + this->getCigarAsString() +
-                        "; Current cigar op: " + op.type + lexical_cast<string>(op.length) +
+                        "\nCurrent cigar op: " + op.type + lexical_cast<string>(op.length) +
                         "\nCurrent genomic position: " + lexical_cast<string>(rPos) +
                         "\nAlignment region: " + lexical_cast<string>(position) + "," + lexical_cast<string>(position + alignedLength) +
                         "\nGenome region: " + lexical_cast<string>(start) + "," + lexical_cast<string>(end) +
@@ -316,10 +389,10 @@ string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq
             //cout << seqOffset << endl;
             ss << genomeSeq.substr(seqOffset, len);
         }
-        else if (consumesQuery && op.type != BAM_CIGAR_SOFTCLIP_CHAR) {   // Consumes query but not reference ('I' op)
+        else if (consumesQuery) {   // Consumes query but not reference ('I' op)
             string s;
             s.resize(op.length);
-            std::fill(s.begin(), s.end(), 'N');
+            std::fill(s.begin(), s.end(), BAM_CIGAR_DIFF_CHAR);
             ss << s;
         }     
         
@@ -332,7 +405,15 @@ string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq
 
 string portcullis::bam::BamAlignment::toString() const {
     
+    return toString(false);
+}
+
+string portcullis::bam::BamAlignment::toString(bool afterClipping) const {
+    
+    uint32_t start = afterClipping && cigar.front().type == BAM_CIGAR_SOFTCLIP_CHAR ? position + cigar.front().length : position;
+    uint32_t end = afterClipping && cigar.back().type == BAM_CIGAR_SOFTCLIP_CHAR ? getEnd() - cigar.back().length : getEnd();
+    
     stringstream ss;
-    ss << refId << "(" << position << "-" << getEnd() << ")";
+    ss << refId << "(" << start << "-" << end << ")" << (this->isReverseStrand() ? "-" : "+");
     return ss.str();
 }
