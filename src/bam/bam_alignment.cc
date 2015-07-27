@@ -311,8 +311,9 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(const string& query_seq,
             ss << query.substr(qPos, len);
         }
         else if (consumesRef) { // i.e. consumes reference but not query (DEL or REF_SKIP ops)
+            uint32_t len = rPos + op.length > end ? end - rPos + 1 : op.length; // Make sure we don't exceed our ref end limit
             string s;
-            s.resize(op.length);
+            s.resize(len);
             std::fill(s.begin(), s.end(), BAM_CIGAR_DIFF_CHAR); 
             ss << s;
         }

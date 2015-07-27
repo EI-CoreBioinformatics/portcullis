@@ -223,6 +223,27 @@ BOOST_AUTO_TEST_CASE(padding2)
     BOOST_CHECK(boost::equals(paddedGenomicInRegion, "AATTTTATAAAAAX"));
 }
 
-
+BOOST_AUTO_TEST_CASE(padding3)
+{
+    vector<CigarOp> cigar = CigarOp::createFullCigarFromString("30S8M25N2M5D28M");
+    
+    string query = "ACAAAAACAGAAAAAAAAAGAAAAAAAAATACCAAAACCAACGCCTTCACTTAAAGACAAATATTCAA";
+    string genomic = "TACCAAAG";
+    
+    BamAlignment ba;
+    ba.setCigar(cigar);
+    ba.setRefId(2);
+    ba.setPosition(4776643);
+    ba.setAlignedLength(98);
+    
+    uint32_t left = 4776673;
+    uint32_t right = 4776680;
+    string paddedQueryInRegion = ba.getPaddedQuerySeq(query, 4776673, 4776680, left, right, false);
+    string paddedGenomicInRegion = ba.getPaddedGenomeSeq(genomic, 4776673, 4776680, left, right, false);
+    
+    BOOST_CHECK(paddedQueryInRegion.size() == paddedGenomicInRegion.size());
+    BOOST_CHECK(boost::equals(paddedQueryInRegion, "CAXXX"));
+    BOOST_CHECK(boost::equals(paddedGenomicInRegion, "CAAAG"));
+}
 
 BOOST_AUTO_TEST_SUITE_END()
