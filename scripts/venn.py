@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 __author__ = 'maplesod'
 
@@ -155,7 +155,7 @@ prc = float(tp) / float(tp + fp)
 
 print ("Sensitivity: " + str(sen))
 print ("Specificity: " + str(spc))
-print ("Precision:" + str(prc))
+print ("Precision: " + str(prc))
 print
 
 

@@ -63,6 +63,7 @@ private:
     
 public:
     
+    static string version;
     
     JunctionSystem();
     

@@ -11,15 +11,17 @@ Welcome to portcullis' documentation!
 
 Portcullis is designed to predict junctions from aligned RNA-seq data.  We expect
 the user to have already generated a BAM file using a splice aware aligner of their
-choice.  For example, Tophat, Gsnap, STAR or HISAT will work fine.  Portcullis
-will then analyse the BAM file to look for alignments containing gaps ('N' cigar ops)
+choice.  For example, Tophat, Gsnap, STAR or HISAT will work fine.  Portcullis is designed to
+be as portable as possible so where possible does not rely on esoteric SAM tags and other
+artifacts that are not consistently present in all SAM/BAMs.  Portcullis
+will then analyse the BAM file to look for alignments containing gaps (REFSKIP 'N' cigar ops)
 and create a detailed analysis of all distinct gaps found in the BAM file, these
 are considered as potential junctions.  Portcullis provides various means (both 
 manual and/or automatic) of filtering these potential junctions in order to remove 
 false positives.  Portcullis can also filter the original BAM file removing alignments 
 associated with `bad` junctions.  Both the filtered junctions and BAM files are cleaner
 and more usable resources which can more effectively be used to assist in downstream 
-analyses such as gene prediction and genome annotation.
+analyses such as gene prediction and genome annotation.  
 
 
 Contents:
@@ -38,8 +40,10 @@ System requirements
 ===================
 
 Portcullis supports Unix, linux or Mac systems.  Windows may work but hasn't been
-tested.  A minimum of 8GB RAM, which will enable you to process small datasets.  
-Medium to large datasets will require more RAM, potentially a lot more!
+tested.  A minimum of 8GB RAM, which will enable you to process small - medium sized datasets.  
+Large datasets will require more RAM (potentially a lot more), the actual amount of
+memory required depends on how many spliced alignments are present in your BAM file.
+Portcullis does not need to store the whole spliced alignment, just a hashcode from the name.
 
 
 .. _issues:

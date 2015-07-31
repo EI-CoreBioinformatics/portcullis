@@ -921,7 +921,7 @@ void portcullis::Junction::outputBED(std::ostream &strm, uint32_t id) {
                                 strandToChar(predictedStrand) :
                             strandToChar(intron->strand));
 
-    string juncId = string("junc_") + lexical_cast<string>(id);
+    string juncId = string("portcullis_junc_") + lexical_cast<string>(id);
 
     int32_t sz1 = intron->start - leftFlankStart;
     int32_t sz2 = rightFlankEnd - intron->end;
