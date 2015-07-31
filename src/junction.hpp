@@ -53,7 +53,7 @@ const uint16_t MAP_QUALITY_THRESHOLD = 30;
 typedef boost::error_info<struct JunctionError,string> JunctionErrorInfo;
 struct JunctionException: virtual boost::exception, virtual std::exception { };
 
-const size_t NB_METRICS = 24;
+const size_t NB_METRICS = 27;
 const string METRIC_NAMES[NB_METRICS] = {
         "M1-canonical_ss",
         "M2-nb_reads",
@@ -75,10 +75,13 @@ const string METRIC_NAMES[NB_METRICS] = {
         "M18-mm_score",
         "M19-nb_mismatches",
         "M20-nb_msrs",
-        "M21-nb_up_juncs",
-        "M22-nb_down_juncs",
-        "M23-up_aln",
-        "M24-down_aln"        
+        "M21-nb_down_juncs",
+        "M22-nb_up_juncs",
+        "M23-down_aln",
+        "M24-up_aln",
+        "M25-dist_2_down_junc",
+        "M26-dist_2_up_junc",
+        "M27-dist_nearest_junc"         
     };
 
 const string PREDICTION_NAMES[1] = {
@@ -177,6 +180,9 @@ private:
     uint16_t nbDownstreamJunctions;             // Metric 22
     uint32_t nbUpstreamFlankingAlignments;      // Metric 23
     uint32_t nbDownstreamFlankingAlignments;    // Metric 24
+    int32_t distanceToNextUpstreamJunction;    // Metric 25
+    int32_t distanceToNextDownstreamJunction;  // Metric 26
+    int32_t distanceToNearestJunction;         // Metric 27
     
     
     // **** Predictions ****
@@ -585,14 +591,34 @@ public:
     uint16_t getNbUpstreamJunctions() const {
         return nbUpstreamJunctions;
     }
+    
+    uint32_t getDistanceToNearestJunction() const {
+        return distanceToNearestJunction;
+    }
 
+    void setDistanceToNearestJunction(uint32_t distanceToNearestJunction) {
+        this->distanceToNearestJunction = distanceToNearestJunction;
+    }
 
+    uint32_t getDistanceToNextDownstreamJunction() const {
+        return distanceToNextDownstreamJunction;
+    }
 
+    void setDistanceToNextDownstreamJunction(uint32_t distanceToNextDownstreamJunction) {
+        this->distanceToNextDownstreamJunction = distanceToNextDownstreamJunction;
+    }
+
+    uint32_t getDistanceToNextUpstreamJunction() const {
+        return distanceToNextUpstreamJunction;
+    }
+
+    void setDistanceToNextUpstreamJunction(uint32_t distanceToNextUpstreamJunction) {
+        this->distanceToNextUpstreamJunction = distanceToNextUpstreamJunction;
+    }
 
     Strand getPredictedStrand() const {
         return predictedStrand;
     }
-
 
     void setDa1(string da1) {
         this->da1 = da1;
@@ -752,10 +778,13 @@ public:
                     << j.multipleMappingScore << "\t"
                     << j.nbMismatches << "\t"
                     << j.nbMultipleSplicedReads << "\t"
-                    << j.nbUpstreamJunctions << "\t"
                     << j.nbDownstreamJunctions << "\t"
+                    << j.nbUpstreamJunctions << "\t"
+                    << j.nbDownstreamFlankingAlignments << "\t"
                     << j.nbUpstreamFlankingAlignments << "\t"
-                    << j.nbDownstreamFlankingAlignments;
+                    << j.distanceToNextDownstreamJunction << "\t"
+                    << j.distanceToNextUpstreamJunction << "\t"
+                    << j.distanceToNearestJunction;
                     
     }
     

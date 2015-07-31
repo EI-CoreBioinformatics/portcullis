@@ -340,6 +340,66 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
         }
         junctionGroup[maxIndex]->setPrimaryJunction(true);
     }
+    
+    if (verbose) {
+        cout << "done." << endl;        
+        cout << " - Calculating distances between junctions ... ";
+        cout.flush();
+    }
+    
+    size_t i = 0;
+    bool lastdiffseq = false;
+    while(i < junctionList.size() - 1) {
+        
+        JunctionPtr first = junctionList[i];
+        JunctionPtr second = junctionList[i+1];
+        
+        int32_t diff = second->getIntron()->start - first->getIntron()->end;
+        
+        diff = diff < 0 ? 0 : diff;        
+        
+        if (first->getIntron()->ref.index != second->getIntron()->ref.index) {
+            first->setDistanceToNextUpstreamJunction(-1);
+            second->setDistanceToNextDownstreamJunction(-1);
+            
+            if (i == 0 || lastdiffseq) {
+                first->setDistanceToNextDownstreamJunction(-1);
+            }
+            
+            if (i == junctionList.size() - 2) {
+                second->setDistanceToNextUpstreamJunction(-1);
+            }
+            
+            lastdiffseq = true;
+        }
+        else if (i == 0) {
+            first->setDistanceToNextDownstreamJunction(-1);
+            first->setDistanceToNextUpstreamJunction(diff);
+            second->setDistanceToNextDownstreamJunction(diff);
+            lastdiffseq = false;
+        }
+        else if (i == junctionList.size() - 2) {
+            first->setDistanceToNextUpstreamJunction(diff);
+            second->setDistanceToNextDownstreamJunction(diff);
+            second->setDistanceToNextUpstreamJunction(-1);
+            lastdiffseq = false;
+        }
+        else {
+            first->setDistanceToNextUpstreamJunction(diff);
+            second->setDistanceToNextDownstreamJunction(diff);
+            lastdiffseq = false;
+        }
+        
+        i++;
+    }
+    
+    for(auto& junc : junctionList) {
+        
+        int32_t down = junc->getDistanceToNextDownstreamJunction();
+        int32_t up = junc->getDistanceToNextUpstreamJunction();
+        
+        junc->setDistanceToNearestJunction(down == -1 || up == -1 ? max(down, up) : min(down, up));
+    }
 
     if(verbose) {
         cout << "done." << endl;        

@@ -426,6 +426,14 @@ void portcullis::JunctionFilter::filter() {
         cout << iterator->first << ": " << iterator->second << endl;
     }
     
+    cout << endl
+         << "Recalculating junction grouping and distance stats based on new junction list that passed filters ...";
+    cout.flush();
+    
+    passJunc.calcJunctionStats();
+    
+    cout << " done." << endl;
+    
     
     // Output stats
     size_t diff = originalJuncs.size() - passJunc.size();

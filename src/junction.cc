@@ -130,7 +130,10 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftFlankS
     multipleMappingScore = 0.0;
     nbMismatches = 0;
     nbMultipleSplicedReads = 0;
-
+    distanceToNextUpstreamJunction = 0;
+    distanceToNextDownstreamJunction = 0;
+    distanceToNearestJunction = 0;
+    
     predictedStrand = UNKNOWN;
     nbUpstreamJunctions = 0;
     nbDownstreamJunctions = 0;
@@ -170,6 +173,9 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
     predictedStrand = j.predictedStrand;
     nbUpstreamJunctions = j.nbUpstreamJunctions;
     nbDownstreamJunctions = j.nbDownstreamJunctions;
+    distanceToNextUpstreamJunction = j.distanceToNextUpstreamJunction;
+    distanceToNextDownstreamJunction = j.distanceToNextDownstreamJunction;
+    distanceToNearestJunction = j.distanceToNearestJunction;
 
     if (withAlignments) {
 
@@ -766,7 +772,7 @@ double portcullis::Junction::calcCoverage(const vector<uint32_t>& coverageLevels
 
 
     
-    // **** Output methods ****
+// **** Output methods ****
     
 /**
  * Complete human readable description of this junction
@@ -806,11 +812,13 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
          << "M18: Multiple mapping score: " << multipleMappingScore << delimiter
          << "M19: # mismatches: " << nbMismatches << delimiter
          << "M20: # Multiple Spliced Reads: " << nbMultipleSplicedReads << delimiter
+         << "M21: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
          << "M21: # Upstream Junctions: " << nbUpstreamJunctions << delimiter
-         << "M22: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
-         << "M23: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
-         << "M24: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments;
-
+         << "M23: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
+         << "M24: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
+         << "M25: # Distance to next downstream junction: " << distanceToNextDownstreamJunction << delimiter
+         << "M26: # Distance to next upstream junction: " << distanceToNextUpstreamJunction << delimiter
+         << "M27: # Distance to nearest junction: " << distanceToNearestJunction;         
 }
     
     
@@ -962,9 +970,9 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     vector<string> parts; // #2: Search for tokens
     boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
 
-    if (parts.size() != 36) {
+    if (parts.size() != 39) {
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-            "Could not parse line due to incorrect number of columns. Expected 36 columns: ") + line));
+            "Could not parse line due to incorrect number of columns.  Check file and portcullis versions.  Expected 39 columns: ") + line));
     }
 
     // Create intron
