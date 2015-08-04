@@ -374,13 +374,13 @@ void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t re
 
         const BamAlignment& ba = reader.current();
         
-        int32_t pos = ba.getPosition();
+        int32_t pos = ba.getStart(true);
 
         //TODO: Should we consider strand specific reads differently here?
 
         // Look for left flanking alignments
         if (    intron->start > pos && 
-                leftFlankStart <= ba.getEnd()) {
+                leftFlankStart <= ba.getEnd(true)) {
             nbLeftFlankingAlignments++;
         }
 
@@ -417,8 +417,8 @@ void portcullis::Junction::calcAnchorStats() {
     
     for(const BamAlignment& ba : junctionAlignments) {
 
-        const int32_t lStart = ba.getPosition();
-        const int32_t rEnd = ba.getEnd();
+        const int32_t lStart = ba.getStart(true);
+        const int32_t rEnd = ba.getEnd(true);
         
         int32_t leftSize = ba.calcNbAlignedBases(lStart, intron->start - 1, false);
         int32_t rightSize = ba.calcNbAlignedBases(intron->end + 1, rEnd, false);   // Will auto crop for end of alignment
@@ -443,30 +443,7 @@ void portcullis::Junction::calcAnchorStats() {
     diffAnchor = min(diffLeftSize, diffRightSize);    
 }
     
-    
-/**
- * Metric 6: Entropy (definition from "Graveley et al, The developmental 
- * transcriptome of Drosophila melanogaster, Nature, 2011")
- * 
- * Calculates the entropy score for this junction.  Higher entropy is generally
- * more indicative of a genuine junction than a lower score.
- *
- * This version of the function collects BamAlignment start positions and passes
- * them to an overloaded version of this function.
- * 
- * @return The entropy of this junction
- */
-double portcullis::Junction::calcEntropy() {
 
-    vector<int32_t> junctionPositions;
-
-    for(const auto& ba : junctionAlignments) {
-        junctionPositions.push_back(ba.getPosition());
-    }
-
-    return calcEntropy(junctionPositions);        
-}
-    
 /**
  * Metric 6: Entropy (definition from "Graveley et al, The developmental 
  * transcriptome of Drosophila melanogaster, Nature, 2011")
@@ -496,8 +473,19 @@ double portcullis::Junction::calcEntropy() {
  * 
  * @return The entropy of this junction
  */
-double portcullis::Junction::calcEntropy(vector<int32_t>& junctionPositions) {
+double portcullis::Junction::calcEntropy() {
 
+    vector<int32_t> junctionPositions;
+
+    for(const auto& ba : junctionAlignments) {
+        junctionPositions.push_back(ba.getStart(true));
+    }
+    
+    // Should already be sorted but let's be sure.  This is critical to the rest
+    // of the algorithm.  It's possible after soft clips are removed that the reads
+    // are not strictly in the correct order.
+    std::sort(junctionPositions.begin(), junctionPositions.end());
+    
     size_t nbJunctionAlignments = junctionPositions.size();
 
     if (nbJunctionAlignments <= 1)
@@ -505,12 +493,14 @@ double portcullis::Junction::calcEntropy(vector<int32_t>& junctionPositions) {
 
     double sum = 0.0;
 
-    int32_t lastOffset = max(junctionPositions[0], leftFlankStart);
+    //int32_t lastOffset = max(junctionPositions[0], leftFlankStart);
+    int32_t lastOffset = junctionPositions[0];
     uint32_t readsAtOffset = 0;
 
     for(size_t i = 0; i < nbJunctionAlignments; i++) {
 
-        int32_t pos = max(junctionPositions[i], leftFlankStart);
+        //int32_t pos = max(junctionPositions[i], leftFlankStart);    // Required to ensure we don't include info from other junctions
+        int32_t pos = junctionPositions[i];
 
         readsAtOffset++;
 
@@ -522,7 +512,7 @@ double portcullis::Junction::calcEntropy(vector<int32_t>& junctionPositions) {
         }
     }
 
-    entropy = -sum;        
+    entropy = fabs(sum);
     return entropy;
 }
      
@@ -544,8 +534,8 @@ void portcullis::Junction::calcAlignmentStats() {
 
     for(auto& ba : junctionAlignments) {
 
-        const int32_t start = ba.getPosition();
-        const int32_t end = ba.getEnd();
+        const int32_t start = ba.getStart(true);
+        const int32_t end = ba.getEnd(true);
 
         if (start != lastStart || end != lastEnd ) {
             nbDistinctAlignments++;                
