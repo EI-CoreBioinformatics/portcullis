@@ -84,10 +84,13 @@ public:
     
     PreparedFiles() {}
     
-    PreparedFiles(const path& _prepDir) : prepDir(_prepDir) {
+    PreparedFiles(const path& _prepDir) : prepDir(_prepDir) {    
         
         if (!bfs::exists(prepDir)) {
-            bfs::create_directory(prepDir);
+            if (!bfs::create_directories(prepDir)) {
+                BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "Could not create output directory at: ") + prepDir.string()));
+            }
         }
     }
         

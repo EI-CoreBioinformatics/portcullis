@@ -119,6 +119,13 @@ portcullis::JunctionBuilder::~JunctionBuilder() {
  */
 void portcullis::JunctionBuilder::process() {
 
+    if (!bfs::exists(outputDir)) {
+        if (!bfs::create_directories(outputDir)) {
+            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                    "Could not create output directory at: ") + outputDir.string()));
+        }
+    }
+    
     auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");
 
     const path sortedBamFile = prepData.getSortedBamFilePath();
