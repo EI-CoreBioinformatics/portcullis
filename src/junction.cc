@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <random>
 #include <unordered_map>
 using std::endl;
 using std::min;
@@ -116,23 +117,23 @@ void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t l
 
 uint32_t portcullis::AlignmentInfo::getNbMatchesFromStart(const string& query, const string& anchor) {
 
-    for(size_t i = 0; i < query.length(); i++) {
+    for(size_t i = 0; i < query.size(); i++) {
         if (query[i] != anchor[i]) {
             return i;
         }
     }
 
-    return query.length();
+    return query.size();
 }
 
 uint32_t portcullis::AlignmentInfo::getNbMatchesFromEnd(const string& query, const string& anchor) {
-    for(size_t i = query.length() - 1; i >= 0; i--) {
+    for(size_t i = query.size() - 1; i >= 0; i--) {
         if (query[i] != anchor[i]) {
-            return i;
+            return query.size() - i - 1;
         }
     }
 
-    return query.length();
+    return query.size();
 }
 
 /**
@@ -224,6 +225,8 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
     
     alignments.clear();
     alignmentCodes.clear();
+    trimmedCoverage.clear();
+    trimmedLogDevCov.clear();
 }
    
 /**
@@ -269,6 +272,16 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
             this->alignments.push_back(make_shared<AlignmentInfo>(j.alignments[i]->ba));
             this->alignmentCodes.push_back(j.alignments[i]->nameCode);
         }
+    }
+    
+    trimmedCoverage.clear();
+    for (auto& x : j.trimmedCoverage) {
+        trimmedCoverage.push_back(x);
+    }
+    
+    trimmedLogDevCov.clear();
+    for (auto& x : j.trimmedLogDevCov) {
+        trimmedLogDevCov.push_back(x);
     }
 }
     
@@ -439,7 +452,10 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
     this->calcMaxMMES();
     
     // Calculate mean mismatches (using info in alignments)
-    this->calcMeanMismatches();    
+    this->calcMeanMismatches();  
+    
+    // ???
+    this->calcTrimmedCoverageVector();
 }
     
 void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, StrandSpecific strandSpecific) {
@@ -733,6 +749,7 @@ void portcullis::Junction::calcMeanMismatches() {
     
     meanMismatches = (double)nbMismatches / (double)alignments.size();
 }
+
     
 /**
  * Calculates metric 18.  Multiple mapping score
@@ -749,6 +766,70 @@ void portcullis::Junction::calcMultipleMappingScore(SplicedAlignmentMap& map) {
     this->multipleMappingScore = (double)N / (double)M;
 }
     
+void portcullis::Junction::calcTrimmedCoverageVector() {
+    
+    // Sets vector to right size with all values set to 0
+    trimmedCoverage.assign(TRIMMED_COVERAGE_LENGTH, 0);
+    trimmedLogDevCov.assign(TRIMMED_COVERAGE_LENGTH, 0.0);
+    
+    const uint32_t armLength = TRIMMED_COVERAGE_LENGTH / 2;
+    for(auto& a : alignments) {
+        
+        uint32_t start = a->upstreamMatches > armLength ? 0 : armLength - a->upstreamMatches;
+        uint32_t end = a->downstreamMatches >= armLength ? TRIMMED_COVERAGE_LENGTH - 1 : armLength + a->downstreamMatches;
+        
+        for(uint32_t i = start; i <= end; i++) {
+            trimmedCoverage[i]++;
+        }
+    }
+    
+    // Calculate the expected coverage value (assuming normal distribution)
+    
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    
+    
+    uint32_t sum = 0;
+    for(auto& k : trimmedCoverage) {
+        sum += k;
+    }
+    double meanExpectedCoverage = (double)sum / (double)TRIMMED_COVERAGE_LENGTH;
+    double sumDev = 0.0;
+    for(auto& k : trimmedCoverage) {
+        sumDev += (k-meanExpectedCoverage)*(k-meanExpectedCoverage);
+    }
+    double stdDev = sqrt(sumDev/(double)TRIMMED_COVERAGE_LENGTH);           
+
+    std::normal_distribution<> d(meanExpectedCoverage, stdDev);
+    
+    // Calculate the log deviation from the expected uniform coverage value
+    double logDevSum = 0.0;
+    for(size_t i = 0; i < trimmedCoverage.size(); i++) {
+        double logDev = log2((double)trimmedCoverage[i] / d(gen));   
+        logDev = std::isinf(logDev) || std::isnan(logDev) ? 0.0 : logDev;
+        logDevSum += abs(logDev);
+        trimmedLogDevCov[i] = logDev;
+    }
+    
+    //cout << logDevSum << endl;
+    
+    
+    /*stringstream ss;
+    ss << std::setprecision(2);
+        
+    for(size_t i = 0; i < trimmedCoverage.size(); i++) {
+        ss << trimmedCoverage[i] << "\t";
+    }
+    ss << endl;
+    for(size_t i = 0; i < trimmedCoverage.size(); i++) {
+        ss << trimmedLogDevCov[i] << "\t";
+    }
+    ss << endl;
+    
+    string s = ss.str();
+    cout << s;
+    int i = 0;*/
+}
     
 double portcullis::Junction::calcCoverage(int32_t a, int32_t b, const vector<uint32_t>& coverageLevels) {
 
@@ -1039,7 +1120,7 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     j->setUniqueJunction(lexical_cast<bool>(parts[27]));
     j->setPrimaryJunction(lexical_cast<bool>(parts[28]));
     j->setMultipleMappingScore(lexical_cast<double>(parts[29]));
-    j->setMeanMismatches(lexical_cast<uint16_t>(parts[30]));
+    j->setMeanMismatches(lexical_cast<double>(parts[30]));
     j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[31]));
     j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[32]));
     j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[33]));

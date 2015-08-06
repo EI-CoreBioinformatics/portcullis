@@ -76,12 +76,13 @@ the purposes of this metric.
 Metric 8 - Max-min-Anchor
 -------------------------
 
-This is the maximum of the minimum anchor sizes of all spliced reads associated with
+This is the maximum of the minimum (shorter) anchor sizes of all spliced reads associated with
 this junction.  Again, all upstream and downstream junctions contained within MSRs
 are collapsed for the purposes of this metric.  
 
 #TODO pretty pic
 
+Originally used in TrueSight
 
 Metric 9 - Difference between Anchors
 -------------------------------------
@@ -104,14 +105,25 @@ the two values reported.
 Metric 11 - Entropy
 -------------------
 
-This describes the entropy of the spliced reads associated with this junction. 
-Higher entropy is generally more indicative of a genuine junction than a lower score.
-The entropy score is a function of both the total number of reads that map to a 
-given junction and the number of different offsets to which  those reads map and 
+This describes the shannon entropy of the spliced reads associated with this junction.
+This score is a measure of the amount of information present in the set of spliced
+reads supporting this junction. This metric is used to avoid problems attributed 
+to calling splice junctions based on read counting alone, when read counting each
+read is assigned equal weight, even if they all start at the same position.  Typically,
+you would expect a uniform distribution of starting positions for reads across the
+upstream anchor of the splice site, therefore a situation where all reads are stacked
+on top of one another should be treated as suspicious.  Simply counting reads also
+makes it difficult to assign good minimum threshold values at which to call genuine
+junctions.  The Entropy metric circumvents these problems. The entropy score is a 
+function of both the total number of reads that map to a 
+given junction, the number of different offsets to which those reads map and 
 the number that map at each offset. Thus, junctions with multiple reads mapping 
 at each of the possible windows across the junction will be assigned a higher 
-entropy score, than junctions where many reads map to only one or two positions. 
-     
+entropy score, than junctions where many reads map to only one or two positions.
+
+Although very useful, one disadvantage of the entropy score is that it does not take into account the
+quality of the reads contained within it, for example the number of mismatches present.
+
 Entropy was calculated using the following equations::
 
 * p_i = nb_reads_at_offset_i / total_reads_in_junction_window 
@@ -119,19 +131,24 @@ Entropy was calculated using the following equations::
 
 #TODO pretty pic
 
+Shannon Entropy scores are also used in TrueSight and SPANKI.
 
-Metric 12 - Maximum of the Minimal Match of Either Side (MaxMMES)
------------------------------------------------------------------
+
+Metric 12 - Maximum of the Minimal Match of Either Side of exon junction (MaxMMES)
+----------------------------------------------------------------------------------
 
 This metric takes into account mismatches in the anchors on either side of the junction.
 For each spliced read associated with the junction, we look at both anchors.  The
 score for each anchor is the anchor length minus any mismatches to the reference.
 The minimal score from either the upstream or downstream anchor is taken.  Then from
-these scores the maximum is taken from all spliced reads.  Caution must be taken
-interpreting this result.  Some splice aware mappers such as tophat by default require
-all spliced reads to have 0 mismatches.  In this case this metric is not very useful.
+these scores the maximum is taken from all spliced reads.  The MaxMMES for perfectly
+aligned reads should be the same as Max-Min-Anchor score.  Therefore the difference
+between the two metrics is worth considering to gain an insight into how well the
+reads are mapping for a given junction.
 
 #TODO pretty pic
+
+Originally described in Wang et al, 2010
 
 Metric 13 / 14 - 5' and 3' Hamming distance
 ---------------------------------------------

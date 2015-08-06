@@ -150,6 +150,7 @@ public:
     
     void calcJunctionStats(bool verbose);
     
+    void calcTrimmedOverhangScore();
     
     void saveAll(const path& outputPrefix);
     

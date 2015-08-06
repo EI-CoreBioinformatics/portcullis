@@ -96,6 +96,11 @@ const string CANONICAL_SEQ_RC = SeqUtils::reverseComplement(CANONICAL_SEQ);
 const string SEMI_CANONICAL_SEQ1_RC = SeqUtils::reverseComplement(SEMI_CANONICAL_SEQ1);
 const string SEMI_CANONICAL_SEQ2_RC = SeqUtils::reverseComplement(SEMI_CANONICAL_SEQ2);
 
+// Represents both upstream and downstream coverage levels.  The half way point represents
+// the junction.  Use an even number to ensure upstream and downstream lengths are
+// equal and to avoid any issues.
+const uint32_t TRIMMED_COVERAGE_LENGTH = 50;
+
 enum CanonicalSS {
     CANONICAL,
     SEMI_CANONICAL,
@@ -193,6 +198,8 @@ private:
     shared_ptr<Intron> intron;
     vector<shared_ptr<AlignmentInfo>> alignments;
     vector<size_t> alignmentCodes;
+    vector<uint32_t> trimmedCoverage;
+    vector<double> trimmedLogDevCov;
         
     
     // **** Junction metrics ****
@@ -220,9 +227,10 @@ private:
     uint16_t nbDownstreamJunctions;             // Metric 22
     uint32_t nbUpstreamFlankingAlignments;      // Metric 23
     uint32_t nbDownstreamFlankingAlignments;    // Metric 24
-    int32_t distanceToNextUpstreamJunction;    // Metric 25
-    int32_t distanceToNextDownstreamJunction;  // Metric 26
-    int32_t distanceToNearestJunction;         // Metric 27
+    int32_t distanceToNextUpstreamJunction;     // Metric 25
+    int32_t distanceToNextDownstreamJunction;   // Metric 26
+    int32_t distanceToNearestJunction;          // Metric 27
+    double trimmedOverhangScore;                // Metric 28
     
     
     // **** Predictions ****
@@ -405,6 +413,8 @@ public:
      */
     void calcMultipleMappingScore(SplicedAlignmentMap& map);
     
+
+    void calcTrimmedCoverageVector();
     
     double calcCoverage(int32_t a, int32_t b, const vector<uint32_t>& coverageLevels);
     
@@ -741,6 +751,11 @@ public:
         this->nbMultipleSplicedReads = nbMultipleSplicedReads;
     }
 
+    void setTrimmedLogDevCov(vector<double> trimmedLogDevCov) {
+        this->trimmedLogDevCov = trimmedLogDevCov;
+    }
+
+    
     
     // **** Output methods ****
     
