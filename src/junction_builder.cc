@@ -178,9 +178,10 @@ void portcullis::JunctionBuilder::process() {
     while(reader.next()) {
 
         const BamAlignment& al = reader.current();
+        const int32_t refId = al.getReferenceId();
         
         while (junctionSystem.size() > 0 && lastCalculatedJunctionIndex < junctionSystem.size() && 
-                (al.getReferenceId() != lastRefId || al.getPosition() > junctionSystem.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end)) {
+                (refId != lastRefId || al.getPosition() > junctionSystem.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end)) {
 
             JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);            
 
@@ -193,11 +194,11 @@ void portcullis::JunctionBuilder::process() {
             lastSeqCount++;
         }
 
-        if (lastRefId == -1 || al.getReferenceId() != lastRefId) {
+        if (lastRefId == -1 || refId != lastRefId) {
             
             // Just check we haven't got any strange alignments that are not associated with ref seqs.
             // End if we do
-            if (al.getReferenceId() >= refs.size()) {
+            if (refId >= refs.size()) {
                 break;
             }
             
@@ -207,17 +208,17 @@ void portcullis::JunctionBuilder::process() {
                 percentComplete = 0;
             }
             
-            cout << " - " << refs[al.getReferenceId()].name << "\t 0% ... ";
+            cout << " - " << refs[refId].name << "\t 0% ... ";
             cout.flush();
             
-            chunkSize = refs[al.getReferenceId()].length / 10;
+            chunkSize = refs[refId].length / 10;
             nextTarget += chunkSize;
             percentComplete += 10;
             
             lastSeqCount = 0;
         }
 
-        lastRefId = al.getReferenceId();
+        lastRefId = refId;
 
         int32_t len = al.getLength();
         minQueryLength = min(minQueryLength, len);

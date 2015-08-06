@@ -183,14 +183,18 @@ Therefore a score of 1 indicates that all spliced reads associated with the junc
 are only found in this junction.  A low score would indicate that the those reads map
 to multiple locations across the genome.
 
+Originally described in TrueSight paper.
 
-Metric 19 - Number of mismatches
+
+Metric 19 - Mean mismatches
 --------------------------------
 
-This is the total number of mismatches found in all spliced reads supporting the
+This is the mean number of mismatches found across all spliced reads supporting the
 junction.  This includes any mismatches at any point along the spliced read, which
 includes mismatches even if they are the otherside of another junction in the case 
 of an MSR.
+
+Originally described in TrueSight paper.
 
 
 Metric 20 - Number of Multiple Spliced Reads

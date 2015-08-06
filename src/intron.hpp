@@ -161,7 +161,7 @@ public:
     
     void outputDescription(ostream& strm, string delimiter);
     
-    string toString() {
+    string toString() const {
         stringstream ss;
         ss << ref.name << "(" << start << "," << end << ")" << strandToChar(strand);
         return ss.str();

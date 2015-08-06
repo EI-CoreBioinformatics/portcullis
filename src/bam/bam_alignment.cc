@@ -190,7 +190,7 @@ string portcullis::bam::BamAlignment::getQuerySeqAfterClipping(const string& seq
     int32_t deltaStart = clippedStart - start;
     int32_t deltaEnd = end - clippedEnd;
     
-    return seq.substr(deltaStart, seq.size() - deltaStart - deltaEnd);    
+    return seq.substr(deltaStart, seq.size() - deltaStart - deltaEnd + 1);
 }
 
 
@@ -287,10 +287,11 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(const string& query_seq,
                 BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
                     "Can't extract cigar op sequence from query string when length has been calculated as 0.")
                        + "\nLimits: " + lexical_cast<string>(start) + "," + lexical_cast<string>(end)
-                       + "\nQuery sequence: " + query
+                       + "\nQuery sequence: " + query + " (" + lexical_cast<string>(query.size()) + ")"
                        + "\nCigar: " + getCigarAsString()
                        + "\nCurrent op: " + op.toString()
                        + "\nCurrent position in query: " + lexical_cast<string>(qPos)
+                       + "\nRequested length: " + lexical_cast<string>(len)
                        + "\nCurrent position in reference: " + lexical_cast<string>(rPos)
                        + "\nCurrent output: " + ss.str()));
             }
@@ -300,10 +301,11 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(const string& query_seq,
                 BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
                     "Can't extract cigar op sequence from query string.")
                        + "\nLimits: " + lexical_cast<string>(start) + "," + lexical_cast<string>(end)
-                       + "\nQuery sequence: " + query
+                       + "\nQuery sequence: " + query + " (" + lexical_cast<string>(query.size()) + ")"
                        + "\nCigar: " + getCigarAsString()
                        + "\nCurrent op: " + op.toString()
                        + "\nCurrent position in query: " + lexical_cast<string>(qPos)
+                       + "\nRequested length: " + lexical_cast<string>(len) 
                        + "\nCurrent position in reference: " + lexical_cast<string>(rPos)
                        + "\nCurrent output: " + ss.str()));
             }
@@ -412,7 +414,7 @@ string portcullis::bam::BamAlignment::toString() const {
 string portcullis::bam::BamAlignment::toString(bool afterClipping) const {
     
     uint32_t start = afterClipping && cigar.front().type == BAM_CIGAR_SOFTCLIP_CHAR ? position + cigar.front().length : position;
-    uint32_t end = afterClipping && cigar.back().type == BAM_CIGAR_SOFTCLIP_CHAR ? getEnd() - cigar.back().length : getEnd();
+    uint32_t end = afterClipping && cigar.back().type == BAM_CIGAR_SOFTCLIP_CHAR ? getEnd(true) : getEnd();
     
     stringstream ss;
     ss << refId << "(" << start << "-" << end << ")" << (this->isReverseStrand() ? "-" : "+");

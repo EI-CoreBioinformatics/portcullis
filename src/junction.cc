@@ -51,6 +51,90 @@ using portcullis::Strand;
 
 #include "junction.hpp"
 
+
+void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t leftStart, const uint32_t rightEnd, const string& ancLeft, const string& ancRight) {
+        
+    uint32_t leftEnd = i.start - 1;
+    uint32_t rightStart = i.end + 1;
+
+    uint32_t qLeftStart = leftStart;
+    uint32_t qLeftEnd = leftEnd;
+    uint32_t qRightStart = rightStart;
+    uint32_t qRightEnd = rightEnd;
+
+    string qAnchorLeft = ba->getPaddedQuerySeq(leftStart, leftEnd, qLeftStart, qLeftEnd, false);
+    string qAnchorRight = ba->getPaddedQuerySeq(rightStart, rightEnd, qRightStart, qRightEnd, false);
+
+    string gAnchorLeft = ba->getPaddedGenomeSeq(ancLeft, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
+    string gAnchorRight = ba->getPaddedGenomeSeq(ancRight, rightStart, rightEnd, qRightStart, qRightEnd, false);
+
+    if (qAnchorLeft.size() != gAnchorLeft.size() || qAnchorLeft.empty()) {
+       BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+            "Left anchor region for query and genome are not the same size.")
+               + "\nIntron: " + i.toString() 
+               + "\nJunction anchor limits: " + lexical_cast<string>(leftStart) + "," + lexical_cast<string>(rightEnd)
+               + "\nGenomic sequence: " + ancLeft
+               + "\nAlignment coords (before soft clipping): " + ba->toString(false)
+               + "\nAlignment coords (after soft clipping): " + ba->toString(true)
+               + "\nRead name: " + ba->deriveName()
+               + "\nRead seq (before soft clipping): " + ba->getQuerySeq() + " (" + lexical_cast<string>(ba->getQuerySeq().size()) + ")"
+               + "\nRead seq (after soft clipping): " + ba->getQuerySeqAfterClipping() + " (" + lexical_cast<string>(ba->getQuerySeqAfterClipping().size()) + ")"
+               + "\nCigar: " + ba->getCigarAsString()
+               + "\nLeft Anchor query seq:  \n" + qAnchorLeft + " (" + lexical_cast<string>(qAnchorLeft.size()) + ")"
+               + "\nLeft Anchor genome seq: \n" + gAnchorLeft + " (" + lexical_cast<string>(gAnchorLeft.size()) + ")"));
+    }
+
+    if (qAnchorRight.size() != gAnchorRight.size() || qAnchorRight.empty()) {
+       BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+            "Right Anchor region for query and genome are not the same size.")
+               + "\nIntron: " + i.toString() 
+               + "\nJunction anchor limits: " + lexical_cast<string>(leftStart) + "," + lexical_cast<string>(rightEnd)
+               + "\nGenomic sequence: " + ancRight
+               + "\nAlignment coords (before soft clipping): " + ba->toString(false)
+               + "\nAlignment coords (after soft clipping): " + ba->toString(true)
+               + "\nRead name: " + ba->deriveName()
+               + "\nRead seq (before soft clipping): " + ba->getQuerySeq() + " (" + lexical_cast<string>(ba->getQuerySeq().size()) + ")"
+               + "\nRead seq (after soft clipping): " + ba->getQuerySeqAfterClipping() + " (" + lexical_cast<string>(ba->getQuerySeqAfterClipping().size()) + ")"
+               + "\nCigar: " + ba->getCigarAsString()
+               + "\nRight Anchor query seq:  \n" + qAnchorRight + " (" + lexical_cast<string>(qAnchorRight.size()) + ")"
+               + "\nRight Anchor genome seq: \n" + gAnchorRight + " (" + lexical_cast<string>(gAnchorRight.size()) + ")"));
+    }
+
+    totalUpstreamMismatches = SeqUtils::hammingDistance(qAnchorLeft, gAnchorLeft);
+    totalDownstreamMismatches = SeqUtils::hammingDistance(qAnchorRight, gAnchorRight);
+    totalUpstreamMatches = qAnchorLeft.size() - totalUpstreamMismatches;
+    totalDownstreamMatches = qAnchorRight.size() - totalDownstreamMismatches;
+    nbMismatches = totalUpstreamMismatches + totalDownstreamMismatches;                       
+
+    upstreamMatches = getNbMatchesFromEnd(qAnchorLeft, gAnchorLeft);
+    downstreamMatches = getNbMatchesFromStart(qAnchorRight, gAnchorRight);
+    minMatch = min(upstreamMatches, downstreamMatches);
+    maxMatch = max(upstreamMatches, downstreamMatches);
+
+    mmes = min(totalUpstreamMatches, totalDownstreamMatches);
+}
+
+uint32_t portcullis::AlignmentInfo::getNbMatchesFromStart(const string& query, const string& anchor) {
+
+    for(size_t i = 0; i < query.length(); i++) {
+        if (query[i] != anchor[i]) {
+            return i;
+        }
+    }
+
+    return query.length();
+}
+
+uint32_t portcullis::AlignmentInfo::getNbMatchesFromEnd(const string& query, const string& anchor) {
+    for(size_t i = query.length() - 1; i >= 0; i--) {
+        if (query[i] != anchor[i]) {
+            return i;
+        }
+    }
+
+    return query.length();
+}
+
 /**
  * Tests whether the two strings could represent valid donor and acceptor sites
  * for this junction
@@ -105,12 +189,12 @@ Strand portcullis::Junction::predictedStrandFromSpliceSites(const string& seq1, 
 }
     
 
-portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftFlankStart, int32_t _rightFlankEnd) :
+portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncStart, int32_t _rightAncEnd) :
     intron(_location) {
-    leftFlankStart = _leftFlankStart;
-    rightFlankEnd = _rightFlankEnd;
+    leftAncStart = _leftAncStart;
+    rightAncEnd = _rightAncEnd;
     canonicalSpliceSites = NO;
-    maxMinAnchor = intron->minAnchorLength(_leftFlankStart, _rightFlankEnd);
+    maxMinAnchor = intron->minAnchorLength(_leftAncStart, _rightAncEnd);
     diffAnchor = 0;
     entropy = 0;
     nbDistinctAnchors = 0;
@@ -128,7 +212,7 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftFlankS
     uniqueJunction = false;
     primaryJunction = false;
     multipleMappingScore = 0.0;
-    nbMismatches = 0;
+    meanMismatches = 0;
     nbMultipleSplicedReads = 0;
     distanceToNextUpstreamJunction = 0;
     distanceToNextDownstreamJunction = 0;
@@ -137,6 +221,9 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftFlankS
     predictedStrand = UNKNOWN;
     nbUpstreamJunctions = 0;
     nbDownstreamJunctions = 0;
+    
+    alignments.clear();
+    alignmentCodes.clear();
 }
    
 /**
@@ -146,8 +233,8 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftFlankS
  */
 portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
     intron = make_shared<Intron>(*(j.intron));        
-    leftFlankStart = j.leftFlankStart;
-    rightFlankEnd = j.rightFlankEnd;
+    leftAncStart = j.leftAncStart;
+    rightAncEnd = j.rightAncEnd;
     canonicalSpliceSites = j.canonicalSpliceSites;
     maxMinAnchor = j.maxMinAnchor;
     diffAnchor = j.diffAnchor;
@@ -167,7 +254,7 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
     uniqueJunction = j.uniqueJunction;
     primaryJunction = j.primaryJunction;
     multipleMappingScore = j.multipleMappingScore;
-    nbMismatches = j.nbMismatches;
+    meanMismatches = j.meanMismatches;
     nbMultipleSplicedReads = j.nbMultipleSplicedReads;
 
     predictedStrand = j.predictedStrand;
@@ -178,38 +265,31 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
     distanceToNearestJunction = j.distanceToNearestJunction;
 
     if (withAlignments) {
-
-        for(const auto& ba : j.junctionAlignments) {
-            this->junctionAlignments.push_back(BamAlignment(ba));
-        }
-
-        for(size_t baNameCode : j.junctionAlignmentNames) {
-            this->junctionAlignmentNames.push_back(baNameCode);
+        for(size_t i = 0; i < j.alignments.size(); i++) {
+            this->alignments.push_back(make_shared<AlignmentInfo>(j.alignments[i]->ba));
+            this->alignmentCodes.push_back(j.alignments[i]->nameCode);
         }
     }
 }
     
 // **** Destructor ****
 portcullis::Junction::~Junction() {
-    junctionAlignments.clear();
-    junctionAlignmentNames.clear();
+    alignments.clear();   
 }
     
 void portcullis::Junction::clearAlignments() {
-    junctionAlignments.clear();  
+    alignments.clear();  
 }
        
     
 void portcullis::Junction::addJunctionAlignment(const BamAlignment& al) {
 
     // Make sure we take a proper copy of this alignment for safe storage
-    this->junctionAlignments.push_back(al);
+    shared_ptr<AlignmentInfo> aip = make_shared<AlignmentInfo>(make_shared<BamAlignment>(al));
+    this->alignments.push_back(aip);
+    this->alignmentCodes.push_back(aip->nameCode);
     
-    // Calculate a hash of the alignment name
-    size_t code = std::hash<std::string>()(al.deriveName());
-
-    this->junctionAlignmentNames.push_back(code);
-    this->nbJunctionAlignments = this->junctionAlignments.size();
+    this->nbJunctionAlignments = this->alignments.size();
 
     if (al.getNbJunctionsInRead() > 1) {
         this->nbMultipleSplicedReads++;
@@ -233,15 +313,15 @@ void portcullis::Junction::setFlankingAlignmentCounts(uint32_t nbUpstream, uint3
 
     
 /**
- * Extends the flanking regions of the junction.  Also updates any relevant 
+ * Extends the anchor regions of the junction.  Also updates any relevant 
  * metrics.
- * @param otherStart The alternative start position of the left flank
- * @param otherEnd The alternative end position of the right flank
+ * @param otherStart The alternative start position of the left anchor
+ * @param otherEnd The alternative end position of the right anchor
  */
-void portcullis::Junction::extendFlanks(int32_t otherStart, int32_t otherEnd) {        
+void portcullis::Junction::extendAnchors(int32_t otherStart, int32_t otherEnd) {        
 
-    leftFlankStart = min(leftFlankStart, otherStart);
-    rightFlankEnd = max(rightFlankEnd, otherEnd);
+    leftAncStart = min(leftAncStart, otherStart);
+    rightAncEnd = max(rightAncEnd, otherEnd);
 
     int32_t otherMinAnchor = intron->minAnchorLength(otherStart, otherEnd);
 
@@ -254,10 +334,6 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
     if (intron == nullptr) 
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                 "Can't find genomic sequence for this junction as no intron is defined")));
-    
-    // For testing
-    //int seqLen = -1;
-    //string testFull = genomeMapper.fetchBases(intron->ref.name.c_str(), leftFlankStart, rightFlankEnd, &seqLen);
     
     // Process the predicted donor / acceptor regions and update junction
     int donorLen = -1;
@@ -294,8 +370,8 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
     int leftIntLen = -1;
     int rightAncLen = -1;
     int rightIntLen = -1;
-    string leftAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), leftFlankStart, intron->start - 1, &leftAncLen);
-    string rightAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end + 1, rightFlankEnd, &rightAncLen);
+    string leftAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), leftAncStart, intron->start - 1, &leftAncLen);
+    string rightAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end + 1, rightAncEnd, &rightAncLen);
     string leftInt = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->start, intron->start + 9, &leftIntLen);
     string rightInt = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end - 9, intron->end, &rightIntLen);
 
@@ -315,7 +391,7 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                 "Can't find right intron region for junction: ") + this->intron->toString()));
 
-    int expLeftLen = intron->start - leftFlankStart;
+    int expLeftLen = intron->start - leftAncStart;
     if (leftAncLen != expLeftLen && expLeftLen > 0)
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                 "Retrieved sequence for left anchor of junction ") + this->intron->toString() + " is not the expected length" +
@@ -323,7 +399,7 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
                 "\nExpected sequence length: " + lexical_cast<string>(expLeftLen) + 
                 "\nRetrieved sequence: " + leftAnc));
 
-    int expRightLen = rightFlankEnd - intron->end;
+    int expRightLen = rightAncEnd - intron->end;
     if (rightAncLen != expRightLen && expRightLen > 0)
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                 "Retrieved sequence for right anchor of junction ") + this->intron->toString() + " is not the expected length" +                
@@ -354,7 +430,16 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
     
     this->calcHammingScores(leftAnchor10, leftInt, rightInt, rightAnchor10);
     
-    this->calcMaxMMES(leftAnc, rightAnc);
+    // Update match statistics for each alignment
+    for(auto& a : alignments) {
+        a->calcMatchStats(*getIntron(), this->getLeftAncStart(), this->getRightAncEnd(), leftAnc, rightAnc);
+    }
+    
+    // MaxMMES can now use info in alignments
+    this->calcMaxMMES();
+    
+    // Calculate mean mismatches (using info in alignments)
+    this->calcMeanMismatches();    
 }
     
 void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, StrandSpecific strandSpecific) {
@@ -364,8 +449,8 @@ void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t re
 
     uint32_t nbLeftFlankingAlignments = 0, nbRightFlankingAlignments = 0;
 
-    int32_t regionStart = leftFlankStart - maxQueryLength - 1; regionStart < 0 ? 0 : regionStart;
-    int32_t regionEnd = rightFlankEnd + maxQueryLength + 1; regionEnd >= refLength ? refLength - 1 : regionEnd;
+    int32_t regionStart = leftAncStart - maxQueryLength - 1; regionStart < 0 ? 0 : regionStart;
+    int32_t regionEnd = rightAncEnd + maxQueryLength + 1; regionEnd >= refLength ? refLength - 1 : regionEnd;
 
     // Focus only on the (expanded... to be safe...) region of interest
     reader.setRegion(refId, regionStart, regionEnd);
@@ -380,12 +465,12 @@ void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t re
 
         // Look for left flanking alignments
         if (    intron->start > pos && 
-                leftFlankStart <= ba.getEnd(true)) {
+                leftAncStart <= ba.getEnd(true)) {
             nbLeftFlankingAlignments++;
         }
 
         // Look for right flanking alignments
-        if (    rightFlankEnd >= pos && 
+        if (    rightAncEnd >= pos && 
                 intron->end < pos) {
             nbRightFlankingAlignments++;
         }
@@ -396,12 +481,13 @@ void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t re
     
     
 void portcullis::Junction::calcMetrics() {
-
+    
     calcAnchorStats();      // Metrics 5 and 7
     calcEntropy();          // Metric 6
     calcAlignmentStats();   // Metrics 8, 9 and 19
 }
-    
+
+
     
 /**
  * Metric 5 and 7: Diff Anchor and # Distinct Anchors
@@ -415,13 +501,15 @@ void portcullis::Junction::calcAnchorStats() {
 
     nbDistinctAnchors = 0;    
     
-    for(const BamAlignment& ba : junctionAlignments) {
-
-        const int32_t lStart = ba.getStart(true);
-        const int32_t rEnd = ba.getEnd(true);
+    for(auto& a : alignments) {
         
-        int32_t leftSize = ba.calcNbAlignedBases(lStart, intron->start - 1, false);
-        int32_t rightSize = ba.calcNbAlignedBases(intron->end + 1, rEnd, false);   // Will auto crop for end of alignment
+        shared_ptr<BamAlignment> ba = a->ba;
+
+        const int32_t lStart = ba->getStart(true);
+        const int32_t rEnd = ba->getEnd(true);
+        
+        int32_t leftSize = ba->calcNbAlignedBases(lStart, intron->start - 1, false);
+        int32_t rightSize = ba->calcNbAlignedBases(intron->end + 1, rEnd, false);   // Will auto crop for end of alignment
 
         maxLeftSize = max(maxLeftSize, leftSize);
         minLeftSize = min(minLeftSize, leftSize);
@@ -477,8 +565,8 @@ double portcullis::Junction::calcEntropy() {
 
     vector<int32_t> junctionPositions;
 
-    for(const auto& ba : junctionAlignments) {
-        junctionPositions.push_back(ba.getStart(true));
+    for(auto& a : alignments) {
+        junctionPositions.push_back(a->ba->getStart(true));
     }
     
     // Should already be sorted but let's be sure.  This is critical to the rest
@@ -493,13 +581,11 @@ double portcullis::Junction::calcEntropy() {
 
     double sum = 0.0;
 
-    //int32_t lastOffset = max(junctionPositions[0], leftFlankStart);
     int32_t lastOffset = junctionPositions[0];
     uint32_t readsAtOffset = 0;
 
     for(size_t i = 0; i < nbJunctionAlignments; i++) {
 
-        //int32_t pos = max(junctionPositions[i], leftFlankStart);    // Required to ensure we don't include info from other junctions
         int32_t pos = junctionPositions[i];
 
         readsAtOffset++;
@@ -532,10 +618,12 @@ void portcullis::Junction::calcAlignmentStats() {
 
     //cout << junctionAlignments.size() << endl;
 
-    for(auto& ba : junctionAlignments) {
+    for(auto& a : alignments) {
 
-        const int32_t start = ba.getStart(true);
-        const int32_t end = ba.getEnd(true);
+        shared_ptr<BamAlignment> ba = a->ba;
+        
+        const int32_t start = ba->getStart(true);
+        const int32_t end = ba->getEnd(true);
 
         if (start != lastStart || end != lastEnd ) {
             nbDistinctAlignments++;                
@@ -547,7 +635,7 @@ void portcullis::Junction::calcAlignmentStats() {
         // This doesn't seem intuitive but this is how they recommend finding
         // "reliable" (i.e. unique) alignments in samtools.  They do this
         // because apparently "uniqueness" is not a well defined concept.
-        if (ba.getMapQuality() >= MAP_QUALITY_THRESHOLD) {
+        if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD) {
             nbReliableAlignments++;
         }
 
@@ -555,7 +643,7 @@ void portcullis::Junction::calcAlignmentStats() {
         uint16_t downjuncs = 0;
         int32_t pos = start;
 
-        for (CigarOp op : ba.getCigar()) {
+        for (CigarOp op : ba->getCigar()) {
 
             if (CigarOp::opConsumesReference(op.type)) {
                 pos += op.length;                    
@@ -603,31 +691,22 @@ void portcullis::Junction::calcHammingScores(   const string& leftAnchor, const 
     string intron3p;
     string anchor3p;
     
-    switch(s) {
-        case POSITIVE:
-            anchor5p = la;
-            intron5p = li;
-            intron3p = ri;
-            anchor3p = ra;
-            break;
-        case NEGATIVE:
-            anchor5p = SeqUtils::reverseComplement(ra);
-            intron5p = SeqUtils::reverseComplement(ri);
-            intron3p = SeqUtils::reverseComplement(li);
-            anchor3p = SeqUtils::reverseComplement(la);
-            break;
-        default:
-            //Error
-            hammingDistance5p = -1;
-            hammingDistance3p = -1;
-            return;
+    if (s == NEGATIVE) {
+        anchor5p = SeqUtils::reverseComplement(ra);
+        intron5p = SeqUtils::reverseComplement(ri);
+        intron3p = SeqUtils::reverseComplement(li);
+        anchor3p = SeqUtils::reverseComplement(la);
     }
-
-    /*cout << "anchor 5': " << anchor5p << endl;
-    cout << "intron 5': " << intron5p << endl;
-    cout << "intron 3': " << intron3p << endl;
-    cout << "anchor 3': " << anchor3p << endl;*/
-
+    else {
+        // This is for the positive strand or if strand is unknown (i.e. novel splice site)
+        // This shouldn't make much difference for downstream analysis.  Worst case is that
+        // hamming 5' and hamming 3' figures are reversed.
+        anchor5p = la;
+        intron5p = li;
+        intron3p = ri;
+        anchor3p = ra;
+    }
+     
     hammingDistance5p = SeqUtils::hammingDistance(anchor5p, intron3p);
     hammingDistance3p = SeqUtils::hammingDistance(anchor3p, intron5p);  
 }
@@ -635,70 +714,24 @@ void portcullis::Junction::calcHammingScores(   const string& leftAnchor, const 
 /**
  * Calculates metric 12.  MaxMMES.
  */
-void portcullis::Junction::calcMaxMMES(const string& ancLeft, const string& ancRight) {
+void portcullis::Junction::calcMaxMMES() {
 
-    uint16_t maxmmes = 0;
-    nbMismatches = 0;
-    
-    for(auto& ba : junctionAlignments) {
-
-        uint32_t qLeftStart = leftFlankStart;
-        uint32_t qLeftEnd = intron->start - 1;
-        uint32_t qRightStart = intron->end + 1;
-        uint32_t qRightEnd = rightFlankEnd;
-        string qAnchorLeft = ba.getPaddedQuerySeq(leftFlankStart, intron->start - 1, qLeftStart, qLeftEnd, false);
-        string qAnchorRight = ba.getPaddedQuerySeq(intron->end + 1, rightFlankEnd, qRightStart, qRightEnd, false);
-        
-        string gAnchorLeft = ba.getPaddedGenomeSeq(ancLeft, leftFlankStart, intron->start - 1, qLeftStart, qLeftEnd, false);
-        string gAnchorRight = ba.getPaddedGenomeSeq(ancRight, intron->end + 1, rightFlankEnd, qRightStart, qRightEnd, false);
-        
-        if (qAnchorLeft.size() != gAnchorLeft.size()) {
-           BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "Left anchor region for query and genome are not the same size.")
-                   + "\nLeft anchor coords: " + this->intron->toString() 
-                   + "\nFlanks extents: " + lexical_cast<string>(this->leftFlankStart) + "," + lexical_cast<string>(this->rightFlankEnd)
-                   + "\nGenomic sequence: " + ancLeft
-                   + "\nAlignment coords (before soft clipping): " + ba.toString(false)
-                   + "\nAlignment coords (after soft clipping): " + ba.toString(true)                   
-                   + "\nRead seq (before soft clipping): " + ba.getQuerySeq()
-                   + "\nRead seq (after soft clipping): " + ba.getQuerySeqAfterClipping()
-                   + "\nCigar: " + ba.getCigarAsString()
-                   + "\nLeft Anchor query seq:  \n" + qAnchorLeft
-                   + "\nLeft Anchor genome seq: \n" + gAnchorLeft));
-        }
-        
-        if (qAnchorRight.size() != gAnchorRight.size()) {
-           BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-                "Right Anchor region for query and genome are not the same size.")
-                   + "\nRight anchor coords: " + this->intron->toString() 
-                   + "\nFlanks extents: " + lexical_cast<string>(this->leftFlankStart) + "," + lexical_cast<string>(this->rightFlankEnd)
-                   + "\nGenomic sequence: " + ancRight
-                   + "\nAlignment coords (before soft clipping): " + ba.toString(false)
-                   + "\nAlignment coords (after soft clipping): " + ba.toString(true)
-                   + "\nRead seq (before soft clipping): " + ba.getQuerySeq()
-                   + "\nRead seq (after soft clipping): " + ba.getQuerySeqAfterClipping()
-                   + "\nCigar: " + ba.getCigarAsString()
-                   + "\nRight Anchor query seq:  \n" + qAnchorRight
-                   + "\nRight Anchor genome seq: \n" + gAnchorRight));
-        }
-        
-        
-        int16_t hdAncLeft = SeqUtils::hammingDistance(qAnchorLeft, gAnchorLeft);
-        int16_t hdAncRight = SeqUtils::hammingDistance(qAnchorRight, gAnchorRight);
-        
-        // Add any differences to the nb of mismatches.
-        nbMismatches += hdAncLeft;
-        nbMismatches += hdAncRight;
-                
-        uint16_t nbLeftMatches = qAnchorLeft.size() - hdAncLeft;
-        uint16_t nbRightMatches = qAnchorRight.size() - hdAncRight;
-        
-        uint16_t mmes = min(nbLeftMatches, nbRightMatches);
-
-        maxmmes = max(maxmmes, mmes);
+    for(auto& a : alignments) {
+        maxMMES = max(maxMMES, a->mmes);
     }
+}
 
-    this->maxMMES = maxmmes;
+/**
+ * Calculate metric 19.  Mean mismatches
+ */
+void portcullis::Junction::calcMeanMismatches() {
+    
+    uint32_t nbMismatches = 0;
+    for(auto& a : alignments) {
+        nbMismatches += a->nbMismatches;
+    }
+    
+    meanMismatches = (double)nbMismatches / (double)alignments.size();
 }
     
 /**
@@ -706,11 +739,11 @@ void portcullis::Junction::calcMaxMMES(const string& ancLeft, const string& ancR
  */
 void portcullis::Junction::calcMultipleMappingScore(SplicedAlignmentMap& map) {
 
-    size_t N = this->getNbJunctionAlignments();
+    size_t N = alignmentCodes.size();
 
     uint32_t M = 0;
-    for(size_t baNameCode : junctionAlignmentNames) {
-        M += map[baNameCode];  // Number of multiple splitting patterns
+    for(auto& a : alignmentCodes) {
+        M += map[a];  // Number of multiple splitting patterns
     }
 
     this->multipleMappingScore = (double)N / (double)M;
@@ -778,7 +811,7 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
     }
 
     strm << delimiter
-         << "Flank limits: (" << leftFlankStart << ", " << rightFlankEnd << ")" << delimiter
+         << "Anchor limits: (" << leftAncStart << ", " << rightAncEnd << ")" << delimiter
          << "Junction Predictions:" << delimiter
          << "P1:  Strand: " << strandToString(predictedStrand) << delimiter
          << "Junction Metrics:" << delimiter
@@ -800,7 +833,7 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
          << "M16: Unique Junction: " << boolalpha << uniqueJunction << delimiter
          << "M17: Primary Junction: " << boolalpha << primaryJunction << delimiter
          << "M18: Multiple mapping score: " << multipleMappingScore << delimiter
-         << "M19: # mismatches: " << nbMismatches << delimiter
+         << "M19: Mean mismatches: " << meanMismatches << delimiter
          << "M20: # Multiple Spliced Reads: " << nbMultipleSplicedReads << delimiter
          << "M21: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
          << "M21: # Upstream Junctions: " << nbUpstreamJunctions << delimiter
@@ -867,8 +900,8 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"    // source
          << "junction" << "\t"      // type (may change later)
-         << leftFlankStart + 1 << "\t"  // start
-         << rightFlankEnd + 1 << "\t"   // end
+         << leftAncStart + 1 << "\t"  // start
+         << rightAncEnd + 1 << "\t"   // end
          << "0.0" << "\t"           // No score for the moment
          << strand << "\t"          // strand
          << "." << "\t"             // Just put "." for the phase
@@ -884,7 +917,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"
          << "partial_exon" << "\t"
-         << leftFlankStart + 1 << "\t"
+         << leftAncStart + 1 << "\t"
          << (intron->start) << "\t"
          << "0.0" << "\t"
          << strand << "\t"
@@ -897,7 +930,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
          << "portcullis" << "\t"
          << "partial_exon" << "\t"
          << (intron->end + 2) << "\t"
-         << rightFlankEnd + 1 << "\t"
+         << rightAncEnd + 1 << "\t"
          << "0.0" << "\t"
          << strand << "\t"
          << "." << "\t"
@@ -921,15 +954,15 @@ void portcullis::Junction::outputBED(std::ostream &strm, uint32_t id) {
 
     string juncId = string("portcullis_junc_") + lexical_cast<string>(id);
 
-    int32_t sz1 = intron->start - leftFlankStart;
-    int32_t sz2 = rightFlankEnd - intron->end;
+    int32_t sz1 = intron->start - leftAncStart;
+    int32_t sz2 = rightAncEnd - intron->end;
     string blockSizes = lexical_cast<string>(sz1) + "," + lexical_cast<string>(sz2);
-    string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end - leftFlankStart + 1);
+    string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end - leftAncStart + 1);
 
     // Output junction parent
     strm << intron->ref.name << "\t"         // chrom
-         << leftFlankStart << "\t"  // chromstart
-         << rightFlankEnd + 1 << "\t"   // chromend (adding 1 as end position is exclusive)
+         << leftAncStart << "\t"  // chromstart
+         << rightAncEnd + 1 << "\t"   // chromend (adding 1 as end position is exclusive)
          << juncId << "\t"          // name
          << this->getNbJunctionAlignments() << "\t"           // Use the depth as the score for the moment
          << strand << "\t"          // strand
@@ -1006,7 +1039,7 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     j->setUniqueJunction(lexical_cast<bool>(parts[27]));
     j->setPrimaryJunction(lexical_cast<bool>(parts[28]));
     j->setMultipleMappingScore(lexical_cast<double>(parts[29]));
-    j->setNbMismatches(lexical_cast<uint16_t>(parts[30]));
+    j->setMeanMismatches(lexical_cast<uint16_t>(parts[30]));
     j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[31]));
     j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[32]));
     j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[33]));

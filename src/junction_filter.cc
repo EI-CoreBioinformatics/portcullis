@@ -228,7 +228,7 @@ double portcullis::eval::getNumericFromJunc(const var& fullname) const {
         case 17:
             return junc->getMultipleMappingScore();
         case 18:
-            return junc->getNbMismatches();
+            return junc->getMeanMismatches();
         case 19:
             return junc->getNbMultipleSplicedReads();
         case 20:

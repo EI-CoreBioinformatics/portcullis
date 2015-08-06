@@ -73,7 +73,7 @@ const string METRIC_NAMES[NB_METRICS] = {
         "M16-uniq_junc",
         "M17-primary_junc",
         "M18-mm_score",
-        "M19-nb_mismatches",
+        "M19-mean_mismatches",
         "M20-nb_msrs",
         "M21-nb_down_juncs",
         "M22-nb_up_juncs",
@@ -144,6 +144,46 @@ static string cssToString(CanonicalSS css) {
     return string("No");
 }
 
+struct AlignmentInfo {
+    shared_ptr<BamAlignment> ba;
+    size_t nameCode;
+    uint32_t totalUpstreamMatches; // Total number of upstream matches in this junction window
+    uint32_t totalDownstreamMatches; // Total number of downstream matches in this junction window
+    uint32_t totalUpstreamMismatches;
+    uint32_t totalDownstreamMismatches;
+    uint32_t upstreamMatches;   // Distance to first upstream mismatch
+    uint32_t downstreamMatches; // Distance to first downstream mismatch
+    uint32_t minMatch;  // Distance to first mismatch (minimum of either upstream or downstream)
+    uint32_t maxMatch;  // Distance to first mismatch (maximum of either upstream or downstream)
+    uint32_t nbMismatches; // Total number of mismatches in this junction window
+    uint32_t mmes; // Minimal Match on Either Side of exon junction
+    
+    AlignmentInfo(shared_ptr<BamAlignment> _ba) {
+        
+        // Copy alignment
+        ba = _ba;
+        
+        // Calculate a hash of the alignment name
+        nameCode = std::hash<std::string>()(ba->deriveName());
+        
+        totalUpstreamMatches = 0;
+        totalDownstreamMatches = 0;
+        totalUpstreamMismatches = 0;
+        totalDownstreamMismatches = 0;
+        upstreamMatches = 0;
+        downstreamMatches = 0;
+        minMatch = 0;
+        maxMatch = 0;
+        nbMismatches = 0;
+        mmes = 0;
+    }
+    
+    void calcMatchStats(const Intron& i, const uint32_t leftStart, const uint32_t rightEnd, const string& ancLeft, const string& ancRight);
+ 
+    uint32_t getNbMatchesFromStart(const string& query, const string& anchor);
+    uint32_t getNbMatchesFromEnd(const string& query, const string& anchor);
+};
+
 class Junction {
     
     
@@ -151,8 +191,8 @@ private:
     
     // **** Properties that describe where the junction is ****
     shared_ptr<Intron> intron;
-    vector<BamAlignment> junctionAlignments;
-    vector<size_t> junctionAlignmentNames;
+    vector<shared_ptr<AlignmentInfo>> alignments;
+    vector<size_t> alignmentCodes;
         
     
     // **** Junction metrics ****
@@ -174,7 +214,7 @@ private:
     bool     uniqueJunction;                    // Metric 16
     bool     primaryJunction;                   // Metric 17    
     double   multipleMappingScore;              // Metric 18
-    uint16_t nbMismatches;                      // Metric 19
+    double   meanMismatches;                    // Metric 19
     uint32_t nbMultipleSplicedReads;            // Metric 20
     uint16_t nbUpstreamJunctions;               // Metric 21
     uint16_t nbDownstreamJunctions;             // Metric 22
@@ -193,8 +233,8 @@ private:
     
     // **** Additional properties ****
     
-    int32_t leftFlankStart;
-    int32_t rightFlankEnd;
+    int32_t leftAncStart;
+    int32_t rightAncEnd;
     string da1, da2;                    // These store the dinucleotides found at the predicted donor / acceptor sites in the intron
     
     
@@ -216,7 +256,7 @@ public:
     
     // **** Constructors ****
     
-    Junction(shared_ptr<Intron> _location, int32_t _leftFlankStart, int32_t _rightFlankEnd);
+    Junction(shared_ptr<Intron> _location, int32_t _leftAncStart, int32_t _rightAncEnd);
     
     /**
      * Copy constructor
@@ -237,12 +277,12 @@ public:
     void clearAlignments();
     
     const BamAlignment& getFirstAlignment() const {
-        return junctionAlignments[0];
+        return *(alignments[0]->ba);
     }
     
    
-    shared_ptr<Intron> getLocation() const {
-        return intron;
+    const Intron& getLocation() const {
+        return *intron;
     }
 
     void setLocation(shared_ptr<Intron> location) {
@@ -282,12 +322,12 @@ public:
 
     
     /**
-     * Extends the flanking regions of the junction.  Also updates any relevant 
+     * Extends the anchor regions of the junction.  Also updates any relevant 
      * metrics.
-     * @param otherStart The alternative start position of the left flank
-     * @param otherEnd The alternative end position of the right flank
+     * @param otherStart The alternative start position of the left anchor
+     * @param otherEnd The alternative end position of the right anchor
      */
-    void extendFlanks(int32_t otherStart, int32_t otherEnd);
+    void extendAnchors(int32_t otherStart, int32_t otherEnd);
         
     
     void processJunctionWindow(const GenomeMapper& genomeMapper);
@@ -297,6 +337,7 @@ public:
     
     void calcMetrics();
     
+    void updateAlignmentInfo();
     
     /**
      * Metric 5 and 7: Diff Anchor and # Distinct Anchors
@@ -312,20 +353,6 @@ public:
      * Calculates the entropy score for this junction.  Higher entropy is generally
      * more indicative of a genuine junction than a lower score.
      *
-     * This version of the function collects BamAlignment start positions and passes
-     * them to an overloaded version of this function.
-     * 
-     * @return The entropy of this junction
-     */
-    double calcEntropy();
-    
-    /**
-     * Metric 6: Entropy (definition from "Graveley et al, The developmental 
-     * transcriptome of Drosophila melanogaster, Nature, 2011")
-     *
-     * Calculates the entropy score for this junction.  Higher entropy is generally
-     * more indicative of a genuine junction than a lower score.
-     * 
      * This overridden version of the calcEntropy method, allows us to calculate
      * the entropy, without using BamAlignment objects that model the junction.
      * All we need are the alignment start positions instead.
@@ -344,11 +371,9 @@ public:
      * 
      * Entropy = - sum_i(p_i * log(pi) / log2) 
      * 
-     * @param junctionPositions start index positions of each junction alignment
-     * 
      * @return The entropy of this junction
      */
-    double calcEntropy(vector<int32_t>& junctionPositions);
+    double calcEntropy();
     
     /**
      * Metrics: # Distinct Alignments, # Unique/Reliable Alignments, #mismatches
@@ -365,8 +390,15 @@ public:
     
     /**
      * Calculates metric 12.  MaxMMES.
+     * Requires alignment information to be populated
      */
-    void calcMaxMMES(const string& anc5p, const string& anc3p);
+    void calcMaxMMES();
+    
+    /**
+     * Calculate metric 19.  Mean mismatches.
+     * Requires alignment information to be populated
+     */
+    void calcMeanMismatches();
     
     /**
      * Calculates metric 18.  Multiple mapping score
@@ -386,21 +418,21 @@ public:
         return intron;
     }
 
-    int32_t getLeftFlankStart() const {
-        return leftFlankStart;
+    int32_t getLeftAncStart() const {
+        return leftAncStart;
     }
 
-    int32_t getRightFlankEnd() const {
-        return rightFlankEnd;
+    int32_t getRightAncEnd() const {
+        return rightAncEnd;
     }
     
     size_t size() const {
-        return rightFlankEnd - leftFlankStart + 1;
+        return rightAncEnd - leftAncStart + 1;
     }
 
     
     size_t getNbJunctionAlignmentFromVector() const {
-        return this->junctionAlignments.size();
+        return this->alignments.size();
     }
     
     // **** Metric getters ****
@@ -572,8 +604,8 @@ public:
      * splice aligned reads in this junction.  From TrueSight paper.
      * @return 
      */
-    uint16_t getNbMismatches() const {
-        return nbMismatches;
+    double getMeanMismatches() const {
+        return meanMismatches;
     }
     
     /**
@@ -701,8 +733,8 @@ public:
         this->predictedStrand = predictedStrand;
     }
     
-    void setNbMismatches(uint16_t nbMismatches) {
-        this->nbMismatches = nbMismatches;
+    void setMeanMismatches(double meanMismatches) {
+        this->meanMismatches = meanMismatches;
     }
     
     void setNbMultipleSplicedReads(uint32_t nbMultipleSplicedReads) {
@@ -753,8 +785,8 @@ public:
      */
     friend ostream& operator<<(ostream &strm, Junction& j) {
         return strm << *(j.intron) << "\t"
-                    << j.leftFlankStart << "\t"
-                    << j.rightFlankEnd << "\t"
+                    << j.leftAncStart << "\t"
+                    << j.rightAncEnd << "\t"
                     << j.da1 << "\t"
                     << j.da2 << "\t"
                     << strandToChar(j.predictedStrand) << "\t"
@@ -776,7 +808,7 @@ public:
                     << j.uniqueJunction << "\t"
                     << j.primaryJunction << "\t"
                     << j.multipleMappingScore << "\t"
-                    << j.nbMismatches << "\t"
+                    << j.meanMismatches << "\t"
                     << j.nbMultipleSplicedReads << "\t"
                     << j.nbDownstreamJunctions << "\t"
                     << j.nbUpstreamJunctions << "\t"
