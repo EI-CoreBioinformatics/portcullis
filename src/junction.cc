@@ -455,7 +455,7 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
     this->calcMeanMismatches();  
     
     // ???
-    this->calcTrimmedCoverageVector();
+    //this->calcTrimmedCoverageVector();
 }
     
 void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, StrandSpecific strandSpecific) {
@@ -475,13 +475,13 @@ void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t re
 
         const BamAlignment& ba = reader.current();
         
-        int32_t pos = ba.getStart(true);
+        int32_t pos = ba.getStart();
 
         //TODO: Should we consider strand specific reads differently here?
 
         // Look for left flanking alignments
         if (    intron->start > pos && 
-                leftAncStart <= ba.getEnd(true)) {
+                leftAncStart <= ba.getEnd()) {
             nbLeftFlankingAlignments++;
         }
 
@@ -521,8 +521,8 @@ void portcullis::Junction::calcAnchorStats() {
         
         shared_ptr<BamAlignment> ba = a->ba;
 
-        const int32_t lStart = ba->getStart(true);
-        const int32_t rEnd = ba->getEnd(true);
+        const int32_t lStart = ba->getStart();
+        const int32_t rEnd = ba->getEnd();
         
         int32_t leftSize = ba->calcNbAlignedBases(lStart, intron->start - 1, false);
         int32_t rightSize = ba->calcNbAlignedBases(intron->end + 1, rEnd, false);   // Will auto crop for end of alignment
@@ -582,13 +582,18 @@ double portcullis::Junction::calcEntropy() {
     vector<int32_t> junctionPositions;
 
     for(auto& a : alignments) {
-        junctionPositions.push_back(a->ba->getStart(true));
+        junctionPositions.push_back(a->ba->getStart());
     }
     
     // Should already be sorted but let's be sure.  This is critical to the rest
     // of the algorithm.  It's possible after soft clips are removed that the reads
     // are not strictly in the correct order.
     std::sort(junctionPositions.begin(), junctionPositions.end());
+    
+    return calcEntropy(junctionPositions);
+}
+    
+double portcullis::Junction::calcEntropy(const vector<int32_t> junctionPositions) {
     
     size_t nbJunctionAlignments = junctionPositions.size();
 
@@ -638,8 +643,8 @@ void portcullis::Junction::calcAlignmentStats() {
 
         shared_ptr<BamAlignment> ba = a->ba;
         
-        const int32_t start = ba->getStart(true);
-        const int32_t end = ba->getEnd(true);
+        const int32_t start = ba->getStart();
+        const int32_t end = ba->getEnd();
 
         if (start != lastStart || end != lastEnd ) {
             nbDistinctAlignments++;                
@@ -783,38 +788,38 @@ void portcullis::Junction::calcTrimmedCoverageVector() {
         }
     }
     
+    double sum = std::accumulate(trimmedCoverage.begin(), trimmedCoverage.end(), 0.0);
+    double mean = sum / trimmedCoverage.size();
+
+    double sq_sum = std::inner_product(trimmedCoverage.begin(), trimmedCoverage.end(), trimmedCoverage.begin(), 0.0);
+    double stdev = std::sqrt(sq_sum / trimmedCoverage.size() - mean * mean);
+    
     // Calculate the expected coverage value (assuming normal distribution)
     
     std::random_device rd;
     std::mt19937 gen(rd());
+    std::normal_distribution<> nd(mean, stdev);
     
-    
-    uint32_t sum = 0;
-    for(auto& k : trimmedCoverage) {
-        sum += k;
+    uint32_t expectedDistribution[TRIMMED_COVERAGE_LENGTH];
+    for(size_t i = 0; i < sum; i++) {
+        
+        //pos = std::round(nd(gen));
+        //expectedDistribution[i] = ;
     }
-    double meanExpectedCoverage = (double)sum / (double)TRIMMED_COVERAGE_LENGTH;
-    double sumDev = 0.0;
-    for(auto& k : trimmedCoverage) {
-        sumDev += (k-meanExpectedCoverage)*(k-meanExpectedCoverage);
-    }
-    double stdDev = sqrt(sumDev/(double)TRIMMED_COVERAGE_LENGTH);           
-
-    std::normal_distribution<> d(meanExpectedCoverage, stdDev);
     
     // Calculate the log deviation from the expected uniform coverage value
     double logDevSum = 0.0;
     for(size_t i = 0; i < trimmedCoverage.size(); i++) {
-        double logDev = log2((double)trimmedCoverage[i] / d(gen));   
+        double logDev = log2((double)trimmedCoverage[i] / nd(gen));   
         logDev = std::isinf(logDev) || std::isnan(logDev) ? 0.0 : logDev;
         logDevSum += abs(logDev);
         trimmedLogDevCov[i] = logDev;
     }
+    /*
+    cout << logDevSum << endl;
     
-    //cout << logDevSum << endl;
     
-    
-    /*stringstream ss;
+    stringstream ss;
     ss << std::setprecision(2);
         
     for(size_t i = 0; i < trimmedCoverage.size(); i++) {

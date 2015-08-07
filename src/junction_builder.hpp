@@ -69,7 +69,7 @@ private:
     string outputPrefix;
     Settings settings;
     uint16_t threads;
-    bool fast;
+    bool extra;
     path samtoolsExe;
     bool verbose;
     

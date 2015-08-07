@@ -85,7 +85,7 @@ void portcullis::bam::BamAlignment::init() {
     for(uint32_t i = 0; i < b->core.n_cigar; i++) {
         CigarOp op(bam_cigar_opchr(c[i]), bam_cigar_oplen(c[i]));
         cigar.push_back(op);
-        if (CigarOp::opConsumesReference(op.type) || op.type == BAM_CIGAR_SOFTCLIP_CHAR) {
+        if (CigarOp::opConsumesReference(op.type)) {
             alignedLength += op.length;
         }
     }
@@ -185,8 +185,8 @@ string portcullis::bam::BamAlignment::getQuerySeqAfterClipping(const string& seq
     
     int32_t start = getStart();
     int32_t end = getEnd();
-    int32_t clippedStart = getStart(true);
-    int32_t clippedEnd = getEnd(true);
+    int32_t clippedStart = cigar.front().type == BAM_CIGAR_SOFTCLIP_CHAR ? start + cigar.front().length : start;
+    int32_t clippedEnd = cigar.back().type == BAM_CIGAR_SOFTCLIP_CHAR ? end - cigar.back().length : end;
     int32_t deltaStart = clippedStart - start;
     int32_t deltaEnd = end - clippedEnd;
     
@@ -414,7 +414,7 @@ string portcullis::bam::BamAlignment::toString() const {
 string portcullis::bam::BamAlignment::toString(bool afterClipping) const {
     
     uint32_t start = afterClipping && cigar.front().type == BAM_CIGAR_SOFTCLIP_CHAR ? position + cigar.front().length : position;
-    uint32_t end = afterClipping && cigar.back().type == BAM_CIGAR_SOFTCLIP_CHAR ? getEnd(true) : getEnd();
+    uint32_t end = afterClipping && cigar.back().type == BAM_CIGAR_SOFTCLIP_CHAR ? getEnd() - cigar.back().length : getEnd();
     
     stringstream ss;
     ss << refId << "(" << start << "-" << end << ")" << (this->isReverseStrand() ? "-" : "+");

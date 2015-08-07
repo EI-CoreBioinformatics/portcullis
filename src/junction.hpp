@@ -384,6 +384,14 @@ public:
     double calcEntropy();
     
     /**
+     * Provides a convienient way of get the shannon entropy score outside the
+     * junction / junction system framework
+     * @param offsets
+     * @return 
+     */
+    double calcEntropy(const vector<int32_t> offsets);
+    
+    /**
      * Metrics: # Distinct Alignments, # Unique/Reliable Alignments, #mismatches
      * @return 
      */
