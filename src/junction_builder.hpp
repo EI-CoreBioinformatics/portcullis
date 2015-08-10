@@ -130,6 +130,8 @@ public:
     
     virtual ~JunctionBuilder();
     
+    string getRefName(const int32_t seqId) { return refs[seqId].name; }
+    
     void processRegion(const int32_t seq);
     
     bool isExtra() const {

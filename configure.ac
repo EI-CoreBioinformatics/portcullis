@@ -3,7 +3,7 @@
 ##########################################################################
 
 # Autoconf initialistion.  Sets package name version and contact details
-AC_INIT([Portcullis],[0.9.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
+AC_INIT([Portcullis],[0.9.1],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
 
 # I built this with autoconf 2.53 and have only tested it on 2.69 systems.  You can change this but I don't
 # make any guarentees

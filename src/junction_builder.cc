@@ -133,28 +133,24 @@ void portcullis::JunctionBuilder::process() {
     JBThreadPool pool(this, threads);
     
     cout << "Finding junctions:" << endl;
-    cout << " - Queueing " << refs.size() << " target sequences for processing in the thread pool of " << threads << " threads ...";
-    cout.flush();
+    cout << " - Queueing " << refs.size() << " target sequences for processing in the thread pool of " << threads << " threads." << endl;
+    cout << " - Processing: " << endl;
     for(size_t i = 0; i < refs.size(); i++) {
         results[i].js.setRefs(refs);    // Make sure junction system has reference sequence list available        
         pool.enqueue(refs[i].index);
     }
-    cout << " done" << endl;
-    cout << " - Waiting for threads...";
-    cout.flush();
-    
     // Waits for all threads to complete
     pool.shutDown();
    
     
     
-    cout << " done" << endl << " - Combining results from threads ...";
+    cout << " - All threads completed." << endl << " - Combining results from threads ...";
     cout.flush();
     
     uint64_t unsplicedCount = 0;
     uint64_t splicedCount = 0;
     uint64_t sumQueryLengths = 0;
-    int32_t minQueryLength = 0;
+    int32_t minQueryLength = INT32_MAX;
     int32_t maxQueryLength = 0;
     for(auto& res : results) {
         junctionSystem.append(res.js);
@@ -284,9 +280,8 @@ void portcullis::JunctionBuilder::processRegion(int32_t seq) {
     uint64_t unsplicedCount = 0;
     int32_t lastCalculatedJunctionIndex = 0;
     uint64_t sumQueryLengths = 0;
-    int32_t minQueryLength = 0;
+    int32_t minQueryLength = INT32_MAX;
     int32_t maxQueryLength = 0;
-    int32_t lastSeqCount = 0;
     
     GenomeMapper gmap(prepData.getGenomeFilePath());
     gmap.loadFastaIndex();
@@ -473,6 +468,8 @@ void portcullis::JBThreadPool::invoke() {
 
             // Get next task in the queue.
             task = tasks.front();
+            
+            cout << "   - " << junctionBuilder->getRefName(task) << endl;
 
             // Remove it from the queue.
             tasks.pop();
