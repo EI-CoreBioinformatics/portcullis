@@ -176,7 +176,7 @@ void portcullis::BamFilter::filter() {
 
     cout << " - Found " << js.size() << " junctions" << endl << endl;
 
-    BamReader reader(bamFile, 1);
+    BamReader reader(bamFile);
     reader.open();
 
     vector<RefSeq> refs = reader.getRefs();
