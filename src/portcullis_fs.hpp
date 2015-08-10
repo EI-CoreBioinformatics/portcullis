@@ -49,6 +49,9 @@ namespace portcullis {
         path etcDir;
         path rootDir;
         
+        // Info
+        string version;
+        
         
         string exec(const char* cmd) {
             FILE* pipe = popen(cmd, "r");
@@ -71,9 +74,10 @@ namespace portcullis {
          * 
          * @param exe Full path to the exe, probably derived from argv0.
          */
-        PortcullisFS(const char* argv) {
+        PortcullisFS(const char* argv, string _version) {
             
             path exe(argv);
+            version = version;
             
             //cout << exe << endl;
             
@@ -184,6 +188,11 @@ namespace portcullis {
         path getScriptsDir() const {
             return scriptsDir;
         }
+        
+        string getVersion() const {
+            return version;
+        }
+
 
         
         friend std::ostream& operator<<(std::ostream &strm, const PortcullisFS& pfs) {
@@ -196,7 +205,9 @@ namespace portcullis {
                         << "Executables: " << endl
                         << " - portcullis: " << pfs.portcullisExe << endl
                         << " - samtools: " << pfs.samtoolsExe << endl
-                        << " - filter_junctions.py: " << pfs.filterJuncsPy << endl;
+                        << " - filter_junctions.py: " << pfs.filterJuncsPy << endl
+                        << "Info: << endl"
+                        << " - Version: " << pfs.version << endl;
         }     
     };
     

@@ -63,6 +63,7 @@ private:
     
 public:
     
+    static string version;
     
     JunctionSystem();
     
@@ -149,6 +150,9 @@ public:
     
     void calcJunctionStats(bool verbose);
     
+    void calcTrimmedOverhangScore();
+    
+    void sort();
     
     void saveAll(const path& outputPrefix);
     

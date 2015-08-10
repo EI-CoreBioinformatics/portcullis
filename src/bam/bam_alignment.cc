@@ -85,7 +85,7 @@ void portcullis::bam::BamAlignment::init() {
     for(uint32_t i = 0; i < b->core.n_cigar; i++) {
         CigarOp op(bam_cigar_opchr(c[i]), bam_cigar_oplen(c[i]));
         cigar.push_back(op);
-        if (CigarOp::opConsumesReference(op.type) || op.type == BAM_CIGAR_SOFTCLIP_CHAR) {
+        if (CigarOp::opConsumesReference(op.type)) {
             alignedLength += op.length;
         }
     }
@@ -185,12 +185,12 @@ string portcullis::bam::BamAlignment::getQuerySeqAfterClipping(const string& seq
     
     int32_t start = getStart();
     int32_t end = getEnd();
-    int32_t clippedStart = getStart(true);
-    int32_t clippedEnd = getEnd(true);
+    int32_t clippedStart = cigar.front().type == BAM_CIGAR_SOFTCLIP_CHAR ? start + cigar.front().length : start;
+    int32_t clippedEnd = cigar.back().type == BAM_CIGAR_SOFTCLIP_CHAR ? end - cigar.back().length : end;
     int32_t deltaStart = clippedStart - start;
     int32_t deltaEnd = end - clippedEnd;
     
-    return seq.substr(deltaStart, seq.size() - deltaStart - deltaEnd);    
+    return seq.substr(deltaStart, seq.size() - deltaStart - deltaEnd + 1);
 }
 
 
@@ -287,10 +287,11 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(const string& query_seq,
                 BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
                     "Can't extract cigar op sequence from query string when length has been calculated as 0.")
                        + "\nLimits: " + lexical_cast<string>(start) + "," + lexical_cast<string>(end)
-                       + "\nQuery sequence: " + query
+                       + "\nQuery sequence: " + query + " (" + lexical_cast<string>(query.size()) + ")"
                        + "\nCigar: " + getCigarAsString()
                        + "\nCurrent op: " + op.toString()
                        + "\nCurrent position in query: " + lexical_cast<string>(qPos)
+                       + "\nRequested length: " + lexical_cast<string>(len)
                        + "\nCurrent position in reference: " + lexical_cast<string>(rPos)
                        + "\nCurrent output: " + ss.str()));
             }
@@ -300,10 +301,11 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(const string& query_seq,
                 BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
                     "Can't extract cigar op sequence from query string.")
                        + "\nLimits: " + lexical_cast<string>(start) + "," + lexical_cast<string>(end)
-                       + "\nQuery sequence: " + query
+                       + "\nQuery sequence: " + query + " (" + lexical_cast<string>(query.size()) + ")"
                        + "\nCigar: " + getCigarAsString()
                        + "\nCurrent op: " + op.toString()
                        + "\nCurrent position in query: " + lexical_cast<string>(qPos)
+                       + "\nRequested length: " + lexical_cast<string>(len) 
                        + "\nCurrent position in reference: " + lexical_cast<string>(rPos)
                        + "\nCurrent output: " + ss.str()));
             }
@@ -311,8 +313,9 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(const string& query_seq,
             ss << query.substr(qPos, len);
         }
         else if (consumesRef) { // i.e. consumes reference but not query (DEL or REF_SKIP ops)
+            uint32_t len = rPos + op.length > end ? end - rPos + 1 : op.length; // Make sure we don't exceed our ref end limit
             string s;
-            s.resize(op.length);
+            s.resize(len);
             std::fill(s.begin(), s.end(), BAM_CIGAR_DIFF_CHAR); 
             ss << s;
         }

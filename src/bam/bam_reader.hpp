@@ -20,9 +20,11 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 using std::unique_ptr;
 using std::string;
+using std::unordered_map;
 using std::vector;
 using std::stringstream;
 
@@ -57,6 +59,7 @@ private:
     hts_idx_t* index;
     hts_itr_t * iter;
     vector<RefSeq> refs;
+    unordered_map<int32_t, RefSeq> refMap;
     
     BamAlignment b;
     
@@ -66,7 +69,11 @@ public:
     
     virtual ~BamReader();
     
-    vector<RefSeq> getRefs() const { return refs; }
+    const vector<RefSeq>& getRefs() const { return refs; }
+    
+    const unordered_map<int32_t, RefSeq>& calcRefMap();
+    
+    const unordered_map<int32_t, RefSeq>& getRefMap() const { return refMap; }
     
     bam_hdr_t* getHeader() const { return header; }
     

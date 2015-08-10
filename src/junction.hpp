@@ -53,7 +53,7 @@ const uint16_t MAP_QUALITY_THRESHOLD = 30;
 typedef boost::error_info<struct JunctionError,string> JunctionErrorInfo;
 struct JunctionException: virtual boost::exception, virtual std::exception { };
 
-const size_t NB_METRICS = 24;
+const size_t NB_METRICS = 27;
 const string METRIC_NAMES[NB_METRICS] = {
         "M1-canonical_ss",
         "M2-nb_reads",
@@ -73,12 +73,15 @@ const string METRIC_NAMES[NB_METRICS] = {
         "M16-uniq_junc",
         "M17-primary_junc",
         "M18-mm_score",
-        "M19-nb_mismatches",
+        "M19-mean_mismatches",
         "M20-nb_msrs",
         "M21-nb_up_juncs",
         "M22-nb_down_juncs",
         "M23-up_aln",
-        "M24-down_aln"        
+        "M24-down_aln",
+        "M25-dist_2_up_junc",
+        "M26-dist_2_down_junc",
+        "M27-dist_nearest_junc"         
     };
 
 const string PREDICTION_NAMES[1] = {
@@ -92,6 +95,11 @@ const string SEMI_CANONICAL_SEQ2 = "GCAG";
 const string CANONICAL_SEQ_RC = SeqUtils::reverseComplement(CANONICAL_SEQ);
 const string SEMI_CANONICAL_SEQ1_RC = SeqUtils::reverseComplement(SEMI_CANONICAL_SEQ1);
 const string SEMI_CANONICAL_SEQ2_RC = SeqUtils::reverseComplement(SEMI_CANONICAL_SEQ2);
+
+// Represents both upstream and downstream coverage levels.  The half way point represents
+// the junction.  Use an even number to ensure upstream and downstream lengths are
+// equal and to avoid any issues.
+const uint32_t TRIMMED_COVERAGE_LENGTH = 50;
 
 enum CanonicalSS {
     CANONICAL,
@@ -141,6 +149,47 @@ static string cssToString(CanonicalSS css) {
     return string("No");
 }
 
+struct AlignmentInfo {
+    shared_ptr<BamAlignment> ba;
+    size_t nameCode;
+    uint32_t totalUpstreamMatches; // Total number of upstream matches in this junction window
+    uint32_t totalDownstreamMatches; // Total number of downstream matches in this junction window
+    uint32_t totalUpstreamMismatches;
+    uint32_t totalDownstreamMismatches;
+    uint32_t upstreamMatches;   // Distance to first upstream mismatch
+    uint32_t downstreamMatches; // Distance to first downstream mismatch
+    uint32_t minMatch;  // Distance to first mismatch (minimum of either upstream or downstream)
+    uint32_t maxMatch;  // Distance to first mismatch (maximum of either upstream or downstream)
+    uint32_t nbMismatches; // Total number of mismatches in this junction window
+    uint32_t mmes; // Minimal Match on Either Side of exon junction
+    
+    AlignmentInfo(shared_ptr<BamAlignment> _ba) {
+        
+        // Copy alignment
+        ba = _ba;
+        
+        // Calculate a hash of the alignment name
+        nameCode = std::hash<std::string>()(ba->deriveName());
+        
+        totalUpstreamMatches = 0;
+        totalDownstreamMatches = 0;
+        totalUpstreamMismatches = 0;
+        totalDownstreamMismatches = 0;
+        upstreamMatches = 0;
+        downstreamMatches = 0;
+        minMatch = 0;
+        maxMatch = 0;
+        nbMismatches = 0;
+        mmes = 0;
+    }
+    
+    void calcMatchStats(const Intron& i, const uint32_t leftStart, const uint32_t rightEnd, const string& ancLeft, const string& ancRight);
+ 
+    uint32_t getNbMatchesFromStart(const string& query, const string& anchor);
+    uint32_t getNbMatchesFromEnd(const string& query, const string& anchor);
+};
+
+
 class Junction {
     
     
@@ -148,8 +197,10 @@ private:
     
     // **** Properties that describe where the junction is ****
     shared_ptr<Intron> intron;
-    vector<BamAlignment> junctionAlignments;
-    vector<size_t> junctionAlignmentNames;
+    vector<shared_ptr<AlignmentInfo>> alignments;
+    vector<size_t> alignmentCodes;
+    vector<uint32_t> trimmedCoverage;
+    vector<double> trimmedLogDevCov;
         
     
     // **** Junction metrics ****
@@ -171,12 +222,16 @@ private:
     bool     uniqueJunction;                    // Metric 16
     bool     primaryJunction;                   // Metric 17    
     double   multipleMappingScore;              // Metric 18
-    uint16_t nbMismatches;                      // Metric 19
+    double   meanMismatches;                    // Metric 19
     uint32_t nbMultipleSplicedReads;            // Metric 20
     uint16_t nbUpstreamJunctions;               // Metric 21
     uint16_t nbDownstreamJunctions;             // Metric 22
     uint32_t nbUpstreamFlankingAlignments;      // Metric 23
     uint32_t nbDownstreamFlankingAlignments;    // Metric 24
+    int32_t distanceToNextUpstreamJunction;     // Metric 25
+    int32_t distanceToNextDownstreamJunction;   // Metric 26
+    int32_t distanceToNearestJunction;          // Metric 27
+    double trimmedOverhangScore;                // Metric 28
     
     
     // **** Predictions ****
@@ -187,8 +242,8 @@ private:
     
     // **** Additional properties ****
     
-    int32_t leftFlankStart;
-    int32_t rightFlankEnd;
+    int32_t leftAncStart;
+    int32_t rightAncEnd;
     string da1, da2;                    // These store the dinucleotides found at the predicted donor / acceptor sites in the intron
     
     
@@ -210,7 +265,7 @@ public:
     
     // **** Constructors ****
     
-    Junction(shared_ptr<Intron> _location, int32_t _leftFlankStart, int32_t _rightFlankEnd);
+    Junction(shared_ptr<Intron> _location, int32_t _leftAncStart, int32_t _rightAncEnd);
     
     /**
      * Copy constructor
@@ -231,12 +286,12 @@ public:
     void clearAlignments();
     
     const BamAlignment& getFirstAlignment() const {
-        return junctionAlignments[0];
+        return *(alignments[0]->ba);
     }
     
    
-    shared_ptr<Intron> getLocation() const {
-        return intron;
+    const Intron& getLocation() const {
+        return *intron;
     }
 
     void setLocation(shared_ptr<Intron> location) {
@@ -276,12 +331,12 @@ public:
 
     
     /**
-     * Extends the flanking regions of the junction.  Also updates any relevant 
+     * Extends the anchor regions of the junction.  Also updates any relevant 
      * metrics.
-     * @param otherStart The alternative start position of the left flank
-     * @param otherEnd The alternative end position of the right flank
+     * @param otherStart The alternative start position of the left anchor
+     * @param otherEnd The alternative end position of the right anchor
      */
-    void extendFlanks(int32_t otherStart, int32_t otherEnd);
+    void extendAnchors(int32_t otherStart, int32_t otherEnd);
         
     
     void processJunctionWindow(const GenomeMapper& genomeMapper);
@@ -291,6 +346,7 @@ public:
     
     void calcMetrics();
     
+    void updateAlignmentInfo();
     
     /**
      * Metric 5 and 7: Diff Anchor and # Distinct Anchors
@@ -306,20 +362,6 @@ public:
      * Calculates the entropy score for this junction.  Higher entropy is generally
      * more indicative of a genuine junction than a lower score.
      *
-     * This version of the function collects BamAlignment start positions and passes
-     * them to an overloaded version of this function.
-     * 
-     * @return The entropy of this junction
-     */
-    double calcEntropy();
-    
-    /**
-     * Metric 6: Entropy (definition from "Graveley et al, The developmental 
-     * transcriptome of Drosophila melanogaster, Nature, 2011")
-     *
-     * Calculates the entropy score for this junction.  Higher entropy is generally
-     * more indicative of a genuine junction than a lower score.
-     * 
      * This overridden version of the calcEntropy method, allows us to calculate
      * the entropy, without using BamAlignment objects that model the junction.
      * All we need are the alignment start positions instead.
@@ -338,11 +380,17 @@ public:
      * 
      * Entropy = - sum_i(p_i * log(pi) / log2) 
      * 
-     * @param junctionPositions start index positions of each junction alignment
-     * 
      * @return The entropy of this junction
      */
-    double calcEntropy(vector<int32_t>& junctionPositions);
+    double calcEntropy();
+    
+    /**
+     * Provides a convienient way of get the shannon entropy score outside the
+     * junction / junction system framework
+     * @param offsets
+     * @return 
+     */
+    double calcEntropy(const vector<int32_t> offsets);
     
     /**
      * Metrics: # Distinct Alignments, # Unique/Reliable Alignments, #mismatches
@@ -359,14 +407,23 @@ public:
     
     /**
      * Calculates metric 12.  MaxMMES.
+     * Requires alignment information to be populated
      */
-    void calcMaxMMES(const string& anc5p, const string& anc3p);
+    void calcMaxMMES();
+    
+    /**
+     * Calculate metric 19.  Mean mismatches.
+     * Requires alignment information to be populated
+     */
+    void calcMeanMismatches();
     
     /**
      * Calculates metric 18.  Multiple mapping score
      */
     void calcMultipleMappingScore(SplicedAlignmentMap& map);
     
+
+    void calcTrimmedCoverageVector();
     
     double calcCoverage(int32_t a, int32_t b, const vector<uint32_t>& coverageLevels);
     
@@ -380,21 +437,21 @@ public:
         return intron;
     }
 
-    int32_t getLeftFlankStart() const {
-        return leftFlankStart;
+    int32_t getLeftAncStart() const {
+        return leftAncStart;
     }
 
-    int32_t getRightFlankEnd() const {
-        return rightFlankEnd;
+    int32_t getRightAncEnd() const {
+        return rightAncEnd;
     }
     
     size_t size() const {
-        return rightFlankEnd - leftFlankStart + 1;
+        return rightAncEnd - leftAncStart + 1;
     }
 
     
     size_t getNbJunctionAlignmentFromVector() const {
-        return this->junctionAlignments.size();
+        return this->alignments.size();
     }
     
     // **** Metric getters ****
@@ -566,8 +623,8 @@ public:
      * splice aligned reads in this junction.  From TrueSight paper.
      * @return 
      */
-    uint16_t getNbMismatches() const {
-        return nbMismatches;
+    double getMeanMismatches() const {
+        return meanMismatches;
     }
     
     /**
@@ -585,14 +642,34 @@ public:
     uint16_t getNbUpstreamJunctions() const {
         return nbUpstreamJunctions;
     }
+    
+    uint32_t getDistanceToNearestJunction() const {
+        return distanceToNearestJunction;
+    }
 
+    void setDistanceToNearestJunction(uint32_t distanceToNearestJunction) {
+        this->distanceToNearestJunction = distanceToNearestJunction;
+    }
 
+    uint32_t getDistanceToNextDownstreamJunction() const {
+        return distanceToNextDownstreamJunction;
+    }
 
+    void setDistanceToNextDownstreamJunction(uint32_t distanceToNextDownstreamJunction) {
+        this->distanceToNextDownstreamJunction = distanceToNextDownstreamJunction;
+    }
+
+    uint32_t getDistanceToNextUpstreamJunction() const {
+        return distanceToNextUpstreamJunction;
+    }
+
+    void setDistanceToNextUpstreamJunction(uint32_t distanceToNextUpstreamJunction) {
+        this->distanceToNextUpstreamJunction = distanceToNextUpstreamJunction;
+    }
 
     Strand getPredictedStrand() const {
         return predictedStrand;
     }
-
 
     void setDa1(string da1) {
         this->da1 = da1;
@@ -675,14 +752,19 @@ public:
         this->predictedStrand = predictedStrand;
     }
     
-    void setNbMismatches(uint16_t nbMismatches) {
-        this->nbMismatches = nbMismatches;
+    void setMeanMismatches(double meanMismatches) {
+        this->meanMismatches = meanMismatches;
     }
     
     void setNbMultipleSplicedReads(uint32_t nbMultipleSplicedReads) {
         this->nbMultipleSplicedReads = nbMultipleSplicedReads;
     }
 
+    void setTrimmedLogDevCov(vector<double> trimmedLogDevCov) {
+        this->trimmedLogDevCov = trimmedLogDevCov;
+    }
+
+    
     
     // **** Output methods ****
     
@@ -727,8 +809,8 @@ public:
      */
     friend ostream& operator<<(ostream &strm, Junction& j) {
         return strm << *(j.intron) << "\t"
-                    << j.leftFlankStart << "\t"
-                    << j.rightFlankEnd << "\t"
+                    << j.leftAncStart << "\t"
+                    << j.rightAncEnd << "\t"
                     << j.da1 << "\t"
                     << j.da2 << "\t"
                     << strandToChar(j.predictedStrand) << "\t"
@@ -750,12 +832,15 @@ public:
                     << j.uniqueJunction << "\t"
                     << j.primaryJunction << "\t"
                     << j.multipleMappingScore << "\t"
-                    << j.nbMismatches << "\t"
+                    << j.meanMismatches << "\t"
                     << j.nbMultipleSplicedReads << "\t"
-                    << j.nbUpstreamJunctions << "\t"
                     << j.nbDownstreamJunctions << "\t"
+                    << j.nbUpstreamJunctions << "\t"
                     << j.nbUpstreamFlankingAlignments << "\t"
-                    << j.nbDownstreamFlankingAlignments;
+                    << j.nbDownstreamFlankingAlignments << "\t"
+                    << j.distanceToNextUpstreamJunction << "\t"
+                    << j.distanceToNextDownstreamJunction << "\t"
+                    << j.distanceToNearestJunction;
                     
     }
     
@@ -769,6 +854,13 @@ public:
     static string junctionOutputHeader();
 
     static shared_ptr<Junction> parse(const string& line);
+};
+
+
+struct JunctionComparator {
+    inline bool operator() (const shared_ptr<Junction>& j1, const shared_ptr<Junction>& j2) const {
+        return IntronComparator()(*(j1->getIntron()), *(j2->getIntron()));        
+    }
 };
 
 typedef shared_ptr<Junction> JunctionPtr;

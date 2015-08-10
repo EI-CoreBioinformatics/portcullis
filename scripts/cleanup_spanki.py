@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 __author__ = 'maplesod'
 
 import sys
@@ -24,7 +26,6 @@ with open(sys.argv[1]) as f:
     f.readline()
 
     for line in f:
-
 
         words = line.split("\t")
 

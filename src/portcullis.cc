@@ -253,7 +253,13 @@ int mainFull(int argc, char *argv[]) {
     path juncDir = outputDir.string() + "/all_junctions";
     
     // Identify junctions and calculate metrics
-    JunctionBuilder(prepDir.string(), juncDir.string(), "portcullis_all", threads, true, verbose).process();
+    JunctionBuilder jb(prepDir.string(), juncDir.string(), "portcullis_all");
+    jb.setThreads(threads);
+    jb.setExtra(false);
+    jb.setSeparate(false);
+    jb.setVerbose(verbose);
+    
+    jb.process();
     
 
     // ************ Use default filtering strategy *************
@@ -340,8 +346,9 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.8.0"
+#define PACKAGE_VERSION "0.9.0"
 #endif
+        
         cout << PACKAGE_NAME << " V" << PACKAGE_VERSION << endl << endl;
         
         // End if version was requested.
@@ -349,7 +356,7 @@ int main(int argc, char *argv[]) {
             return 0;
         }
         
-        PortcullisFS fs(argv[0]);
+        PortcullisFS fs(argv[0], PACKAGE_VERSION);
         
         // End if verbose was requested at this level, outputting file system details.
         if (verbose) {
@@ -370,6 +377,7 @@ int main(int argc, char *argv[]) {
         BamHelper::samtoolsExe = fs.getSamtoolsExe();
         JunctionFilter::defaultFilterFile = path(fs.getEtcDir().string() + "/default_filter.json");
         JunctionFilter::filterJuncsPy = fs.getFilterJuncsPy();
+        JunctionSystem::version = fs.getVersion();
         
         if (mode == PREP) {
             Prepare::main(modeArgC, modeArgV);

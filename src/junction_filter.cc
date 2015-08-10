@@ -228,7 +228,7 @@ double portcullis::eval::getNumericFromJunc(const var& fullname) const {
         case 17:
             return junc->getMultipleMappingScore();
         case 18:
-            return junc->getNbMismatches();
+            return junc->getMeanMismatches();
         case 19:
             return junc->getNbMultipleSplicedReads();
         case 20:
@@ -425,6 +425,14 @@ void portcullis::JunctionFilter::filter() {
     for(map<string,int>::iterator iterator = filterCounts.begin(); iterator != filterCounts.end(); iterator++) {        
         cout << iterator->first << ": " << iterator->second << endl;
     }
+    
+    cout << endl
+         << "Recalculating junction grouping and distance stats based on new junction list that passed filters ...";
+    cout.flush();
+    
+    passJunc.calcJunctionStats();
+    
+    cout << " done." << endl;
     
     
     // Output stats

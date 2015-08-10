@@ -144,88 +144,70 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
 
     bool foundJunction = false;
 
-    size_t nbOps = al.getNbCigarOps();
-
-    int32_t refId = al.getReferenceId();
-    string refName = refs[refId].name;
-    int32_t refLength = refs[refId].length;
+    const size_t nbOps = al.getNbCigarOps();
+    const int32_t refId = al.getReferenceId();
+        
     int32_t lStart = offset;        
-    int32_t lEnd = lStart;
+    int32_t lEndExc = lStart;   // End of left anchor exclusive (i.e. +1)
     int32_t rStart = lStart;
-    int32_t rEnd = lStart;
+    int32_t rEndExc = lStart;   // End of right anchor exclusive (i.e. +1)
 
     for(size_t i = startOp; i < nbOps; i++) {
 
         CigarOp op = al.getCigarOpAt(i);
         
-        // If first op is a soft clip, then move on
-        if (i == startOp && op.type == BAM_CIGAR_SOFTCLIP_CHAR) {
-            lStart = offset + op.length;        
-            lEnd = lStart;
-            rStart = lStart;
-            rEnd = lStart;            
-        }
-        else if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
+        if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
             foundJunction = true;
+            
+            const int32_t refLength = refs[refId].length;
 
-            rStart = lEnd + op.length;
-            rEnd = rStart;
+            rStart = lEndExc + op.length;
+            rEndExc = rStart;
 
             // Establish end position of right anchor in genomic coordinates
             size_t j = i+1;
             while (j < nbOps 
-                    && rEnd < refLength 
-                    && al.getCigarOpAt(j).type != BAM_CIGAR_REFSKIP_CHAR 
-                    && al.getCigarOpAt(j).type != BAM_CIGAR_SOFTCLIP_CHAR) {
+                    && rEndExc <= refLength 
+                    && al.getCigarOpAt(j).type != BAM_CIGAR_REFSKIP_CHAR) {
 
                 CigarOp rOp = al.getCigarOpAt(j++);
                 
                 if (CigarOp::opConsumesReference(rOp.type)) {
-                    rEnd += rOp.length;
+                    rEndExc += rOp.length;
                 }
             }
             
-            // The end of the flank will be one less than where we got to
-            rEnd--;
-
             // Do some sanity checking... make sure there are not any strange N cigar ops that
             // drift over the edge of a reference sequence... seems like this can actually
-            // happen in GSNAP!
+            // happen in GSNAP!  I guess this is referring to reads that map over
+            // target sequence boundaries
             if (rStart - 1 >= refLength) {
-                rStart = refLength;
+                rStart = refLength - 1;
             }            
-            if (rEnd - 1 >= refLength) {
-                rEnd = refLength - 1;
+            if (rEndExc - 1 >= refLength) {
+                rEndExc = refLength;
             }
             
             // Create the intron
-            shared_ptr<Intron> location = make_shared<Intron>(RefSeq(refId, refName, refLength), lEnd, rStart - 1, 
+            shared_ptr<Intron> location = make_shared<Intron>(RefSeq(refId, refs[refId].name, refLength), lEndExc, rStart - 1, 
                     strandSpecific ? strandFromBool(al.isReverseStrand()) : UNKNOWN);
 
             // We should now have the complete junction location information
             JunctionMapIterator it = distinctJunctions.find(*location);
 
-            //cout << "Before junction add (inner): " << al.use_count() << endl;
-
             // If we couldn't find this location in the hashmap, add a new
             // location / junction pair.  If we've seen this location before
             // then add this alignment to the existing junction
             if (it == distinctJunctions.end()) {
-                JunctionPtr junction = make_shared<Junction>(location, lStart, rEnd);
+                JunctionPtr junction = make_shared<Junction>(location, lStart, rEndExc - 1);
                 junction->addJunctionAlignment(al);
                 distinctJunctions[*location] = junction;
                 junctionList.push_back(junction);                    
             }
             else {
                 JunctionPtr junction = it->second;
-                junction->addJunctionAlignment(al);                    
-                junction->extendFlanks(lStart, rEnd);
-            }
-
-            // Don't try and go over the end of the reference
-            // Might happen in some aligners like GSNAP or STAR
-            if (rEnd >= refLength - 1) {
-                break;
+                junction->addJunctionAlignment(al);
+                junction->extendAnchors(lStart, rEndExc - 1);
             }
             
             // Check if we have fully processed the cigar or not.  If not, then
@@ -237,7 +219,7 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
             }
         }
         else if (CigarOp::opConsumesReference(op.type)) {
-            lEnd += op.length;
+            lEndExc += op.length;
         }
         
         // Ignore any other op types not already covered        
@@ -340,12 +322,90 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
         }
         junctionGroup[maxIndex]->setPrimaryJunction(true);
     }
+    
+    if (verbose) {
+        cout << "done." << endl;        
+        cout << " - Calculating distances between junctions ... ";
+        cout.flush();
+    }
+    
+    size_t i = 0;
+    bool lastdiffseq = false;
+    while(i < junctionList.size() - 1) {
+        
+        JunctionPtr first = junctionList[i];
+        JunctionPtr second = junctionList[i+1];
+        
+        int32_t diff = second->getIntron()->start - first->getIntron()->end;
+        
+        diff = diff < 0 ? 0 : diff;        
+        
+        if (first->getIntron()->ref.index != second->getIntron()->ref.index) {
+            first->setDistanceToNextUpstreamJunction(-1);
+            second->setDistanceToNextDownstreamJunction(-1);
+            
+            if (i == 0 || lastdiffseq) {
+                first->setDistanceToNextDownstreamJunction(-1);
+            }
+            
+            if (i == junctionList.size() - 2) {
+                second->setDistanceToNextUpstreamJunction(-1);
+            }
+            
+            lastdiffseq = true;
+        }
+        else if (i == 0) {
+            first->setDistanceToNextDownstreamJunction(-1);
+            first->setDistanceToNextUpstreamJunction(diff);
+            second->setDistanceToNextDownstreamJunction(diff);
+            lastdiffseq = false;
+        }
+        else if (i == junctionList.size() - 2) {
+            first->setDistanceToNextUpstreamJunction(diff);
+            second->setDistanceToNextDownstreamJunction(diff);
+            second->setDistanceToNextUpstreamJunction(-1);
+            lastdiffseq = false;
+        }
+        else {
+            first->setDistanceToNextUpstreamJunction(diff);
+            second->setDistanceToNextDownstreamJunction(diff);
+            lastdiffseq = false;
+        }
+        
+        i++;
+    }
+    
+    for(auto& junc : junctionList) {
+        
+        int32_t down = junc->getDistanceToNextDownstreamJunction();
+        int32_t up = junc->getDistanceToNextUpstreamJunction();
+        
+        junc->setDistanceToNearestJunction(down == -1 || up == -1 ? max(down, up) : min(down, up));
+    }
 
     if(verbose) {
         cout << "done." << endl;        
     }
 }
 
+/**
+ * Used of calculating metric 27.  Trimmed Overhang score.  This provide a probability
+ * that this junction is genuine based on comparisons of expected distribution
+ * of coverage to observed distribution of coverage, after reads have been trimmed
+ * to the first mismatch up and downstream of the junction.  An L1 regularized 
+ * logistic regression is then fitted to
+ * 
+ * This metric similar to this is used in FineSplice.
+ */
+void portcullis::JunctionSystem::calcTrimmedOverhangScore() {
+    
+    
+}
+
+void portcullis::JunctionSystem::sort() {
+    
+    std::sort(junctionList.begin(), junctionList.end(), JunctionComparator());
+}
 
 void portcullis::JunctionSystem::saveAll(const path& outputPrefix) {
 
@@ -439,7 +499,7 @@ void portcullis::JunctionSystem::outputBED(string& path, CanonicalSS type) {
 }
 
 void portcullis::JunctionSystem::outputBED(std::ostream &strm, CanonicalSS type) {
-    strm << "track name=\"junctions\"" << endl;
+    strm << "track name=\"junctions\" description=\"Portcullis V" << (version.empty() ? "X.X.X" : version) << " junctions" << endl;
     uint64_t i = 0;
     for(JunctionPtr j : junctionList) {
         if (type == ALL || j->getSpliceSiteType() == type) {
@@ -475,4 +535,6 @@ JunctionPtr portcullis::JunctionSystem::getJunction(Intron& intron) const {
         return nullptr;
     }
 }
+
+string portcullis::JunctionSystem::version = "";
 

@@ -201,22 +201,14 @@ public:
         return position;
     }
     
-    int32_t getStart(bool afterClipping) const {
-        return afterClipping && cigar.front().type == BAM_CIGAR_SOFTCLIP_CHAR ? position + cigar.front().length : position;    
-    }
-    
     int32_t getEnd() const {
-        return position + alignedLength;
+        return position + alignedLength - 1;
     }
-    
-    int32_t getEnd(bool afterClipping) const {
-        return afterClipping && cigar.back().type == BAM_CIGAR_SOFTCLIP_CHAR ? getEnd() - cigar.back().length : getEnd();    
-    }
-    
+        
     int32_t getReferenceId() const {
         return refId;
     }
-    
+        
     int32_t getLength() const {
         return b->core.l_qseq;
     }
