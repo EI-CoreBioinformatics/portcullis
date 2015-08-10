@@ -19,12 +19,14 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <mutex>
 using std::boolalpha;
 using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
 using std::ofstream;
+using std::unique_lock;
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
@@ -53,42 +55,23 @@ using portcullis::Junction;
 using portcullis::JunctionSystem;
 
 #include "junction_builder.hpp"
+using portcullis::JBThreadPool;
 
-portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _outputDir, string _outputPrefix, uint16_t _threads, bool _extra, bool _verbose) {
+portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _outputDir, string _outputPrefix) {
     prepData = PreparedFiles(_prepDir);
     outputDir = _outputDir;
     outputPrefix = _outputPrefix;
-    threads = _threads;
-    extra = _extra;
-    verbose = _verbose;        
-
-    if (verbose) {
-        cout << "Initialised Portcullis instance with settings:" << endl
-             << " - Prep data dir: " << prepData.getPrepDir() << endl
-             << " - Output directory: " << outputDir << endl
-             << " - Output file name prefix: " << outputPrefix << endl
-             << " - Threads: " << threads << endl 
-             << " - Extra mode: " << boolalpha << extra << endl << endl;            
-    }
-
-    if (verbose) {
-        cout << "Ensuring output directory exists ... ";
-        cout.flush();
-    }
+    threads = 1;
+    extra = false;
+    verbose = false;        
 
     if (!bfs::exists(outputDir)) {
-        if (!bfs::create_directory(outputDir)) {
+        if (!bfs::create_directories(outputDir)) {
             BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
                     "Could not create output directory: ") + outputDir.string()));
         }
     }
 
-    if (verbose) {
-        cout << "done." << endl << endl
-             << "Checking prepared data ... ";
-        cout.flush();
-    }
-    
     // Loading settings stored in prep data
     settings = prepData.loadSettings();
 
@@ -96,12 +79,6 @@ portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _
     if (!prepData.valid(settings.useCsi)) {
         BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
                     "Prepared data is not complete: ") + prepData.getPrepDir().string()));
-    }
-
-    if (verbose) {
-        cout << "done." << endl
-             << " - Strand specific input data: " << SSToString(settings.ss) << endl
-             << " - Indexing format: " << (settings.useCsi ? "CSI" : "BAI") << endl << endl;
     }
 }
     
@@ -119,6 +96,12 @@ portcullis::JunctionBuilder::~JunctionBuilder() {
  */
 void portcullis::JunctionBuilder::process() {
 
+    // Must separate BAMs if extra metrics are requested
+    if (extra) {
+        separate = true;
+    }
+    
+    // Ensure output directory exists
     if (!bfs::exists(outputDir)) {
         if (!bfs::create_directories(outputDir)) {
             BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
@@ -130,156 +113,80 @@ void portcullis::JunctionBuilder::process() {
 
     const path sortedBamFile = prepData.getSortedBamFilePath();
 
-    BamReader reader(sortedBamFile, 1);
+    // Separate spliced from unspliced reads and save to file if requested
+    if (separate) {
+        separateBams();
+    }
+    
+    // Acquire list of reference sequences
+    BamReader reader(prepData.getSortedBamFilePath(), 1);    
     reader.open();
+    refs = reader.getRefs();
+    refMap = reader.calcRefMap();
+    reader.close();
 
-    vector<RefSeq> refs = reader.getRefs();
     junctionSystem.setRefs(refs);
 
-    cout << " - Reading alignments from: " << sortedBamFile << endl;
-
-    path unsplicedFile = getUnsplicedBamFile();
-    path splicedFile = getSplicedBamFile();
-
-    BamWriter unsplicedWriter(unsplicedFile);
-    BamWriter splicedWriter(splicedFile);
-
-    cout << " - Saving unspliced alignments to: " << unsplicedFile << endl;
-    unsplicedWriter.open(reader.getHeader());
-
-    cout << " - Saving spliced alignments to: " << splicedFile << endl;
-    splicedWriter.open(reader.getHeader());
-
-    uint64_t splicedCount = 0;
-    uint64_t unsplicedCount = 0;
-    uint64_t sumQueryLengths = 0;
-    int32_t minQueryLength = 100000;
-    int32_t maxQueryLength = 0;
-
-    int32_t lastRefId = -1;
-    int32_t lastCalculatedJunctionIndex = 0;
-    int32_t lastSeqCount = 0;
-    int32_t chunkSize = 0;
-    int32_t nextTarget = 0;
-    int32_t percentComplete = 0;
-
-    cout << endl << "Loading reference index ... ";
+    // Add each target sequence as a chunk of work for the thread pool
+    results.clear();
+    results.resize(refs.size());
+    JBThreadPool pool(this, threads);
+    
+    cout << "Finding junctions:" << endl;
+    cout << " - Queueing " << refs.size() << " target sequences for processing in the thread pool of " << threads << " threads ...";
+    cout.flush();
+    for(size_t i = 0; i < refs.size(); i++) {
+        results[i].js.setRefs(refs);    // Make sure junction system has reference sequence list available        
+        pool.enqueue(refs[i].index);
+    }
+    cout << " done" << endl;
+    cout << " - Waiting for threads...";
     cout.flush();
     
-    GenomeMapper gmap(prepData.getGenomeFilePath());
-    gmap.loadFastaIndex();
+    // Waits for all threads to complete
+    pool.shutDown();
+   
     
-    cout << "done." << endl << endl;
-        
-    cout << "Processing alignments and calculating metrics for reference sequence: " << endl;
-
-    // The contents inside the pointer will automatically alter as reader.next() is called
     
-    while(reader.next()) {
-
-        const BamAlignment& al = reader.current();
-        const int32_t refId = al.getReferenceId();
-        
-        while (junctionSystem.size() > 0 && lastCalculatedJunctionIndex < junctionSystem.size() && 
-                (refId != lastRefId || al.getPosition() > junctionSystem.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end)) {
-
-            JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);            
-
-            //cout << "Processing junction: " << lastCalculatedJunctionIndex << " - " << j->getIntron()->toString() << endl;
-            j->calcMetrics();
-            j->processJunctionWindow(gmap);
-            j->clearAlignments();
-            
-            lastCalculatedJunctionIndex++;
-            lastSeqCount++;
-        }
-
-        if (lastRefId == -1 || refId != lastRefId) {
-            
-            // Just check we haven't got any strange alignments that are not associated with ref seqs.
-            // End if we do
-            if (refId >= refs.size()) {
-                break;
-            }
-            
-            if (lastRefId > -1) {
-                cout << "100%\t" << lastSeqCount << " potential junctions found." << endl;
-                nextTarget = 0;
-                percentComplete = 0;
-            }
-            
-            cout << " - " << refs[refId].name << "\t 0% ... ";
-            cout.flush();
-            
-            chunkSize = refs[refId].length / 10;
-            nextTarget += chunkSize;
-            percentComplete += 10;
-            
-            lastSeqCount = 0;
-        }
-
-        lastRefId = refId;
-
-        int32_t len = al.getLength();
-        minQueryLength = min(minQueryLength, len);
-        maxQueryLength = max(maxQueryLength, len);
-
-        sumQueryLengths += len;
-
-        //cout << "Before junction add (outer): " << bap.use_count() << endl;            
-        if (junctionSystem.addJunctions(al, false)) {//strandSpecific)) {
-            splicedWriter.write(al);
-            splicedCount++;
-
-            // Record alignment name in map
-            size_t code = std::hash<string>()(al.deriveName());
-            splicedAlignmentMap[code]++;
-        }
-        else {
-            unsplicedWriter.write(al);
-            unsplicedCount++;
-        }
-
-        while (al.getPosition() > nextTarget) {
-            cout << percentComplete << "% ... ";
-            cout.flush();
-            
-            nextTarget += chunkSize;
-            percentComplete += 10; 
-        }
+    cout << " done" << endl << " - Combining results from threads ...";
+    cout.flush();
+    
+    uint64_t unsplicedCount = 0;
+    uint64_t splicedCount = 0;
+    uint64_t sumQueryLengths = 0;
+    int32_t minQueryLength = 0;
+    int32_t maxQueryLength = 0;
+    for(auto& res : results) {
+        junctionSystem.append(res.js);
+        unsplicedCount += res.unsplicedCount;
+        splicedCount += res.splicedCount;
+        sumQueryLengths += res.sumQueryLengths;
+        minQueryLength = min(minQueryLength, res.minQueryLength);
+        maxQueryLength = max(maxQueryLength, res.maxQueryLength);        
     }
 
-    while (junctionSystem.size() > 0 && lastCalculatedJunctionIndex < junctionSystem.size()) {
-
-        JunctionPtr j = junctionSystem.getJunctionAt(lastCalculatedJunctionIndex);
-        j->calcMetrics();
-        j->processJunctionWindow(gmap);
-        j->clearAlignments();
-        lastCalculatedJunctionIndex++;
-        lastSeqCount++;
-    }
+    junctionSystem.sort();
     
-    cout << "100%\t" << lastSeqCount << " potential junctions found." << endl;
-
-    reader.close();
-    unsplicedWriter.close();
-    splicedWriter.close();
-
-
-    cout << endl << "Calculating junctions stats that require comparisons with other junctions...";
+    cout << " done" << endl << endl;
+    
+        
+    cout << "Calculating junctions stats that require comparisons with other junctions...";
     cout.flush();
     junctionSystem.calcJunctionStats();
-    junctionSystem.calcMultipleMappingStats(splicedAlignmentMap);
-    cout << " done" << endl;
+    
+    cout << " done" << endl << endl;
 
     if (extra) {
+        
+        junctionSystem.calcMultipleMappingStats(splicedAlignmentMap);
+        
         // Count the number of alignments found in upstream and downstream flanking 
         // regions for each junction
         cout << endl << endl << "Analysing unspliced alignments around junctions:" << endl;
-        junctionSystem.findFlankingAlignments(unsplicedFile, settings.ss);
+        junctionSystem.findFlankingAlignments(getUnsplicedBamFile(), settings.ss);
         
         cout << endl << "Calculating unspliced alignment coverage around junctions..." << endl;
-        junctionSystem.calcCoverage(unsplicedFile, settings.ss);
+        junctionSystem.calcCoverage(getUnsplicedBamFile(), settings.ss);
     }
 
     // Calculate some stats
@@ -291,9 +198,68 @@ void portcullis::JunctionBuilder::process() {
          << " - Alignment query length statistics: min: " << minQueryLength << "; mean: " << meanQueryLength << "; max: " << maxQueryLength << ";" << endl
          << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl
          << " - Found " << unsplicedCount << " unspliced alignments." << endl << endl;
+    
 
-    cout << "Indexing:" << endl;
-    cout << " - unspliced alignments ... ";
+    cout << "Saving junctions: " << endl;
+    junctionSystem.saveAll(path(outputDir.string() + "/" + outputPrefix));
+}
+
+void portcullis::JunctionBuilder::separateBams() {
+    
+    uint64_t splicedCount = 0;
+    uint64_t unsplicedCount = 0;
+        
+    const path unsplicedFile = getUnsplicedBamFile();
+    const path splicedFile = getSplicedBamFile();
+    
+    BamWriter unsplicedWriter(unsplicedFile);
+    BamWriter splicedWriter(splicedFile);
+
+    BamReader reader(prepData.getSortedBamFilePath(), 1);
+    
+    cout << endl 
+         << "Splitting BAM:" << endl;
+    
+    cout << " - Saving unspliced alignments to: " << unsplicedFile << endl;
+    unsplicedWriter.open(reader.getHeader());
+
+    cout << " - Saving spliced alignments to: " << splicedFile << endl;
+    splicedWriter.open(reader.getHeader());
+        
+    cout << " - Processing BAM ...";
+    cout.flush();
+    
+    while(reader.next()) {
+        
+        const BamAlignment& al = reader.current();
+        
+        if (al.isSplicedRead()) {
+            splicedWriter.write(al);
+            splicedCount++;
+            
+            if (extra) {
+                // Record alignment name in map
+                size_t code = std::hash<string>()(al.deriveName());
+                splicedAlignmentMap[code]++;
+            }
+        }
+        else {
+            unsplicedWriter.write(al);
+            unsplicedCount++;
+        }
+    }
+    
+    cout << " done" << endl;
+    
+    cout << " - Found " << unsplicedCount << " spliced alignments." << endl;
+    cout << " - Found " << unsplicedCount << " unspliced alignments." << endl;
+        
+    reader.close();
+    unsplicedWriter.close();
+    splicedWriter.close();  
+    
+    cout << " - Indexing unspliced alignments ... ";
+    cout.flush();
 
     // Create BAM index
     string unsplicedIndexCmd = BamHelper::createIndexBamCmd(unsplicedFile, settings.useCsi);                
@@ -310,9 +276,75 @@ void portcullis::JunctionBuilder::process() {
     int sExitCode = system(splicedIndexCmd.c_str());                    
 
     cout << "done." << endl;
+}
 
-    cout << endl << "Saving junctions: " << endl;
-    junctionSystem.saveAll(path(outputDir.string() + "/" + outputPrefix));
+void portcullis::JunctionBuilder::processRegion(int32_t seq) {
+    
+    uint64_t splicedCount = 0;
+    uint64_t unsplicedCount = 0;
+    int32_t lastCalculatedJunctionIndex = 0;
+    uint64_t sumQueryLengths = 0;
+    int32_t minQueryLength = 0;
+    int32_t maxQueryLength = 0;
+    int32_t lastSeqCount = 0;
+    
+    GenomeMapper gmap(prepData.getGenomeFilePath());
+    gmap.loadFastaIndex();
+    
+    BamReader reader(prepData.getSortedBamFilePath(), 1);
+    reader.open();
+    
+    reader.setRegion(seq, 0, refs[seq].length);
+    
+    while(reader.next()) {
+
+        const BamAlignment& al = reader.current();
+        
+        while (results[seq].js.size() > 0 && lastCalculatedJunctionIndex < results[seq].js.size() && 
+                al.getPosition() > results[seq].js.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end) {
+
+            JunctionPtr j = results[seq].js.getJunctionAt(lastCalculatedJunctionIndex);            
+
+            //cout << "Processing junction: " << lastCalculatedJunctionIndex << " - " << j->getIntron()->toString() << endl;
+            j->calcMetrics();
+            j->processJunctionWindow(gmap);
+            j->clearAlignments();
+            
+            lastCalculatedJunctionIndex++;            
+        }
+
+        // Calc alignment stats
+        int32_t len = al.getLength();
+        minQueryLength = min(minQueryLength, len);
+        maxQueryLength = max(maxQueryLength, len);
+        sumQueryLengths += len;
+
+        //cout << "Before junction add (outer): " << bap.use_count() << endl;            
+        if (results[seq].js.addJunctions(al, false)) {//strandSpecific)) {
+            splicedCount++;            
+        }
+        else {
+            unsplicedCount++;
+        }
+    }
+
+    while (results[seq].js.size() > 0 && lastCalculatedJunctionIndex < results[seq].js.size()) {
+
+        JunctionPtr j = results[seq].js.getJunctionAt(lastCalculatedJunctionIndex);
+        j->calcMetrics();
+        j->processJunctionWindow(gmap);
+        j->clearAlignments();
+        lastCalculatedJunctionIndex++;
+    }
+    
+    reader.close();
+    
+    // Update result vector
+    results[seq].splicedCount = splicedCount;
+    results[seq].unsplicedCount = unsplicedCount;
+    results[seq].minQueryLength = minQueryLength;
+    results[seq].maxQueryLength = maxQueryLength;
+    results[seq].sumQueryLengths = sumQueryLengths;     
 }
    
 int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
@@ -323,6 +355,7 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
     string outputPrefix;
     uint16_t threads;
     bool extra;
+    bool separate;
     bool verbose;
     bool help;
 
@@ -336,7 +369,9 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
             ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_JUNC_THREADS),
                 (string("The number of threads to use.  Default: ") + lexical_cast<string>(DEFAULT_JUNC_THREADS)).c_str())
             ("extra,e", po::bool_switch(&extra)->default_value(false),
-                "Calculate additional metrics...")
+                "Calculate additional metrics that take some time to generate.  Automatically activates BAM splitting mode.")
+            ("separate,s", po::bool_switch(&separate)->default_value(false),
+                "Separate spliced from unspliced reads.")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                 "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -380,10 +415,104 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
          << "------------------------------------------" << endl << endl;
 
     // Do the work ...
-    JunctionBuilder jb(prepDir, outputDir, outputPrefix, threads, extra, verbose);
+    JunctionBuilder jb(prepDir, outputDir, outputPrefix);
+    jb.setThreads(threads);
+    jb.setExtra(extra);
+    jb.setSeparate(separate);
+    jb.setVerbose(verbose);
     jb.setSamtoolsExe(BamHelper::samtoolsExe);
     jb.process();
 
     return 0;
+}
+
+
+// ********* Thread Pool ************
+
+
+portcullis::JBThreadPool::JBThreadPool(JunctionBuilder* jb, const uint16_t threads) : terminate(false), stopped(false) {
+    // Create number of required threads and add them to the thread pool vector.
+    for (int i = 0; i < threads; i++) {
+        threadPool.emplace_back(thread(&portcullis::JBThreadPool::invoke, this));
+    }
+    
+    junctionBuilder = jb;
+}
+
+void portcullis::JBThreadPool::enqueue(const int32_t index) {
+    // Scope based locking.
+    {
+        // Put unique lock on task mutex.
+        unique_lock<mutex> lock(tasksMutex);
+
+        // Push task into queue.
+        tasks.push(index);
+    }
+
+    // Wake up one thread.
+    condition.notify_one();
+}
+
+void portcullis::JBThreadPool::invoke() {
+
+    int32_t task;
+    while (true) {
+        // Scope based locking.
+        {
+            // Put unique lock on task mutex.
+            unique_lock<mutex> lock(tasksMutex);
+
+            // Wait until queue is not empty or termination signal is sent.
+            condition.wait(lock, [this] {
+                return !tasks.empty() || terminate; });
+
+            // If termination signal received and queue is empty then exit else continue clearing the queue.
+            if (terminate && tasks.empty()) {
+                return;
+            }
+
+            // Get next task in the queue.
+            task = tasks.front();
+
+            // Remove it from the queue.
+            tasks.pop();
+        }
+
+        // Execute the task.
+        junctionBuilder->processRegion(task);
+    }
+}
+
+void portcullis::JBThreadPool::shutDown() {
+    // Scope based locking.
+    {
+        // Put unique lock on task mutex.
+        unique_lock<mutex> lock(tasksMutex);
+
+        // Set termination flag to true.
+        terminate = true;
+    }
+
+    // Wake up all threads.
+    condition.notify_all();
+
+    // Join all threads.
+    for (thread &thread : threadPool) {
+        thread.join();
+    }
+
+    // Empty workers vector.
+    threadPool.empty();
+
+    // Indicate that the pool has been shut down.
+    stopped = true;
+}
+
+// Destructor.
+
+portcullis::JBThreadPool::~JBThreadPool() {
+    if (!stopped) {
+        shutDown();
+    }
 }
 

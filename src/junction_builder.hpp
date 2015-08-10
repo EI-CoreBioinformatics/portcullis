@@ -21,12 +21,20 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <queue>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 using std::boolalpha;
 using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::mutex;
 using std::ofstream;
+using std::queue;
+using std::thread;
+using std::condition_variable;
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
@@ -60,6 +68,15 @@ const uint16_t DEFAULT_JUNC_THREADS = 1;
 typedef boost::error_info<struct JunctionBuilderError,string> JunctionBuilderErrorInfo;
 struct JunctionBuilderException: virtual boost::exception, virtual std::exception { };
 
+struct RegionResult {
+    uint64_t splicedCount = 0;
+    uint64_t unsplicedCount = 0;
+    uint64_t sumQueryLengths = 0;
+    int32_t minQueryLength = 100000;
+    int32_t maxQueryLength = 0;
+    JunctionSystem js;
+};
+
 class JunctionBuilder {
 private:
 
@@ -70,12 +87,22 @@ private:
     Settings settings;
     uint16_t threads;
     bool extra;
+    bool separate;
     path samtoolsExe;
     bool verbose;
     
     // The set of distinct junctions found in the BAM file
     JunctionSystem junctionSystem;
     SplicedAlignmentMap splicedAlignmentMap;
+    
+    // List of reference sequences
+    vector<RefSeq> refs;
+    
+    // Map of reference sequence indicies to reference sequences
+    unordered_map<int32_t, RefSeq> refMap;
+    
+    // Results from threads
+    vector<RegionResult> results;
     
     
 
@@ -93,14 +120,51 @@ protected:
         return path(bamFile.string() + ".bai");
     }
         
+    void separateBams();
+        
 
 public:
 
     
-    JunctionBuilder(const path& _prepDir, const path& _outputDir, string _outputPrefix, uint16_t _threads, bool _fast, bool _verbose);
+    JunctionBuilder(const path& _prepDir, const path& _outputDir, string _outputPrefix);
     
     virtual ~JunctionBuilder();
     
+    void processRegion(const int32_t seq);
+    
+    bool isExtra() const {
+        return extra;
+    }
+
+    void setExtra(bool extra) {
+        this->extra = extra;
+    }
+
+    uint16_t getThreads() const {
+        return threads;
+    }
+
+    void setThreads(uint16_t threads) {
+        this->threads = threads;
+    }
+
+    bool isVerbose() const {
+        return verbose;
+    }
+
+    void setVerbose(bool verbose) {
+        this->verbose = verbose;
+    }
+    
+    bool isSeparate() const {
+        return separate;
+    }
+
+    void setSeparate(bool separate) {
+        this->separate = separate;
+    }
+
+
     
     
     /**
@@ -128,5 +192,48 @@ public:
     
     static int main(int argc, char *argv[]);
 };
+
+class JBThreadPool {
+public:
+
+    // Constructor.
+    JBThreadPool(JunctionBuilder* jb, const uint16_t threads);
+
+    // Destructor.
+    ~JBThreadPool();
+
+    // Adds task to a task queue.
+    void enqueue(const int32_t index);
+
+    // Shut down the pool.
+    void shutDown();
+
+private:
+    
+    // JunctionBuider
+    JunctionBuilder* junctionBuilder;
+    
+    // Thread pool storage.
+    vector<thread> threadPool;
+
+    // Queue to keep track of incoming tasks and task index.
+    queue<int32_t> tasks;
+
+    // Task queue mutex.
+    mutex tasksMutex;
+
+    // Condition variable.
+    condition_variable condition;
+
+    // Indicates that pool needs to be shut down.
+    bool terminate;
+
+    // Indicates that pool has been terminated.
+    bool stopped;
+
+    // Function that will be invoked by our threads.
+    void invoke();
+};
+
 }
 

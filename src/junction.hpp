@@ -75,12 +75,12 @@ const string METRIC_NAMES[NB_METRICS] = {
         "M18-mm_score",
         "M19-mean_mismatches",
         "M20-nb_msrs",
-        "M21-nb_down_juncs",
-        "M22-nb_up_juncs",
-        "M23-down_aln",
-        "M24-up_aln",
-        "M25-dist_2_down_junc",
-        "M26-dist_2_up_junc",
+        "M21-nb_up_juncs",
+        "M22-nb_down_juncs",
+        "M23-up_aln",
+        "M24-down_aln",
+        "M25-dist_2_up_junc",
+        "M26-dist_2_down_junc",
         "M27-dist_nearest_junc"         
     };
 
@@ -188,6 +188,7 @@ struct AlignmentInfo {
     uint32_t getNbMatchesFromStart(const string& query, const string& anchor);
     uint32_t getNbMatchesFromEnd(const string& query, const string& anchor);
 };
+
 
 class Junction {
     
@@ -835,10 +836,10 @@ public:
                     << j.nbMultipleSplicedReads << "\t"
                     << j.nbDownstreamJunctions << "\t"
                     << j.nbUpstreamJunctions << "\t"
-                    << j.nbDownstreamFlankingAlignments << "\t"
                     << j.nbUpstreamFlankingAlignments << "\t"
-                    << j.distanceToNextDownstreamJunction << "\t"
+                    << j.nbDownstreamFlankingAlignments << "\t"
                     << j.distanceToNextUpstreamJunction << "\t"
+                    << j.distanceToNextDownstreamJunction << "\t"
                     << j.distanceToNearestJunction;
                     
     }
@@ -853,6 +854,13 @@ public:
     static string junctionOutputHeader();
 
     static shared_ptr<Junction> parse(const string& line);
+};
+
+
+struct JunctionComparator {
+    inline bool operator() (const shared_ptr<Junction>& j1, const shared_ptr<Junction>& j2) const {
+        return IntronComparator()(*(j1->getIntron()), *(j2->getIntron()));        
+    }
 };
 
 typedef shared_ptr<Junction> JunctionPtr;

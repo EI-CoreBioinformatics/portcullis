@@ -39,6 +39,7 @@ using boost::lexical_cast;
 #include "bam_alignment.hpp"
 using portcullis::bam::BamAlignment;
 using portcullis::bam::BamAlignmentPtr;
+using portcullis::bam::RefSeq;
 
 #include "bam_reader.hpp"
 
@@ -103,6 +104,17 @@ void portcullis::bam::BamReader::open() {
 
 void portcullis::bam::BamReader::close() {
     bam_close(fp);
+}
+
+const unordered_map<int32_t, RefSeq>& portcullis::bam::BamReader::calcRefMap() {
+    
+    refMap.clear();
+    
+    for(auto& ref : refs) {
+        refMap[ref.index] = ref;
+    }
+    
+    return refMap;
 }
 
 bool portcullis::bam::BamReader::next() {

@@ -402,6 +402,10 @@ void portcullis::JunctionSystem::calcTrimmedOverhangScore() {
     
 }
 
+void portcullis::JunctionSystem::sort() {
+    
+    std::sort(junctionList.begin(), junctionList.end(), JunctionComparator());
+}
 
 void portcullis::JunctionSystem::saveAll(const path& outputPrefix) {
 

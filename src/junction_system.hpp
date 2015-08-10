@@ -152,6 +152,8 @@ public:
     
     void calcTrimmedOverhangScore();
     
+    void sort();
+    
     void saveAll(const path& outputPrefix);
     
     void outputDescription(std::ostream &strm);

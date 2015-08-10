@@ -921,12 +921,12 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
          << "M18: Multiple mapping score: " << multipleMappingScore << delimiter
          << "M19: Mean mismatches: " << meanMismatches << delimiter
          << "M20: # Multiple Spliced Reads: " << nbMultipleSplicedReads << delimiter
-         << "M21: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
          << "M21: # Upstream Junctions: " << nbUpstreamJunctions << delimiter
-         << "M23: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
-         << "M24: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
-         << "M25: # Distance to next downstream junction: " << distanceToNextDownstreamJunction << delimiter
-         << "M26: # Distance to next upstream junction: " << distanceToNextUpstreamJunction << delimiter
+         << "M22: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
+         << "M23: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
+         << "M24: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
+         << "M25: # Distance to next upstream junction: " << distanceToNextUpstreamJunction << delimiter
+         << "M26: # Distance to next downstream junction: " << distanceToNextDownstreamJunction << delimiter
          << "M27: # Distance to nearest junction: " << distanceToNearestJunction;         
 }
     
@@ -1131,6 +1131,9 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[33]));
     j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[34]));
     j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[35]));
-
+    j->setDistanceToNextUpstreamJunction(lexical_cast<uint32_t>(parts[36]));
+    j->setDistanceToNextDownstreamJunction(lexical_cast<uint32_t>(parts[37]));
+    j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[38]));
+    
     return j;
 }

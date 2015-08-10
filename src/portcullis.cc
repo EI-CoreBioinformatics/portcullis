@@ -253,7 +253,13 @@ int mainFull(int argc, char *argv[]) {
     path juncDir = outputDir.string() + "/all_junctions";
     
     // Identify junctions and calculate metrics
-    JunctionBuilder(prepDir.string(), juncDir.string(), "portcullis_all", threads, true, verbose).process();
+    JunctionBuilder jb(prepDir.string(), juncDir.string(), "portcullis_all");
+    jb.setThreads(threads);
+    jb.setExtra(false);
+    jb.setSeparate(false);
+    jb.setVerbose(verbose);
+    
+    jb.process();
     
 
     // ************ Use default filtering strategy *************
