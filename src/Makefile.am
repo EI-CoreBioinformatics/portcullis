@@ -24,7 +24,6 @@ noinst_HEADERS =	bam/bam_master.hpp \
 			bam/bam_writer.hpp \
 			bam/depth_parser.hpp \
 			bam/genome_mapper.hpp \
-			util/thread_pool.hpp \
 			intron.hpp \
 			junction.hpp \
 			junction_system.hpp \
@@ -39,7 +38,6 @@ portcullis_SOURCES =	bam/bam_master.cc \
 			bam/bam_writer.cc \
 			bam/depth_parser.cc \
 			bam/genome_mapper.cc \
-			util/thread_pool.cc \
 			portcullis_fs.hpp \
 			intron.cc \
 			junction.cc \
