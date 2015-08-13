@@ -781,6 +781,13 @@ public:
      */
     void outputDescription(std::ostream &strm, string delimiter);
     
+    /**
+     * Key value pair representation... useful for GFF attributes
+     * @param strm
+     * @param delimiter
+     */
+    void condensedOutputDescription(std::ostream &strm, string delimiter);
+    
     
     /**
      * Complete human readable description of this intron (for augustus hints)

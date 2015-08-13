@@ -71,14 +71,16 @@ deps/samtools-1.2/NEWS
 # FILES NOT TO INSTALL
 dist_noinst_SCRIPTS = autogen.sh clean.sh
 
-dist_bin_SCRIPTS =  scripts/cleanup_spanki.py \
+dist_bin_SCRIPTS =  scripts/bed12_set.py \
+		    scripts/cleanup_spanki.py \
 		    scripts/filter_junctions.py \
 		    scripts/fs2bed.py \
 		    scripts/fs2gff.py \
 		    scripts/venn.py \
 		    scripts/gff2bed.py \
 		    scripts/spanki2bed.py \
-		    scripts/spanki_filter.py
+		    scripts/spanki_filter.py \
+		    scripts/tab_bed12_set.py
 
 # 
 dist_sysconf_DATA = etc/default_filter.json
