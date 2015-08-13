@@ -45,9 +45,8 @@ using portcullis::bam::RefSeq;
 
 // ****** BamReader methods *********
 
-portcullis::bam::BamReader::BamReader(const path& _bamFile, const uint16_t _threads) {
+portcullis::bam::BamReader::BamReader(const path& _bamFile) {
     bamFile = _bamFile;
-    threads = _threads;
     
     header = nullptr;    
     index = nullptr;

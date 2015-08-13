@@ -65,7 +65,7 @@ private:
     
 public:
     
-    BamReader(const path& _bamFile, uint16_t threads);
+    BamReader(const path& _bamFile);
     
     virtual ~BamReader();
     

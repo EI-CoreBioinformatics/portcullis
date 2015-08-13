@@ -483,8 +483,8 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
                 (string("Output directory for prepared files. Default: ") + DEFAULT_PREP_OUTPUT_DIR).c_str())
             ("force,f", po::bool_switch(&force)->default_value(false), 
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
-            ("strand_specific,s", po::value<string>(&strandSpecific)->default_value(SSToString(StrandSpecific::UNSTRANDED)), 
-                "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unstranded\"")
+            ("strand_specific,s", po::value<string>(&strandSpecific)->default_value(SSToString(StrandSpecific::UNKNOWN)), 
+                "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads).  By default we assume the user does not know the strand specific protocol used for this BAM file.  This has the affect that strand information is derived from splice site information alone, assuming junctions are either canonical or semi-canonical in form.  Default: \"unknown\"")
             ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
                 "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
             ("use_csi,c", po::bool_switch(&useCsi)->default_value(false), 

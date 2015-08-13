@@ -18,5 +18,5 @@ with open(sys.argv[1]) as f:
         hamming5 = int(words[15])
 
         # These are the filters described in the SPANKI paper, which don't involve using the reference
-        if entropy > 2.0 and hamming3 >= 8 and hamming5 >= 8:
+        if entropy >= 2.0 and hamming3 >= 2 and hamming5 >= 2:
             print(line, end="")

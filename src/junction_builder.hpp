@@ -116,11 +116,19 @@ protected:
         return path(outputDir.string() + "/" + outputPrefix + ".spliced.bam");
     }
     
+    path getUnmappedBamFile() {
+        return path(outputDir.string() + "/" + outputPrefix + ".unmapped.bam");
+    }
+    
     path getAssociatedIndexFile(path bamFile) {
         return path(bamFile.string() + ".bai");
     }
         
     void separateBams();
+    
+    void findJunctions();
+    
+    void calcExtraMetrics();
         
 
 public:
@@ -130,7 +138,9 @@ public:
     
     virtual ~JunctionBuilder();
     
-    void processRegion(const int32_t seq);
+    string getRefName(const int32_t seqId) { return refs[seqId].name; }
+    
+    void findJuncs(const int32_t seq);
     
     bool isExtra() const {
         return extra;

@@ -925,11 +925,48 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
          << "M22: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
          << "M23: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
          << "M24: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
-         << "M25: # Distance to next upstream junction: " << distanceToNextUpstreamJunction << delimiter
-         << "M26: # Distance to next downstream junction: " << distanceToNextDownstreamJunction << delimiter
-         << "M27: # Distance to nearest junction: " << distanceToNearestJunction;         
+         << "M25: Distance to next upstream junction: " << distanceToNextUpstreamJunction << delimiter
+         << "M26: Distance to next downstream junction: " << distanceToNextDownstreamJunction << delimiter
+         << "M27: Distance to nearest junction: " << distanceToNearestJunction;         
 }
     
+/**
+ * Complete human readable description of this junction
+ * @param strm
+ */
+void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string delimiter) {
+
+    strm << delimiter
+         << "P1-Strand=" << strandToString(predictedStrand) << delimiter
+         << "M1-Canonical?=" << cssToString(canonicalSpliceSites) << delimiter
+         << "M2-NbAlignments=" << getNbJunctionAlignments() << delimiter
+         << "M3-NbDistinctAlignments=" << nbDistinctAlignments << delimiter
+         << "M4-NbReliableAlignments=" << nbReliableAlignments << delimiter
+         << "M5-IntronSize=" << getIntronSize() << delimiter
+         << "M6-LeftAnchorSize=" << leftAncSize << delimiter
+         << "M7-RightAnchorSize=" << rightAncSize << delimiter
+         << "M8-MaxMinAnchor=" << maxMinAnchor << delimiter
+         << "M9-DiffAnchor=" << diffAnchor << delimiter
+         << "M10-NbDistinctAnchors=" << nbDistinctAnchors << delimiter
+         << "M11-Entropy=" << entropy << delimiter
+         << "M12-MaxMMES=" << maxMMES << delimiter
+         << "M13-HammingDistance5=" << hammingDistance5p << delimiter
+         << "M14-HammingDistance3=" << hammingDistance3p << delimiter
+         << "M15-Coverage=" << coverage << delimiter
+         << "M16-UniqueJunction=" << boolalpha << uniqueJunction << delimiter
+         << "M17-PrimaryJunction=" << boolalpha << primaryJunction << delimiter
+         << "M18-MultipleMappingScore=" << multipleMappingScore << delimiter
+         << "M19-MeanMismatches=" << meanMismatches << delimiter
+         << "M20-NbMultipleSplicedReads=" << nbMultipleSplicedReads << delimiter
+         << "M21-NbUpstreamJunctions=" << nbUpstreamJunctions << delimiter
+         << "M22-NbDownstreamJunctions=" << nbDownstreamJunctions << delimiter
+         << "M23-NbUpstreamNonSplicedAlignments=" << nbUpstreamFlankingAlignments << delimiter
+         << "M24-NbDownstreamNonSplicedAlignments=" << nbDownstreamFlankingAlignments << delimiter
+         << "M25-DistanceToNextUpstreamJunction=" << distanceToNextUpstreamJunction << delimiter
+         << "M26-DistanceToNextDownstreamJunction=" << distanceToNextDownstreamJunction << delimiter
+         << "M27-DistanceToNearestJunction=" << distanceToNearestJunction;         
+}
+
     
 /**
  * Complete human readable description of this intron (for augustus hints)
@@ -955,10 +992,16 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id) {
          << "intron" << "\t"        // type (may change later)
          << intron->start + 1 << "\t"   // start
          << intron->end  + 1<< "\t"     // end
-         << "0.0" << "\t"           // No score for the moment
+         << nbJunctionAlignments << "\t"           // No score for the moment
          << strand << "\t"          // strand
          << "." << "\t"             // Just put "." for the phase
-         << "mult=" << nbJunctionAlignments << ";"  // Number of times it was seen
+         << "Note=cov:" << nbJunctionAlignments 
+                        << "|rel:" << this->nbReliableAlignments 
+                        << "|ent:" << std::setprecision(4) << this->entropy << std::setprecision(9) 
+                        << "|maxmmes:" << this->maxMMES
+                        << "|ham:" << min(this->hammingDistance3p, this->hammingDistance5p) << ";"  // Number of times it was seen
+         << "mult=" << nbJunctionAlignments << ";"  // Coverage for augustus
+         << "grp=" << juncId << ";"  // ID for augustus
          << "src=E";                // Source for augustus
     strm << endl;
 
@@ -985,16 +1028,22 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
     // Output junction parent
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"    // source
-         << "junction" << "\t"      // type (may change later)
+         << "match" << "\t"      // type (may change later)
          << leftAncStart + 1 << "\t"  // start
          << rightAncEnd + 1 << "\t"   // end
          << "0.0" << "\t"           // No score for the moment
          << strand << "\t"          // strand
          << "." << "\t"             // Just put "." for the phase
          << "ID=" << juncId << ";"  // ID of the intron
-         << "mult=" << nbJunctionAlignments << ";"  // Number of times it was seen
+         << "Note=cov:" << nbJunctionAlignments 
+                        << "|rel:" << this->nbReliableAlignments 
+                        << "|ent:" << std::setprecision(4) << this->entropy << std::setprecision(9)
+                        << "|maxmmes:" << this->maxMMES
+                        << "|ham:" << min(this->hammingDistance3p, this->hammingDistance5p) << ";"  // Number of times it was seen
+         << "mult=" << nbJunctionAlignments << ";"  // Coverage for augustus
+         << "grp=" << juncId << ";"  // ID for augustus
          << "src=E;";                // Source for augustus
-    outputDescription(strm, ";");
+    condensedOutputDescription(strm, ";");
     strm << endl;
 
     // Make modifications to coordinates so they are suitable for GFF.  1-based with end positions inclusive.
@@ -1002,7 +1051,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
     // Output left exonic region
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"
-         << "partial_exon" << "\t"
+         << "match_part" << "\t"
          << leftAncStart + 1 << "\t"
          << (intron->start) << "\t"
          << "0.0" << "\t"
@@ -1014,7 +1063,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
     // Output right exonic region
     strm << intron->ref.name << "\t"
          << "portcullis" << "\t"
-         << "partial_exon" << "\t"
+         << "match_part" << "\t"
          << (intron->end + 2) << "\t"
          << rightAncEnd + 1 << "\t"
          << "0.0" << "\t"

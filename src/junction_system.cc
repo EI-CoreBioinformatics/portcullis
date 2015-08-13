@@ -140,7 +140,7 @@ void portcullis::JunctionSystem::append(JunctionSystem& other) {
 }
 
 
-bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset, bool strandSpecific) {
+bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset, StrandSpecific strandSpecific) {
 
     bool foundJunction = false;
 
@@ -188,9 +188,40 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
                 rEndExc = refLength;
             }
             
+            Strand s = Strand::UNKNOWN;
+            
+            if (strandSpecific == StrandSpecific::UNSTRANDED) {
+                if (al.isFirstMate()) { 
+                    s = al.isReverseStrand() ? Strand::POSITIVE : Strand::NEGATIVE;
+                }
+                else {
+                    s = al.isReverseStrand() ? Strand::NEGATIVE : Strand::POSITIVE;
+                }
+            }
+            else if (strandSpecific == StrandSpecific::FIRSTSTRAND) {
+                if (al.isFirstMate()) { 
+                    s = al.isReverseStrand() ? Strand::POSITIVE : Strand::NEGATIVE;
+                }
+                else {
+                    s = al.isReverseStrand() ? Strand::NEGATIVE : Strand::POSITIVE;
+                }
+            }
+            else if (strandSpecific == StrandSpecific::SECONDSTRAND) {
+                if (al.isFirstMate()) { 
+                    s = al.isReverseStrand() ? Strand::NEGATIVE : Strand::POSITIVE;
+                }
+                else {
+                    s = al.isReverseStrand() ? Strand::POSITIVE : Strand::NEGATIVE;
+                }
+            }
+                
+            
             // Create the intron
-            shared_ptr<Intron> location = make_shared<Intron>(RefSeq(refId, refs[refId].name, refLength), lEndExc, rStart - 1, 
-                    strandSpecific ? strandFromBool(al.isReverseStrand()) : UNKNOWN);
+            shared_ptr<Intron> location = make_shared<Intron>(
+                    RefSeq(refId, refs[refId].name, refLength), 
+                    lEndExc, 
+                    rStart - 1, 
+                    s);
 
             // We should now have the complete junction location information
             JunctionMapIterator it = distinctJunctions.find(*location);
@@ -231,14 +262,10 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
 
 void portcullis::JunctionSystem::findFlankingAlignments(const path& alignmentsFile, StrandSpecific strandSpecific, bool verbose) {
 
-    auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
-
-    cout << " - Using unspliced alignments file: " << alignmentsFile << endl
-         << " - Acquiring all alignments in each junction's vicinity ... ";
-    cout.flush();
+    auto_cpu_timer timer(1, " done. Wall time taken: %ws\n");    
 
     // Maybe try to multi-thread this part        
-    BamReader reader(alignmentsFile, 1);
+    BamReader reader(alignmentsFile);
 
     // Open the file
     reader.open();
@@ -256,17 +283,13 @@ void portcullis::JunctionSystem::findFlankingAlignments(const path& alignmentsFi
 
         //cout << count++ << endl;
     }
-
-    cout << "done." << endl;
+    
+    reader.close();
 }
 
 void portcullis::JunctionSystem::calcCoverage(const path& alignmentsFile, StrandSpecific strandSpecific) {
 
-    auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
-
-    cout << " - Using unspliced alignments from: " << alignmentsFile << endl
-         << " - Calculating per base depth and junction coverage ... ";
-    cout.flush();
+    auto_cpu_timer timer(1, " done. Wall time taken: %ws\n");    
 
     DepthParser dp(alignmentsFile, static_cast<uint8_t>(strandSpecific), false);
 
@@ -282,8 +305,6 @@ void portcullis::JunctionSystem::calcCoverage(const path& alignmentsFile, Strand
             j->calcCoverage(batch);
         }            
     }
-
-    cout << "done." << endl;
 }
 
 
@@ -296,13 +317,6 @@ void portcullis::JunctionSystem::calcMultipleMappingStats(SplicedAlignmentMap& m
 
 
 void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
-
-    if (verbose) {
-        auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");    
-
-        cout << " - Grouping junctions ... ";
-        cout.flush();
-    }
 
     for(size_t i = 0; i < junctionList.size(); i++) {
 
@@ -321,12 +335,6 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
             junc->setUniqueJunction(uniqueJunction);
         }
         junctionGroup[maxIndex]->setPrimaryJunction(true);
-    }
-    
-    if (verbose) {
-        cout << "done." << endl;        
-        cout << " - Calculating distances between junctions ... ";
-        cout.flush();
     }
     
     size_t i = 0;
@@ -381,10 +389,6 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
         int32_t up = junc->getDistanceToNextUpstreamJunction();
         
         junc->setDistanceToNearestJunction(down == -1 || up == -1 ? max(down, up) : min(down, up));
-    }
-
-    if(verbose) {
-        cout << "done." << endl;        
     }
 }
 
