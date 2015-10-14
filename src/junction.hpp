@@ -36,6 +36,7 @@ typedef std::unordered_map<size_t, uint16_t> SplicedAlignmentMap;
 
 #include <boost/exception/all.hpp>
 
+#include "bam/bam_master.hpp"
 #include "bam/bam_alignment.hpp"
 #include "bam/bam_reader.hpp"
 #include "bam/genome_mapper.hpp"
@@ -44,7 +45,7 @@ using namespace portcullis::bam;
 #include "intron.hpp"
 #include "seq_utils.hpp"
 using portcullis::Intron;
-using portcullis::Strand;
+
 
 namespace portcullis {    
 
@@ -148,6 +149,8 @@ static string cssToString(CanonicalSS css) {
 
     return string("No");
 }
+
+
 
 struct AlignmentInfo {
     shared_ptr<BamAlignment> ba;
@@ -341,7 +344,7 @@ public:
     
     void processJunctionWindow(const GenomeMapper& genomeMapper);
     
-    void processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, StrandSpecific strandSpecific);
+    void processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength);
     
     
     void calcMetrics();

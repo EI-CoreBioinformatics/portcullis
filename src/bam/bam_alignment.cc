@@ -81,6 +81,8 @@ void portcullis::bam::BamAlignment::init() {
     uint32_t* c = bam_get_cigar(b);
     alignedLength = 0;
 
+    // Record the cigar in an easy to access format and calculate the aligned length
+    // along the way
     cigar.clear();
     for(uint32_t i = 0; i < b->core.n_cigar; i++) {
         CigarOp op(bam_cigar_opchr(c[i]), bam_cigar_oplen(c[i]));
@@ -90,6 +92,38 @@ void portcullis::bam::BamAlignment::init() {
         }
     }
     
+    // Determine actual read strand
+    // Try deriving from XS tag first if it's present.  If not then try to
+    // work it all out from the protocol suggested and the reverse strand
+    // flag.
+    char xss = getXSStrand();
+    if (xss != '+' || xss != '-') {
+        strand = strandFromChar(xss);                
+    }
+    else {     
+        if (strandedness == Strandedness::FIRSTSTRAND) {
+            // Second mate should have correct strand (flip the strand for the first mate)
+            if (isFirstMate()) { 
+                strand = isReverseStrand() ? Strand::POSITIVE : Strand::NEGATIVE;
+            }
+            else {
+                strand = isReverseStrand() ? Strand::NEGATIVE : Strand::POSITIVE;
+            }
+        }
+        else if (strandedness == Strandedness::SECONDSTRAND) {
+            // First mate should have correct strand (flip the strand for the second mate)
+            if (isFirstMate()) { 
+                strand = isReverseStrand() ? Strand::NEGATIVE : Strand::POSITIVE;
+            }
+            else {
+                strand = isReverseStrand() ? Strand::POSITIVE : Strand::NEGATIVE;
+            }
+        }
+        else {
+            strand = Strand::UNKNOWN;
+        }
+    }
+
 }
    
 /**
@@ -102,15 +136,17 @@ portcullis::bam::BamAlignment::BamAlignment() {
     position = -1;
     alignedLength = 0;
     refId = -1;
+    strandedness = Strandedness::UNKNOWN;
 }
 
 /**
  * Makes a deep copy of the provided samtools bam alignment
  * @param _b Samtools bam alignment
  */
-portcullis::bam::BamAlignment::BamAlignment(bam1_t* _b, bool duplicate) {
+portcullis::bam::BamAlignment::BamAlignment(bam1_t* _b, bool duplicate, Strandedness _strandedness) {
     b = duplicate ? bam_dup1(_b) : _b;
     managed = duplicate;
+    strandedness = _strandedness;
     init();
 }
 
@@ -121,6 +157,7 @@ portcullis::bam::BamAlignment::BamAlignment(bam1_t* _b, bool duplicate) {
 portcullis::bam::BamAlignment::BamAlignment(const shared_ptr<BamAlignment> other) {
     b = bam_dup1(other->b);
     managed = true;
+    strandedness = other->strandedness;
     init();
 }
 
@@ -131,6 +168,7 @@ portcullis::bam::BamAlignment::BamAlignment(const shared_ptr<BamAlignment> other
 portcullis::bam::BamAlignment::BamAlignment(const BamAlignment& other) {
     b = bam_dup1(other.b);
     managed = true;
+    strandedness = other.strandedness;
     init();
 }
 
@@ -153,6 +191,15 @@ bam1_t* portcullis::bam::BamAlignment::getRaw() const {
     return b;
 }
 
+/**
+ * Looks for an XS tag in the alignment, returns the strand if found, or '?'
+ * @return 
+ */
+portcullis::bam::Strand portcullis::bam::BamAlignment::getXSStrand() const {
+    char xs[2] = {'X', 'S'};           
+    uint8_t* res = bam_aux_get_core(b, xs);
+    return res != 0 ? strandFromChar(bam_aux2A(res)) : Strand::UNKNOWN;
+}
 
 
 string portcullis::bam::BamAlignment::deriveName() const {

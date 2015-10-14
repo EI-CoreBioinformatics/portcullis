@@ -26,11 +26,9 @@ using std::ifstream;
 using std::ofstream;
 using std::shared_ptr;
 
-#include <boost/algorithm/string/split.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/timer/timer.hpp>
-using boost::split;
 using boost::lexical_cast;
 using boost::timer::auto_cpu_timer;
 
@@ -140,7 +138,7 @@ void portcullis::JunctionSystem::append(JunctionSystem& other) {
 }
 
 
-bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset, StrandSpecific strandSpecific) {
+bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset) {
 
     bool foundJunction = false;
 
@@ -188,40 +186,12 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
                 rEndExc = refLength;
             }
             
-            Strand s = Strand::UNKNOWN;
-            
-            if (strandSpecific == StrandSpecific::UNSTRANDED) {
-                if (al.isFirstMate()) { 
-                    s = al.isReverseStrand() ? Strand::POSITIVE : Strand::NEGATIVE;
-                }
-                else {
-                    s = al.isReverseStrand() ? Strand::NEGATIVE : Strand::POSITIVE;
-                }
-            }
-            else if (strandSpecific == StrandSpecific::FIRSTSTRAND) {
-                if (al.isFirstMate()) { 
-                    s = al.isReverseStrand() ? Strand::POSITIVE : Strand::NEGATIVE;
-                }
-                else {
-                    s = al.isReverseStrand() ? Strand::NEGATIVE : Strand::POSITIVE;
-                }
-            }
-            else if (strandSpecific == StrandSpecific::SECONDSTRAND) {
-                if (al.isFirstMate()) { 
-                    s = al.isReverseStrand() ? Strand::NEGATIVE : Strand::POSITIVE;
-                }
-                else {
-                    s = al.isReverseStrand() ? Strand::POSITIVE : Strand::NEGATIVE;
-                }
-            }
-                
             
             // Create the intron
             shared_ptr<Intron> location = make_shared<Intron>(
                     RefSeq(refId, refs[refId].name, refLength), 
                     lEndExc, 
-                    rStart - 1, 
-                    s);
+                    rStart - 1);
 
             // We should now have the complete junction location information
             JunctionMapIterator it = distinctJunctions.find(*location);
@@ -245,7 +215,7 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
             // that means that this cigar contains additional junctions, so 
             // process those using recursion
             if (j < nbOps) {                    
-                addJunctions(al, i+1, rStart, strandSpecific);
+                addJunctions(al, i+1, rStart);
                 break;
             }
         }
@@ -260,7 +230,7 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
 }
 
 
-void portcullis::JunctionSystem::findFlankingAlignments(const path& alignmentsFile, StrandSpecific strandSpecific, bool verbose) {
+void portcullis::JunctionSystem::findFlankingAlignments(const path& alignmentsFile, bool verbose) {
 
     auto_cpu_timer timer(1, " done. Wall time taken: %ws\n");    
 
@@ -278,8 +248,7 @@ void portcullis::JunctionSystem::findFlankingAlignments(const path& alignmentsFi
                 reader, 
                 j->getIntron()->ref.length, 
                 meanQueryLength, 
-                maxQueryLength,
-                strandSpecific);
+                maxQueryLength);
 
         //cout << count++ << endl;
     }
@@ -287,7 +256,7 @@ void portcullis::JunctionSystem::findFlankingAlignments(const path& alignmentsFi
     reader.close();
 }
 
-void portcullis::JunctionSystem::calcCoverage(const path& alignmentsFile, StrandSpecific strandSpecific) {
+void portcullis::JunctionSystem::calcCoverage(const path& alignmentsFile, Strandedness strandSpecific) {
 
     auto_cpu_timer timer(1, " done. Wall time taken: %ws\n");    
 

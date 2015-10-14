@@ -468,7 +468,7 @@ void portcullis::JunctionFilter::saveResults(const JunctionSystem& js, JuncResul
 
         out << i << "\t";
 
-        out << portcullis::strandToChar(js.getJunction(i)->getPredictedStrand()) << "\t";
+        out << strandToChar(js.getJunction(i)->getPredictedStrand()) << "\t";
         
         if (kv.second.empty()) {
             out << "PASS";

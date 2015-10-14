@@ -77,6 +77,8 @@ public:
     
     bam_hdr_t* getHeader() const { return header; }
     
+    string bamDetails() const;
+    
     void open();
     
     void close();

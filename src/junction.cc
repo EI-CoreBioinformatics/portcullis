@@ -47,7 +47,7 @@ using portcullis::bam::GenomeMapper;
 #include "seq_utils.hpp"
 #include "prepare.hpp"
 using portcullis::Intron;
-using portcullis::Strand;
+using portcullis::bam::Strand;
 
 
 #include "junction.hpp"
@@ -458,11 +458,10 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
     //this->calcTrimmedCoverageVector();
 }
     
-void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength, StrandSpecific strandSpecific) {
+void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength) {
 
     int32_t refId = intron->ref.index;
-    Strand strand = intron->strand;
-
+    
     uint32_t nbLeftFlankingAlignments = 0, nbRightFlankingAlignments = 0;
 
     int32_t regionStart = leftAncStart - maxQueryLength - 1; regionStart < 0 ? 0 : regionStart;
@@ -700,7 +699,9 @@ void portcullis::Junction::calcHammingScores(   const string& leftAnchor, const 
     const int32_t leftLen = min(leftAnchor.size(), rightIntron.size());
     const int32_t rightLen = min(leftIntron.size(), rightAnchor.size());
     
-    Strand s = intron->strand != UNKNOWN ? intron->strand : predictedStrand;                
+    // TODO, might want to modify this logic later, but worst case is that the 5' and
+    // 3' results are swapped
+    Strand s = predictedStrand != UNKNOWN ? predictedStrand : Strand::UNKNOWN;
 
     const string la = leftAnchor.size() > leftLen ? leftAnchor.substr(leftOffset, leftLen) : leftAnchor;
     const string li = leftIntron.size() > rightLen ? leftIntron.substr(0, rightLen) : leftIntron;
@@ -936,8 +937,7 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
  */
 void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string delimiter) {
 
-    strm << delimiter
-         << "P1-Strand=" << strandToString(predictedStrand) << delimiter
+    strm << "P1-Strand=" << strandToString(predictedStrand) << delimiter
          << "M1-Canonical?=" << cssToString(canonicalSpliceSites) << delimiter
          << "M2-NbAlignments=" << getNbJunctionAlignments() << delimiter
          << "M3-NbDistinctAlignments=" << nbDistinctAlignments << delimiter
@@ -976,11 +976,9 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
-    const char strand = (intron->strand == UNKNOWN ?
-                            predictedStrand == UNKNOWN ?
+    const char strand = (   predictedStrand == UNKNOWN ?
                                 '.' :
-                                strandToChar(predictedStrand) :
-                            strandToChar(intron->strand));
+                                strandToChar(predictedStrand));
 
     string juncId = string("junc_") + lexical_cast<string>(id);
 
@@ -1015,11 +1013,9 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
-    const char strand = (intron->strand == UNKNOWN ?
-                            predictedStrand == UNKNOWN ?
+    const char strand = (predictedStrand == UNKNOWN ?
                                 '.' :
-                                strandToChar(predictedStrand) :
-                            strandToChar(intron->strand));
+                                strandToChar(predictedStrand));
 
     string juncId = string("junc_") + lexical_cast<string>(id);
 
@@ -1081,11 +1077,9 @@ void portcullis::Junction::outputBED(std::ostream &strm, uint32_t id) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
-    const char strand = (intron->strand == UNKNOWN ?
-                            predictedStrand == UNKNOWN ?
+    const char strand = (predictedStrand == UNKNOWN ?
                                 '.' :
-                                strandToChar(predictedStrand) :
-                            strandToChar(intron->strand));
+                                strandToChar(predictedStrand));
 
     string juncId = string("portcullis_junc_") + lexical_cast<string>(id);
 
@@ -1137,8 +1131,7 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     IntronPtr i = make_shared<Intron>(
         RefSeq(lexical_cast<int32_t>(parts[1]), parts[2], lexical_cast<int32_t>(parts[3])),
         lexical_cast<int32_t>(parts[4]),
-        lexical_cast<int32_t>(parts[5]),
-        strandFromChar(parts[6][0])
+        lexical_cast<int32_t>(parts[5])
     );
 
     // Create basic junction

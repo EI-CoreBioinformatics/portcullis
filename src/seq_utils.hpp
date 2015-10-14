@@ -39,43 +39,7 @@ const char REVCOMP_LOOKUP[] = {'T',  0,  'G', 'H',
 typedef boost::error_info<struct SeqUtilsError,string> SeqUtilsErrorInfo;
 struct SeqUtilsException: virtual boost::exception, virtual std::exception { };
 
-enum class StrandSpecific : std::uint8_t {
-    UNSTRANDED = 0,
-    FIRSTSTRAND = 1,
-    SECONDSTRAND = 2,
-    UNKNOWN = 3
-};
 
-inline const string SSToString(StrandSpecific ss) {
-    switch (ss) {
-        case StrandSpecific::UNSTRANDED:   return "UNSTRANDED";
-        case StrandSpecific::FIRSTSTRAND:  return "FIRSTSTRAND";
-        case StrandSpecific::SECONDSTRAND: return "SECONDSTRAND";
-        case StrandSpecific::UNKNOWN: return "UNKNOWN";
-        default:      return "[Unknown StrandSpecific type]";
-    }
-}
-
-inline const StrandSpecific SSFromString(string& ss) {
-    
-    if (boost::iequals(ss, "UNSTRANDED")) {
-        return StrandSpecific::UNSTRANDED;
-    }
-    else if (boost::iequals(ss, "FIRSTSTRAND")) {
-        return StrandSpecific::FIRSTSTRAND;
-    }
-    else if (boost::iequals(ss, "SECONDSTRAND")) {
-        return StrandSpecific::SECONDSTRAND;
-    }
-    else if (boost::iequals(ss, "UNKNOWN")) {
-        return StrandSpecific::UNKNOWN;
-    }
-        
-    BOOST_THROW_EXCEPTION(SeqUtilsException() << SeqUtilsErrorInfo(string(
-                    "Can't recognise StrandSpecific string: ") + ss));
-    
-    return StrandSpecific::UNKNOWN;
-}
 
 
 class SeqUtils {

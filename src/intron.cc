@@ -38,7 +38,6 @@ portcullis::Intron::Intron(const Intron& other) {
     ref = other.ref;
     start = other.start;
     end = other.end;
-    strand = other.strand;
 }
 
 
@@ -98,8 +97,7 @@ void portcullis::Intron::outputDescription(std::ostream &strm, string delimiter)
          << "RefName: " << ref.name << delimiter
          << "RefLength: " << ref.length << delimiter
          << "Start: " << start << delimiter
-         << "End: " << end << delimiter
-         << "Strand: " << strandToString(strand);
+         << "End: " << end;
 }
 
 size_t portcullis::IntronHasher::operator()(const Intron& l) const
@@ -115,7 +113,6 @@ size_t portcullis::IntronHasher::operator()(const Intron& l) const
    hash_combine(seed, hash_value(l.ref.index));
    hash_combine(seed, hash_value(l.start));
    hash_combine(seed, hash_value(l.end));
-   hash_combine(seed, hash_value(l.strand));
 
    // Return the result.
    return seed;

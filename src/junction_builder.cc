@@ -40,6 +40,7 @@ using namespace boost::filesystem;
 using boost::filesystem::path;
 namespace po = boost::program_options;
 
+#include "bam/bam_master.hpp"
 #include "bam/bam_reader.hpp"
 #include "bam/bam_writer.hpp"
 #include "bam/depth_parser.hpp"
@@ -54,9 +55,9 @@ using namespace portcullis::bam;
 using portcullis::Intron;
 using portcullis::Junction;
 using portcullis::JunctionSystem;
-using portcullis::StrandSpecific;
 
 #include "junction_builder.hpp"
+#include "htslib/sam.h"
 using portcullis::JBThreadPool;
 
 portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _outputDir, string _outputPrefix) {
@@ -132,12 +133,14 @@ void portcullis::JunctionBuilder::process() {
     // Output settings requested
     cout << "Settings:" << endl
          << std::boolalpha
-         << " - BAM Strandedness (from prepare mode): " << SSToString(settings.ss) << endl
+         << " - BAM Strandedness (from prepare mode): " << strandednessToString(settings.ss) << endl
          << " - BAM Indexing mode (from prepare mode): " << (settings.useCsi ? "CSI" : "BAI") << endl
          << " - Threads: " << threads << endl
          << " - Separate BAMs: " << separate << endl
          << " - Calculate additional metrics: " << extra << endl
          << endl;
+    
+    cout << reader.bamDetails() << endl;
     
     // Separate spliced from unspliced reads and save to file if requested
     if (separate) {
@@ -326,7 +329,7 @@ void portcullis::JunctionBuilder::calcExtraMetrics() {
     // regions for each junction
     cout << " - Analysing unspliced alignments around junctions ...";
     cout.flush();
-    junctionSystem.findFlankingAlignments(getUnsplicedBamFile(), settings.ss);
+    junctionSystem.findFlankingAlignments(getUnsplicedBamFile());
 
     cout << " - Calculating unspliced alignment coverage around junctions ...";
     cout.flush();
@@ -372,7 +375,7 @@ void portcullis::JunctionBuilder::findJuncs(int32_t seq) {
         maxQueryLength = max(maxQueryLength, len);
         sumQueryLengths += len;
 
-        if (results[seq].js.addJunctions(al, settings.ss)) {
+        if (results[seq].js.addJunctions(al)) {
             splicedCount++;            
         }
         else {

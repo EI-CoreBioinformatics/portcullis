@@ -154,8 +154,8 @@ int mainFull(int argc, char *argv[]) {
                 "Output directory for prepared files. Default: portcullis_out")
             ("force,f", po::bool_switch(&force)->default_value(false), 
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
-            ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(SSToString(StrandSpecific::UNSTRANDED)), 
-                "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unstranded\"")
+            ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
+                "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unknown\"")
             ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
                 "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
             ("use_csi,c", po::bool_switch(&useCsi)->default_value(false), 
@@ -235,7 +235,7 @@ int mainFull(int argc, char *argv[]) {
     path prepDir = path(outputDir.string() + "/prepare");
 
     // Create the prepare class
-    Prepare prep(prepDir, portcullis::SSFromString(strandSpecific), force, useLinks, useCsi, threads, verbose);
+    Prepare prep(prepDir, strandednessFromString(strandSpecific), force, useLinks, useCsi, threads, verbose);
     
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information
@@ -284,7 +284,7 @@ int mainFull(int argc, char *argv[]) {
     path filteredBam = path(outputDir.string() + "/portcullis.filtered.bam");
     
     BamFilter bamFilter(filtJuncTab.string(), bamFile.string(), filteredBam.string(), verbose);
-    bamFilter.setStrandSpecific(portcullis::SSFromString(strandSpecific));
+    bamFilter.setStrandSpecific(strandednessFromString(strandSpecific));
     bamFilter.filter();
 
     return 0;        
