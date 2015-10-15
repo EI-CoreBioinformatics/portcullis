@@ -44,8 +44,7 @@ namespace po = boost::program_options;
 
 #include "bam/bam_master.hpp"
 #include "bam/genome_mapper.hpp"
-using portcullis::bam::BamHelper;
-using portcullis::bam::GenomeMapper;
+using namespace portcullis::bam;
 
 #include "portcullis_fs.hpp"
 using portcullis::PortcullisFS;
@@ -109,7 +108,7 @@ portcullis::Settings portcullis::PreparedFiles::loadSettings() {
                    std::istringstream is(val);
                    string ss;
                    is >> ss;
-                   settings.ss = SSFromString(ss);
+                   settings.ss = strandednessFromString(ss);
                }
            } 
            if (line.find("INDEX") == 0) {
@@ -130,7 +129,7 @@ portcullis::Settings portcullis::PreparedFiles::loadSettings() {
 }
 
     
-portcullis::Prepare::Prepare(const path& _outputPrefix, StrandSpecific _strandSpecific, bool _force, bool _useLinks, bool _useCsi, uint16_t _threads, bool _verbose) {
+portcullis::Prepare::Prepare(const path& _outputPrefix, Strandedness _strandSpecific, bool _force, bool _useLinks, bool _useCsi, uint16_t _threads, bool _verbose) {
     output = make_shared<PreparedFiles>(_outputPrefix);
     strandSpecific = _strandSpecific;
     force = _force;
@@ -142,7 +141,7 @@ portcullis::Prepare::Prepare(const path& _outputPrefix, StrandSpecific _strandSp
     if (verbose) {
         cout << "Configured portcullis prep to use the following settings: " << endl
              << " - Output directory: " << output->getPrepDir() << endl
-             << " - Strand specific library: " << SSToString(strandSpecific) << endl
+             << " - Strand specific library: " << strandednessToString(strandSpecific) << endl
              << " - Force prep (cleans output directory): " << boolalpha << force << endl
              << " - Use symbolic links instead of copy where possible: " << boolalpha << useLinks << endl
              << " - Indexing type: " << (useCsi ? "CSI" : "BAI") << endl
@@ -436,7 +435,7 @@ bool portcullis::Prepare::outputDetails() {
                 "Could not open settings file for writing: ") + settingsFile.string()));
     }
 
-    outfile << "SS=" << SSToString(strandSpecific) << endl;
+    outfile << "SS=" << strandednessToString(strandSpecific) << endl;
     outfile << "INDEX=" << useCsi ? "CSI" : "BAI";
     outfile.close();
 }
@@ -483,7 +482,7 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
                 (string("Output directory for prepared files. Default: ") + DEFAULT_PREP_OUTPUT_DIR).c_str())
             ("force,f", po::bool_switch(&force)->default_value(false), 
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
-            ("strand_specific,s", po::value<string>(&strandSpecific)->default_value(SSToString(StrandSpecific::UNKNOWN)), 
+            ("strandedness,s", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads).  By default we assume the user does not know the strand specific protocol used for this BAM file.  This has the affect that strand information is derived from splice site information alone, assuming junctions are either canonical or semi-canonical in form.  Default: \"unknown\"")
             ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
                 "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
@@ -554,7 +553,7 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
          << "----------------------------------" << endl << endl;
 
     // Create the prepare class
-    Prepare prep(outputDir, SSFromString(strandSpecific), force, useLinks, useCsi, threads, verbose);
+    Prepare prep(outputDir, strandednessFromString(strandSpecific), force, useLinks, useCsi, threads, verbose);
     
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information

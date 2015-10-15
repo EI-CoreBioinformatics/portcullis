@@ -36,56 +36,6 @@ using portcullis::bam::RefSeq;
 
 namespace portcullis {    
     
-enum Strand {
-    POSITIVE,
-    NEGATIVE,
-    UNKNOWN
-};
-    
-static Strand strandFromBool(bool reverseStrand) {
-    return reverseStrand ? NEGATIVE : POSITIVE;
-}
-
-static Strand strandFromChar(char strand) {
-    switch(strand) {
-        case '+':
-            return POSITIVE;
-        case '-':
-            return NEGATIVE;
-        case '?':
-            return UNKNOWN;
-    }
-
-    return UNKNOWN;
-}
-
-static char strandToChar(Strand strand) {
-    
-    switch(strand) {
-        case POSITIVE:
-            return '+';
-        case NEGATIVE:
-            return '-';
-        case UNKNOWN:
-            return '?';
-    }
-
-    return '?';
-}
-
-static string strandToString(Strand strand) {
-    
-    switch(strand) {
-        case POSITIVE:
-            return string("POSITIVE");
-        case NEGATIVE:
-            return string("NEGATIVE");
-        case UNKNOWN:
-            return string("UNKNOWN");
-    }
-
-    return string("UNKNOWN");
-}
 
 typedef boost::error_info<struct IntronError,string> IntronErrorInfo;
 struct IntronException: virtual boost::exception, virtual std::exception { };
@@ -98,12 +48,11 @@ public:
     RefSeq ref;     // Details of the reference sequence
     int32_t start;      // The index of the base of the intron
     int32_t end;        // The index of the last base of the intron
-    Strand strand;      // The strand the intron is on
     
-    Intron() : Intron(RefSeq(), -1, -1, UNKNOWN) {}
+    Intron() : Intron(RefSeq(), -1, -1) {}
     
-    Intron(RefSeq _ref, int32_t _start, int32_t _end, Strand _strand) :
-        ref(_ref), start(_start), end(_end), strand(_strand) {
+    Intron(RefSeq _ref, int32_t _start, int32_t _end) :
+        ref(_ref), start(_start), end(_end) {
     }
     
     Intron(const Intron& other);
@@ -119,8 +68,7 @@ public:
    { 
        return (ref.index == other.ref.index &&
                start == other.start &&
-               end == other.end &&
-               strand == other.strand);
+               end == other.end);
    }
 
    bool operator!=(const Intron &other) const
@@ -163,17 +111,17 @@ public:
     
     string toString() const {
         stringstream ss;
-        ss << ref.name << "(" << start << "," << end << ")" << strandToChar(strand);
+        ss << ref.name << "(" << start << "," << end << ")";
         return ss.str();
     }
     
     friend ostream& operator<<(ostream& strm, Intron& l) {
         return strm << l.ref.index << "\t" << l.ref.name << "\t" << l.ref.length 
-                << "\t" << l.start << "\t" << l.end << "\t" << strandToChar(l.strand);
+                << "\t" << l.start << "\t" << l.end;
     }
     
     static string locationOutputHeader() {
-        return string("refid\trefname\treflen\tstart\tend\tstrand"); 
+        return string("refid\trefname\treflen\tstart\tend"); 
     }
     
 };

@@ -123,21 +123,21 @@ public:
      * @param al The alignment to search for junctions
      * @return Whether a junction was found in this alignment or not
      */
-    bool addJunctions(const BamAlignment& al, StrandSpecific strandSpecific) {
-        return addJunctions(al, 0, al.getPosition(), strandSpecific);
+    bool addJunctions(const BamAlignment& al) {
+        return addJunctions(al, 0, al.getPosition());
     }
     
-    bool addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset, StrandSpecific strandSpecific);
+    bool addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset);
     
     
-    void findFlankingAlignments(const path& alignmentsFile, StrandSpecific strandSpecific) {
-        findFlankingAlignments(alignmentsFile, strandSpecific, false);
+    void findFlankingAlignments(const path& alignmentsFile) {
+        findFlankingAlignments(alignmentsFile, false);
     }
     
-    void findFlankingAlignments(const path& alignmentsFile, StrandSpecific strandSpecific, bool verbose);
+    void findFlankingAlignments(const path& alignmentsFile, bool verbose);
     
-    void calcCoverage(const path& alignmentsFile, StrandSpecific strandSpecific);
-    
+    void calcCoverage(const path& alignmentsFile, Strandedness strandSpecific);
+        
     void calcMultipleMappingStats(SplicedAlignmentMap& map) {
         calcMultipleMappingStats(map, false);
     }

@@ -27,6 +27,7 @@ using std::string;
 using std::vector;
 using std::stringstream;
 
+#include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/lexical_cast.hpp>
@@ -44,6 +45,92 @@ typedef boost::error_info<struct BamError,string> BamErrorInfo;
 struct BamException: virtual boost::exception, virtual std::exception { };
 
     
+enum Strand {
+    POSITIVE,
+    NEGATIVE,
+    UNKNOWN
+};
+    
+static Strand strandFromBool(bool reverseStrand) {
+    return reverseStrand ? NEGATIVE : POSITIVE;
+}
+
+static Strand strandFromChar(char strand) {
+    switch(strand) {
+        case '+':
+            return POSITIVE;
+        case '-':
+            return NEGATIVE;
+        case '?':
+            return UNKNOWN;
+    }
+
+    return UNKNOWN;
+}
+
+static char strandToChar(Strand strand) {
+    
+    switch(strand) {
+        case POSITIVE:
+            return '+';
+        case NEGATIVE:
+            return '-';
+        case UNKNOWN:
+            return '?';
+    }
+
+    return '?';
+}
+
+static string strandToString(Strand strand) {
+    
+    switch(strand) {
+        case POSITIVE:
+            return string("POSITIVE");
+        case NEGATIVE:
+            return string("NEGATIVE");
+        case UNKNOWN:
+            return string("UNKNOWN");
+    }
+
+    return string("UNKNOWN");
+}
+
+enum class Strandedness : std::uint8_t {
+    UNSTRANDED = 0,
+    FIRSTSTRAND = 1,
+    SECONDSTRAND = 2,
+    UNKNOWN = 3
+};
+
+inline const string strandednessToString(Strandedness ss) {
+    switch (ss) {
+        case Strandedness::UNSTRANDED:   return "UNSTRANDED";
+        case Strandedness::FIRSTSTRAND:  return "FIRSTSTRAND";
+        case Strandedness::SECONDSTRAND: return "SECONDSTRAND";
+        case Strandedness::UNKNOWN: return "UNKNOWN";
+        default:      return "[Unknown StrandSpecific type]";
+    }
+}
+
+inline const Strandedness strandednessFromString(string& ss) {
+    
+    if (boost::iequals(ss, "UNSTRANDED")) {
+        return Strandedness::UNSTRANDED;
+    }
+    else if (boost::iequals(ss, "FIRSTSTRAND")) {
+        return Strandedness::FIRSTSTRAND;
+    }
+    else if (boost::iequals(ss, "SECONDSTRAND")) {
+        return Strandedness::SECONDSTRAND;
+    }
+    else if (boost::iequals(ss, "UNKNOWN")) {
+        return Strandedness::UNKNOWN;
+    }
+        
+    return Strandedness::UNKNOWN;
+}
+
 struct RefSeq {
     int32_t index;
     string name;

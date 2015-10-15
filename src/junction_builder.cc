@@ -40,6 +40,7 @@ using namespace boost::filesystem;
 using boost::filesystem::path;
 namespace po = boost::program_options;
 
+#include "bam/bam_master.hpp"
 #include "bam/bam_reader.hpp"
 #include "bam/bam_writer.hpp"
 #include "bam/depth_parser.hpp"
@@ -54,9 +55,9 @@ using namespace portcullis::bam;
 using portcullis::Intron;
 using portcullis::Junction;
 using portcullis::JunctionSystem;
-using portcullis::StrandSpecific;
 
 #include "junction_builder.hpp"
+#include "htslib/sam.h"
 using portcullis::JBThreadPool;
 
 portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _outputDir, string _outputPrefix) {
@@ -119,25 +120,27 @@ void portcullis::JunctionBuilder::process() {
     
     if (refs.size() < threads) {
         cerr << "Warning: User requested " << threads << " threads but there are only " << refs.size() << " target sequences to process.  Setting number of threads to " << refs.size() << "." << endl << endl;
-        threads = refs.size();                
+        threads = refs.size();
     }
     
     // Must separate BAMs if extra metrics are requested
     if (extra && !separate) {
         separate = true;
         cerr << "Warning: User requested that separated BAMS should not be output but user did request extra metrics to be calculated.  This requires separated BAMs to be produced." << endl << endl;
-    }    
+    }
     
 
     // Output settings requested
     cout << "Settings:" << endl
          << std::boolalpha
-         << " - BAM Strandedness (from prepare mode): " << SSToString(settings.ss) << endl
+         << " - BAM Strandedness (from prepare mode): " << strandednessToString(settings.ss) << endl
          << " - BAM Indexing mode (from prepare mode): " << (settings.useCsi ? "CSI" : "BAI") << endl
          << " - Threads: " << threads << endl
          << " - Separate BAMs: " << separate << endl
          << " - Calculate additional metrics: " << extra << endl
          << endl;
+    
+    cout << reader.bamDetails() << endl;
     
     // Separate spliced from unspliced reads and save to file if requested
     if (separate) {
@@ -145,7 +148,7 @@ void portcullis::JunctionBuilder::process() {
     }
                     
     // The core interesting work is done here
-    findJunctions();        
+    findJunctions();
 
     if (extra) {        
         calcExtraMetrics();    
@@ -299,7 +302,6 @@ void portcullis::JunctionBuilder::findJunctions() {
          << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl
          << " - Found " << unsplicedCount << " unspliced alignments." << endl;
     
-    
     // Calculate additional junction stats 
     cout << " - Calculating junctions stats that require comparisons with other junctions...";
     cout.flush();
@@ -326,7 +328,7 @@ void portcullis::JunctionBuilder::calcExtraMetrics() {
     // regions for each junction
     cout << " - Analysing unspliced alignments around junctions ...";
     cout.flush();
-    junctionSystem.findFlankingAlignments(getUnsplicedBamFile(), settings.ss);
+    junctionSystem.findFlankingAlignments(getUnsplicedBamFile());
 
     cout << " - Calculating unspliced alignment coverage around junctions ...";
     cout.flush();
@@ -372,7 +374,7 @@ void portcullis::JunctionBuilder::findJuncs(int32_t seq) {
         maxQueryLength = max(maxQueryLength, len);
         sumQueryLengths += len;
 
-        if (results[seq].js.addJunctions(al, settings.ss)) {
+        if (results[seq].js.addJunctions(al)) {
             splicedCount++;            
         }
         else {

@@ -16,9 +16,11 @@
 //  *******************************************************************
 
 #include <memory>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
+using std::endl;
 using std::make_shared;
 using std::shared_ptr;
 using std::string;
@@ -29,6 +31,8 @@ using std::stringstream;
 #include <boost/filesystem/path.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string.hpp>  
 using boost::filesystem::exists;
 using boost::filesystem::path;
 using boost::lexical_cast;
@@ -86,7 +90,7 @@ void portcullis::bam::BamReader::open() {
     }
     
     // Load header
-    header = bam_hdr_read(fp);    
+    header = bam_hdr_read(fp);
     
     // Identify all the reference sequences in the BAM
     for(uint32_t i = 0; i < header->n_targets; i++) {
@@ -135,4 +139,73 @@ bool portcullis::bam::BamReader::isCoordSortedBam() {
     string headerText = header->text;   
     return headerText.find("SO:coordinate") != std::string::npos;
 }
+
+string portcullis::bam::BamReader::bamDetails() const {
+    
+    stringstream ss;
+
+    string headerText = this->header->text;
+    
+    vector<string> lines;
+    boost::split( lines, headerText, boost::is_any_of("\n"), boost::token_compress_on );
+    
+    ss << "BAM details:" << endl
+         << " - File path: " << bamFile << endl
+         << " - # Target sequences: " << this->header->n_targets << endl;
+         
+    string hd = "@HD";
+    string pg = "@PG";
+    uint16_t programCount = 1;
+    for(auto& line : lines) {
+        if (line.compare(0, hd.length(), hd) == 0) {
+            
+            string version = "VN:";
+            string sortOrder = "SO:";
+            string ag = "GO:";
+            vector<string> parts;
+            boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
+            for (auto& part : parts) {
+                if (part.compare(0, version.length(), version) == 0) {
+                    ss << " - Format version: " << part.substr(version.length()) << endl;
+                }
+                else if (part.compare(0, sortOrder.length(), sortOrder) == 0) {
+                    ss << " - Sort order: " << part.substr(sortOrder.length()) << endl;
+                }
+                else if (part.compare(0, ag.length(), ag) == 0) {
+                    ss << " - Alignment grouping: " << part.substr(ag.length()) << endl;
+                }
+            }            
+        }
+        else if (line.compare(0, pg.length(), pg) == 0) {
+            ss << " - Program " << programCount++ << ": " << endl;
+            string id = "ID:";
+            string name = "PN:";
+            string cl = "CL:";
+            string vn = "VN:";
+            string desc = "DS:";
+            vector<string> parts;
+            boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
+            for (auto& part : parts) {
+                if (part.compare(0, id.length(), id) == 0) {
+                    ss << "  - ID: " << part.substr(id.length()) << endl;
+                }
+                else if (part.compare(0, name.length(), name) == 0) {
+                    ss << "  - Name: " << part.substr(name.length()) << endl;
+                }
+                else if (part.compare(0, cl.length(), cl) == 0) {
+                    ss << "  - Command line: " << part.substr(cl.length()) << endl;
+                }
+                else if (part.compare(0, vn.length(), vn) == 0) {
+                    ss << "  - Version: " << part.substr(vn.length()) << endl;
+                }
+                else if (part.compare(0, desc.length(), desc) == 0) {
+                    ss << "  - Description: " << part.substr(desc.length()) << endl;
+                }
+            }
+        }
+    }
+    
+    return ss.str();
+}
+        
 

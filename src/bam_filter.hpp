@@ -90,7 +90,7 @@ private:
     path junctionFile;
     path bamFile;
     path outputBam;
-    StrandSpecific strandSpecific;
+    Strandedness strandSpecific;
     ClipMode clipMode;
     bool saveMSRs;
     bool verbose;
@@ -143,11 +143,11 @@ public:
         this->outputBam = outputBam;
     }
 
-    StrandSpecific getStrandSpecific() const {
+    Strandedness getStrandSpecific() const {
         return strandSpecific;
     }
 
-    void setStrandSpecific(StrandSpecific strandSpecific) {
+    void setStrandSpecific(Strandedness strandSpecific) {
         this->strandSpecific = strandSpecific;
     }
     

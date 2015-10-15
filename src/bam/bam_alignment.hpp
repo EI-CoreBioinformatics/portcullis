@@ -101,6 +101,8 @@ struct CigarOp {
     }
 };
 
+
+
 class BamAlignment {
     
 private:
@@ -113,6 +115,8 @@ private:
     int32_t alignedLength;
     int32_t refId;
     vector<CigarOp> cigar;
+    Strandedness strandedness;
+    Strand strand;
     
     void init();
         
@@ -124,10 +128,12 @@ public:
     BamAlignment();
     
     /**
-     * Makes a deep copy of the provided samtools bam alignment
+     * Make a copy of the provided samtools bam alignment
      * @param _b Samtools bam alignment
+     * @param duplicate Whether to make a deep copy of the alignment
+     * @param strandedness What strand protocol was used
      */
-    BamAlignment(bam1_t* _b, bool duplicate);
+    BamAlignment(bam1_t* _b, bool duplicate, Strandedness strandedness);
     
     /**
      * Makes a deep copy of an existing BamAlignment
@@ -217,6 +223,10 @@ public:
         return b->core.qual;
     }
     
+    Strand getStrand() const {
+        return strand;
+    }
+    
     bool isDuplicate() const {
         return (alFlag & BAM_FDUP) != 0;
     }
@@ -260,6 +270,8 @@ public:
     bool isSecondMate() const {
         return (alFlag & BAM_FREAD2) != 0;
     }
+    
+    portcullis::bam::Strand getXSStrand() const;
     
     
     

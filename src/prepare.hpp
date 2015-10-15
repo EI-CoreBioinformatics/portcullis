@@ -43,10 +43,11 @@ namespace bfs = boost::filesystem;
 using bfs::path;
 namespace po = boost::program_options;
 
+#include "bam/bam_master.hpp"
+using portcullis::bam::Strandedness;
+
 #include "portcullis_fs.hpp"
-#include "seq_utils.hpp"
 using portcullis::PortcullisFS;
-using portcullis::StrandSpecific;
 
 
 namespace portcullis {
@@ -71,7 +72,7 @@ const string BAM_DEPTH_EXTENSION = ".bdp";
    
 
 struct Settings {
-    StrandSpecific ss = StrandSpecific::UNSTRANDED;
+    Strandedness ss = Strandedness::UNKNOWN;
     bool useCsi = false;
 };
 
@@ -143,7 +144,7 @@ class Prepare {
 private:
     
     shared_ptr<PreparedFiles> output;
-    StrandSpecific strandSpecific;
+    Strandedness strandSpecific;
     bool force;
     bool useLinks;
     uint16_t threads;
@@ -153,10 +154,10 @@ private:
     
 public:
     
-    Prepare(const path& _outputPrefix) : Prepare(_outputPrefix, StrandSpecific::UNSTRANDED, false, false, false, 1, false) {
+    Prepare(const path& _outputPrefix) : Prepare(_outputPrefix, Strandedness::UNKNOWN, false, false, false, 1, false) {
     }
     
-    Prepare(const path& _outputPrefix, StrandSpecific _strandSpecific, bool _force, bool _useLinks, bool useCsi, uint16_t _threads, bool _verbose);
+    Prepare(const path& _outputPrefix, Strandedness _strandSpecific, bool _force, bool _useLinks, bool useCsi, uint16_t _threads, bool _verbose);
     
     virtual ~Prepare() {       
     }

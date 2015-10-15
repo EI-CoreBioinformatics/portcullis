@@ -6,48 +6,7 @@ __author__ = 'maplesod'
 
 import sys
 import argparse
-
-def makekey(line, usestrand, tophat) :
-    words = line.split()
-    overhang = words[10]
-    overhang_parts = overhang.split(",")
-    lo = int(overhang_parts[0])
-    ro = int(overhang_parts[1])
-    chr = words[0]
-    start = str(int(words[6]) + lo) if tophat else words[6]
-    end = str(int(words[7]) - ro - 1) if tophat else str(int(words[7]) - 1)
-    strand = words[5]
-    key = chr + "_" + start + "_" + end
-    if usestrand:
-        key += "_" + strand
-    return key
-
-def makekeyfromtab(line, usestrand) :
-    words = line.split()
-    chr = words[2]
-    start = words[4]
-    end = words[5]
-    strand = words[11]
-    key = chr + "_" + start + "_" + end
-    if usestrand:
-        key += "_" + strand
-    return key
-    
-
-def loadbed(filepath, usestrand, tophat) :
-    with open(filepath) as f:
-        index = 0
-        items = set()
-        for line in f:
-            if index > 0:
-                key = makekey(line, usestrand, tophat)
-                items.add(key)
-            index += 1
-    if len(items) != index - 1 :
-        print ("non unique items in bed file " + filepath)
-    return items
-
-
+from bed12 import *
 
    
 parser=argparse.ArgumentParser("Script to analyse the results of portcullis when run on data from a model organism (i.e. it has a high quality annotated genome.")
@@ -55,6 +14,8 @@ parser.add_argument("-a", required=True,
                     help="Portcullis Junction Tab file.  Details from this file will be used in the output.")
 parser.add_argument("-b", required=True,
                     help="Bed file")
+parser.add_argument("-o", required=True,
+                    help="Output tab file")
 parser.add_argument("-t", "--tophat", action='store_true', default=False,
                     help="Bed file is from tophat, compensate for maximal overhangs")
 parser.add_argument("-s", "--ignore_strand", action='store_true', default=False,
@@ -82,18 +43,4 @@ else:
     # Load second bed file as a set
     bed = loadbed(args.b, not args.ignore_strand, args.tophat)
 
-    index = 0;
-    with open(args.a) as f:
-
-        print(f.readline(), end="")
-        for line in f:
-
-            line = line.strip()
-            if line != "":
-                key = makekeyfromtab(line, not args.ignore_strand)
-                if mode == 0:
-                    if key in bed:
-                        print(line)
-                elif mode == 1:
-                    if key not in bed:
-                        print(line)
+    filtertab(args.a, args.o, bed, mode, args.ignore_strand)
