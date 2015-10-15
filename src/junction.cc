@@ -1168,14 +1168,18 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     vector<string> parts; // #2: Search for tokens
     boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
 
-    if (parts.size() != 39) {
+    if (parts.size() != 40) {
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-            "Could not parse line due to incorrect number of columns.  Check file and portcullis versions.  Expected 39 columns: ") + line));
+            "Could not parse line due to incorrect number of columns.  Check file and portcullis versions.  Expected 40 columns: ") + line));
     }
 
     // Create intron
     IntronPtr i = make_shared<Intron>(
-        RefSeq(lexical_cast<int32_t>(parts[1]), parts[2], lexical_cast<int32_t>(parts[3])),
+        RefSeq(
+            lexical_cast<int32_t>(parts[1]), 
+            parts[2], 
+            lexical_cast<int32_t>(parts[3])
+        ),
         lexical_cast<int32_t>(parts[4]),
         lexical_cast<int32_t>(parts[5])
     );
@@ -1183,47 +1187,47 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     // Create basic junction
     shared_ptr<Junction> j = make_shared<Junction>(
         i,
-        lexical_cast<int32_t>(parts[7]),
-        lexical_cast<int32_t>(parts[8])
+        lexical_cast<int32_t>(parts[6]),
+        lexical_cast<int32_t>(parts[7])
     );
 
     // Splice site strings
-    j->setDa1(parts[9]);
-    j->setDa2(parts[10]);
+    j->setDa1(parts[8]);
+    j->setDa2(parts[9]);
 
     // Set predictions to junction
-    j->readStrand = strandFromChar(parts[11][0]);
-    j->ssStrand = strandFromChar(parts[12][0]);
-    j->consensusStrand = strandFromChar(parts[13][0]);
+    j->readStrand = strandFromChar(parts[10][0]);
+    j->ssStrand = strandFromChar(parts[11][0]);
+    j->consensusStrand = strandFromChar(parts[12][0]);
 
     // Add metrics to junction
-    j->setDonorAndAcceptorMotif(cssFromChar(parts[12][0]));
-    j->setNbJunctionAlignments(lexical_cast<uint32_t>(parts[13]));
-    j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[14]));
-    j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[15]));
+    j->setDonorAndAcceptorMotif(cssFromChar(parts[13][0]));
+    j->setNbJunctionAlignments(lexical_cast<uint32_t>(parts[14]));
+    j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[15]));
+    j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[16]));
     // Intron size not required
-    j->setLeftAncSize(lexical_cast<uint32_t>(parts[17]));
-    j->setRightAncSize(lexical_cast<uint32_t>(parts[18]));
-    j->setMaxMinAnchor(lexical_cast<int32_t>(parts[19]));
-    j->setDiffAnchor(lexical_cast<int32_t>(parts[20]));
-    j->setNbDistinctAnchors(lexical_cast<uint32_t>(parts[21]));
-    j->setEntropy(lexical_cast<double>(parts[22]));
-    j->setMaxMMES(lexical_cast<uint32_t>(parts[23]));
-    j->setHammingDistance5p(lexical_cast<uint32_t>(parts[24]));
-    j->setHammingDistance3p(lexical_cast<uint32_t>(parts[25]));
-    j->setCoverage(lexical_cast<double>(parts[26]));
-    j->setUniqueJunction(lexical_cast<bool>(parts[27]));
-    j->setPrimaryJunction(lexical_cast<bool>(parts[28]));
-    j->setMultipleMappingScore(lexical_cast<double>(parts[29]));
-    j->setMeanMismatches(lexical_cast<double>(parts[30]));
-    j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[31]));
-    j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[32]));
-    j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[33]));
-    j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[34]));
-    j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[35]));
-    j->setDistanceToNextUpstreamJunction(lexical_cast<uint32_t>(parts[36]));
-    j->setDistanceToNextDownstreamJunction(lexical_cast<uint32_t>(parts[37]));
-    j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[38]));
+    j->setLeftAncSize(lexical_cast<uint32_t>(parts[18]));
+    j->setRightAncSize(lexical_cast<uint32_t>(parts[19]));
+    j->setMaxMinAnchor(lexical_cast<int32_t>(parts[20]));
+    j->setDiffAnchor(lexical_cast<int32_t>(parts[21]));
+    j->setNbDistinctAnchors(lexical_cast<uint32_t>(parts[22]));
+    j->setEntropy(lexical_cast<double>(parts[23]));
+    j->setMaxMMES(lexical_cast<uint32_t>(parts[24]));
+    j->setHammingDistance5p(lexical_cast<uint32_t>(parts[25]));
+    j->setHammingDistance3p(lexical_cast<uint32_t>(parts[26]));
+    j->setCoverage(lexical_cast<double>(parts[27]));
+    j->setUniqueJunction(lexical_cast<bool>(parts[28]));
+    j->setPrimaryJunction(lexical_cast<bool>(parts[29]));
+    j->setMultipleMappingScore(lexical_cast<double>(parts[30]));
+    j->setMeanMismatches(lexical_cast<double>(parts[31]));
+    j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[32]));
+    j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[33]));
+    j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[34]));
+    j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[35]));
+    j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[36]));
+    j->setDistanceToNextUpstreamJunction(lexical_cast<uint32_t>(parts[37]));
+    j->setDistanceToNextDownstreamJunction(lexical_cast<uint32_t>(parts[38]));
+    j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[39]));
     
     return j;
 }
