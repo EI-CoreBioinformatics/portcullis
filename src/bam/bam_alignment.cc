@@ -96,9 +96,9 @@ void portcullis::bam::BamAlignment::init() {
     // Try deriving from XS tag first if it's present.  If not then try to
     // work it all out from the protocol suggested and the reverse strand
     // flag.
-    char xss = getXSStrand();
-    if (xss != '+' || xss != '-') {
-        strand = strandFromChar(xss);                
+    Strand s = getXSStrand();
+    if (s != Strand::UNKNOWN) {
+        strand = s;                
     }
     else {     
         if (strandedness == Strandedness::FIRSTSTRAND) {
@@ -198,7 +198,8 @@ bam1_t* portcullis::bam::BamAlignment::getRaw() const {
 portcullis::bam::Strand portcullis::bam::BamAlignment::getXSStrand() const {
     char xs[2] = {'X', 'S'};           
     uint8_t* res = bam_aux_get_core(b, xs);
-    return res != 0 ? strandFromChar(bam_aux2A(res)) : Strand::UNKNOWN;
+    char c = res != 0 ? bam_aux2A(res) : '?';
+    return strandFromChar(c);
 }
 
 

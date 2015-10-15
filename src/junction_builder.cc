@@ -302,12 +302,6 @@ void portcullis::JunctionBuilder::findJunctions() {
          << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl
          << " - Found " << unsplicedCount << " unspliced alignments." << endl;
     
-    // Determine strandedness from reads
-    cout << " - Determining junction strand from reads...";
-    cout.flush();
-    junctionSystem.determineStrandFromReads();
-    cout << " done." << endl;
-    
     // Calculate additional junction stats 
     cout << " - Calculating junctions stats that require comparisons with other junctions...";
     cout.flush();

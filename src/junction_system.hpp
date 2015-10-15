@@ -137,9 +137,7 @@ public:
     void findFlankingAlignments(const path& alignmentsFile, bool verbose);
     
     void calcCoverage(const path& alignmentsFile, Strandedness strandSpecific);
-    
-    void determineStrandFromReads();
-    
+        
     void calcMultipleMappingStats(SplicedAlignmentMap& map) {
         calcMultipleMappingStats(map, false);
     }

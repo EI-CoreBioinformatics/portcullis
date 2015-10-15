@@ -542,6 +542,7 @@ void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t re
     
 void portcullis::Junction::calcMetrics() {
     
+    determineStrandFromReads();
     calcAnchorStats();      // Metrics 5 and 7
     calcEntropy();          // Metric 6
     calcAlignmentStats();   // Metrics 8, 9 and 19

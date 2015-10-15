@@ -284,13 +284,6 @@ void portcullis::JunctionSystem::calcMultipleMappingStats(SplicedAlignmentMap& m
     }        
 }
 
-void portcullis::JunctionSystem::determineStrandFromReads() {
-    
-    for (JunctionPtr j : junctionList) {
-        j->determineStrandFromReads();
-    }
-}
-
 
 void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
 
