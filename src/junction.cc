@@ -172,20 +172,20 @@ Strand portcullis::Junction::predictedStrandFromSpliceSites(const string& seq1, 
     const string seq = string(seq1 + seq2);
 
     if (seq == CANONICAL_SEQ) {
-        return POSITIVE;
+        return Strand::POSITIVE;
     }
     else if (seq == CANONICAL_SEQ_RC) {
-        return NEGATIVE;
+        return Strand::NEGATIVE;
     }
     // Check for these after canonicals for performance reasons
     else if (seq == SEMI_CANONICAL_SEQ1 || seq == SEMI_CANONICAL_SEQ2) {
-        return POSITIVE;
+        return Strand::POSITIVE;
     }
     else if (seq == SEMI_CANONICAL_SEQ1_RC || seq == SEMI_CANONICAL_SEQ2_RC) {
-        return NEGATIVE;
+        return Strand::NEGATIVE;
     }
     else {
-        return UNKNOWN;
+        return Strand::UNKNOWN;
     }
 }
     
@@ -219,7 +219,10 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
     distanceToNextDownstreamJunction = 0;
     distanceToNearestJunction = 0;
     
-    predictedStrand = UNKNOWN;
+    readStrand = Strand::UNKNOWN;
+    ssStrand = Strand::UNKNOWN;
+    consensusStrand = Strand::UNKNOWN;
+    
     nbUpstreamJunctions = 0;
     nbDownstreamJunctions = 0;
     
@@ -260,7 +263,10 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
     meanMismatches = j.meanMismatches;
     nbMultipleSplicedReads = j.nbMultipleSplicedReads;
 
-    predictedStrand = j.predictedStrand;
+    readStrand = j.readStrand;
+    ssStrand = j.ssStrand;
+    consensusStrand = j.consensusStrand;
+    
     nbUpstreamJunctions = j.nbUpstreamJunctions;
     nbDownstreamJunctions = j.nbDownstreamJunctions;
     distanceToNextUpstreamJunction = j.distanceToNextUpstreamJunction;
@@ -314,7 +320,13 @@ portcullis::CanonicalSS portcullis::Junction::setDonorAndAcceptorMotif(string se
     this->da1 = seq1;
     this->da2 = seq2;
     this->canonicalSpliceSites = hasCanonicalSpliceSites(seq1, seq2);
-    this->predictedStrand = predictedStrandFromSpliceSites(seq1, seq2);
+    this->ssStrand = predictedStrandFromSpliceSites(seq1, seq2);
+    // Also set consensusStrand here as readStrand should already be calculated
+    this->consensusStrand = 
+            this->readStrand == this->ssStrand ? this->readStrand : 
+                this->readStrand == Strand::UNKNOWN ? this->ssStrand :
+                    this->ssStrand == Strand::UNKNOWN ? this->readStrand :
+                        Strand::UNKNOWN;
     return this->canonicalSpliceSites;
 }
     
@@ -341,6 +353,39 @@ void portcullis::Junction::extendAnchors(int32_t otherStart, int32_t otherEnd) {
     maxMinAnchor = max(maxMinAnchor, otherMinAnchor);
 }
         
+
+void portcullis::Junction::determineStrandFromReads() {
+    
+    uint32_t nb_pos = 0;
+    uint32_t nb_neg = 0;
+    uint32_t nb_unk = 0;
+    for(auto& a : alignments) {
+        switch (a->ba->getStrand()) {
+            case Strand::POSITIVE:
+                nb_pos++;
+                break;
+            case Strand::NEGATIVE:
+                nb_neg++;
+                break;
+            case Strand::UNKNOWN:
+                nb_unk++;
+                break;
+        }        
+    }
+    
+    uint32_t total = nb_pos + nb_neg + nb_unk;
+    const double threshold = 0.95;
+    
+    if ((double)nb_pos / (double)total >= threshold) {
+        readStrand = Strand::POSITIVE;
+    }
+    else if ((double)nb_neg / (double)total >= threshold) {
+        readStrand = Strand::NEGATIVE;
+    }
+    else {
+        readStrand = Strand::UNKNOWN;
+    }
+}
     
 void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMapper) {
 
@@ -701,7 +746,7 @@ void portcullis::Junction::calcHammingScores(   const string& leftAnchor, const 
     
     // TODO, might want to modify this logic later, but worst case is that the 5' and
     // 3' results are swapped
-    Strand s = predictedStrand != UNKNOWN ? predictedStrand : Strand::UNKNOWN;
+    Strand s = consensusStrand != UNKNOWN ? consensusStrand : Strand::UNKNOWN;
 
     const string la = leftAnchor.size() > leftLen ? leftAnchor.substr(leftOffset, leftLen) : leftAnchor;
     const string li = leftIntron.size() > rightLen ? leftIntron.substr(0, rightLen) : leftIntron;
@@ -900,7 +945,9 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
     strm << delimiter
          << "Anchor limits: (" << leftAncStart << ", " << rightAncEnd << ")" << delimiter
          << "Junction Predictions:" << delimiter
-         << "P1:  Strand: " << strandToString(predictedStrand) << delimiter
+         << "Reads Strand: " << strandToString(readStrand) << delimiter
+         << "Splice Site Strand: " << strandToString(ssStrand) << delimiter
+         << "Consensus Strand: " << strandToString(consensusStrand) << delimiter
          << "Junction Metrics:" << delimiter
          << "M1:  Canonical?: " << boolalpha << cssToString(canonicalSpliceSites) << "; Sequences: (" << da1 << " " << da2 << ")" << delimiter
          << "M2:  # Junction Alignments: " << getNbJunctionAlignments() << delimiter
@@ -937,7 +984,9 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
  */
 void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string delimiter) {
 
-    strm << "P1-Strand=" << strandToString(predictedStrand) << delimiter
+    strm << "Reads Strand: " << strandToString(readStrand) << delimiter
+         << "Splice Site Strand: " << strandToString(ssStrand) << delimiter
+         << "Consensus Strand: " << strandToString(consensusStrand) << delimiter
          << "M1-Canonical?=" << cssToString(canonicalSpliceSites) << delimiter
          << "M2-NbAlignments=" << getNbJunctionAlignments() << delimiter
          << "M3-NbDistinctAlignments=" << nbDistinctAlignments << delimiter
@@ -976,9 +1025,7 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
-    const char strand = (   predictedStrand == UNKNOWN ?
-                                '.' :
-                                strandToChar(predictedStrand));
+    const char strand = consensusStrand == UNKNOWN ? '.' : strandToChar(consensusStrand);
 
     string juncId = string("junc_") + lexical_cast<string>(id);
 
@@ -1013,9 +1060,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
-    const char strand = (predictedStrand == UNKNOWN ?
-                                '.' :
-                                strandToChar(predictedStrand));
+    const char strand = consensusStrand == Strand::UNKNOWN ? '.' : strandToChar(consensusStrand);
 
     string juncId = string("junc_") + lexical_cast<string>(id);
 
@@ -1077,9 +1122,9 @@ void portcullis::Junction::outputBED(std::ostream &strm, uint32_t id) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
-    const char strand = (predictedStrand == UNKNOWN ?
+    const char strand = consensusStrand == Strand::UNKNOWN ?
                                 '.' :
-                                strandToChar(predictedStrand));
+                                strandToChar(consensusStrand);
 
     string juncId = string("portcullis_junc_") + lexical_cast<string>(id);
 
@@ -1113,7 +1158,7 @@ void portcullis::Junction::outputBED(std::ostream &strm, uint32_t id) {
  */
 string portcullis::Junction::junctionOutputHeader() {
     return string(Intron::locationOutputHeader()) + "\tleft\tright\tss1\tss2\t" + 
-            boost::algorithm::join(PREDICTION_NAMES, "\t") + "\t" +
+            boost::algorithm::join(STRAND_NAMES, "\t") + "\t" +
             boost::algorithm::join(METRIC_NAMES, "\t");
 }
 
@@ -1146,7 +1191,9 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     j->setDa2(parts[10]);
 
     // Set predictions to junction
-    j->setPredictedStrand(strandFromChar(parts[11][0]));
+    j->readStrand = strandFromChar(parts[11][0]);
+    j->ssStrand = strandFromChar(parts[12][0]);
+    j->consensusStrand = strandFromChar(parts[13][0]);
 
     // Add metrics to junction
     j->setDonorAndAcceptorMotif(cssFromChar(parts[12][0]));

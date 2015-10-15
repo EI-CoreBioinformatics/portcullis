@@ -120,14 +120,14 @@ void portcullis::JunctionBuilder::process() {
     
     if (refs.size() < threads) {
         cerr << "Warning: User requested " << threads << " threads but there are only " << refs.size() << " target sequences to process.  Setting number of threads to " << refs.size() << "." << endl << endl;
-        threads = refs.size();                
+        threads = refs.size();
     }
     
     // Must separate BAMs if extra metrics are requested
     if (extra && !separate) {
         separate = true;
         cerr << "Warning: User requested that separated BAMS should not be output but user did request extra metrics to be calculated.  This requires separated BAMs to be produced." << endl << endl;
-    }    
+    }
     
 
     // Output settings requested
@@ -148,7 +148,7 @@ void portcullis::JunctionBuilder::process() {
     }
                     
     // The core interesting work is done here
-    findJunctions();        
+    findJunctions();
 
     if (extra) {        
         calcExtraMetrics();    
@@ -302,6 +302,11 @@ void portcullis::JunctionBuilder::findJunctions() {
          << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl
          << " - Found " << unsplicedCount << " unspliced alignments." << endl;
     
+    // Determine strandedness from reads
+    cout << " - Determining junction strand from reads...";
+    cout.flush();
+    junctionSystem.determineStrandFromReads();
+    cout << " done." << endl;
     
     // Calculate additional junction stats 
     cout << " - Calculating junctions stats that require comparisons with other junctions...";

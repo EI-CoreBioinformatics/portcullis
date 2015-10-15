@@ -85,8 +85,10 @@ const string METRIC_NAMES[NB_METRICS] = {
         "M27-dist_nearest_junc"         
     };
 
-const string PREDICTION_NAMES[1] = {
-        "P1-strand"
+const string STRAND_NAMES[3] = {
+        "read-strand",
+        "ss-strand",
+        "consensus-strand"
     };
 
 const string CANONICAL_SEQ = "GTAG";
@@ -204,7 +206,6 @@ private:
     vector<size_t> alignmentCodes;
     vector<uint32_t> trimmedCoverage;
     vector<double> trimmedLogDevCov;
-        
     
     // **** Junction metrics ****
     CanonicalSS canonicalSpliceSites;           // Metric 1
@@ -239,7 +240,9 @@ private:
     
     // **** Predictions ****
     
-    Strand predictedStrand;
+    Strand readStrand;      // Strand derived from alignments
+    Strand ssStrand;        // Strand derived from splice sites    
+    Strand consensusStrand; // If readStrand and ssStrand agree then strand is the same, otherwise UNKNOWN
     
     
     
@@ -341,6 +344,7 @@ public:
      */
     void extendAnchors(int32_t otherStart, int32_t otherEnd);
         
+    void determineStrandFromReads();
     
     void processJunctionWindow(const GenomeMapper& genomeMapper);
     
@@ -670,8 +674,16 @@ public:
         this->distanceToNextUpstreamJunction = distanceToNextUpstreamJunction;
     }
 
-    Strand getPredictedStrand() const {
-        return predictedStrand;
+    Strand getReadStrand() const {
+        return readStrand;
+    }
+
+    Strand getSpliceSiteStrand() const {
+        return ssStrand;
+    }
+
+    Strand getConsensusStrand() const {
+        return consensusStrand;
     }
 
     void setDa1(string da1) {
@@ -751,10 +763,6 @@ public:
         this->multipleMappingScore = multipleMappingScore;
     }
 
-    void setPredictedStrand(Strand predictedStrand) {
-        this->predictedStrand = predictedStrand;
-    }
-    
     void setMeanMismatches(double meanMismatches) {
         this->meanMismatches = meanMismatches;
     }
@@ -823,7 +831,9 @@ public:
                     << j.rightAncEnd << "\t"
                     << j.da1 << "\t"
                     << j.da2 << "\t"
-                    << strandToChar(j.predictedStrand) << "\t"
+                    << strandToChar(j.readStrand) << "\t"
+                    << strandToChar(j.ssStrand) << "\t"
+                    << strandToChar(j.consensusStrand) << "\t"
                     << cssToChar(j.canonicalSpliceSites) << "\t"
                     << j.getNbJunctionAlignments() << "\t"
                     << j.nbDistinctAlignments << "\t"

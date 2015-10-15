@@ -460,7 +460,7 @@ void portcullis::JunctionFilter::saveResults(const JunctionSystem& js, JuncResul
     // Print descriptive output to file
     ofstream out(outputDir.string() + "/" + outputPrefix + ".results");
 
-    out << Intron::locationOutputHeader() << "\tpredicted_strand\t" << "filter_results..." << endl;
+    out << Intron::locationOutputHeader() << "\tconsensus_strand\t" << "filter_results..." << endl;
 
     for(auto& kv: results) {
 
@@ -468,7 +468,7 @@ void portcullis::JunctionFilter::saveResults(const JunctionSystem& js, JuncResul
 
         out << i << "\t";
 
-        out << strandToChar(js.getJunction(i)->getPredictedStrand()) << "\t";
+        out << strandToChar(js.getJunction(i)->getConsensusStrand()) << "\t";
         
         if (kv.second.empty()) {
             out << "PASS";
