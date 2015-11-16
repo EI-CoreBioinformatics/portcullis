@@ -7,7 +7,7 @@ from snakemake.utils import min_version
 
 min_version("3.4.2")
 
-REF_FA = config["ref_fa"]
+REF = config["ref_fa"]
 REF_GTF = config["ref_gtf"]
 NAME = config["name"]
 OUT_DIR = config["out_dir"]
@@ -69,9 +69,7 @@ Rules
 rule all:
 	input: 
 		expand(ASM_DIR + "/output/{asm_method}-{align_method}-{sample}.gtf", align_method=ALIGNMENT_METHODS, asm_method=ASSEMBLY_METHODS, sample=INPUT_SETS),
-		expand(JUNC_DIR + "/output/portcullis-{align_method}-{sample}.bed", align_method=ALIGNMENT_METHODS, sample=INPUT_SETS),
-		expand(JUNC_DIR + "/output/spanki-tophat-{sample}.bed", sample=INPUT_SETS),
-		expand(JUNC_DIR + "/output/finesplice-tophat-{sample}.bed", sample=INPUT_SETS)
+		expand(JUNC_DIR + "/output/{junc_method}-{align_method}-{sample}.bed", junc_method=JUNC_METHODS, align_method=ALIGNMENT_METHODS, sample=INPUT_SETS)
 		
 
 #rule clean:
@@ -157,12 +155,12 @@ rule align_star:
 
 
 rule align_hisat_index:
-	input: REF_FA
+	input: REF
 	output: ALIGN_DIR+"/hisat/index/"+NAME+".4.ht2"
 	log: ALIGN_DIR+"/hisat.index.log"
 	threads: 1
 	message: "Indexing genome with hisat"
-	shell: "{LOAD_HISAT}; hisat2-build {REF_FA} {ALIGN_DIR}/hisat/index/{NAME} > {log} 2>&1"
+	shell: "{LOAD_HISAT}; hisat2-build {input} {ALIGN_DIR}/hisat/index/{NAME} > {log} 2>&1"
 
 
 rule align_hisat:
@@ -173,10 +171,12 @@ rule align_hisat:
 	output:
 		bam=ALIGN_DIR_FULL+"/hisat/{sample}/hisat.bam",
 		link=ALIGN_DIR+"/output/hisat-{sample}.bam"
+	params:
+		indexdir=ALIGN_DIR+"/hisat/index/"+NAME
 	log: ALIGN_DIR+"/hisat-{sample}.log"
         threads: int(THREADS)
         message: "Aligning input with hisat"
-	shell: "{LOAD_HISAT}; {LOAD_SAMTOOLS}; hisat2 -p {threads} --min-intronlen={MIN_INTRON} --max-intronlen={MAX_INTRON} {HISAT_STRAND} -x {ALIGN_DIR}/hisat/index/{NAME} -1 {input.r1} -2 {input.r2} 2> {log} | samtools view -b -@ {threads} - > {output.bam}; ln -sf {output.bam} {output.link} && touch -h {output.link}"
+	shell: "{LOAD_HISAT}; {LOAD_SAMTOOLS}; hisat2 -p {threads} --min-intronlen={MIN_INTRON} --max-intronlen={MAX_INTRON} {HISAT_STRAND} -x {params.indexdir} -1 {input.r1} -2 {input.r2} 2> {log} | samtools view -b -@ {threads} - > {output.bam}; ln -sf {output.bam} {output.link} && touch -h {output.link}"
 
 
 
@@ -227,10 +227,10 @@ rule asm_stringtie:
 rule portcullis_prep:
         input:
                 ref={REF},
-                bam=rules.sam_sort.output
-        output: PORTCULLIS_DIR+"/{align_method}-prep/portcullis.sorted.alignments.bam.bai"
-        params: outdir=PORTCULLIS_DIR+"/{align_method}-prep"
-        log: PORTCULLIS_DIR+"/{align_method}-prep.log"
+                bam=rules.bam_sort.output
+        output: JUNC_DIR+"/portcullis/{align_method}-{sample}-prep/portcullis.sorted.alignments.bam.bai"
+        params: outdir=JUNC_DIR+"/portcullis/{align_method}-{sample}-prep"
+        log: JUNC_DIR+"/portcullis/{align_method}-{sample}-prep.log"
         threads: int(THREADS)
         message: "Using portcullis to prepare: {input}"
         shell: "{LOAD_PORTCULLIS}; portcullis prep -o {params.outdir} -l -s {PORTCULLIS_STRAND} -t {threads} {input.ref} {input.bam} > {log} 2>&1"
@@ -239,57 +239,63 @@ rule portcullis_prep:
 rule portcullis_junc:
         input:
                 bai=rules.portcullis_prep.output
-        output: PORTCULLIS_DIR+"/{align_method}-junc/{align_method}.junctions.tab"
+        output: JUNC_DIR+"/portcullis/{align_method}-{sample}-junc/{align_method}-{sample}.junctions.tab"
         params:
-                prepdir=PORTCULLIS_DIR+"/{align_method}-prep",
-                outdir=PORTCULLIS_DIR+"/{align_method}-junc"
-        log: PORTCULLIS_DIR+"/{align_method}-junc.log"
+                prepdir=JUNC_DIR+"/portcullis/{align_method}-{sample}-prep",
+                outdir=JUNC_DIR+"/portcullis/{align_method}-{sample}-junc"
+        log: JUNC_DIR+"/portcullis/{align_method}-{sample}-junc.log"
         threads: int(THREADS)
         message: "Using portcullis to analyse potential junctions: {input}"
-        shell: "{LOAD_PORTCULLIS}; portcullis junc -o {params.outdir} -p {wildcards.align_method} -t {threads} {params.prepdir} > {log} 2>&1"
+        shell: "{LOAD_PORTCULLIS}; portcullis junc -o {params.outdir} -p {wildcards.align_method}-{wildcards.sample} -t {threads} {params.prepdir} > {log} 2>&1"
 
 rule portcullis_filter:
         input: rules.portcullis_junc.output
         output:
-                bed=PORTCULLIS_DIR_FULL+"/{align_method}-filtered/{align_method}.pass.junctions.bed",
-                link=PORTCULLIS_DIR+"/output/{align_method}.pass.junctions.bed"
-        params: outdir=PORTCULLIS_DIR+"/{align_method}-filtered"
-        log: PORTCULLIS_DIR+"/{align_method}-filter.log"
+                link=JUNC_DIR+"/output/portcullis-{align_method}-{sample}.bed"
+	params: 
+		outdir=JUNC_DIR+"/portcullis/{align_method}-{sample}-filtered",
+                bed=JUNC_DIR_FULL+"/portcullis/{align_method}-{sample}-filtered/{align_method}-{sample}.pass.junctions.bed"
+	log: JUNC_DIR+"/portcullis/{align_method}-{sample}-filter.log"
         threads: 1
         message: "Using portcullis to filter invalid junctions: {input}"
-        shell: "{LOAD_PORTCULLIS}; portcullis filter -o {params.outdir} -p {wildcards.align_method} {input} > {log} 2>&1 && ln -sf {output.bed} {output.link} && touch -h {output.link}"
+        shell: "{LOAD_PORTCULLIS}; portcullis filter -o {params.outdir} -p {wildcards.align_method}-{wildcards.sample} {input} > {log} 2>&1 && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 
 
 
-
+# SPANKI will only run with tophat BAMs.  So I've implemented some code to ensure the output file exists regardless.
 rule spanki:
 	input: 
-		bam=ALIGN_DIR_FULL+"/output/tophat-{sample}.sorted.bam",
-                ref_fa=os.path.abspath(REF_FA),
+		bam=rules.bam_sort.output,
+                ref_fa=os.path.abspath(REF),
 		ref_gtf=os.path.abspath(REF_GTF)
 	output:
-		all=JUNC_DIR+"/spanki/tophat-{sample}/junctions_out/juncs.all",
-		filtered=JUNC_DIR+"/spanki/tophat-{sample}/junctions_out/juncs.filtered",
-		bed=JUNC_DIR_FULL+"/spanki/tophat-{sample}/junctions_out/juncs.bed",
-		link=JUNC_DIR+"/output/spanki-tophat-{sample}.bed"
-	params: spankidir=JUNC_DIR_FULL+"/spanki/tophat-{sample}"
-	log: JUNC_DIR_FULL+"/spanki/spanki-tophat-{sample}.log"
+		link=JUNC_DIR+"/output/spanki-{align_method}-{sample}.bed"
+	params: 
+		bam_full=ALIGN_DIR_FULL+"/output/{align_method}-{sample}.sorted.bam",
+		spankidir=JUNC_DIR_FULL+"/spanki/{align_method}-{sample}",
+		all=JUNC_DIR+"/spanki/{align_method}-{sample}/junctions_out/juncs.all",
+		filtered=JUNC_DIR+"/spanki/{align_method}-{sample}/junctions_out/juncs.filtered",
+		bed=JUNC_DIR_FULL+"/spanki/{align_method}-{sample}/junctions_out/juncs.bed",
+	log: JUNC_DIR_FULL+"/spanki/spanki-{align_method}-{sample}.log"
 	threads: 1
 	message: "Using spanki to filter junctions: {input.bam}"
-	shell: "{LOAD_SPANKI}; cd {params.spankidir}; spankijunc -i {input.bam} -g {input.ref_gtf} -f {input.ref_fa} > {log} 2>&1 && cd {workflow.basedir} && {LOAD_PORTCULLIS} && spanki_filter.py {output.all} > {output.filtered} && spanki2bed.py {output.filtered} > {output.bed} && ln -sf {output.bed} {output.link} && touch -h {output.link}"
+	shell: "{LOAD_SPANKI}; cd {params.spankidir}; spankijunc -i {params.bam_full} -g {input.ref_gtf} -f {input.ref_fa} > {log} 2>&1 && cd {workflow.basedir} && {LOAD_PORTCULLIS} && spanki_filter.py {params.all} > {params.filtered} && spanki2bed.py {params.filtered} > {params.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}  || (echo \"SPANKI failed. This is expected for non-tophat BAMs.  See log for details: {log}\";  touch {output.link})"
 
 
 
-# Finesplice will only run with tophat BAMs as it requires the NH attribute
+# Finesplice will only run with tophat BAMs as it requires the NH attribute.  So I've implemented some code to ensure the output file exists regardless.
 rule finesplice:
-	input: bam=ALIGN_DIR_FULL+"/output/tophat-{sample}.sorted.bam"
+	input: 
+		bam=rules.bam_sort.output
 	output: 
-		junc=JUNC_DIR+"/finesplice/tophat-{sample}/tophat-{sample}.sorted.accepted.junc",
-		bed=JUNC_DIR_FULL+"/finesplice/tophat-{sample}/finesplice.bed",
-		link=JUNC_DIR+"/output/finesplice-tophat-{sample}.bed"
-	params: fsdir=JUNC_DIR_FULL+"/finesplice/tophat-{sample}"
-	log: JUNC_DIR_FULL+"/finesplice/finesplice-tophat-{sample}.log"
+		link=JUNC_DIR+"/output/finesplice-{align_method}-{sample}.bed"
+	params: 
+		bam_full=ALIGN_DIR_FULL+"/output/{align_method}-{sample}.sorted.bam",
+		fsdir=JUNC_DIR_FULL+"/finesplice/{align_method}-{sample}",
+		junc=JUNC_DIR+"/finesplice/{align_method}-{sample}/{align_method}-{sample}.sorted.accepted.junc",
+		bed=JUNC_DIR_FULL+"/finesplice/{align_method}-{sample}/finesplice.bed",
+	log: JUNC_DIR_FULL+"/finesplice/finesplice-{align_method}-{sample}.log"
 	message: "Using finesplice to filter junctions: {input.bam}"
-	shell: "{LOAD_FINESPLICE}; cd {params.fsdir}; FineSplice.py -i {input.bam} -l {READ_LENGTH} > {log} 2>&1 && cd {workflow.basedir} && {LOAD_PORTCULLIS} && fs2bed {output.junc} > {output.bed} && ln -sf {output.bed} {output.link} && touch -h {output.link}"
+	shell: "{LOAD_FINESPLICE}; cd {params.fsdir}; FineSplice.py -i {params.bam_full} -l {READ_LENGTH} > {log} 2>&1 && cd {workflow.basedir} && {LOAD_PORTCULLIS} && fs2bed {params.junc} > {params.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link} || (echo \"Finesplice failed. This is expected for non-tophat BAMs.  See log for details: {log}\"; touch {output.link})"
 
