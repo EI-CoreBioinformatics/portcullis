@@ -1,0 +1,21 @@
+{
+   "__default__" :
+   {
+      "threads" : "4",
+      "memory" : "3000",
+      "queue" : "Prod128"
+   },
+   "align_gsnap_index":
+   {
+      "memory": "5000"
+   },
+   "align_gsnap":
+   {
+      "memory": "5000"
+   },
+   "asm_trinitygg":
+   {
+      "memory": "10000"
+   }
+
+}
