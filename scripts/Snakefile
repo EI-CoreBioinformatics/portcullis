@@ -56,6 +56,8 @@ ASM_DIR_FULL = os.path.abspath(ASM_DIR)
 JUNC_DIR = OUT_DIR + "/junctions"
 JUNC_DIR_FULL = os.path.abspath(JUNC_DIR)
 
+CWD = os.getcwd()
+
 
 TRINITY_STRAND = "--SS_lib_type=RF" if STRANDEDNESS == "fr-firststrand" else "--SS_lib_type=FR" if STRANDEDNESS == "fr-secondstrand" else ""
 HISAT_STRAND = "--rna-strandness=RF" if STRANDEDNESS == "fr-firststrand" else "--rna-strandness=FR" if STRANDEDNESS == "fr-secondstrand" else "F"
@@ -133,7 +135,7 @@ rule align_star_index:
         log: ALIGN_DIR_FULL+"/star.index.log"
         threads: int(THREADS)
         message: "Indexing genome with star"
-        shell: "{LOAD_STAR}; cd {ALIGN_DIR_FULL}/star; STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {params.indexdir} --genomeFastaFiles {input} {INDEX_STAR_EXTRA} > {log} 2>&1; cd {workflow.basedir}"
+        shell: "{LOAD_STAR}; cd {ALIGN_DIR_FULL}/star; STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {params.indexdir} --genomeFastaFiles {input} {INDEX_STAR_EXTRA} > {log} 2>&1; cd {CWD}"
 
 rule align_star:
         input:
@@ -149,7 +151,7 @@ rule align_star:
         log: ALIGN_DIR_FULL+"/star-{sample}.log"
         threads: int(THREADS)
         message: "Aligning input with star"
-        shell: "{LOAD_STAR}; cd {params.outdir}; STAR --runThreadN {threads} --runMode alignReads --genomeDir {params.indexdir} --readFilesIn {input.r1} {input.r2} --outSAMtype BAM Unsorted --outSAMstrandField intronMotif --alignIntronMin {MIN_INTRON} --alignIntronMax {MAX_INTRON} --alignMatesGapMax 20000 --outFileNamePrefix {params.outdir}/ {ALIGN_STAR_EXTRA} > {log} 2>&1; cd {workflow.basedir}; ln -sf {output.bam} {output.link} && touch -h {output.link}"
+        shell: "{LOAD_STAR}; cd {params.outdir}; STAR --runThreadN {threads} --runMode alignReads --genomeDir {params.indexdir} --readFilesIn {input.r1} {input.r2} --outSAMtype BAM Unsorted --outSAMstrandField intronMotif --alignIntronMin {MIN_INTRON} --alignIntronMax {MAX_INTRON} --alignMatesGapMax 20000 --outFileNamePrefix {params.outdir}/ {ALIGN_STAR_EXTRA} > {log} 2>&1; cd {CWD}; ln -sf {output.bam} {output.link} && touch -h {output.link}"
 
 
 
@@ -280,7 +282,7 @@ rule spanki:
 	log: JUNC_DIR_FULL+"/spanki/spanki-{align_method}-{sample}.log"
 	threads: 1
 	message: "Using spanki to filter junctions: {input.bam}"
-	shell: "{LOAD_SPANKI}; cd {params.spankidir}; spankijunc -i {params.bam_full} -g {input.ref_gtf} -f {input.ref_fa} > {log} 2>&1 && cd {workflow.basedir} && {LOAD_PORTCULLIS} && spanki_filter.py {params.all} > {params.filtered} && spanki2bed.py {params.filtered} > {params.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}  || (echo \"SPANKI failed. This is expected for non-tophat BAMs.  See log for details: {log}\";  touch {output.link})"
+	shell: "{LOAD_SPANKI}; cd {params.spankidir}; spankijunc -i {params.bam_full} -g {input.ref_gtf} -f {input.ref_fa} > {log} 2>&1 && cd {CWD} && {LOAD_PORTCULLIS} && spanki_filter.py {params.all} > {params.filtered} && spanki2bed.py {params.filtered} > {params.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}  || (echo \"SPANKI failed. This is expected for non-tophat BAMs.  See log for details: {log}\";  touch {output.link})"
 
 
 
@@ -297,5 +299,5 @@ rule finesplice:
 		bed=JUNC_DIR_FULL+"/finesplice/{align_method}-{sample}/finesplice.bed",
 	log: JUNC_DIR_FULL+"/finesplice/finesplice-{align_method}-{sample}.log"
 	message: "Using finesplice to filter junctions: {input.bam}"
-	shell: "{LOAD_FINESPLICE}; cd {params.fsdir}; FineSplice.py -i {params.bam_full} -l {READ_LENGTH} > {log} 2>&1 && cd {workflow.basedir} && {LOAD_PORTCULLIS} && fs2bed {params.junc} > {params.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link} || (echo \"Finesplice failed. This is expected for non-tophat BAMs.  See log for details: {log}\"; touch {output.link})"
+	shell: "{LOAD_FINESPLICE}; cd {params.fsdir}; FineSplice.py -i {params.bam_full} -l {READ_LENGTH} > {log} 2>&1 && cd {CWD} && {LOAD_PORTCULLIS} && fs2bed {params.junc} > {params.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link} || (echo \"Finesplice failed. This is expected for non-tophat BAMs.  See log for details: {log}\"; touch {output.link})"
 
