@@ -74,6 +74,10 @@ portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _
                     "Could not create output directory: ") + outputDir.string()));
         }
     }
+    else if (!bfs::is_directory(outputDir)) {
+        BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                    "File exists with name of suggested output directory: ") + outputDir.string()));            
+    }
 
     // Loading settings stored in prep data
     settings = prepData.loadSettings();

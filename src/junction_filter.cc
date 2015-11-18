@@ -45,13 +45,7 @@ using std::vector;
 #include <boost/lexical_cast.hpp>
 using boost::timer::auto_cpu_timer;
 using boost::lexical_cast;
-using boost::filesystem::absolute;
-using boost::filesystem::copy_file;
-using boost::filesystem::remove;
-using boost::filesystem::exists;
-using boost::filesystem::create_symlink;
-using boost::filesystem::create_directory;
-using boost::filesystem::symbolic_link_exists;
+namespace bfs = boost::filesystem;
 namespace po = boost::program_options;
 using boost::property_tree::ptree;
 namespace qi    = boost::spirit::qi;
@@ -326,10 +320,14 @@ void portcullis::JunctionFilter::filter() {
     }
 
     if (!exists(outputDir)) {
-        if (!create_directories(outputDir)) {
+        if (!bfs::create_directories(outputDir)) {
             BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
                     "Could not create output directory at: ") + outputDir.string()));
         }
+    }
+    else if (!bfs::is_directory(outputDir)) {
+        BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                    "File exists with name of suggested output directory: ") + outputDir.string()));            
     }
 
     /*string tmpOutputTabFile = outputDir.string() + "/tmp.tab";

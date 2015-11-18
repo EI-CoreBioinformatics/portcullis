@@ -158,22 +158,24 @@ portcullis::Prepare::Prepare(const path& _outputPrefix, Strandedness _strandSpec
     }
 }
     
-bool portcullis::Prepare::copy(const path& from, const path& to, const string& msg) {
+bool portcullis::Prepare::copy(const path& from, const path& to, const string& msg, const bool requireInputFileExists) {
 
-    auto_cpu_timer timer(1, string(" - Copy ") + msg + " - Wall time taken: %ws\n\n");
-
-    bool fileExists = bfs::exists(to) || bfs::symbolic_link_exists(to);
-
-    if (fileExists) {
+    
+    // Check if output file already exists (if so don't do anything)
+    if (bfs::exists(to) || bfs::symbolic_link_exists(to)) {
         if (verbose) cout << "Prepped " << msg << " file detected: " << to << endl;            
     }
-    else {
+    // Check if input file is required to exist (if so either symlink or copy)
+    else if (requireInputFileExists || bfs::exists(from) || bfs::symbolic_link_exists(from)) {
 
         if (useLinks) {
-            bfs::create_symlink(bfs::canonical(from), to);            
+            bfs::create_symlink(bfs::canonical(from), to);
             if (verbose) cout << "Created symlink from " << from << " to " << to << endl;
         }
         else {
+        
+            auto_cpu_timer timer(1, string(" - Copy ") + msg + " - Wall time taken: %ws\n\n");
+            
             if (verbose) {
                 cout << "Copying from " << from << " to " << to << " ... ";
                 cout.flush();
@@ -189,13 +191,17 @@ bool portcullis::Prepare::copy(const path& from, const path& to, const string& m
             if (verbose) cout << "done." << endl;
         }
     }
-
+    // If both input file and output file do not exist and it's not required to exists
+    else if (!requireInputFileExists) {
+        if (verbose) {
+            cout << "Existing " << msg << " not found.  Will create later." << endl;
+        }
+    }
+    
     return bfs::exists(to) || bfs::symbolic_link_exists(to);
 }
     
 bool portcullis::Prepare::genomeIndex() {
-
-    auto_cpu_timer timer(1, " - Genome Index - Wall time taken: %ws\n\n");
 
     const path genomeFile = output->getGenomeFilePath();
     const path indexFile = output->getGenomeIndexFilePath();
@@ -206,6 +212,8 @@ bool portcullis::Prepare::genomeIndex() {
         if (verbose) cout << "Pre-indexed genome detected: " << indexFile << endl;            
     }
     else {
+
+        auto_cpu_timer timer(1, " - Genome Index - Wall time taken: %ws\n\n");
 
         if (verbose) {
             cout << "Indexing genome " << genomeFile << " ... ";
@@ -233,8 +241,7 @@ bool portcullis::Prepare::genomeIndex() {
  */
 bool portcullis::Prepare::bamMerge(vector<path> bamFiles) {
 
-    auto_cpu_timer timer(1, " - BAM Merge - Wall time taken: %ws\n\n");
-
+    
     path mergedBam = output->getUnsortedBamFilePath();        
 
     bool mergedBamExists = bfs::exists(mergedBam) || bfs::symbolic_link_exists(mergedBam);
@@ -243,6 +250,8 @@ bool portcullis::Prepare::bamMerge(vector<path> bamFiles) {
         if (verbose) cout << "Pre-merged BAM detected: " << mergedBam << endl;
     }
     else {
+
+        auto_cpu_timer timer(1, " - BAM Merge - Wall time taken: %ws\n\n");
 
         if (verbose) {
             cout << "Found " << bamFiles.size() << " BAM files." << endl;
@@ -279,15 +288,13 @@ bool portcullis::Prepare::bamMerge(vector<path> bamFiles) {
  */
 bool portcullis::Prepare::bamSort() {
 
-    auto_cpu_timer timer(1, " - BAM Sort - Wall time taken: %ws\n\n");
-
     const path unsortedBam = output->getUnsortedBamFilePath();
     const path sortedBam = output->getSortedBamFilePath();
 
     bool sortedBamExists = bfs::exists(sortedBam) || bfs::symbolic_link_exists(sortedBam);
 
     if (sortedBamExists) {            
-        if (verbose) cout << "Pre-sorted BAM detected: " << sortedBam << endl;
+        if (verbose) cout << "Prepped sorted BAM detected: " << sortedBam << endl;
     }
     else {
 
@@ -298,6 +305,8 @@ bool portcullis::Prepare::bamSort() {
             if (verbose) cout << "Created symlink from " << bfs::canonical(unsortedBam) << " to " << sortedBam << endl;
         }
         else {
+
+            auto_cpu_timer timer(1, " - BAM Sort - Wall time taken: %ws\n\n");
 
             // Sort the BAM file by coordinate
             string sortCmd = BamHelper::createSortBamCmd(unsortedBam, sortedBam, false, threads, "1G");
@@ -332,19 +341,19 @@ bool portcullis::Prepare::bamSort() {
     return bfs::exists(sortedBam) || bfs::symbolic_link_exists(sortedBam);
 }
     
-bool portcullis::Prepare::bamIndex() {
-
-    auto_cpu_timer timer(1, " - BAM Index - Wall time taken: %ws\n\n");
+bool portcullis::Prepare::bamIndex(const bool copied) {
 
     const path sortedBam = output->getSortedBamFilePath();
     const path indexedFile = output->getBamIndexFilePath(useCsi);
 
     bool indexedBamExists = bfs::exists(indexedFile) || bfs::symbolic_link_exists(indexedFile);
 
-    if (indexedBamExists) {
-        if (verbose) cout << "Pre-indexed BAM detected: " << indexedFile << endl;
+    if (indexedBamExists && !copied) {
+        if (verbose) cout << "Prepped indexed BAM detected: " << indexedFile << endl;
     }
-    else {
+    else if (!indexedBamExists) {
+
+        auto_cpu_timer timer(1, " - BAM Index - Wall time taken: %ws\n\n");
 
         // Create BAM index
         string indexCmd = BamHelper::createIndexBamCmd(sortedBam, useCsi);                
@@ -381,6 +390,7 @@ void portcullis::Prepare::prepare(vector<path> bamFiles, const path& originalGen
 
     path mergedBamFile = doMerge ? output->getUnsortedBamFilePath() : bamFiles[0];
 
+    bool indexCopied = false;
     // Merge the bams to output unsorted bam file if required, otherwise just
     // copy / symlink the file provided
     if (doMerge) {
@@ -392,38 +402,42 @@ void portcullis::Prepare::prepare(vector<path> bamFiles, const path& originalGen
     else {
 
         // Copy / Symlink the file to the output dir
-        if (!copy(bamFiles[0], output->getUnsortedBamFilePath(), "BAM")) {
+        if (!copy(bamFiles[0], output->getUnsortedBamFilePath(), "BAM", true)) {
             BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                         "Could not copy/symlink BAM file to: ") + output->getUnsortedBamFilePath().string()));
-        }            
+        }
+        
+        // Copy / Symlink the index file to the output dir if it exists... otherwise we'll create it later
+        indexCopied = copy(bamFiles[0].string() + (useCsi ? CSI_EXTENSION : BAI_EXTENSION), output->getBamIndexFilePath(useCsi), "BAM index", false);
     }
 
-    // Sort the file
+    // Sort the file (if required)
     if (!bamSort()) {
         BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                 "Could not sort: ") + output->getUnsortedBamFilePath().string()));
     }
-
-    // Index the sorted file
-    if (!bamIndex()) {
+    
+    // Index the sorted file (if required)
+    if (!bamIndex(indexCopied)) {
         BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                 "Failed to index: ") + output->getSortedBamFilePath().string()));
     }
 
-    // Copy / Symlink the file to the output dir
-    if (!copy(originalGenomeFile, output->getGenomeFilePath(), "genome")) {
+    // Copy / Symlink the genome file to the output dir
+    if (!copy(originalGenomeFile, output->getGenomeFilePath(), "genome", true)) {
         BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                    "Could not copy/symlink genome file to: ") + output->getGenomeFilePath().string()));
+                "Could not copy/symlink genome file to: ") + output->getGenomeFilePath().string()));
     }
-
-    // Test if index exists
-    if (!genomeIndex()) {
-        BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                    "Could not create genome map")));
+    
+    // Copy / Symlink the genome index file to the output dir, or create it
+    if (!copy(originalGenomeFile.string() + FASTA_INDEX_EXTENSION, output->getGenomeFilePath().string() + FASTA_INDEX_EXTENSION, "genome index", false)) {
+        if (!genomeIndex()) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                "Could not create genome index")));
+        }
     }
-
 }
-   
+
 
 bool portcullis::Prepare::outputDetails() {
 
