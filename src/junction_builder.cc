@@ -87,6 +87,9 @@ portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _
         BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
                     "Prepared data is not complete: ") + prepData.getPrepDir().string()));
     }
+    
+    // Make sure path to genome file is set for the genome index manager
+    gmap.setGenomeFile(prepData.getGenomeFilePath());    
 }
     
 portcullis::JunctionBuilder::~JunctionBuilder() {
@@ -259,6 +262,11 @@ void portcullis::JunctionBuilder::findJunctions() {
     // Add each target sequence as a chunk of work for the thread pool
     results.clear();
     results.resize(refs.size());    
+    
+    cout << "Loading fasta index ...";
+    cout.flush();
+    gmap.loadFastaIndex();
+    cout << " done" << endl;
             
     // Create the thread pool and start the threads
     JBThreadPool pool(this, threads);
@@ -339,20 +347,14 @@ void portcullis::JunctionBuilder::calcExtraMetrics() {
     junctionSystem.calcCoverage(getUnsplicedBamFile(), settings.ss);
 }
 
-void portcullis::JunctionBuilder::findJuncs(int32_t seq) {
+void portcullis::JunctionBuilder::findJuncs(BamReader& reader, int32_t seq) {
     
     uint64_t splicedCount = 0;
     uint64_t unsplicedCount = 0;
     int32_t lastCalculatedJunctionIndex = 0;
     uint64_t sumQueryLengths = 0;
     int32_t minQueryLength = INT32_MAX;
-    int32_t maxQueryLength = 0;
-    
-    GenomeMapper gmap(prepData.getGenomeFilePath());
-    gmap.loadFastaIndex();
-    
-    BamReader reader(prepData.getSortedBamFilePath());
-    reader.open();
+    int32_t maxQueryLength = 0;    
     
     reader.setRegion(seq, 0, refs[seq].length);
     
@@ -394,9 +396,7 @@ void portcullis::JunctionBuilder::findJuncs(int32_t seq) {
         j->clearAlignments();
         lastCalculatedJunctionIndex++;
     }
-    
-    reader.close();
-    
+        
     // Update result vector
     results[seq].splicedCount = splicedCount;
     results[seq].unsplicedCount = unsplicedCount;
@@ -489,12 +489,14 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
 
 
 portcullis::JBThreadPool::JBThreadPool(JunctionBuilder* jb, const uint16_t threads) : terminate(false), stopped(false) {
-    // Create number of required threads and add them to the thread pool vector.
-    for (int i = 0; i < threads; i++) {
-        threadPool.emplace_back(thread(&portcullis::JBThreadPool::invoke, this));
-    }
     
     junctionBuilder = jb;
+    
+    // Create number of required threads and add them to the thread pool vector.
+    for (int i = 0; i < threads; i++) {
+        // Add the thread onto the thread pool (providing an index so we can get the the correct BAM reader again)
+        threadPool.emplace_back(thread(&portcullis::JBThreadPool::invoke, this));
+    }
 }
 
 void portcullis::JBThreadPool::enqueue(const int32_t index) {
@@ -513,6 +515,12 @@ void portcullis::JBThreadPool::enqueue(const int32_t index) {
 
 void portcullis::JBThreadPool::invoke() {
 
+    // Create a BAM reader for this thread
+    BamReader reader(junctionBuilder->getPreparedFiles().getSortedBamFilePath());
+    
+    // Open the BAM file... this will load the index, which might take some time on large BAMs
+    reader.open();
+    
     int32_t id;
     while (true) {
         // Scope based locking.
@@ -525,7 +533,9 @@ void portcullis::JBThreadPool::invoke() {
                 return !tasks.empty() || terminate; });
 
             // If termination signal received and queue is empty then exit else continue clearing the queue.
+            // Make sure we close the reader before exiting
             if (terminate && tasks.empty()) {
+                reader.close();
                 return;
             }
 
@@ -539,7 +549,7 @@ void portcullis::JBThreadPool::invoke() {
         }
 
         // Execute the task.
-        junctionBuilder->findJuncs(id);
+        junctionBuilder->findJuncs(reader, id);
     }
 }
 
@@ -560,10 +570,10 @@ void portcullis::JBThreadPool::shutDown() {
     for (thread &thread : threadPool) {
         thread.join();
     }
-
+    
     // Empty workers vector.
     threadPool.empty();
-
+    
     // Indicate that the pool has been shut down.
     stopped = true;
 }
