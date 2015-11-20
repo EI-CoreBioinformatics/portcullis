@@ -56,6 +56,8 @@ protected:
     
 public:
     
+    GenomeMapper() : GenomeMapper(path()) {}
+    
     /**
      * Creates a Genome Mapper object for a genome file in fasta format.  This
      * uses Samtools to create a fasta index for the genome file and then
@@ -66,10 +68,19 @@ public:
     virtual ~GenomeMapper();
     
     
+    path getGenomeFile() const {
+        return genomeFile;
+    }
+
+    void setGenomeFile(path genomeFile) {
+        this->genomeFile = genomeFile;
+    }
+
+    
     path getFastaIndexFile() const {
         return path(genomeFile.parent_path()) /= path(genomeFile.leaf().string() + ".fai");
     }
-    
+        
     
     /**
      * Constructs the index for this fasta genome file

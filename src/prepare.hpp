@@ -93,6 +93,10 @@ public:
                         "Could not create output directory at: ") + prepDir.string()));
             }
         }
+        else if (!bfs::is_directory(prepDir)) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "File exists with name of suggested output directory: ") + prepDir.string()));            
+        }
     }
         
     path getPrepDir() const {
@@ -165,7 +169,7 @@ public:
     
 protected:
     
-    bool copy(const path& from, const path& to, const string& msg);
+    bool copy(const path& from, const path& to, const string& msg, const bool requireFileExists);
     
     bool genomeIndex();
     
@@ -185,7 +189,7 @@ protected:
      */
     bool bamSort();
     
-    bool bamIndex();
+    bool bamIndex(const bool copied);
 
 public:
     

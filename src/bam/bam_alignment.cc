@@ -219,7 +219,7 @@ string portcullis::bam::BamAlignment::deriveName() const {
 string portcullis::bam::BamAlignment::getQuerySeq() const {
     
     stringstream ss;
-    for (uint32_t i = 0; i < b->core.l_qseq; ++i) {
+    for (int32_t i = 0; i < b->core.l_qseq; ++i) {
        ss << seq_nt16_str[bam_seqi(bam_get_seq(b),i)];
     }
     

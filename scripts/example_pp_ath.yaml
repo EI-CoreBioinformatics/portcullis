@@ -1,0 +1,53 @@
+
+
+# Name params?
+name: "ath"
+
+# Alignment parameters
+min_intron: "20"
+max_intron: "50000"
+strandedness: "fr-firststrand"
+out_dir: "ath"
+read_length: "150"
+
+# Reference genome
+ref_fa: "ath/TAIR10.fas"
+ref_gtf: "ath/TAIR10.gtf"
+
+# Run options
+threads: "4"
+
+# Methods to use
+input_sets: ["real", "sim_real", "sim_random"]
+align_methods: ["tophat","gsnap","star","hisat"]
+#align_methods: ["tophat"]
+asm_methods: ["cufflinks","stringtie"]
+junc_methods: ["portcullis","spanki","finesplice"]
+
+# Choose program version
+load_tophat: "source tophat-2.1.0_lv"
+load_gsnap: "source gmap-20150929"
+load_star: "source star-2.4.2a"
+load_hisat: "source HISAT-2.0.0_beta"
+load_samtools: "source samtools-1.2"
+load_cufflinks: "source cufflinks-2.2.1_gk"
+load_stringtie: "source stringtie-1.0.4"
+load_portcullis: "source portcullis-0.9.2"
+load_spanki: "source spanki-0.5.0"
+load_finesplice: "source finesplice-0.2.2"
+
+# Extra options for programs
+index_star_extra: ""
+align_tophat_extra: ""
+align_gsnap_extra: ""
+align_star_extra: ""
+align_hisat_extra: ""
+asm_cufflinks_extra: ""
+asm_stringtie_extra: ""
+junc_portcullis_prep_extra: ""
+junc_portcullis_junc_extra: ""
+junc_portcullis_filter_extra: ""
+junc_spanki_extra: ""
+junc_finesplice_extra: ""
+
+

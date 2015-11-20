@@ -140,7 +140,9 @@ public:
     
     string getRefName(const int32_t seqId) { return refs[seqId].name; }
     
-    void findJuncs(const int32_t seq);
+    void findJuncs(BamReader& reader, GenomeMapper& gmap, const int32_t seq);
+    
+    PreparedFiles& getPreparedFiles() { return prepData; }
     
     bool isExtra() const {
         return extra;

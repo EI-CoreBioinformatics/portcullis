@@ -75,7 +75,7 @@ portcullis::bam::BamReader::~BamReader() {
     
     if (iter != nullptr) {
         free(iter->off); 
-        free(iter->bins.a); 
+        free(iter->bins.a);
         free(iter);
     }
 }
