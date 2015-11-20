@@ -49,6 +49,8 @@ JUNC_METHODS = config["junc_methods"]
 #Shortcuts
 READS_DIR = OUT_DIR + "/reads"
 READS_DIR_FULL = os.path.abspath(READS_DIR)
+SIM_DIR = READS_DIR + "/sim"
+SIM_DIR_FULL = os.path.abspath(SIM_DIR)
 ALIGN_DIR = OUT_DIR + "/alignments"
 ALIGN_DIR_FULL = os.path.abspath(ALIGN_DIR)
 ASM_DIR = OUT_DIR + "/assemblies"
@@ -78,6 +80,78 @@ rule all:
 #	shell: "rm -rf {out}"
 
 
+rule clean_reads:
+	input: 
+		r1=R1,
+		r2=R2
+	output:
+		r1=READS_DIR_FULL+"/trim/r1_val_1.fq",
+		r2=READS_DIR_FULL+"/trim/r2_val_2.fq",
+		linkr1=READS_DIR+"/real.R1.fq",
+		linkr2=READS_DIR+"/real.R2.fq"
+	params:
+		outdir=READS_DIR+"/trim"
+	log: READS_DIR+"/trim.log"		
+	shell: "{LOAD_TRIMGALORE}; trim_galore --paired --length {READ_LENGTH} -o {params.outdir} {input.r1} {input.r2} > {log} 2>&1 && ln -sf {output.r1} {output.linkr1} && ln -sf {output.r2} {output.linkr2} && touch -h {output.linkr1} {output.linkr2}"
+
+
+
+rule simgen_bowtie_index:
+	input:
+		REF
+	output: 
+		SIM_DIR+"/bowtie_index/"+REF+".1.ebwt"
+	params: outdir=SIM_DIR+"/bowtie_index"
+	log:
+		SIM_DIR+"/bowtie.index.log"
+	threads: 1
+	message: "Creating bowtie index of genome"
+	shell: "{LOAD_BOWTIE}; bowtie-build {input} {params.outdir}"
+
+rule simgen_bowtie_align:
+	input:
+		r1=READS_DIR+"/{sample}.R1.fq",
+                r2=READS_DIR+"/{sample}.R2.fq",
+                index=rules.align_tophat_index.output
+	output:
+		map=SIM_DIR+"/bowtie/bowtie.map"
+	params: indexdir=SIM_DIR+"/bowtie_index"
+	log: SIM_DIR+"/bowtie.align.log"
+		
+	threads: int(THREADS)
+	shell: "{LOAD_BOWTIE}; bowtie -p {threads} --chunkmbs 1000 -X 500 {params.indexdir} -1 {input.r1} -2 {input.r2} > {output.map} 2> {log}"
+	
+
+
+rule simgen_model:
+	input:
+		map=rules.simgen_bowtie_align.output.map
+	output: SIM_DIR+"/model/logfile.txt"
+	params: outdir=SIM_DIR+"/model"
+	log: SIM_DIR+"/spanki_model.log"
+	threads: 1
+	shell: "{LOAD_SPANKI}; spankisim_models -i {input.map} -e 2 -l {READ_LENGTH} -o {params.outdir} > {log} 2&>1"
+
+
+rule simgen_reads:
+	input:
+		gtf=REF_GTF
+                fa=REF
+	output: 
+		r1=SIM_DIR_FULL+"/reads/sim_1.fastq"
+		r2=SIM_DIR_FULL+"/reads/sim_2.fastq"
+		bam=SIM_DIR_FULL+"/reads/sim.bam"
+		linkr1=READS_DIR+"/sim.R1.fq"
+		linkr2=READS_DIR+"/sim.R2.fq"
+		linkbam=ALIGN_DIR+"/output/sim.bam"
+	params: outdir=SIM_DIR+"/reads"
+	log: SIM_DIR+"/spanki_readgen.log"
+	threads: 1	
+	shell: "{LOAD_SPANKI}; spankisim_transcripts -g {input.gtf} -f {input.ref} -o {params.outdir} -cov 30 -bp {READ_LENGTH} -ends 2 -frag 250 > {log} 2&>1 && ln -sf {output.r1} {output.linkr1} && ln -sf {output.r2} {output.linkr2} && ln -sf {output.bam} {output.linkbam} && touch -h {output.linkr1} {output.linkr2} {output.linkbam}"
+	
+
+
+
 rule align_tophat_index:
         input: REF 
         output: ALIGN_DIR +"/tophat/index/"+NAME+".4.bt2"
@@ -85,6 +159,7 @@ rule align_tophat_index:
         threads: 1
         message: "Indexing genome with tophat"
         shell: "{LOAD_TOPHAT}; bowtie2-build {REF} {ALIGN_DIR}/tophat/index/{NAME} > {log} 2>&1"
+
 
 rule align_tophat:
         input:
@@ -102,6 +177,23 @@ rule align_tophat:
         message: "Aligning RNAseq data with tophat: {input.r1}; {input.r2}"
         shell: "{LOAD_TOPHAT}; tophat2 --output-dir={params.outdir} --num-threads={threads} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --microexon-search --library-type={STRANDEDNESS} {ALIGN_TOPHAT_EXTRA} {params.indexdir} {input.r1} {input.r2} > {log} 2>&1 && ln -sf {output.bam} {output.link} && touch -h {output.link}"
 
+
+rule align_tophat_wref:
+	input:
+		r1=READS_DIR+"/real.R1.fq",
+		r2=READS_DIR+"/real.R2.fq",
+		index=rules.align_tophat_index.output,
+		gtf=REF_GTF
+        output:
+                bed=ALIGN_DIR_FULL+"/tophat/gold/junctions.bed",
+                link=ALIGN_DIR+"/output/gold/tophat.bed"
+        params: 
+                outdir=ALIGN_DIR+"/tophat/gold",
+                indexdir=ALIGN_DIR+"/tophat/index/"+NAME
+        log: ALIGN_DIR + "/tophat-{sample}.log"
+        threads: int(THREADS)
+        message: "Aligning RNAseq data with tophat using GTF reference: {input.r1}; {input.r2}"
+        shell: "{LOAD_TOPHAT}; tophat2 --output-dir={params.outdir} --num-threads={threads} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --microexon-search --library-type={STRANDEDNESS} --GTF={input.gtf} {ALIGN_TOPHAT_EXTRA} {params.indexdir} {input.r1} {input.r2} > {log} 2>&1 && ln -sf {output.bed} {output.link} && touch -h {output.link}"
 
 
 rule align_gsnap_index:
@@ -137,6 +229,19 @@ rule align_star_index:
         message: "Indexing genome with star"
         shell: "{LOAD_STAR}; cd {ALIGN_DIR_FULL}/star; STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {params.indexdir} --genomeFastaFiles {input} {INDEX_STAR_EXTRA} > {log} 2>&1; cd {CWD}"
 
+rule align_star_index_wref:
+        input: 
+		fa=os.path.abspath(REF)
+		gtf=os.path.abspath(REF_GTF)
+	
+        output: ALIGN_DIR +"/star/index_wref/SAindex"
+        params: indexdir=ALIGN_DIR_FULL+"/star/index_wref"
+        log: ALIGN_DIR_FULL+"/star.index_wref.log"
+        threads: int(THREADS)
+        message: "Indexing genome with star using GTF reference"
+        shell: "{LOAD_STAR}; cd {ALIGN_DIR_FULL}/star; STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {params.indexdir} --genomeFastaFiles {input.fa} --sjdbGTFfile {input.gtf} --sjdbOverhang {READ_LENGTH - 1} {INDEX_STAR_EXTRA} > {log} 2>&1; cd {CWD}"
+
+
 rule align_star:
         input:
                 r1=READS_DIR_FULL+"/{sample}.R1.fq",
@@ -153,7 +258,21 @@ rule align_star:
         message: "Aligning input with star"
         shell: "{LOAD_STAR}; cd {params.outdir}; STAR --runThreadN {threads} --runMode alignReads --genomeDir {params.indexdir} --readFilesIn {input.r1} {input.r2} --outSAMtype BAM Unsorted --outSAMstrandField intronMotif --alignIntronMin {MIN_INTRON} --alignIntronMax {MAX_INTRON} --alignMatesGapMax 20000 --outFileNamePrefix {params.outdir}/ {ALIGN_STAR_EXTRA} > {log} 2>&1; cd {CWD}; ln -sf {output.bam} {output.link} && touch -h {output.link}"
 
-
+rule align_star_wref:
+        input:
+                r1=READS_DIR_FULL+"/real.R1.fq",
+                r2=READS_DIR_FULL+"/real.R2.fq",
+                index=rules.align_star_index_wref.output
+        output:
+                tab=ALIGN_DIR+"/star/gold/SJ.out.tab",
+                bed=ALIGN_DIR+"/output/gold/star.bed"
+        params:
+                outdir=ALIGN_DIR_FULL+"/star/{sample}",
+                indexdir=ALIGN_DIR_FULL+"/star/index"
+        log: ALIGN_DIR_FULL+"/star-{sample}.log"
+        threads: int(THREADS)
+        message: "Aligning input with star"
+        shell: "{LOAD_STAR}; cd {params.outdir}; STAR --runThreadN {threads} --runMode alignReads --genomeDir {params.indexdir} --readFilesIn {input.r1} {input.r2} --outSAMtype BAM Unsorted --outSAMstrandField intronMotif --alignIntronMin {MIN_INTRON} --alignIntronMax {MAX_INTRON} --alignMatesGapMax 20000 --outFileNamePrefix {params.outdir}/ {ALIGN_STAR_EXTRA} > {log} 2>&1; cd {CWD}; {LOAD_PORTCULLIS}; star_tab2bed {output.tab} > {output.bed}"
 
 
 rule align_hisat_index:

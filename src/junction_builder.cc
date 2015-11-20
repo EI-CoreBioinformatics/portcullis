@@ -86,10 +86,7 @@ portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _
     if (!prepData.valid(settings.useCsi)) {
         BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
                     "Prepared data is not complete: ") + prepData.getPrepDir().string()));
-    }
-    
-    // Make sure path to genome file is set for the genome index manager
-    gmap.setGenomeFile(prepData.getGenomeFilePath());    
+    }    
 }
     
 portcullis::JunctionBuilder::~JunctionBuilder() {
@@ -263,13 +260,11 @@ void portcullis::JunctionBuilder::findJunctions() {
     results.clear();
     results.resize(refs.size());    
     
-    cout << "Loading fasta index ...";
-    cout.flush();
-    gmap.loadFastaIndex();
-    cout << " done" << endl;
-            
     // Create the thread pool and start the threads
+    cout << "Creating threads, with BAM and genome indicies ...";
+    cout.flush();
     JBThreadPool pool(this, threads);
+    cout << " done." << endl;
     
     cout << "Finding junctions and calculating basic metrics:" << endl;
     cout << " - Queueing " << refs.size() << " target sequences for processing in the thread pool of " << threads << " threads." << endl;
@@ -347,7 +342,7 @@ void portcullis::JunctionBuilder::calcExtraMetrics() {
     junctionSystem.calcCoverage(getUnsplicedBamFile(), settings.ss);
 }
 
-void portcullis::JunctionBuilder::findJuncs(BamReader& reader, int32_t seq) {
+void portcullis::JunctionBuilder::findJuncs(BamReader& reader, GenomeMapper& gmap, int32_t seq) {
     
     uint64_t splicedCount = 0;
     uint64_t unsplicedCount = 0;
@@ -515,6 +510,12 @@ void portcullis::JBThreadPool::enqueue(const int32_t index) {
 
 void portcullis::JBThreadPool::invoke() {
 
+    // Create the genome mapper
+    GenomeMapper gmap(junctionBuilder->getPreparedFiles().getGenomeFilePath());
+    
+    // Load the fasta index
+    gmap.loadFastaIndex();
+    
     // Create a BAM reader for this thread
     BamReader reader(junctionBuilder->getPreparedFiles().getSortedBamFilePath());
     
@@ -549,7 +550,7 @@ void portcullis::JBThreadPool::invoke() {
         }
 
         // Execute the task.
-        junctionBuilder->findJuncs(reader, id);
+        junctionBuilder->findJuncs(reader, gmap, id);
     }
 }
 

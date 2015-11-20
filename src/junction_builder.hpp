@@ -91,9 +91,6 @@ private:
     path samtoolsExe;
     bool verbose;
     
-    // Fasta index handler for the genome
-    GenomeMapper gmap;
-    
     // The set of distinct junctions found in the BAM file
     JunctionSystem junctionSystem;
     SplicedAlignmentMap splicedAlignmentMap;
@@ -143,7 +140,7 @@ public:
     
     string getRefName(const int32_t seqId) { return refs[seqId].name; }
     
-    void findJuncs(BamReader& reader, const int32_t seq);
+    void findJuncs(BamReader& reader, GenomeMapper& gmap, const int32_t seq);
     
     PreparedFiles& getPreparedFiles() { return prepData; }
     
