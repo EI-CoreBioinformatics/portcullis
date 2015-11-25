@@ -18,15 +18,15 @@ parser.add_argument("--force_incomplete",
 args=parser.parse_args()
 
 
-dagger_dir = os.path.dirname(os.path.realpath(__file__))
+this_dir = os.path.dirname(os.path.realpath(__file__))
 
 
-snakemake.snakemake(dagger_dir + "/Snakefile",
+snakemake.snakemake(this_dir + "/read_gen.snakefile",
                     cores=100,
                     nodes=10,
                     configfile=args.config,
                     workdir=".",
-                    cluster_config=dagger_dir + "/hpc.json",
+                    cluster_config=this_dir + "/hpc.json",
                     drmaa=" -R rusage[mem={cluster.memory}]span[ptile={threads}] -n {threads} -q {cluster.queue} -oo /dev/null",
                     printshellcmds=True,
                     snakemakepath="/tgac/software/testing/python/3.4.2/x86_64/bin/snakemake",

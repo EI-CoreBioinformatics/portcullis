@@ -103,7 +103,7 @@ public:
 
     void setQueryLengthStats(int32_t min, double mean, int32_t max);
     
-    void setRefs(vector<RefSeq> refs) {
+    void setRefs(const vector<RefSeq>& refs) {
         this->refs = refs;
     }
     

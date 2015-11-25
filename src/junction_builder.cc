@@ -261,13 +261,13 @@ void portcullis::JunctionBuilder::findJunctions() {
     results.resize(refs.size());    
     
     // Create the thread pool and start the threads
-    cout << "Creating threads, with BAM and genome indicies ...";
+    cout << "Creating " << threads << " threads, each with BAM and genome indicies loaded ...";
     cout.flush();
     JBThreadPool pool(this, threads);
     cout << " done." << endl;
     
     cout << "Finding junctions and calculating basic metrics:" << endl;
-    cout << " - Queueing " << refs.size() << " target sequences for processing in the thread pool of " << threads << " threads." << endl;
+    cout << " - Queueing " << refs.size() << " target sequences for processing in the thread pool" << endl;
     cout << " - Processing: " << endl;
     for(size_t i = 0; i < refs.size(); i++) {
         results[i].js.setRefs(refs);    // Make sure junction system has reference sequence list available        
