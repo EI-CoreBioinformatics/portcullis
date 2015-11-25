@@ -304,7 +304,7 @@ void portcullis::Junction::clearAlignments() {
 void portcullis::Junction::addJunctionAlignment(const BamAlignment& al) {
 
     // Make sure we take a proper copy of this alignment for safe storage
-    shared_ptr<AlignmentInfo> aip = make_shared<AlignmentInfo>(make_shared<BamAlignment>(al));
+    AlignmentInfoPtr aip = make_shared<AlignmentInfo>(make_shared<BamAlignment>(al));
     this->alignments.push_back(aip);
     this->alignmentCodes.push_back(aip->nameCode);
     
@@ -359,7 +359,7 @@ void portcullis::Junction::determineStrandFromReads() {
     uint32_t nb_pos = 0;
     uint32_t nb_neg = 0;
     uint32_t nb_unk = 0;
-    for(auto& a : alignments) {
+    for(const auto& a : alignments) {
         switch (a->ba->getStrand()) {
             case Strand::POSITIVE:
                 nb_pos++;
@@ -489,7 +489,7 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
     this->calcHammingScores(leftAnchor10, leftInt, rightInt, rightAnchor10);
     
     // Update match statistics for each alignment
-    for(auto& a : alignments) {
+    for(const auto& a : alignments) {
         a->calcMatchStats(*getIntron(), this->getLeftAncStart(), this->getRightAncEnd(), leftAnc, rightAnc);
     }
     
@@ -562,9 +562,9 @@ void portcullis::Junction::calcAnchorStats() {
 
     nbDistinctAnchors = 0;    
     
-    for(auto& a : alignments) {
+    for(const auto& a : alignments) {
         
-        shared_ptr<BamAlignment> ba = a->ba;
+        BamAlignmentPtr ba = a->ba;
 
         const int32_t lStart = ba->getStart();
         const int32_t rEnd = ba->getEnd();
@@ -626,7 +626,7 @@ double portcullis::Junction::calcEntropy() {
 
     vector<int32_t> junctionPositions;
 
-    for(auto& a : alignments) {
+    for(const auto& a : alignments) {
         junctionPositions.push_back(a->ba->getStart());
     }
     
@@ -684,9 +684,9 @@ void portcullis::Junction::calcAlignmentStats() {
 
     //cout << junctionAlignments.size() << endl;
 
-    for(auto& a : alignments) {
+    for(const auto& a : alignments) {
 
-        shared_ptr<BamAlignment> ba = a->ba;
+        BamAlignmentPtr ba = a->ba;
         
         const int32_t start = ba->getStart();
         const int32_t end = ba->getEnd();
@@ -784,7 +784,7 @@ void portcullis::Junction::calcHammingScores(   const string& leftAnchor, const 
  */
 void portcullis::Junction::calcMaxMMES() {
 
-    for(auto& a : alignments) {
+    for(const auto& a : alignments) {
         maxMMES = max(maxMMES, a->mmes);
     }
 }
@@ -795,7 +795,7 @@ void portcullis::Junction::calcMaxMMES() {
 void portcullis::Junction::calcMeanMismatches() {
     
     uint32_t nbMismatches = 0;
-    for(auto& a : alignments) {
+    for(const auto& a : alignments) {
         nbMismatches += a->nbMismatches;
     }
     
@@ -811,7 +811,7 @@ void portcullis::Junction::calcMultipleMappingScore(SplicedAlignmentMap& map) {
     size_t N = alignmentCodes.size();
 
     uint32_t M = 0;
-    for(auto& a : alignmentCodes) {
+    for(const auto& a : alignmentCodes) {
         M += map[a];  // Number of multiple splitting patterns
     }
 
@@ -825,7 +825,7 @@ void portcullis::Junction::calcTrimmedCoverageVector() {
     trimmedLogDevCov.assign(TRIMMED_COVERAGE_LENGTH, 0.0);
     
     const uint32_t armLength = TRIMMED_COVERAGE_LENGTH / 2;
-    for(auto& a : alignments) {
+    for(const auto& a : alignments) {
         
         uint32_t start = a->upstreamMatches > armLength ? 0 : armLength - a->upstreamMatches;
         uint32_t end = a->downstreamMatches >= armLength ? TRIMMED_COVERAGE_LENGTH - 1 : armLength + a->downstreamMatches;

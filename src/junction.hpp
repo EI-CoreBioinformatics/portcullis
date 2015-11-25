@@ -155,7 +155,7 @@ static string cssToString(CanonicalSS css) {
 
 
 struct AlignmentInfo {
-    shared_ptr<BamAlignment> ba;
+    BamAlignmentPtr ba;
     size_t nameCode;
     uint32_t totalUpstreamMatches; // Total number of upstream matches in this junction window
     uint32_t totalDownstreamMatches; // Total number of downstream matches in this junction window
@@ -168,7 +168,7 @@ struct AlignmentInfo {
     uint32_t nbMismatches; // Total number of mismatches in this junction window
     uint32_t mmes; // Minimal Match on Either Side of exon junction
     
-    AlignmentInfo(shared_ptr<BamAlignment> _ba) {
+    AlignmentInfo(BamAlignmentPtr _ba) {
         
         // Copy alignment
         ba = _ba;
@@ -188,12 +188,17 @@ struct AlignmentInfo {
         mmes = 0;
     }
     
+    ~AlignmentInfo() {        
+        ba.reset();       
+    }
+    
     void calcMatchStats(const Intron& i, const uint32_t leftStart, const uint32_t rightEnd, const string& ancLeft, const string& ancRight);
  
     uint32_t getNbMatchesFromStart(const string& query, const string& anchor);
     uint32_t getNbMatchesFromEnd(const string& query, const string& anchor);
 };
 
+typedef shared_ptr<AlignmentInfo> AlignmentInfoPtr;
 
 class Junction {
     
