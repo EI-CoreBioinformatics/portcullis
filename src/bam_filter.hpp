@@ -112,9 +112,9 @@ protected:
      * @param js The junction system containing good junctions to keep
      * @return Whether or not the alignment contains a junction found in the junction system
      */
-    bool containsJunctionInSystem(const BamAlignment& al, vector<RefSeq>& refs, JunctionSystem& js);
+    bool containsJunctionInSystem(const BamAlignment& al, const RefSeqPtrList& refs, JunctionSystem& js);
     
-    BamAlignmentPtr clipMSR(const BamAlignment& al, vector<RefSeq>& refs, JunctionSystem& js, bool& allBad);
+    BamAlignmentPtr clipMSR(const BamAlignment& al, const RefSeqPtrList& refs, JunctionSystem& js, bool& allBad);
        
 
 public:

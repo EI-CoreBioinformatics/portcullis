@@ -54,7 +54,7 @@ private:
     double meanQueryLength;
     int32_t maxQueryLength;
 
-    vector<RefSeq> refs;
+    shared_ptr<vector<RefSeqPtr>> refs;
     
     size_t createJunctionGroup(size_t index, vector<JunctionPtr>& group);
    
@@ -67,7 +67,7 @@ public:
     
     JunctionSystem();
     
-    JunctionSystem(vector<RefSeq> refs);
+    JunctionSystem(shared_ptr<vector<RefSeqPtr>> refs);
     
     JunctionSystem(path junctionFile);
     
@@ -103,7 +103,7 @@ public:
 
     void setQueryLengthStats(int32_t min, double mean, int32_t max);
     
-    void setRefs(const vector<RefSeq>& refs) {
+    void setRefs(shared_ptr<RefSeqPtrList> refs) {
         this->refs = refs;
     }
     

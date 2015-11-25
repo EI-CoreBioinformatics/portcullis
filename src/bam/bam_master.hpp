@@ -21,11 +21,13 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <unordered_map>
 using std::shared_ptr;
 using std::make_shared;
 using std::string;
 using std::vector;
 using std::stringstream;
+using std::unordered_map;
 
 #include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
@@ -148,6 +150,10 @@ struct RefSeq {
         return name + " (Index: " + lexical_cast<string>(index) + "; Length: " + lexical_cast<string>(length) + ")";
     }
 };
+
+typedef shared_ptr<RefSeq> RefSeqPtr;
+typedef vector<portcullis::bam::RefSeqPtr> RefSeqPtrList;
+typedef unordered_map<int32_t, RefSeqPtr> RefSeqPtrIndexMap;
 
 class BamHelper {
         

@@ -71,11 +71,11 @@ portcullis::BamFilter::BamFilter(const path& _junctionFile, const path& _bamFile
  * @param js The junction system containing good junctions to keep
  * @return Whether or not the alignment contains a junction found in the junction system
  */
-bool portcullis::BamFilter::containsJunctionInSystem(const BamAlignment& al, vector<RefSeq>& refs, JunctionSystem& js) {
+bool portcullis::BamFilter::containsJunctionInSystem(const BamAlignment& al, const RefSeqPtrList& refs, JunctionSystem& js) {
 
     int32_t refId = al.getReferenceId();
-    string refName = refs[refId].name;
-    int32_t refLength = refs[refId].length;
+    string refName = refs[refId]->name;
+    int32_t refLength = refs[refId]->length;
     int32_t lStart = al.getPosition();        
     int32_t lEnd = lStart;
     int32_t rStart = lStart;
@@ -103,11 +103,11 @@ bool portcullis::BamFilter::containsJunctionInSystem(const BamAlignment& al, vec
     return false;
 }
     
-BamAlignmentPtr portcullis::BamFilter::clipMSR(const BamAlignment& al, vector<RefSeq>& refs, JunctionSystem& js, bool& allBad) {
+BamAlignmentPtr portcullis::BamFilter::clipMSR(const BamAlignment& al, const RefSeqPtrList& refs, JunctionSystem& js, bool& allBad) {
 
     int32_t refId = al.getReferenceId();
-    string refName = refs[refId].name;
-    int32_t refLength = refs[refId].length;
+    string refName = refs[refId]->name;
+    int32_t refLength = refs[refId]->length;
     int32_t lStart = al.getPosition();        
     int32_t lEnd = lStart;
     int32_t rStart = lStart;
@@ -177,7 +177,7 @@ void portcullis::BamFilter::filter() {
     BamReader reader(bamFile);
     reader.open();
 
-    vector<RefSeq> refs = reader.getRefs();
+    shared_ptr<RefSeqPtrList> refs = reader.createRefList();
     js.setRefs(refs);
 
     if (!bfs::exists(outputBam.parent_path())) {
@@ -223,7 +223,7 @@ void portcullis::BamFilter::filter() {
             // If we are in complete clip mode, or this is a single spliced read, then keep the alignment
             // if its junction is found in the junctions system, otherwise discard it
             if (clipMode == COMPLETE || !al.isMultiplySplicedRead()) {
-                if (containsJunctionInSystem(al, refs, js)) {
+                if (containsJunctionInSystem(al, *refs, js)) {
                     writer.write(al);
                     nbReadsOut++;
                 }
@@ -231,7 +231,7 @@ void portcullis::BamFilter::filter() {
             // Else we are in HARD or SOFT clip mode and this is an MSR
             else {
                 bool allBad = false;
-                BamAlignmentPtr clipped = clipMSR(al, refs, js, allBad);
+                BamAlignmentPtr clipped = clipMSR(al, *refs, js, allBad);
                 if (!allBad) {
                     writer.write(*clipped);
                     if (saveMSRs) {

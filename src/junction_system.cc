@@ -85,7 +85,7 @@ portcullis::JunctionSystem::JunctionSystem() {
     maxQueryLength = 0;        
 }
 
-portcullis::JunctionSystem::JunctionSystem(vector<RefSeq> refs) : JunctionSystem() {
+portcullis::JunctionSystem::JunctionSystem(shared_ptr<vector<RefSeqPtr>> refs) : JunctionSystem() {
     this->refs = refs;
 }
 
@@ -157,7 +157,7 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
         if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
             foundJunction = true;
             
-            const int32_t refLength = refs[refId].length;
+            const int32_t refLength = refs->at(refId)->length;
 
             rStart = lEndExc + op.length;
             rEndExc = rStart;
@@ -189,7 +189,7 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
             
             // Create the intron
             shared_ptr<Intron> location = make_shared<Intron>(
-                    RefSeq(refId, refs[refId].name, refLength), 
+                    RefSeq(refId, refs->at(refId)->name, refLength), 
                     lEndExc, 
                     rStart - 1);
 
