@@ -113,18 +113,18 @@ void portcullis::JunctionBuilder::process() {
     
     const path sortedBamFile = prepData.getSortedBamFilePath();
 
-        // Acquire list of reference sequences
+    // Acquire list of reference sequences
     BamReader reader(prepData.getSortedBamFilePath());    
     reader.open();
-    refs = reader.getRefs();
-    refMap = reader.calcRefMap();
+    refs = reader.createRefList();
+    refMap = reader.createRefMap(*refs);
     reader.close();
 
     junctionSystem.setRefs(refs);
     
-    if (refs.size() < threads) {
-        cerr << "Warning: User requested " << threads << " threads but there are only " << refs.size() << " target sequences to process.  Setting number of threads to " << refs.size() << "." << endl << endl;
-        threads = refs.size();
+    if (refs->size() < threads) {
+        cerr << "Warning: User requested " << threads << " threads but there are only " << refs->size() << " target sequences to process.  Setting number of threads to " << refs->size() << "." << endl << endl;
+        threads = refs->size();
     }
     
     // Must separate BAMs if extra metrics are requested
@@ -258,7 +258,7 @@ void portcullis::JunctionBuilder::findJunctions() {
     
     // Add each target sequence as a chunk of work for the thread pool
     results.clear();
-    results.resize(refs.size());    
+    results.resize(refs->size());    
     
     // Create the thread pool and start the threads
     cout << "Creating " << threads << " threads, each with BAM and genome indicies loaded ...";
@@ -267,11 +267,11 @@ void portcullis::JunctionBuilder::findJunctions() {
     cout << " done." << endl;
     
     cout << "Finding junctions and calculating basic metrics:" << endl;
-    cout << " - Queueing " << refs.size() << " target sequences for processing in the thread pool" << endl;
+    cout << " - Queueing " << refs->size() << " target sequences for processing in the thread pool" << endl;
     cout << " - Processing: " << endl;
-    for(size_t i = 0; i < refs.size(); i++) {
+    for(size_t i = 0; i < refs->size(); i++) {
         results[i].js.setRefs(refs);    // Make sure junction system has reference sequence list available        
-        pool.enqueue(refs[i].index);
+        pool.enqueue(refs->at(i)->index);
     }
     
     // Waits for all threads to complete
@@ -351,7 +351,7 @@ void portcullis::JunctionBuilder::findJuncs(BamReader& reader, GenomeMapper& gma
     int32_t minQueryLength = INT32_MAX;
     int32_t maxQueryLength = 0;    
     
-    reader.setRegion(seq, 0, refs[seq].length);
+    reader.setRegion(seq, 0, refs->at(seq)->length);
     
     while(reader.next()) {
 

@@ -42,6 +42,10 @@ using boost::lexical_cast;
 #include "bam_alignment.hpp"
 using portcullis::bam::BamAlignment;
 using portcullis::bam::BamAlignmentPtr;
+using portcullis::bam::RefSeqPtr;
+using portcullis::bam::RefSeqPtrList;
+using portcullis::bam::RefSeqPtrIndexMap;
+
 
 namespace portcullis { namespace bam {
 
@@ -58,8 +62,6 @@ private:
     bam1_t* c;
     hts_idx_t* index;
     hts_itr_t * iter;
-    vector<RefSeq> refs;
-    unordered_map<int32_t, RefSeq> refMap;
     
     BamAlignment b;
     
@@ -69,11 +71,14 @@ public:
     
     virtual ~BamReader();
     
-    const vector<RefSeq>& getRefs() const { return refs; }
+    // **** Methods for extracting reference target sequences ********
     
-    const unordered_map<int32_t, RefSeq>& calcRefMap();
+    shared_ptr<RefSeqPtrList> createRefList();
     
-    const unordered_map<int32_t, RefSeq>& getRefMap() const { return refMap; }
+    shared_ptr<RefSeqPtrIndexMap> createRefMap();
+    
+    shared_ptr<RefSeqPtrIndexMap> createRefMap(const RefSeqPtrList& refList);
+    
     
     bam_hdr_t* getHeader() const { return header; }
     

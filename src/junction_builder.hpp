@@ -95,11 +95,11 @@ private:
     JunctionSystem junctionSystem;
     SplicedAlignmentMap splicedAlignmentMap;
     
-    // List of reference sequences
-    vector<RefSeq> refs;
+    // List of reference sequences (might be shared amongst various objects)
+    shared_ptr<RefSeqPtrList> refs;
     
     // Map of reference sequence indicies to reference sequences
-    unordered_map<int32_t, RefSeq> refMap;
+    shared_ptr<RefSeqPtrIndexMap> refMap;
     
     // Results from threads
     vector<RegionResult> results;
@@ -138,7 +138,7 @@ public:
     
     virtual ~JunctionBuilder();
     
-    string getRefName(const int32_t seqId) { return refs[seqId].name; }
+    string getRefName(const int32_t seqId) { return refs->at(seqId)->name; }
     
     void findJuncs(BamReader& reader, GenomeMapper& gmap, const int32_t seq);
     

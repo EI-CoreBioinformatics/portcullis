@@ -40,10 +40,10 @@ using boost::lexical_cast;
 #include <htslib/faidx.h>
 #include <bam.h>
 
+#include "bam_master.hpp"
 #include "bam_alignment.hpp"
 using portcullis::bam::BamAlignment;
 using portcullis::bam::BamAlignmentPtr;
-using portcullis::bam::RefSeq;
 
 #include "bam_reader.hpp"
 
@@ -92,11 +92,6 @@ void portcullis::bam::BamReader::open() {
     // Load header
     header = bam_hdr_read(fp);
     
-    // Identify all the reference sequences in the BAM
-    for(uint32_t i = 0; i < header->n_targets; i++) {
-        refs.push_back(RefSeq(i, string(header->target_name[i]), header->target_len[i]));
-    }
-    
     // Load the index
     index = bam_index_load(bamFile.c_str());
     
@@ -109,12 +104,43 @@ void portcullis::bam::BamReader::close() {
     bam_close(fp);
 }
 
-const unordered_map<int32_t, RefSeq>& portcullis::bam::BamReader::calcRefMap() {
+
+/**
+ * Creates a list of the reference target sequences stored in this BAM
+ * @return 
+ */
+shared_ptr<RefSeqPtrList> portcullis::bam::BamReader::createRefList() {
     
-    refMap.clear();
+    shared_ptr<RefSeqPtrList> refs = make_shared<RefSeqPtrList>();
     
-    for(auto& ref : refs) {
-        refMap[ref.index] = ref;
+    // Identify all the reference sequences in the BAM
+    for(uint32_t i = 0; i < header->n_targets; i++) {
+        refs->push_back(make_shared<RefSeq>(i, string(header->target_name[i]), header->target_len[i]));
+    }
+    
+    return refs;    
+}
+
+
+/**
+ * Makes a map directly from the BamReader, keyed off the reference index
+ * @return 
+ */
+shared_ptr<RefSeqPtrIndexMap> portcullis::bam::BamReader::createRefMap() {    
+    return createRefMap(*createRefList());
+}
+
+/**
+ * Makes a map based on the same RefSeqs stored in the provided list, keyed off the reference index
+ * @param list
+ * @return 
+ */
+shared_ptr<RefSeqPtrIndexMap> portcullis::bam::BamReader::createRefMap(const RefSeqPtrList& list) {
+    
+    shared_ptr<RefSeqPtrIndexMap> refMap = make_shared<RefSeqPtrIndexMap>();
+    
+    for(auto& ref : list) {
+        (*refMap)[ref->index] = ref;
     }
     
     return refMap;
