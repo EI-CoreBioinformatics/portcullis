@@ -15,16 +15,12 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
-#define BOOST_TEST_MAIN
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE PORTCULLIS
-#define BOOST_TEST_LOG_LEVEL all
+#include <gtest/gtest.h>
 
 #include <iostream>
 using std::cout;
 using std::endl;
 
-#include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
 
 #include "../src/intron.hpp"
@@ -39,45 +35,61 @@ bool is_critical( JunctionException const& ex ) { return true; }
 const RefSeq rd2(2, "seq_2", 100);
 const RefSeq rd5(5, "seq_5", 100);
 
-BOOST_AUTO_TEST_SUITE(junction)
 
-BOOST_AUTO_TEST_CASE(intron) {
+TEST(junction, intron) {
     
-    shared_ptr<Intron> l1(new Intron(rd5, 20, 30, portcullis::POSITIVE));
+    shared_ptr<Intron> l1(new Intron(rd5, 20, 30));
     Junction j1(l1, 10, 40);
     
     int32_t intronSz = j1.getIntronSize();
-    BOOST_CHECK(intronSz == 11);
+    EXPECT_EQ(intronSz, 11);
 }
 
-BOOST_AUTO_TEST_CASE(donor_acceptor) {
+TEST(junction, donor_acceptor) {
     
-    shared_ptr<Intron> l1(new Intron(rd5, 20, 30, portcullis::POSITIVE));
+    shared_ptr<Intron> l1(new Intron(rd5, 20, 30));
     Junction j1(l1, 10, 40);
     
-    shared_ptr<Intron> l2(new Intron(rd5, 20, 30, portcullis::NEGATIVE));
+    shared_ptr<Intron> l2(new Intron(rd5, 20, 30));
     Junction j2(l2, 10, 40);
     
     CanonicalSS res1 = j1.setDonorAndAcceptorMotif("GT", "AG");
-    BOOST_CHECK(res1 == portcullis::CANONICAL);
+    EXPECT_EQ(res1, portcullis::CANONICAL);
     
     CanonicalSS res2 = j2.setDonorAndAcceptorMotif("CT", "AC");
-    BOOST_CHECK(res2 == portcullis::CANONICAL);
+    EXPECT_EQ(res2, portcullis::CANONICAL);
     
-    BOOST_CHECK_EXCEPTION(j1.setDonorAndAcceptorMotif("GTA", "AG"), JunctionException, is_critical);
+    try {
+        j1.setDonorAndAcceptorMotif("GTA", "AG");
+    }
+    catch(JunctionException& err) {
+        EXPECT_EQ(true, true);
+    }
+    catch(...) {
+        FAIL() << "Expected Junction Exception";
+    }
+
     
     CanonicalSS res4 = j1.setDonorAndAcceptorMotif("CT", "AG");
-    BOOST_CHECK(res4 != portcullis::CANONICAL);
+    EXPECT_NE(res4, portcullis::CANONICAL);
     
     CanonicalSS res5 = j1.setDonorAndAcceptorMotif("GT", "AC");
-    BOOST_CHECK(res5 != portcullis::CANONICAL);
+    EXPECT_NE(res5, portcullis::CANONICAL);
     
-    BOOST_CHECK_EXCEPTION(j1.setDonorAndAcceptorMotif("", ""), JunctionException, is_critical);
+    try {
+        j1.setDonorAndAcceptorMotif("", "");
+    }
+    catch(JunctionException& err) {
+        EXPECT_EQ(true, true);
+    }
+    catch(...) {
+        FAIL() << "Expected Junction Exception";
+    }
 }
 
-BOOST_AUTO_TEST_CASE(entropy) {
+TEST(junction, entropy) {
     
-    shared_ptr<Intron> l(new Intron(rd5, 20, 30, portcullis::POSITIVE));
+    shared_ptr<Intron> l(new Intron(rd5, 20, 30));
     Junction j(l, 10, 40);
     
     int32_t ints1[] = {13, 15, 17, 19};
@@ -91,15 +103,15 @@ BOOST_AUTO_TEST_CASE(entropy) {
     
     // Actually I don't know what the entropy scores should be exactly... but e1 
     // should definitely have a higher entropy than e2
-    BOOST_CHECK(e1 > e2);
+    EXPECT_GT(e1, e2);
 }
 
 /**
  * This IS what you'd expect to see in a real junction
  */
-BOOST_AUTO_TEST_CASE(coverage1) {
+TEST(junction, coverage1) {
     
-    shared_ptr<Intron> l(new Intron(rd5, 20, 30, portcullis::POSITIVE));
+    shared_ptr<Intron> l(new Intron(rd5, 20, 30));
     Junction j1(l, 10, 40);
     
     vector<uint32_t> coverage1{ 10,10,10,10,10,10,10,10,10,10,
@@ -111,15 +123,15 @@ BOOST_AUTO_TEST_CASE(coverage1) {
     double cvg1 = j1.calcCoverage(coverage1);
                                
     //cout << "Coverage: " << cvg1 << endl;
-    BOOST_CHECK(cvg1 > 0);
+    EXPECT_GT(cvg1, 0);
 }
 
 /**
  * This IS NOT what you'd expect to see in a real junction
  */
-BOOST_AUTO_TEST_CASE(coverage2) {
+TEST(junction, coverage2) {
     
-    shared_ptr<Intron> l(new Intron(rd5, 20, 30, portcullis::POSITIVE));
+    shared_ptr<Intron> l(new Intron(rd5, 20, 30));
     Junction j2(l, 10, 40);    
     
     vector<uint32_t> coverage2{ 0,0,0,0,0,0,0,0,0,0,
@@ -132,9 +144,5 @@ BOOST_AUTO_TEST_CASE(coverage2) {
                                
     //cout << "Coverage: " << cvg2 << endl;
     
-    BOOST_CHECK(cvg2 < 0);
+    EXPECT_LT(cvg2, 0);
 }
-
-
-
-BOOST_AUTO_TEST_SUITE_END()

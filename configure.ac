@@ -43,13 +43,15 @@ AC_PROG_CC
 # Ensure there's C++11 support
 AX_CXX_COMPILE_STDCXX_11(,[mandatory])
 
-# Delegates building of libraries to libtool
-LT_PREREQ([2.4.2])
-LT_INIT
-
 # Create the 'install-sh' script, which is used as the 'install' make target
 AC_PROG_INSTALL
 
+# Required for using the archiver
+m4_pattern_allow([AM_PROG_AR])
+AM_PROG_AR
+
+# Uses libtool for creating libraries
+AC_PROG_LIBTOOL
 
 
 ######################################################################
@@ -93,7 +95,6 @@ AX_BOOST_FILESYSTEM
 AX_BOOST_CHRONO
 AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_TIMER
-AX_BOOST_UNIT_TEST_FRAMEWORK
 
 # Combine BOOST variables (apart for BOOST_TEST)
 BOOST_LIBS="${BOOST_TIMER_STATIC_LIB} ${BOOST_CHRONO_STATIC_LIB} ${BOOST_FILESYSTEM_STATIC_LIB} ${BOOST_PROGRAM_OPTIONS_STATIC_LIB} ${BOOST_SYSTEM_STATIC_LIB}"

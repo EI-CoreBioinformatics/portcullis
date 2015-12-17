@@ -18,3 +18,7 @@ check_bam*
 check_intron*
 check_junction*
 check_seq*
+/check_unit_tests
+/check_unit_tests.log
+/check_unit_tests.trs
+*.la

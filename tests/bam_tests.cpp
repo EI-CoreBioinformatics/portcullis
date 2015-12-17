@@ -15,16 +15,13 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
-#define BOOST_TEST_MAIN
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE PORTCULLIS
-#define BOOST_TEST_LOG_LEVEL all
+#include <gtest/gtest.h>
 
 #include <iostream>
 using std::cout;
 using std::endl;
 
-#include <boost/test/unit_test.hpp>
+
 #include <boost/algorithm/string.hpp>
 
 #include "../src/bam/bam_master.hpp"
@@ -35,9 +32,7 @@ using std::endl;
 using namespace portcullis::bam;
 
         
-BOOST_AUTO_TEST_SUITE(BAM_TESTS)
-
-BOOST_AUTO_TEST_CASE(sort) {
+TEST(bam, sort) {
     
     BamHelper::samtoolsExe = "../deps/samtools-1.2/samtools";
 
@@ -51,11 +46,11 @@ BOOST_AUTO_TEST_CASE(sort) {
     //cout << "cmd=" << cmd << endl;
     
     // Check the sorted bam file exists
-    BOOST_CHECK(boost::equals(cmd, correct));
+    EXPECT_EQ(cmd, correct);
 }
 
 
-BOOST_AUTO_TEST_CASE(merge) {
+TEST(bam, merge) {
     
     BamHelper::samtoolsExe = "../deps/samtools-1.2/samtools";
 
@@ -69,31 +64,31 @@ BOOST_AUTO_TEST_CASE(merge) {
     
     string correct("../deps/samtools-1.2/samtools merge -f -@ 1 resources/merged.bam resources/bam1.bam resources/bam2.bam");
     
-    BOOST_CHECK(boost::equals(cmd, correct));
+    EXPECT_EQ(cmd, correct);
 }
 
-BOOST_AUTO_TEST_CASE(is_sorted1)
-{
+TEST(bam, is_sorted1) {
+    
     string unsortedBam = "resources/unsorted.bam";
     bool sorted = BamHelper::isCoordSortedBam(unsortedBam);
     
     // Check the merged bam file exists
     //BOOST_CHECK(!sorted);    
-    BOOST_CHECK(sorted);    
+    EXPECT_EQ(sorted, true);    
 }
 
-BOOST_AUTO_TEST_CASE(is_sorted2)
-{
+TEST(bam, is_sorted2) {
+    
     string sortedBam = "resources/sorted.bam";
     bool sorted = BamHelper::isCoordSortedBam(sortedBam);
     
     // Check the merged bam file exists
-    BOOST_CHECK(sorted);    
+    EXPECT_EQ(sorted, true);    
 }
 
 
-BOOST_AUTO_TEST_CASE(depth_test_1)
-{
+TEST(bam, depth_test_1) {
+    
     DepthParser dp1("resources/sorted.bam", 0, true);
     
     vector<uint32_t> batch1;
@@ -112,7 +107,7 @@ BOOST_AUTO_TEST_CASE(depth_test_1)
         }
     }
     
-    BOOST_CHECK(allPos1);
+    EXPECT_EQ(allPos1, true);
     //cout << count1 << std::endl;
     
     DepthParser dp2("resources/sorted.bam", 0, false);
@@ -133,14 +128,14 @@ BOOST_AUTO_TEST_CASE(depth_test_1)
         }        
     }
     
-    BOOST_CHECK(allPos2);
+    EXPECT_EQ(allPos2, true);
     //cout << count2 << std::endl;
     
-    BOOST_CHECK(count2 <= count1);
+    EXPECT_LE(count2, count1);
 }
 
-BOOST_AUTO_TEST_CASE(genome_mapper_ecoli)
-{
+TEST(bam, genome_mapper_ecoli) {
+    
     // Create a new faidx
     GenomeMapper genomeMapper("resources/ecoli.fa");
     genomeMapper.buildFastaIndex();
@@ -148,37 +143,37 @@ BOOST_AUTO_TEST_CASE(genome_mapper_ecoli)
     
     // Check faidx file exists
     path faidxFile = genomeMapper.getFastaIndexFile();    
-    BOOST_CHECK(boost::filesystem::exists(faidxFile));
+    EXPECT_EQ(boost::filesystem::exists(faidxFile), true);
     
     // Check number of seqs is what we expect
     int nbSeqs = genomeMapper.getNbSeqs();    
-    BOOST_CHECK(nbSeqs == 1);
+    EXPECT_EQ(nbSeqs, 1);
     
     // Get seq
     string name = "gi|556503834|ref|NC_000913.3|";
     int len = -1;
     string fullSeq = genomeMapper.fetchBases(name.c_str(), &len);    
-    BOOST_CHECK(len == 4641652);
+    EXPECT_EQ(len, 4641652);
     //BOOST_CHECK(fullSeq != NULL);
     
     string partialSeqExpected = "TCTGACTGCA";
     
     // Get partial seq (method 1 - 1 based)
     string partialSeq1 = genomeMapper.fetchBases((name + ":11-20").c_str(), &len);
-    BOOST_CHECK(partialSeqExpected.compare(partialSeq1) == 0);
-    BOOST_CHECK(len == 10);
+    EXPECT_EQ(partialSeqExpected.compare(partialSeq1), 0);
+    EXPECT_EQ(len, 10);
     
     // Get partial seq (method 2 - 0 based)
     string partialSeq2 = genomeMapper.fetchBases((char*)name.c_str(), 10, 19, &len);
-    BOOST_CHECK(partialSeqExpected.compare(partialSeq2) == 0);
-    BOOST_CHECK(len == 10);
+    EXPECT_EQ(partialSeqExpected.compare(partialSeq2), 0);
+    EXPECT_EQ(len, 10);
     
     // Delete the faidx file
     boost::filesystem::remove(faidxFile);
 }
 
-BOOST_AUTO_TEST_CASE(padding)
-{
+TEST(bam, padding) {
+    
     vector<CigarOp> cigar = CigarOp::createFullCigarFromString("2S14M2I1M1737N8M14S");
     
     string query = "AGAAAGTGGAGAAAAGAATTTGGTGTGGATGATCTTATCACAACCATTCTTTCTGGTGAGACAGAAGC";
@@ -195,13 +190,13 @@ BOOST_AUTO_TEST_CASE(padding)
     string paddedQueryInRegion = ba.getPaddedQuerySeq(query, 609263, 609304, left, right, false);
     string paddedGenomicInRegion = ba.getPaddedGenomeSeq(genomic, 609263, 609304, left, right, false);
     
-    BOOST_CHECK(paddedQueryInRegion.size() == paddedGenomicInRegion.size());
-    BOOST_CHECK(boost::equals(paddedQueryInRegion, "AAAGTGGAGAAAAGAAT"));
-    BOOST_CHECK(boost::equals(paddedGenomicInRegion, "AAAGTGGAGAAAAGXXA"));
+    EXPECT_EQ(paddedQueryInRegion.size(), paddedGenomicInRegion.size());
+    EXPECT_EQ(paddedQueryInRegion, "AAAGTGGAGAAAAGAAT");
+    EXPECT_EQ(paddedGenomicInRegion, "AAAGTGGAGAAAAGXXA");
 }
 
-BOOST_AUTO_TEST_CASE(padding2)
-{
+TEST(bam, padding2) {
+    
     vector<CigarOp> cigar = CigarOp::createFullCigarFromString("14S13M1I2601N9M4918N13M18S");
     
     string query = "ATTGGGGTGTAGATAATTTTATAAAAATTTTTATTTAGGAGGAAAAAAAGGCCGTTTCCAAATATTAC";
@@ -218,13 +213,13 @@ BOOST_AUTO_TEST_CASE(padding2)
     string paddedQueryInRegion = ba.getPaddedQuerySeq(query, 750577, 750603, left, right, false);
     string paddedGenomicInRegion = ba.getPaddedGenomeSeq(genomic, 750577, 750603, left, right, false);
     
-    BOOST_CHECK(paddedQueryInRegion.size() == paddedGenomicInRegion.size());
-    BOOST_CHECK(boost::equals(paddedQueryInRegion, "AATTTTATAAAAAT"));
-    BOOST_CHECK(boost::equals(paddedGenomicInRegion, "AATTTTATAAAAAX"));
+    EXPECT_EQ(paddedQueryInRegion.size(), paddedGenomicInRegion.size());
+    EXPECT_EQ(paddedQueryInRegion, "AATTTTATAAAAAT");
+    EXPECT_EQ(paddedGenomicInRegion, "AATTTTATAAAAAX");
 }
 
-BOOST_AUTO_TEST_CASE(padding3)
-{
+TEST(bam, padding3) {
+    
     vector<CigarOp> cigar = CigarOp::createFullCigarFromString("30S8M25N2M5D28M");
     
     string query = "ACAAAAACAGAAAAAAAAAGAAAAAAAAATACCAAAACCAACGCCTTCACTTAAAGACAAATATTCAA";
@@ -241,9 +236,7 @@ BOOST_AUTO_TEST_CASE(padding3)
     string paddedQueryInRegion = ba.getPaddedQuerySeq(query, 4776673, 4776680, left, right, false);
     string paddedGenomicInRegion = ba.getPaddedGenomeSeq(genomic, 4776673, 4776680, left, right, false);
     
-    BOOST_CHECK(paddedQueryInRegion.size() == paddedGenomicInRegion.size());
-    BOOST_CHECK(boost::equals(paddedQueryInRegion, "CAXXX"));
-    BOOST_CHECK(boost::equals(paddedGenomicInRegion, "CAAAG"));
+    EXPECT_EQ(paddedQueryInRegion.size(), paddedGenomicInRegion.size());
+    EXPECT_EQ(paddedQueryInRegion, "CAXXX");
+    EXPECT_EQ(paddedGenomicInRegion, "CAAAG");
 }
-
-BOOST_AUTO_TEST_SUITE_END()

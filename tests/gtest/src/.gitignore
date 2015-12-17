@@ -1,0 +1,4 @@
+*.lo
+/libgtest_la-gtest-all.o
+/libgtest_main_la-gtest_main.o
+*.dirstamp

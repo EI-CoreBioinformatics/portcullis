@@ -5,11 +5,11 @@ bin_PROGRAMS = portcullis
 
 portcullis_noinstdir = $(top_srcdir)/src
 
-portcullis_CXXFLAGS = -g -g3 -gdwarf-4 -O3 @AM_CXXFLAGS@
+portcullis_CXXFLAGS = -g -g3 -gdwarf-4 -O3 -pedantic @AM_CXXFLAGS@
 
-portcullis_CPPFLAGS =	-I$(top_srcdir)/deps/htslib-1.2.1 \
-			-I$(top_srcdir)/deps/samtools-1.2 \
-			-I$(top_srcdir)/deps/dlib-18.16 \
+portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.2.1 \
+			-isystem $(top_srcdir)/deps/samtools-1.2 \
+			-isystem $(top_srcdir)/deps/dlib-18.16 \
 			-I$(top_srcdir)/src \
 			@AM_CPPFLAGS@  
 

@@ -15,71 +15,51 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
-
-#define BOOST_TEST_MAIN
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE PORTCULLIS
-#define BOOST_TEST_LOG_LEVEL all
-
-#include <boost/test/unit_test.hpp>
+#include <gtest/gtest.h>
 
 #include "../src/bam/bam_master.hpp"
 using portcullis::bam::RefSeq;
 
 #include "../src/intron.hpp"
 using portcullis::Intron;
-using portcullis::POSITIVE;
-using portcullis::NEGATIVE;
 
 const RefSeq rd2(2, "seq_2", 100);
 const RefSeq rd5(5, "seq_5", 100);
 
-BOOST_AUTO_TEST_SUITE(intron)
-
-BOOST_AUTO_TEST_CASE(equality1)
-{
-    Intron l1(rd5, 10, 20, POSITIVE);
-    Intron l2(rd5, 10, 20, POSITIVE);
+TEST(intron, equality1) {
     
-    BOOST_CHECK(l1 == l2);
+    Intron l1(rd5, 10, 20);
+    Intron l2(rd5, 10, 20);
+    
+    EXPECT_EQ(l1, l2);
 }
 
-BOOST_AUTO_TEST_CASE(equality2)
-{
-    Intron l1(rd2, 20, 30, POSITIVE);
-    Intron l2(rd5, 20, 30, POSITIVE);
+TEST(intron, equality2) {
     
-    BOOST_CHECK(l1 != l2);
+    Intron l1(rd2, 20, 30);
+    Intron l2(rd5, 20, 30);
+    
+    EXPECT_NE(l1, l2);
 }
 
-BOOST_AUTO_TEST_CASE(equality3)
-{
-    Intron l1(rd5, 5, 25, POSITIVE);
-    Intron l2(rd5, 10, 20, POSITIVE);
+TEST(intron, equality3) {
     
-    BOOST_CHECK(l1 != l2);
+    Intron l1(rd5, 5, 25);
+    Intron l2(rd5, 10, 20);
+    
+    EXPECT_NE(l1, l2);
 }
 
-BOOST_AUTO_TEST_CASE(equality4)
-{
-    Intron l1(rd5, 10, 20, POSITIVE);
-    Intron l2(rd5, 10, 20, NEGATIVE);
+TEST(intron, min_anchor) {
     
-    BOOST_CHECK(l1 != l2);
+    Intron intron(rd5, 10, 20);
+    
+    EXPECT_EQ(intron.minAnchorLength(4, 40), 6);    
 }
 
-BOOST_AUTO_TEST_CASE(min_anchor) {
+TEST(intron, size) {
     
-    Intron intron(rd5, 10, 20, portcullis::POSITIVE);
+    Intron intron(rd5, 10, 20);
     
-    BOOST_CHECK(intron.minAnchorLength(4, 40) == 6);    
+    EXPECT_EQ(intron.size(), 11);    
 }
-
-BOOST_AUTO_TEST_CASE(size) {
-    
-    Intron intron(rd5, 10, 20, portcullis::POSITIVE);
-    
-    BOOST_CHECK(intron.size() == 11);    
-}
-
-BOOST_AUTO_TEST_SUITE_END()

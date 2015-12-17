@@ -15,26 +15,10 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
-#define BOOST_TEST_MAIN
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE PORTCULLIS
-#define BOOST_TEST_LOG_LEVEL all
-#include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_log.hpp>
-#include <boost/filesystem/fstream.hpp>
+#include <gtest/gtest.h>
 
-#include <iostream>
+int main(int argc, char *argv[]) {
 
-using namespace boost::unit_test;
-using namespace std;
-
-
-
-BOOST_AUTO_TEST_SUITE(master)
-
-BOOST_AUTO_TEST_CASE(test)
-{
-    BOOST_CHECK(0==0);
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
-
-BOOST_AUTO_TEST_SUITE_END()
