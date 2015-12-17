@@ -88,6 +88,13 @@ SAVED_LIBS="${LIBS}"
 AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
 AX_CHECK_ZLIB(, [AC_MSG_ERROR([Zlib not found.  Please ensure that zlib is properly built and configured.])])
 
+AC_CHECK_FUNCS(clock_gettime, [], [
+  AC_CHECK_LIB(rt, clock_gettime, [
+    AC_DEFINE(HAVE_CLOCK_GETTIME, 1)
+    RT_LIB="-lrt"    
+  ])
+])
+
 ## Check for boost
 AX_BOOST_BASE([1.52],, [AC_MSG_ERROR([Boost not found.  Please ensure that boost is properly built and the BOOST_ROOT environment variable is set.  Alternatively you can override BOOST_ROOT with the --with-boost option.])])
 AX_BOOST_SYSTEM
@@ -114,7 +121,7 @@ AC_SUBST([AM_CPPFLAGS])
 AM_LDFLAGS="${BOOST_LDFLAGS} ${ZLIB_LDFLAGS}"
 AC_SUBST([AM_LDFLAGS])
 
-AM_LIBS="${BOOST_LIBS} ${PTHREAD_CFLAGS} ${ZLIB_LIB}"
+AM_LIBS="${BOOST_LIBS} ${PTHREAD_CFLAGS} ${ZLIB_LIB} ${RT_LIB}"
 AC_SUBST([AM_LIBS])
 
 AC_CONFIG_HEADERS([config.h])
