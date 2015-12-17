@@ -66,6 +66,7 @@ portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _
     outputPrefix = _outputPrefix;
     threads = 1;
     extra = false;
+    source = "portcullis";
     verbose = false;        
 
     if (!bfs::exists(outputDir)) {
@@ -159,7 +160,7 @@ void portcullis::JunctionBuilder::process() {
     }
 
     cout << "Saving junctions: " << endl;
-    junctionSystem.saveAll(path(outputDir.string() + "/" + outputPrefix));
+    junctionSystem.saveAll(path(outputDir.string() + "/" + outputPrefix), source);
 }
 
 void portcullis::JunctionBuilder::separateBams() {
@@ -409,6 +410,7 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
     uint16_t threads;
     bool extra;
     bool separate;
+    string source;
     bool verbose;
     bool help;
 
@@ -425,6 +427,8 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
                 "Calculate additional metrics that take some time to generate.  Automatically activates BAM splitting mode.")
             ("separate,s", po::bool_switch(&separate)->default_value(false),
                 "Separate spliced from unspliced reads.")
+            ("source,c", po::value<string>(&source)->default_value(DEFAULT_SOURCE),
+                "The value to enter into the \"source\" field in GFF files.")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                 "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -472,6 +476,7 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
     jb.setThreads(threads);
     jb.setExtra(extra);
     jb.setSeparate(separate);
+    jb.setSource(source);
     jb.setVerbose(verbose);
     jb.setSamtoolsExe(BamHelper::samtoolsExe);
     jb.process();

@@ -380,7 +380,7 @@ void portcullis::JunctionSystem::sort() {
     std::sort(junctionList.begin(), junctionList.end(), JunctionComparator());
 }
 
-void portcullis::JunctionSystem::saveAll(const path& outputPrefix) {
+void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string& source) {
 
     auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n"); 
 
@@ -413,7 +413,7 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix) {
 
     // Print junction stats to file
     ofstream junctionGFFStream(junctionGFFPath.c_str());
-    outputJunctionGFF(junctionGFFStream);
+    outputJunctionGFF(junctionGFFStream, source);
     junctionGFFStream.close();
 
     cout << "done." << endl
@@ -422,7 +422,7 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix) {
 
     // Print junction stats to file
     ofstream intronGFFStream(intronGFFPath.c_str());
-    outputIntronGFF(intronGFFStream);
+    outputIntronGFF(intronGFFStream, source);
     intronGFFStream.close();
 
     // Output BED files
@@ -447,19 +447,19 @@ void portcullis::JunctionSystem::outputDescription(std::ostream &strm) {
     }        
 }
 
-void portcullis::JunctionSystem::outputJunctionGFF(std::ostream &strm) {
+void portcullis::JunctionSystem::outputJunctionGFF(std::ostream &strm, const string& source) {
 
     uint64_t i = 0;
     for(JunctionPtr j : junctionList) {
-        j->outputJunctionGFF(strm, i++);
+        j->outputJunctionGFF(strm, i++, source);
     }
 }
 
-void portcullis::JunctionSystem::outputIntronGFF(std::ostream &strm) {
+void portcullis::JunctionSystem::outputIntronGFF(std::ostream &strm, const string& source) {
 
     uint64_t i = 0;
     for(JunctionPtr j : junctionList) {
-        j->outputIntronGFF(strm, i++);
+        j->outputIntronGFF(strm, i++, source);
     }
 }
 

@@ -293,15 +293,14 @@ bool portcullis::eval::evalSetLeaf(Operator op, unordered_set<string>& set, stri
 portcullis::JunctionFilter::JunctionFilter( const path& _junctionFile, 
                     const path& _filterFile, 
                     const path& _outputDir, 
-                    const string& _outputPrefix, 
-                    const bool _saveBad,
-                    bool _verbose) {
+                    const string& _outputPrefix) {
     junctionFile = _junctionFile;
     filterFile = _filterFile;
     outputDir = _outputDir;
     outputPrefix = _outputPrefix;
-    saveBad = _saveBad;
-    verbose = _verbose;
+    saveBad = false;
+    source = DEFAULT_FILTER_SOURCE;
+    verbose = false;
 }
     
     
@@ -442,12 +441,12 @@ void portcullis::JunctionFilter::filter() {
          << passJunc.size() << " junctions remaining" << endl << endl
          << "Saving junctions passing filter to disk:" << endl;
 
-    passJunc.saveAll(outputDir.string() + "/" + outputPrefix + ".pass");        
+    passJunc.saveAll(outputDir.string() + "/" + outputPrefix + ".pass", source);        
 
     if (saveBad) {
         cout << "Saving junctions failing filter to disk:" << endl;
 
-        failJunc.saveAll(outputDir.string() + "/" + outputPrefix + ".fail");
+        failJunc.saveAll(outputDir.string() + "/" + outputPrefix + ".fail", source);
     }
 
     saveResults(originalJuncs, junctionResultMap);
@@ -516,6 +515,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     string outputDir;
     string outputPrefix;
     bool saveBad;
+    string source;
     bool verbose;
     bool help;
 
@@ -530,6 +530,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
                 "The filter configuration file to use.")
             ("save_bad,b", po::bool_switch(&saveBad)->default_value(false),
                 "Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)")
+            ("source,c", po::value<string>(&source)->default_value(DEFAULT_FILTER_SOURCE),
+                "The value to enter into the \"source\" field in GFF files.")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                 "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -570,7 +572,10 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
          << "--------------------------------" << endl << endl;
 
     // Create the prepare class
-    JunctionFilter filter(junctionFile, filterFile, outputDir, outputPrefix, saveBad, verbose);
+    JunctionFilter filter(junctionFile, filterFile, outputDir, outputPrefix);
+    filter.setSaveBad(saveBad);
+    filter.setSource(source);
+    filter.setVerbose(verbose);
     filter.filter();
 
     return 0;

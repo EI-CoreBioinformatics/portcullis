@@ -270,7 +270,8 @@ int mainFull(int argc, char *argv[]) {
     path filtDir = outputDir.string() + "/filtered_junctions";
     path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
     
-    JunctionFilter filter(juncTab, JunctionFilter::defaultFilterFile, filtDir, "portcullis_filtered", false, verbose);
+    JunctionFilter filter(juncTab, JunctionFilter::defaultFilterFile, filtDir, "portcullis_filtered");
+    filter.setVerbose(verbose);
     filter.filter();
 
     

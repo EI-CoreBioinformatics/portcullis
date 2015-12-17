@@ -154,7 +154,7 @@ public:
     
     void sort();
     
-    void saveAll(const path& outputPrefix);
+    void saveAll(const path& outputPrefix, const string& source);
     
     void outputDescription(std::ostream &strm);
     
@@ -170,13 +170,11 @@ public:
         return strm;
     }
     
-    void outputJunctionGFF(std::ostream &strm);
+    void outputJunctionGFF(std::ostream &strm, const string& source);
     
-    void outputIntronGFF(std::ostream &strm);
+    void outputIntronGFF(std::ostream &strm, const string& source);
     
-    void outputGTF(std::ostream &strm) {
-        
-    }
+    void outputGTF(std::ostream &strm) {}
     
     void outputBED(string& path, CanonicalSS type);
     

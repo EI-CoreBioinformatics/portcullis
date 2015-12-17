@@ -1022,7 +1022,7 @@ void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string
  * Complete human readable description of this intron (for augustus hints)
  * @param strm
  */
-void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id) {
+void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id, const string& source) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
@@ -1034,7 +1034,7 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id) {
     
     // Output junction parent
     strm << intron->ref.name << "\t"
-         << "portcullis" << "\t"    // source
+         << source << "\t"    // source
          << "intron" << "\t"        // type (may change later)
          << intron->start + 1 << "\t"   // start
          << intron->end  + 1<< "\t"     // end
@@ -1057,7 +1057,7 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id) {
  * Complete human readable description of this junction
  * @param strm
  */
-void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
+void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id, const string& source) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
@@ -1069,7 +1069,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id) {
     
     // Output junction parent
     strm << intron->ref.name << "\t"
-         << "portcullis" << "\t"    // source
+         << source << "\t"    // source
          << "match" << "\t"      // type (may change later)
          << leftAncStart + 1 << "\t"  // start
          << rightAncEnd + 1 << "\t"   // end

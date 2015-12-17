@@ -72,6 +72,7 @@ struct JuncFilterException: virtual boost::exception, virtual std::exception { }
 
 const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
 const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
+const string DEFAULT_FILTER_SOURCE = "portcullis";
 const string DEFAULT_FILTER_FILE = "default_filter.json";
 
 
@@ -235,6 +236,7 @@ private:
     path outputDir;
     string outputPrefix;
     bool saveBad;
+    string source;
     bool verbose;    
     
     
@@ -246,9 +248,7 @@ public:
     JunctionFilter( const path& _junctionFile, 
                     const path& _filterFile, 
                     const path& _outputDir, 
-                    const string& _outputPrefix, 
-                    const bool _saveBad,
-                    bool _verbose);
+                    const string& _outputPrefix);
     
     virtual ~JunctionFilter() {
     }
@@ -304,6 +304,15 @@ public:
     void setVerbose(bool verbose) {
         this->verbose = verbose;
     }
+    
+    string getSource() const {
+        return source;
+    }
+
+    void setSource(string source) {
+        this->source = source;
+    }
+
 
     
     

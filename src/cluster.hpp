@@ -142,7 +142,7 @@ public:
 
         cout << " - Trained model" << endl;
         
-        unsigned long results[samples.size()];
+        std::vector<unsigned long> results(samples.size());
         uint32_t nbClass0 = 0;
         uint32_t nbClass1 = 0;
         
@@ -150,12 +150,14 @@ public:
         // all points are correctly identified.
         for (unsigned long i = 0; i < samples.size(); ++i) {
             
-            results[i] = test(samples[i]);
+            unsigned long val = test(samples[i]);
             
-            if (results[i] == 0) {
+            results.push_back(val);
+            
+            if (val == 0) {
                 nbClass0++;
             }
-            else if (results[i] == 1) {
+            else if (val == 1) {
                 nbClass1++;
             }
         }

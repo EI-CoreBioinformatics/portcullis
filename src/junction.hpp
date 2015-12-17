@@ -809,13 +809,13 @@ public:
      * Complete human readable description of this intron (for augustus hints)
      * @param strm
      */
-    void outputIntronGFF(std::ostream &strm, uint32_t id);
+    void outputIntronGFF(std::ostream &strm, uint32_t id, const string& source);
     
     /**
      * Complete human readable description of this junction
      * @param strm
      */
-    void outputJunctionGFF(std::ostream &strm, uint32_t id);
+    void outputJunctionGFF(std::ostream &strm, uint32_t id, const string& source);
     
     /**
      * Complete human readable description of this junction

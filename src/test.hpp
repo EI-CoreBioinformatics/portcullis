@@ -122,8 +122,8 @@ public:
         string goodFile = resultsFile + ".good";
         string badFile = resultsFile + ".bad";
         
-        good.saveAll(goodFile);
-        bad.saveAll(badFile);        
+        good.saveAll(goodFile, "portcullis");
+        bad.saveAll(badFile, "portcullis");        
     }
     
     

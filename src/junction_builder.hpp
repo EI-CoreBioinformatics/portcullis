@@ -63,6 +63,7 @@ namespace portcullis {
 
 const string DEFAULT_JUNC_OUTPUT_DIR = "portcullis_junc_out";
 const string DEFAULT_JUNC_OUTPUT_PREFIX = "portcullis";
+const string DEFAULT_SOURCE = "portcullis";
 const uint16_t DEFAULT_JUNC_THREADS = 1;
 
 typedef boost::error_info<struct JunctionBuilderError,string> JunctionBuilderErrorInfo;
@@ -88,6 +89,7 @@ private:
     uint16_t threads;
     bool extra;
     bool separate;
+    string source;
     path samtoolsExe;
     bool verbose;
     
@@ -176,6 +178,13 @@ public:
         this->separate = separate;
     }
 
+    string getSource() const {
+        return source;
+    }
+
+    void setSource(string source) {
+        this->source = source;
+    }
 
     
     
