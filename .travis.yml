@@ -1,0 +1,41 @@
+language: cpp
+
+compiler:
+- gcc
+
+sudo: required
+
+#rvm:
+#- gcc_4.9
+#- gcc_5.2
+#- python_plot
+#- gnuplot
+
+# Setup compiler
+before_install:
+- sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+- sudo apt-get update -qq
+- sudo apt-get install -qq g++-4.9
+- export CXX="g++-4.9"
+- export CC="gcc-4.9"
+- gcc --version
+
+# Install dependencies: (Boost and python, and setup KAT)
+install:
+
+# Boost installation
+- wget -q http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.gz/download
+- mv download boost.tar.gz
+- tar -xf boost.tar.gz
+- cd boost_1_59_0
+- sudo ./bootstrap.sh --with-libraries=chrono,timer,program_options,filesystem,system,test
+- sudo ./b2 -d1 --toolset=gcc-4.9 install
+- cd ..
+
+# Create portcullis configure script
+- ./autogen.sh
+
+# Build portcullis and run tests
+script:
+- ./configure && make -j2 && make check
+

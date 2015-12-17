@@ -37,3 +37,4 @@ callgrind*
 *.project
 /portcullis-0.*/
 /scripts/__pycache__/
+*.travis.yml.swp
