@@ -3,7 +3,7 @@
 ##########################################################################
 
 # Autoconf initialistion.  Sets package name version and contact details
-AC_INIT([Portcullis],[0.10.4],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
+AC_INIT([Portcullis],[0.11.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
 
 # I built this with autoconf 2.53 and have only tested it on 2.69 systems.  You can change this but I don't
 # make any guarentees
@@ -125,5 +125,6 @@ AM_LIBS="${BOOST_LIBS} ${PTHREAD_CFLAGS} ${ZLIB_LIB} ${RT_LIB}"
 AC_SUBST([AM_LIBS])
 
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile deps/htslib-1.2.1/Makefile deps/samtools-1.2/Makefile src/Makefile tests/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile])
+AC_CONFIG_SUBDIRS([deps/htslib-1.3 deps/samtools-1.3])
 AC_OUTPUT

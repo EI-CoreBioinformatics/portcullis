@@ -56,10 +56,10 @@ TEST(bam, merge) {
 
     // Merge a couple of BAMs together
     vector<path> bamFiles;
-    bamFiles.push_back("resources/bam1.bam");
-    bamFiles.push_back("resources/bam2.bam");
+    bamFiles.push_back(RESOURCESDIR "/bam1.bam");
+    bamFiles.push_back(RESOURCESDIR "/bam2.bam");
     
-    path mergedBam = "resources/merged.bam";
+    path mergedBam = RESOURCESDIR "/merged.bam";
     string cmd = BamHelper::createMergeBamCmd(bamFiles, mergedBam, 1);
     
     string correct("../deps/samtools-1.2/samtools merge -f -@ 1 resources/merged.bam resources/bam1.bam resources/bam2.bam");

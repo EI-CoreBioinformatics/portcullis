@@ -25,7 +25,8 @@ check_unit_tests_SOURCES = ../src/bam/bam_master.cc \
 check_unit_tests_CPPFLAGS = -isystem $(top_srcdir)/deps/htslib-1.2.1 \
 		    -isystem $(top_srcdir)/deps/samtools-1.2 \
 		    -isystem $(top_srcdir)/deps/dlib-18.16 \
-		    -I$(top_srcdir)/src \
+		    -I$(srcdir)/src \
+		    -DRESOURCESDIR=\"$(srcdir)/resources\" \
 		    @AM_CPPFLAGS@ 
 
 check_unit_tests_LDADD = $(top_srcdir)/deps/htslib-1.2.1/libhts.a \

@@ -52,23 +52,17 @@ namespace portcullis {
         // Info
         string version;
         
+        bool isAbsolute;
+        bool isRelative;
+        bool isOnPath;
         
-        string exec(const char* cmd) {
-            FILE* pipe = popen(cmd, "r");
-            if (!pipe) return "ERROR";
-            char buffer[512];
-            string result = "";
-            while(!feof(pipe)) {
-                if(fgets(buffer, 512, pipe) != NULL)
-                        result += buffer;
-            }
-            pclose(pipe);
-            return result;
-        }
-    
+        
     public:
        
-        PortcullisFS() {}
+        /**
+         * Assume on PATH by default
+         */
+        PortcullisFS() : PortcullisFS("portcullis") {}
         
         /**
          * 
@@ -76,39 +70,72 @@ namespace portcullis {
          */
         PortcullisFS(const char* argv, string _version) {
             
-            path exe(argv);
-            version = version;
+            isAbsolute = false;
+            isRelative = false;
+            isOnPath = false;
             
-            //cout << exe << endl;
+            path exe(argv);
+            version = _version;
             
             if(exe.is_absolute()) {
                 
-                //cout << "Absolute" << endl;
-                
                 // Easy job... nothing special to do, resolve symlink then take two levels up
                 portcullisExe = bfs::canonical(exe);
-                rootDir = portcullisExe.parent_path().parent_path();
+                isAbsolute=true;
             }
             else if (exe.string().find('/') != string::npos) {
                 
-                //cout << "Relative" << endl;
-                
                 // Relative with some parent paths... get absolute path, resolving symlinks then take two levels up
                 portcullisExe = bfs::canonical(bfs::system_complete(exe));
-                rootDir = portcullisExe.parent_path().parent_path();
+                isRelative=true;
             }
             else {
 
-                //cout << "name only" << endl;
+                portcullisExe = exe;
+                isOnPath=true;
+            }
+            
+            // We assume scripts are on the path if exe was on the path
+            if (isAbsolute || isRelative) {
+                // Check to see if scripts are adjacent to exe first
+                path pb(portcullisExe.parent_path());
+                pb /= "bed12.py";
+                if (exists(pb)) {
+                    scriptsDir = portcullisExe.parent_path();
+                }
+                else {
                 
-                // Tricky one... just exe name, no indication of where if comes from. Now we have to resort to using which.
-                string cmd = string("which ") + exe.string();
-                string res = exec(cmd.c_str());
-                string fullpath = res.substr(0, res.length() - 1);
+                    // Not 100% sure how far back we need to go (depends on whether using KAT exe or tests) 
+                    // so try 2, 3 and 4 levels.
+                    scriptsDir = portcullisExe.parent_path().parent_path();
+                    scriptsDir /= "scripts";                 
 
-                //cout << "fullpath" << fullpath << endl;
-                portcullisExe = bfs::canonical(path(fullpath));
-                rootDir = portcullisExe.parent_path().parent_path();
+                    if (!exists(scriptsDir)) {
+                        scriptsDir = portcullisExe.parent_path().parent_path().parent_path();
+                        scriptsDir /= "scripts";       
+                        
+                        if (!exists(scriptsDir)) {
+                            scriptsDir = portcullisExe.parent_path().parent_path().parent_path().parent_path();
+                            scriptsDir /= "scripts";        
+
+                            if (!exists(scriptsDir)) {
+                                BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
+                                    "Could not find suitable directory containing Portcullis scripts relative to provided exe: ") + canonicalExe.c_str()));
+                            }
+                        }
+                    }
+
+                    // Also double check the kat_distanalysis.py script exists
+                    pb = scriptsDir;
+                    pb /= "bed12.py";
+
+                    if (!exists(pb)) {
+                        BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
+                            "Found the scripts directory where expected") + scriptsDir.string() + 
+                                ". However, could not find the \"bed12.py\" script inside."));
+                    }
+                }
+            
             }
             
             binDir = path(rootDir);
@@ -129,7 +156,7 @@ namespace portcullis {
                 
             if (portcullisExe.parent_path() == srcDir || portcullisExe.parent_path() == testDir) {
                 samtoolsExe = path(rootDir);
-                samtoolsExe /= "deps/samtools-1.2/samtools"; 
+                samtoolsExe /= "deps/samtools-1.2/portcullis_samtools"; 
                 
                 filterJuncsPy = path(scriptsDir);
                 filterJuncsPy /= "filter_junctions.py";

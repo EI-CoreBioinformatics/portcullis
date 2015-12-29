@@ -44,7 +44,7 @@ using boost::lexical_cast;
 #include "bam_master.hpp"
 
 
-path portcullis::bam::BamHelper::samtoolsExe = "samtools";
+path portcullis::bam::BamHelper::samtoolsExe = "portcullis_samtools";
 
 bool portcullis::bam::BamHelper::isCoordSortedBam(const path& bamFile) {
 
