@@ -37,28 +37,6 @@ redistribute it.  There is NO WARRANTY, to the extent permitted by law.])
 
 AC_PROG_CC
 
-AX_WITH_HTSLIB
-if test "$ax_cv_htslib" != yes; then
-  AC_MSG_ERROR([HTSlib development files not found
-
-Samtools uses HTSlib to parse bioinformatics file formats etc.  Building it
-requires an unpacked HTSlib source tree (which will be built in conjunction
-with samtools) or a previously-installed HTSlib.  In either case you may
-need to configure --with-htslib=DIR to locate the appropriate HTSlib.
-
-FAILED.  You must supply an HTSlib in order to build samtools successfully.])
-fi
-
-if test "$ax_cv_htslib_which" = source; then
-  Hsource=
-  Hinstall='#'
-else
-  Hsource='#'
-  Hinstall=
-fi
-AC_SUBST([Hsource])
-AC_SUBST([Hinstall])
-
 AC_ARG_WITH([curses],
   [AS_HELP_STRING([--without-curses],
                   [omit curses support, so no curses library needed])])

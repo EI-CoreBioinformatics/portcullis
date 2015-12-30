@@ -29,17 +29,8 @@ rm -Rf portcullis-*/
 rm -Rf build-aux
 
 # Also remove the autotools cache directory.
-rm -Rf autom4te.cache
+rm -Rf autom4te.cache deps/htslib-1.3/autom4te.cache deps/samtools-1.3/autom4te.cache
 
 # Remove rest of the generated files.
 rm -f Makefile.in tests/Makefile.in config.* aclocal.m4 configure depcomp install-sh missing libtool stamp-h1 ltmain.sh 
 
-cd deps/htslib-1.3
-
-rm -Rf autom4te.cache
-
-cd ../samtools-1.3
-
-rm -Rf autom4te.cache
-
-cd ../..
