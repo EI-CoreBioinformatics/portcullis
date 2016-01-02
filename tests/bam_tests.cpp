@@ -52,7 +52,7 @@ TEST(bam, sort) {
 
 TEST(bam, merge) {
     
-    BamHelper::samtoolsExe = "../deps/samtools-1.2/samtools";
+    BamHelper::samtoolsExe = "../deps/samtools-1.3/samtools";
 
     // Merge a couple of BAMs together
     vector<path> bamFiles;
@@ -62,7 +62,7 @@ TEST(bam, merge) {
     path mergedBam = RESOURCESDIR "/merged.bam";
     string cmd = BamHelper::createMergeBamCmd(bamFiles, mergedBam, 1);
     
-    string correct("../deps/samtools-1.2/samtools merge -f -@ 1 resources/merged.bam resources/bam1.bam resources/bam2.bam");
+    string correct("../deps/samtools-1.3/samtools merge -f -@ 1 resources/merged.bam resources/bam1.bam resources/bam2.bam");
     
     EXPECT_EQ(cmd, correct);
 }

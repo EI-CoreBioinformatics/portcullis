@@ -39,7 +39,6 @@ using boost::filesystem::path;
 using boost::lexical_cast;
 
 #include <htslib/faidx.h>
-#include <bam.h>
 
 namespace portcullis { namespace bam {
 

@@ -36,14 +36,15 @@ using boost::filesystem::path;
 using boost::lexical_cast;
 
 #include <htslib/faidx.h>
-#include <bam.h>
+#include <htslib/sam.h>
+#include <htslib/bgzf.h>
 
 namespace portcullis { namespace bam {
 
 
 typedef struct {     // auxiliary data structure
-	bamFile fp;      // the file handler
-	bam_iter_t iter; // NULL if a region not specified
+	BGZF* fp;      // the file handler
+	hts_itr_t* iter; // NULL if a region not specified
 	int min_mapQ, min_len; // mapQ filter; length filter
 } aux_t;
 
@@ -61,7 +62,7 @@ private:
     uint8_t strandSpecific;
     bool allowGappedAlignments;
     
-    bam_header_t *header;
+    bam_hdr_t *header;
     aux_t** data;
     bam_mplp_t mplp;
         

@@ -17,6 +17,10 @@
 
 #pragma once
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif 
+
 #include <iostream>
 #include <string>
 using std::cout;
@@ -62,7 +66,7 @@ namespace portcullis {
         /**
          * Assume on PATH by default
          */
-        PortcullisFS() : PortcullisFS("portcullis") {}
+        PortcullisFS() : PortcullisFS("portcullis", PACKAGE_VERSION) {}
         
         /**
          * 
@@ -120,7 +124,7 @@ namespace portcullis {
 
                             if (!exists(scriptsDir)) {
                                 BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-                                    "Could not find suitable directory containing Portcullis scripts relative to provided exe: ") + canonicalExe.c_str()));
+                                    "Could not find suitable directory containing Portcullis scripts relative to provided exe: ") + portcullisExe.c_str()));
                             }
                         }
                     }

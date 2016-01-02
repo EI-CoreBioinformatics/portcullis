@@ -37,7 +37,7 @@ using boost::filesystem::path;
 using boost::lexical_cast;
 
 #include <htslib/faidx.h>
-#include <bam.h>
+#include <htslib/sam.h>
 
 #include "bam_alignment.hpp"
 using portcullis::bam::CigarOp;
@@ -197,7 +197,7 @@ bam1_t* portcullis::bam::BamAlignment::getRaw() const {
  */
 portcullis::bam::Strand portcullis::bam::BamAlignment::getXSStrand() const {
     char xs[2] = {'X', 'S'};           
-    uint8_t* res = bam_aux_get_core(b, xs);
+    uint8_t* res = bam_aux_get(b, xs);
     char c = res != 0 ? bam_aux2A(res) : '?';
     return strandFromChar(c);
 }

@@ -39,7 +39,8 @@ using boost::filesystem::last_write_time;
 using boost::lexical_cast;
 
 #include <htslib/faidx.h>
-#include <bam.h>
+#include <htslib/sam.h>
+#include <htslib/bgzf.h>
 
 #include "bam_master.hpp"
 

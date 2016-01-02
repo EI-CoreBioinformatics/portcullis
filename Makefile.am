@@ -34,7 +34,6 @@ dist_bin_SCRIPTS =  scripts/bed12.py \
 		    scripts/venn.py \
 		    scripts/gff2bed.py \
 		    scripts/star_tab2bed.py \
-		    scripts/tab_bed12_set.py \
 		    scripts/spanki2bed.py \
 		    scripts/spanki_filter.py \
 		    scripts/tab_bed12_set.py \
@@ -47,6 +46,6 @@ dist_bin_SCRIPTS =  scripts/bed12.py \
 dist_sysconf_DATA = etc/default_filter.json
 
 # SRC DIRS
-SUBDIRS = deps/htslib-1.3 deps/samtools-1.3 src tests
+SUBDIRS = deps/htslib-1.3 src tests
 
 

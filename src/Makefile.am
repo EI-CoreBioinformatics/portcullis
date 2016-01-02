@@ -7,15 +7,15 @@ portcullis_noinstdir = $(top_srcdir)/src
 
 portcullis_CXXFLAGS = -g -g3 -gdwarf-4 -O3 -pedantic @AM_CXXFLAGS@
 
-portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.2.1 \
-			-isystem $(top_srcdir)/deps/samtools-1.2 \
+portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
+			-isystem $(top_srcdir)/deps/samtools-1.3 \
 			-isystem $(top_srcdir)/deps/dlib-18.16 \
 			-I$(top_srcdir)/src \
 			@AM_CPPFLAGS@  
 
 portcullis_LDFLAGS = @AM_LDFLAGS@
 
-portcullis_LDADD = $(top_srcdir)/deps/htslib-1.2.1/libhts.a @AM_LIBS@
+portcullis_LDADD = $(top_srcdir)/deps/htslib-1.3/libhts.a @AM_LIBS@
 
 
 noinst_HEADERS =	bam/bam_master.hpp \

@@ -34,11 +34,13 @@ using boost::filesystem::path;
 using boost::lexical_cast;
 
 #include <htslib/faidx.h>
-#include <bam.h>
+#include <htslib/sam.h>
 
 #include "bam_alignment.hpp"
+#include "bam_reader.hpp"
 using portcullis::bam::BamAlignment;
 using portcullis::bam::BamAlignmentPtr;
+using portcullis::bam::BamReader;
 
 #include "depth_parser.hpp"
 
@@ -47,10 +49,10 @@ using portcullis::bam::BamAlignmentPtr;
 
 int portcullis::bam::DepthParser::read_bam(void *data, bam1_t *b) {
     aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
-    int ret = aux->iter? bam_iter_read(aux->fp, aux->iter, b) : bam_read1(aux->fp, b);
+    int ret = aux->iter? BamReader::bam_iter_read(aux->fp, aux->iter, b) : bam_read1(aux->fp, b);
     if (!(b->core.flag&BAM_FUNMAP)) {
         if ((int)b->core.qual < aux->min_mapQ) b->core.flag |= BAM_FUNMAP;
-        else if (aux->min_len && bam_cigar2qlen(&b->core, bam1_cigar(b)) < aux->min_len) b->core.flag |= BAM_FUNMAP;
+        else if (aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len) b->core.flag |= BAM_FUNMAP;
     }
 
     return ret;
@@ -63,8 +65,8 @@ int portcullis::bam::DepthParser::read_bam_skip_gapped(void *data, bam1_t *b) //
     bool skip = false;
     do {
         skip = false;
-        ret = aux->iter? bam_iter_read(aux->fp, aux->iter, b) : bam_read1(aux->fp, b);
-        uint32_t *cigar = bam1_cigar(b);            
+        ret = aux->iter? BamReader::bam_iter_read(aux->fp, aux->iter, b) : bam_read1(aux->fp, b);
+        uint32_t *cigar = bam_get_cigar(b);            
         for(int k=0; k < b->core.n_cigar; ++k) {
             int cop = cigar[k] & BAM_CIGAR_MASK; // operation
             if (cop == BAM_CREF_SKIP) {
@@ -75,7 +77,7 @@ int portcullis::bam::DepthParser::read_bam_skip_gapped(void *data, bam1_t *b) //
 
         if (!(b->core.flag&BAM_FUNMAP)) {
             if ((int)b->core.qual < aux->min_mapQ) b->core.flag |= BAM_FUNMAP;
-            else if (aux->min_len && bam_cigar2qlen(&b->core, cigar) < aux->min_len) b->core.flag |= BAM_FUNMAP;
+            else if (aux->min_len && bam_cigar2qlen(b->core.n_cigar, cigar) < aux->min_len) b->core.flag |= BAM_FUNMAP;
         }
 
     } while(skip);
@@ -88,11 +90,11 @@ portcullis::bam::DepthParser::DepthParser(path _bamFile, uint8_t _strandSpecific
 
     data = (aux_t**)calloc(1, sizeof(aux_t**));
     data[0] = (aux_t*)calloc(1, sizeof(aux_t));
-    data[0]->fp = bam_open(bamFile.c_str(), "r");
+    data[0]->fp = bgzf_open(bamFile.c_str(), "r");
     data[0]->min_mapQ = 0;                    
     data[0]->min_len  = 0;                 
 
-    header = bam_header_read(data[0]->fp);
+    header = bam_hdr_read(data[0]->fp);
     mplp = allowGappedAlignments ? 
         bam_mplp_init(1, read_bam, (void**)data) :
         bam_mplp_init(1, read_bam_skip_gapped, (void**)data);
@@ -105,11 +107,11 @@ portcullis::bam::DepthParser::~DepthParser() {
 
     bam_mplp_destroy(mplp);
 
-    bam_header_destroy(header);
+    bam_hdr_destroy(header);
 
-    bam_close(data[0]->fp);
+    bgzf_close(data[0]->fp);
     if (data[0]->iter) { 
-        bam_iter_destroy(data[0]->iter);
+        bam_itr_destroy(data[0]->iter);
     }
     free(data);
 }

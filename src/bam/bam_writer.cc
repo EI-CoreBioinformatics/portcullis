@@ -34,7 +34,8 @@ using boost::filesystem::path;
 using boost::lexical_cast;
 
 #include <htslib/faidx.h>
-#include <bam.h>
+#include <htslib/sam.h>
+#include <htslib/bgzf.h>
 
 #include "bam_alignment.hpp"
 using portcullis::bam::BamAlignment;
@@ -43,7 +44,7 @@ using portcullis::bam::BamAlignment;
     
 void portcullis::bam::BamWriter::open(bam_hdr_t* header) {
     // split
-    fp = bam_open(bamFile.c_str(), "w");
+    fp = bgzf_open(bamFile.c_str(), "w");
     if (fp == NULL) {
         BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
                 "Could not open output BAM file: ") + bamFile.string()));
@@ -60,7 +61,7 @@ int portcullis::bam::BamWriter::write(const BamAlignment& ba) {
 }
 
 void portcullis::bam::BamWriter::close() {
-    bam_close(fp);
+    bgzf_close(fp);
 }
 
     

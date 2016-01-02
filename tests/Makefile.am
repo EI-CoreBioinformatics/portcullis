@@ -22,14 +22,14 @@ check_unit_tests_SOURCES = ../src/bam/bam_master.cc \
 		    junction_tests.cpp \
 		    check_portcullis.cc
 
-check_unit_tests_CPPFLAGS = -isystem $(top_srcdir)/deps/htslib-1.2.1 \
-		    -isystem $(top_srcdir)/deps/samtools-1.2 \
+check_unit_tests_CPPFLAGS = -isystem $(top_srcdir)/deps/htslib-1.3 \
+		    -isystem $(top_srcdir)/deps/samtools-1.3 \
 		    -isystem $(top_srcdir)/deps/dlib-18.16 \
 		    -I$(srcdir)/src \
 		    -DRESOURCESDIR=\"$(srcdir)/resources\" \
 		    @AM_CPPFLAGS@ 
 
-check_unit_tests_LDADD = $(top_srcdir)/deps/htslib-1.2.1/libhts.a \
+check_unit_tests_LDADD = $(top_srcdir)/deps/htslib-1.3/libhts.a \
 		    libgtest.la \
 		    @AM_LIBS@	
 	

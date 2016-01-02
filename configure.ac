@@ -3,7 +3,7 @@
 ##########################################################################
 
 # Autoconf initialistion.  Sets package name version and contact details
-AC_INIT([Portcullis],[0.11.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
+AC_INIT([portcullis],[0.11.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
 
 # I built this with autoconf 2.53 and have only tested it on 2.69 systems.  You can change this but I don't
 # make any guarentees
@@ -95,6 +95,12 @@ AC_CHECK_FUNCS(clock_gettime, [], [
   ])
 ])
 
+# Check for samtools
+AC_CHECK_PROG([with_samtools],[samtools],[yes],[no])
+if test "$with_samtools" == no ; then
+  AC_MSG_ERROR([samtools not found])
+fi 
+
 ## Check for boost
 AX_BOOST_BASE([1.52],, [AC_MSG_ERROR([Boost not found.  Please ensure that boost is properly built and the BOOST_ROOT environment variable is set.  Alternatively you can override BOOST_ROOT with the --with-boost option.])])
 AX_BOOST_SYSTEM
@@ -126,5 +132,5 @@ AC_SUBST([AM_LIBS])
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile])
-AC_CONFIG_SUBDIRS([deps/htslib-1.3 deps/samtools-1.3])
+AC_CONFIG_SUBDIRS([deps/htslib-1.3])
 AC_OUTPUT
