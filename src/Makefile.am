@@ -11,6 +11,7 @@ portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 			-isystem $(top_srcdir)/deps/samtools-1.3 \
 			-isystem $(top_srcdir)/deps/dlib-18.16 \
 			-I$(top_srcdir)/src \
+			-DDATADIR=\"$(datadir)\" \
 			@AM_CPPFLAGS@  
 
 portcullis_LDFLAGS = @AM_LDFLAGS@

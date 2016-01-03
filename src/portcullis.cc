@@ -376,8 +376,7 @@ int main(int argc, char *argv[]) {
         char** modeArgV = argv+1;
         
         // Set static variables in downstream subtools so they know where to get their resources from
-        BamHelper::samtoolsExe = fs.getSamtoolsExe();
-        JunctionFilter::defaultFilterFile = path(fs.getEtcDir().string() + "/default_filter.json");
+        JunctionFilter::defaultFilterFile = path(fs.getDataDir().string() + "/default_filter.json");
         JunctionFilter::filterJuncsPy = fs.getFilterJuncsPy();
         JunctionSystem::version = fs.getVersion();
         

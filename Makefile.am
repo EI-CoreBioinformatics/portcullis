@@ -42,8 +42,9 @@ dist_bin_SCRIPTS =  scripts/bed12.py \
 		    scripts/read_gen.snakefile \
 		    scripts/example_pp_ath.yaml
 
-# 
-dist_sysconf_DATA = etc/default_filter.json
+# Config files
+configdir = $(datadir)/portcullis
+dist_config_DATA = data/default_filter.json
 
 # SRC DIRS
 SUBDIRS = deps/htslib-1.3 src tests

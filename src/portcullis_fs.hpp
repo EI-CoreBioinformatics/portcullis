@@ -44,14 +44,11 @@ namespace portcullis {
         
         // Executables
         path portcullisExe;
-        path samtoolsExe;
         path filterJuncsPy;
         
         // Directories
-        path binDir;
+        path dataDir;
         path scriptsDir;
-        path etcDir;
-        path rootDir;
         
         // Info
         string version;
@@ -81,6 +78,7 @@ namespace portcullis {
             path exe(argv);
             version = _version;
             
+            
             if(exe.is_absolute()) {
                 
                 // Easy job... nothing special to do, resolve symlink then take two levels up
@@ -94,9 +92,9 @@ namespace portcullis {
                 isRelative=true;
             }
             else {
-
                 portcullisExe = exe;
                 isOnPath=true;
+                dataDir = path(DATADIR "/portcullis/");
             }
             
             // We assume scripts are on the path if exe was on the path
@@ -106,21 +104,33 @@ namespace portcullis {
                 pb /= "bed12.py";
                 if (exists(pb)) {
                     scriptsDir = portcullisExe.parent_path();
+                    dataDir = path(DATADIR "/portcullis/");
                 }
                 else {
                 
-                    // Not 100% sure how far back we need to go (depends on whether using KAT exe or tests) 
+                    // Not 100% sure how far back we need to go (depends on whether 
+                    // using portcullis exe or tests) 
                     // so try 2, 3 and 4 levels.
                     scriptsDir = portcullisExe.parent_path().parent_path();
-                    scriptsDir /= "scripts";                 
+                    scriptsDir /= "scripts";
+                    
+                    dataDir = portcullisExe.parent_path().parent_path();
+                    dataDir /= "data";                 
+
 
                     if (!exists(scriptsDir)) {
                         scriptsDir = portcullisExe.parent_path().parent_path().parent_path();
                         scriptsDir /= "scripts";       
                         
+                        dataDir = portcullisExe.parent_path().parent_path().parent_path();
+                        dataDir /= "data";       
+                        
                         if (!exists(scriptsDir)) {
                             scriptsDir = portcullisExe.parent_path().parent_path().parent_path().parent_path();
                             scriptsDir /= "scripts";        
+
+                            dataDir = portcullisExe.parent_path().parent_path().parent_path().parent_path();
+                            dataDir /= "data";        
 
                             if (!exists(scriptsDir)) {
                                 BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
@@ -138,49 +148,18 @@ namespace portcullis {
                             "Found the scripts directory where expected") + scriptsDir.string() + 
                                 ". However, could not find the \"bed12.py\" script inside."));
                     }
+                    
+                    path df = dataDir;
+                    df /= "default_filter.json";
+                    
+                    if (!exists(df)) {
+                        BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
+                            "Found the data directory where expected") + dataDir.string() + 
+                                ". However, could not find the \"default_filter.json\" configuraton file inside."));
+                    }
+                    
                 }
             
-            }
-            
-            binDir = path(rootDir);
-            binDir /= "bin";
-            
-            etcDir = path(rootDir);
-            etcDir /= "etc";
-            
-            scriptsDir = path(rootDir);
-            scriptsDir /= "scripts";
-            
-            path srcDir = path(rootDir);
-            srcDir /= "src";
-            
-            path testDir = path(rootDir);
-            testDir /= "tests";
-            
-                
-            if (portcullisExe.parent_path() == srcDir || portcullisExe.parent_path() == testDir) {
-                samtoolsExe = path(rootDir);
-                samtoolsExe /= "deps/samtools-1.2/portcullis_samtools"; 
-                
-                filterJuncsPy = path(scriptsDir);
-                filterJuncsPy /= "filter_junctions.py";
-            }
-            else {
-                samtoolsExe = path(binDir);
-                samtoolsExe /= "samtools";
-                
-                filterJuncsPy = path(binDir);
-                filterJuncsPy /= "filter_junctions.py";
-            }
-            
-            if (!exists(samtoolsExe)) {
-                BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-                    "Could not find samtools executable at: ") + samtoolsExe.c_str()));
-            }
-            
-            if (!exists(filterJuncsPy)) {
-                BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-                    "Could not find filter_junctions.py script at: ") + filterJuncsPy.c_str()));
             }
         }
         
@@ -192,14 +171,6 @@ namespace portcullis {
 
         }
         
-        path getBinDir() const {
-            return binDir;
-        }
-
-        path getEtcDir() const {
-            return etcDir;
-        }
-
         path getFilterJuncsPy() const {
             return filterJuncsPy;
         }
@@ -208,16 +179,12 @@ namespace portcullis {
             return portcullisExe;
         }
 
-        path getRootDir() const {
-            return rootDir;
-        }
-
-        path getSamtoolsExe() const {
-            return samtoolsExe;
-        }
-
         path getScriptsDir() const {
             return scriptsDir;
+        }
+        
+        path getDataDir() const {
+            return dataDir;
         }
         
         string getVersion() const {
@@ -228,16 +195,13 @@ namespace portcullis {
         
         friend std::ostream& operator<<(std::ostream &strm, const PortcullisFS& pfs) {
             
-            return strm << "Directories: "<< endl
-                        << " - Root: " << pfs.rootDir << endl
-                        << " - Bin: " << pfs.binDir << endl
-                        << " - Etc: " << pfs.etcDir << endl
-                        << " - Scripts: " << pfs.scriptsDir << endl << endl
-                        << "Executables: " << endl
+            return strm << "Executables: " << endl
                         << " - portcullis: " << pfs.portcullisExe << endl
-                        << " - samtools: " << pfs.samtoolsExe << endl
                         << " - filter_junctions.py: " << pfs.filterJuncsPy << endl
-                        << "Info: << endl"
+                        << "Directories: " << endl
+                        << " - Data: " << pfs.dataDir << endl
+                        << " - Scripts: " << pfs.scriptsDir << endl
+                        << "Info:" << endl
                         << " - Version: " << pfs.version << endl;
         }     
     };

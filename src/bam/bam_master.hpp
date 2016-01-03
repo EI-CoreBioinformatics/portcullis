@@ -158,8 +158,6 @@ class BamHelper {
         
 public:
     
-    static path samtoolsExe;
-    
     static bool isCoordSortedBam(const path& bamFile);
     
     static bool isNewerIndexPresent(const path& bamFile, bool useCsi);

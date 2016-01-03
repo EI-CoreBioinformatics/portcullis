@@ -34,14 +34,12 @@ using namespace portcullis::bam;
         
 TEST(bam, sort) {
     
-    BamHelper::samtoolsExe = "../deps/samtools-1.2/samtools";
-
     string unsortedBam = "resources/unsorted.bam";
     string sortedBam = "resources/sorted.test.bam";
     
     string cmd = BamHelper::createSortBamCmd(unsortedBam, sortedBam);
     
-    string correct("../deps/samtools-1.2/samtools sort -@ 1 -m 1G resources/unsorted.bam resources/sorted.test.bam");
+    string correct("samtools sort -@ 1 -m 1G resources/unsorted.bam resources/sorted.test.bam");
     
     //cout << "cmd=" << cmd << endl;
     
@@ -52,8 +50,6 @@ TEST(bam, sort) {
 
 TEST(bam, merge) {
     
-    BamHelper::samtoolsExe = "../deps/samtools-1.3/samtools";
-
     // Merge a couple of BAMs together
     vector<path> bamFiles;
     bamFiles.push_back(RESOURCESDIR "/bam1.bam");
@@ -62,7 +58,7 @@ TEST(bam, merge) {
     path mergedBam = RESOURCESDIR "/merged.bam";
     string cmd = BamHelper::createMergeBamCmd(bamFiles, mergedBam, 1);
     
-    string correct("../deps/samtools-1.3/samtools merge -f -@ 1 resources/merged.bam resources/bam1.bam resources/bam2.bam");
+    string correct("samtools merge -f -@ 1 ./resources/merged.bam ./resources/bam1.bam ./resources/bam2.bam");
     
     EXPECT_EQ(cmd, correct);
 }

@@ -901,8 +901,6 @@
  /usr/include/c++/4.8/bits/stl_stack.h \
  /usr/local/include/boost/filesystem/convenience.hpp \
  ../deps/htslib-1.3/htslib/faidx.h ../deps/htslib-1.3/htslib/hts_defs.h \
- ../deps/samtools-1.3/bam.h ../deps/htslib-1.3/htslib/bgzf.h \
- /usr/include/zlib.h /usr/include/x86_64-linux-gnu/zconf.h \
  ../deps/htslib-1.3/htslib/sam.h ../deps/htslib-1.3/htslib/hts.h \
  ../src/bam/genome_mapper.hpp ../src/bam/bam_master.hpp \
  /usr/include/c++/4.8/unordered_map /usr/include/c++/4.8/bits/hashtable.h \
@@ -2909,14 +2907,6 @@
 ../deps/htslib-1.3/htslib/faidx.h:
 
 ../deps/htslib-1.3/htslib/hts_defs.h:
-
-../deps/samtools-1.3/bam.h:
-
-../deps/htslib-1.3/htslib/bgzf.h:
-
-/usr/include/zlib.h:
-
-/usr/include/x86_64-linux-gnu/zconf.h:
 
 ../deps/htslib-1.3/htslib/sam.h:
 

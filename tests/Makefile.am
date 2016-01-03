@@ -27,6 +27,7 @@ check_unit_tests_CPPFLAGS = -isystem $(top_srcdir)/deps/htslib-1.3 \
 		    -isystem $(top_srcdir)/deps/dlib-18.16 \
 		    -I$(srcdir)/src \
 		    -DRESOURCESDIR=\"$(srcdir)/resources\" \
+		    -DDATADIR=\"$(datadir)\" \
 		    @AM_CPPFLAGS@ 
 
 check_unit_tests_LDADD = $(top_srcdir)/deps/htslib-1.3/libhts.a \

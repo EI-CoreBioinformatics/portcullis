@@ -90,7 +90,6 @@ private:
     bool extra;
     bool separate;
     string source;
-    path samtoolsExe;
     bool verbose;
     
     // The set of distinct junctions found in the BAM file
@@ -194,15 +193,6 @@ public:
      * Also outputs all the unspliced alignments to a separate file if requested
      */
     void process();
-    
-    path getSamtoolsExe() const {
-        return samtoolsExe;
-    }
-
-    void setSamtoolsExe(path samtoolsExe) {
-        this->samtoolsExe = samtoolsExe;
-    }
-
     
     static string helpMessage() {
         return string("\nPortcullis Junction Builder Mode Help.\n\n") +

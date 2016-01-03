@@ -901,8 +901,6 @@
  /usr/include/c++/4.8/bits/stl_stack.h \
  /usr/local/include/boost/filesystem/convenience.hpp \
  ../deps/htslib-1.3/htslib/faidx.h ../deps/htslib-1.3/htslib/hts_defs.h \
- ../deps/samtools-1.3/bam.h ../deps/htslib-1.3/htslib/bgzf.h \
- /usr/include/zlib.h /usr/include/x86_64-linux-gnu/zconf.h \
  ../deps/htslib-1.3/htslib/sam.h ../deps/htslib-1.3/htslib/hts.h \
  ../src/bam/bam_alignment.hpp ../src/bam/bam_master.hpp \
  /usr/include/c++/4.8/unordered_map /usr/include/c++/4.8/bits/hashtable.h \
@@ -995,6 +993,8 @@
  /usr/local/include/boost/algorithm/string/formatter.hpp \
  /usr/local/include/boost/algorithm/string/detail/formatter.hpp \
  /usr/local/include/boost/algorithm/string/erase.hpp \
+ ../src/bam/bam_reader.hpp ../deps/htslib-1.3/htslib/bgzf.h \
+ /usr/include/zlib.h /usr/include/x86_64-linux-gnu/zconf.h \
  ../src/bam/depth_parser.hpp
 
 /usr/include/stdc-predef.h:
@@ -2911,14 +2911,6 @@
 
 ../deps/htslib-1.3/htslib/hts_defs.h:
 
-../deps/samtools-1.3/bam.h:
-
-../deps/htslib-1.3/htslib/bgzf.h:
-
-/usr/include/zlib.h:
-
-/usr/include/x86_64-linux-gnu/zconf.h:
-
 ../deps/htslib-1.3/htslib/sam.h:
 
 ../deps/htslib-1.3/htslib/hts.h:
@@ -3108,5 +3100,13 @@
 /usr/local/include/boost/algorithm/string/detail/formatter.hpp:
 
 /usr/local/include/boost/algorithm/string/erase.hpp:
+
+../src/bam/bam_reader.hpp:
+
+../deps/htslib-1.3/htslib/bgzf.h:
+
+/usr/include/zlib.h:
+
+/usr/include/x86_64-linux-gnu/zconf.h:
 
 ../src/bam/depth_parser.hpp:

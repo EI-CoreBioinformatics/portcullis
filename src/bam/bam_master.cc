@@ -45,8 +45,6 @@ using boost::lexical_cast;
 #include "bam_master.hpp"
 
 
-path portcullis::bam::BamHelper::samtoolsExe = "portcullis_samtools";
-
 bool portcullis::bam::BamHelper::isCoordSortedBam(const path& bamFile) {
 
     BGZF *fp;
@@ -102,7 +100,7 @@ string portcullis::bam::BamHelper::createMergeBamCmd(const vector<path>& bamFile
         inputFiles << " " << p.c_str();
     }
 
-    return samtoolsExe.string() + " merge -f -@ " + lexical_cast<string>(threads) + 
+    return string("samtools merge -f -@ ") + lexical_cast<string>(threads) + 
             " " + mergedBamFile.string() + 
             inputFiles.str();
 }
@@ -124,7 +122,7 @@ string portcullis::bam::BamHelper::createSortBamCmd(const path& unsortedFile,
                                                     uint16_t threads, 
                                                     const string& memory) {
 
-    return samtoolsExe.string() + " sort -@ " + lexical_cast<string>(threads) + 
+    return string("samtools sort -@ ") + lexical_cast<string>(threads) + 
             " -m " + memory + " " + (sortByName ? "-n " : "") + unsortedFile.string() + 
             " " + sortedFile.string();
 }
@@ -137,7 +135,7 @@ string portcullis::bam::BamHelper::createSortBamCmd(const path& unsortedFile,
  */
 string portcullis::bam::BamHelper::createIndexBamCmd(const path& sortedBam, bool useCsi) {
 
-    return samtoolsExe.string() + " index " + (useCsi ? "-c " : "") + sortedBam.string();        
+    return string("samtools index ") + (useCsi ? "-c " : "") + sortedBam.string();        
 }
 
 

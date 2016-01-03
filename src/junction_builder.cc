@@ -478,7 +478,6 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
     jb.setSeparate(separate);
     jb.setSource(source);
     jb.setVerbose(verbose);
-    jb.setSamtoolsExe(BamHelper::samtoolsExe);
     jb.process();
 
     return 0;
