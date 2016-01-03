@@ -44,7 +44,6 @@ namespace portcullis {
         
         // Executables
         path portcullisExe;
-        path filterJuncsPy;
         
         // Directories
         path dataDir;
@@ -171,10 +170,6 @@ namespace portcullis {
 
         }
         
-        path getFilterJuncsPy() const {
-            return filterJuncsPy;
-        }
-
         path getPortcullisExe() const {
             return portcullisExe;
         }
@@ -197,7 +192,6 @@ namespace portcullis {
             
             return strm << "Executables: " << endl
                         << " - portcullis: " << pfs.portcullisExe << endl
-                        << " - filter_junctions.py: " << pfs.filterJuncsPy << endl
                         << "Directories: " << endl
                         << " - Data: " << pfs.dataDir << endl
                         << " - Scripts: " << pfs.scriptsDir << endl

@@ -24,11 +24,11 @@ using std::endl;
 
 #include <boost/algorithm/string.hpp>
 
-#include "../src/bam/bam_master.hpp"
-#include "../src/bam/bam_alignment.hpp"
-#include "../src/bam/bam_reader.hpp"
-#include "../src/bam/depth_parser.hpp"
-#include "../src/bam/genome_mapper.hpp"
+#include <portcullis/bam/bam_master.hpp>
+#include <portcullis/bam/bam_alignment.hpp>
+#include <portcullis/bam/bam_reader.hpp>
+#include <portcullis/bam/depth_parser.hpp>
+#include <portcullis/bam/genome_mapper.hpp>
 using namespace portcullis::bam;
 
         

@@ -1,0 +1,11 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: portcullis
+Description: The portcullis library.
+Version: @PACKAGE_VERSION@
+Requires.private: hts
+Libs: -L${libdir} -lportcullis-0.11 -lpthread
+Cflags: -I${includedir}/portcullis-@PACKAGE_VERSION@

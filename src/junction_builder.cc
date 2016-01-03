@@ -40,24 +40,26 @@ using namespace boost::filesystem;
 using boost::filesystem::path;
 namespace po = boost::program_options;
 
-#include "bam/bam_master.hpp"
-#include "bam/bam_reader.hpp"
-#include "bam/bam_writer.hpp"
-#include "bam/depth_parser.hpp"
-#include "bam/genome_mapper.hpp"
+#include "htslib/sam.h"
+
+#include <portcullis/bam/bam_master.hpp>
+#include <portcullis/bam/bam_reader.hpp>
+#include <portcullis/bam/bam_writer.hpp>
+#include <portcullis/bam/depth_parser.hpp>
+#include <portcullis/bam/genome_mapper.hpp>
+#include <portcullis/seq_utils.hpp>
 using namespace portcullis::bam;
 
-#include "intron.hpp"
-#include "junction.hpp"
-#include "junction_system.hpp"
-#include "prepare.hpp"
-#include "seq_utils.hpp"
+#include <portcullis/intron.hpp>
+#include <portcullis/junction.hpp>
+#include <portcullis/junction_system.hpp>
 using portcullis::Intron;
 using portcullis::Junction;
 using portcullis::JunctionSystem;
 
+#include "prepare.hpp"
+
 #include "junction_builder.hpp"
-#include "htslib/sam.h"
 using portcullis::JBThreadPool;
 
 portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _outputDir, string _outputPrefix) {

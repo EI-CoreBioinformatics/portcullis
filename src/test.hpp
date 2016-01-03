@@ -22,7 +22,7 @@
 #include <dlib/svm.h>
 #include <dlib/rand.h>
 
-#include "junction_system.hpp"
+#include <portcullis/junction_system.hpp>
 
 using namespace std;
 using namespace dlib;

@@ -32,6 +32,9 @@ install:
 - sudo ./b2 -d1 --toolset=gcc-4.9 install
 - cd ..
 
+# Samtools installation (just use an old version for now... ideally use V1.3 to be consistent with internal htslib)
+- sudo apt-get install samtools
+
 # Create portcullis configure script
 - ./autogen.sh
 

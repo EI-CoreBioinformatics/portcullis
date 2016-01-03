@@ -35,11 +35,11 @@ using boost::lexical_cast;
 namespace bfs = boost::filesystem;
 namespace po = boost::program_options;
 
-#include "bam/bam_alignment.hpp"
+#include <portcullis/bam/bam_alignment.hpp>
 using portcullis::bam::BamAlignment;
 using portcullis::bam::BamAlignmentPtr;
 
-#include "junction_system.hpp"
+#include <portcullis/junction_system.hpp>
 
 
 namespace portcullis {

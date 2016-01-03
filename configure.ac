@@ -50,6 +50,10 @@ AC_PROG_INSTALL
 m4_pattern_allow([AM_PROG_AR])
 AM_PROG_AR
 
+# Use this to display simplified compilation output (can be explicitly disabled by using --disable-silent-rules option in the configure script)
+#AM_SILENT_RULES([yes])
+
+
 # Uses libtool for creating libraries
 AC_PROG_LIBTOOL
 
@@ -131,6 +135,6 @@ AM_LIBS="${BOOST_LIBS} ${PTHREAD_CFLAGS} ${ZLIB_LIB} ${RT_LIB}"
 AC_SUBST([AM_LIBS])
 
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile])
+AC_CONFIG_FILES([Makefile lib/portcullis-0.11.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile])
 AC_CONFIG_SUBDIRS([deps/htslib-1.3])
 AC_OUTPUT

@@ -23,6 +23,7 @@
 #include <memory>
 #include <random>
 #include <unordered_map>
+using std::boolalpha;
 using std::endl;
 using std::min;
 using std::max;
@@ -38,19 +39,17 @@ typedef std::unordered_map<size_t, uint16_t> SplicedAlignmentMap;
 #include <boost/lexical_cast.hpp>
 using boost::lexical_cast;
 
-#include "bam/bam_alignment.hpp"
-#include "bam/genome_mapper.hpp"
+#include <portcullis/bam/bam_alignment.hpp>
+#include <portcullis/bam/genome_mapper.hpp>
 using portcullis::bam::CigarOp;
 using portcullis::bam::GenomeMapper;
-
-#include "intron.hpp"
-#include "seq_utils.hpp"
-#include "prepare.hpp"
-using portcullis::Intron;
 using portcullis::bam::Strand;
 
+#include <portcullis/intron.hpp>
+#include <portcullis/seq_utils.hpp>
+using portcullis::Intron;
 
-#include "junction.hpp"
+#include <portcullis/junction.hpp>
 
 
 void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t leftStart, const uint32_t rightEnd, const string& ancLeft, const string& ancRight) {

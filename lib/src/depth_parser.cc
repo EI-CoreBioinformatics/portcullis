@@ -36,13 +36,13 @@ using boost::lexical_cast;
 #include <htslib/faidx.h>
 #include <htslib/sam.h>
 
-#include "bam_alignment.hpp"
-#include "bam_reader.hpp"
+#include <portcullis/bam/bam_alignment.hpp>
+#include <portcullis/bam/bam_reader.hpp>
 using portcullis::bam::BamAlignment;
 using portcullis::bam::BamAlignmentPtr;
 using portcullis::bam::BamReader;
 
-#include "depth_parser.hpp"
+#include <portcullis/bam/depth_parser.hpp>
 
 
 // ******* Depth parser methods ********

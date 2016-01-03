@@ -39,7 +39,7 @@ using boost::lexical_cast;
 #include <htslib/faidx.h>
 #include <htslib/sam.h>
 
-#include "bam_alignment.hpp"
+#include <portcullis/bam/bam_alignment.hpp>
 using portcullis::bam::CigarOp;
     
 portcullis::bam::CigarOp::CigarOp(const string& cigar) {

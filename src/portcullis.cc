@@ -39,10 +39,9 @@ using boost::to_upper_copy;
 using boost::timer::auto_cpu_timer;
 namespace po = boost::program_options;
 
-#include "bam/bam_master.hpp"
-using portcullis::bam::BamHelper;
+#include <portcullis/portcullis_fs.hpp>
+using portcullis::PortcullisFS;
 
-#include "portcullis_fs.hpp"
 #include "junction_builder.hpp"
 #include "prepare.hpp"
 #include "junction_filter.hpp"
@@ -50,7 +49,6 @@ using portcullis::bam::BamHelper;
 #include "cluster.hpp"
 #include "train.hpp"
 #include "test.hpp"
-using portcullis::PortcullisFS;
 using portcullis::JunctionBuilder;
 using portcullis::Prepare;
 using portcullis::JunctionFilter;
@@ -377,7 +375,6 @@ int main(int argc, char *argv[]) {
         
         // Set static variables in downstream subtools so they know where to get their resources from
         JunctionFilter::defaultFilterFile = path(fs.getDataDir().string() + "/default_filter.json");
-        JunctionFilter::filterJuncsPy = fs.getFilterJuncsPy();
         JunctionSystem::version = fs.getVersion();
         
         if (mode == PREP) {

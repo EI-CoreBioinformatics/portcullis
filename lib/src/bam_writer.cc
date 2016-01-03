@@ -15,14 +15,12 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
-#pragma once
-
 #include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
-using std::shared_ptr;
 using std::make_shared;
+using std::shared_ptr;
 using std::string;
 using std::vector;
 using std::stringstream;
@@ -36,29 +34,34 @@ using boost::filesystem::path;
 using boost::lexical_cast;
 
 #include <htslib/faidx.h>
+#include <htslib/sam.h>
+#include <htslib/bgzf.h>
 
-#include "bam_alignment.hpp"
+#include <portcullis/bam/bam_alignment.hpp>
+using portcullis::bam::BamAlignment;
 
-namespace portcullis { namespace bam {
-
-class BamWriter {
-private:
-    path bamFile;
+#include <portcullis/bam/bam_writer.hpp>
     
-    BGZF *fp;    
-
-public:
-    BamWriter(const path& _bamFile) {
-        bamFile = _bamFile;
+void portcullis::bam::BamWriter::open(bam_hdr_t* header) {
+    // split
+    fp = bgzf_open(bamFile.c_str(), "w");
+    if (fp == NULL) {
+        BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                "Could not open output BAM file: ") + bamFile.string()));
     }
-    
-    virtual ~BamWriter() {}
-    
-    void open(bam_hdr_t* header);
-    
-    int write(const BamAlignment& ba);
-    
-    void close();
-};
 
-}}
+    if (bam_hdr_write(fp, header) != 0) {
+        BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+                "Could not write header into: ") + bamFile.string()));
+    }
+}
+
+int portcullis::bam::BamWriter::write(const BamAlignment& ba) {
+     return bam_write1(fp, ba.getRaw());       
+}
+
+void portcullis::bam::BamWriter::close() {
+    bgzf_close(fp);
+}
+
+    

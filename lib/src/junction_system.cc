@@ -32,19 +32,19 @@ using std::shared_ptr;
 using boost::lexical_cast;
 using boost::timer::auto_cpu_timer;
 
-#include "bam/depth_parser.hpp"
+#include <portcullis/bam/depth_parser.hpp>
 using portcullis::bam::DepthParser;
 
-#include "intron.hpp"
-#include "junction.hpp"
-#include "seq_utils.hpp"
+#include <portcullis/intron.hpp>
+#include <portcullis/junction.hpp>
+#include <portcullis/seq_utils.hpp>
 using portcullis::Intron;
 using portcullis::IntronHasher;
 using portcullis::Junction;
 using portcullis::JunctionPtr;
 using portcullis::SeqUtils;
 
-#include "junction_system.hpp"
+#include <portcullis/junction_system.hpp>
     
 size_t portcullis::JunctionSystem::createJunctionGroup(size_t index, vector<JunctionPtr>& group) {
 

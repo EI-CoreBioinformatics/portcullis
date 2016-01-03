@@ -40,7 +40,7 @@ using boost::lexical_cast;
 #include <htslib/sam.h>
 #include <htslib/bgzf.h>
 
-#include "bam_alignment.hpp"
+#include <portcullis/bam/bam_alignment.hpp>
 using portcullis::bam::BamAlignment;
 using portcullis::bam::BamAlignmentPtr;
 using portcullis::bam::RefSeqPtr;

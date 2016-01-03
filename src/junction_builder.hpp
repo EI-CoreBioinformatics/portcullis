@@ -48,13 +48,14 @@ using namespace boost::filesystem;
 using boost::filesystem::path;
 namespace po = boost::program_options;
 
-#include "intron.hpp"
-#include "junction.hpp"
-#include "junction_system.hpp"
-#include "prepare.hpp"
+#include <portcullis/intron.hpp>
+#include <portcullis/junction.hpp>
+#include <portcullis/junction_system.hpp>
 using portcullis::Intron;
 using portcullis::Junction;
 using portcullis::JunctionSystem;
+
+#include "prepare.hpp"
 using portcullis::PreparedFiles;
 
 

@@ -23,8 +23,8 @@ using std::endl;
 
 #include <boost/filesystem.hpp>
 
-#include "../src/intron.hpp"
-#include "../src/junction.hpp"
+#include <portcullis/intron.hpp>
+#include <portcullis/junction.hpp>
 using portcullis::CanonicalSS;
 using portcullis::Intron;
 using portcullis::Junction;

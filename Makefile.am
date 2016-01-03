@@ -10,17 +10,6 @@ AUTHORS \
 tests/resources \
 deps/dlib-18.16/dlib
 
-#dist-hook:
-#	rm -rf `find $(distdir)/deps/dlib-18.16 -type d -name .git`
-#	rm -rf $(distdir)/deps/dlib-18.16/.gitignore
-#	rm -rf `find $(distdir)/deps/htslib-1.2.1 -type d -name .git`
-#	rm -rf $(distdir)/deps/htslib-1.2.1/.gitignore
-#	rm -rf `find $(distdir)/deps/samtools-1.2 -type d -name .git`
-#	rm -rf $(distdir)/deps/samtools-1.2/.gitignore
-#	rm -rf `find $(distdir)/tests/resources -type d -name .git`
-#	rm -rf $(distdir)/tests/resources/.gitignore
-
-
 # FILES NOT TO INSTALL
 dist_noinst_SCRIPTS = autogen.sh antigen.sh
 
@@ -47,6 +36,6 @@ configdir = $(datadir)/portcullis
 dist_config_DATA = data/default_filter.json
 
 # SRC DIRS
-SUBDIRS = deps/htslib-1.3 src tests
+SUBDIRS = deps/htslib-1.3 lib src tests
 
 

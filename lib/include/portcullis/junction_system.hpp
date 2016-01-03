@@ -28,9 +28,9 @@ using std::shared_ptr;
 #include <boost/timer/timer.hpp>
 using boost::timer::auto_cpu_timer;
 
-#include "intron.hpp"
-#include "junction.hpp"
-#include "seq_utils.hpp"
+#include <portcullis/intron.hpp>
+#include <portcullis/junction.hpp>
+#include <portcullis/seq_utils.hpp>
 using portcullis::Intron;
 using portcullis::IntronHasher;
 using portcullis::Junction;

@@ -41,12 +41,12 @@ using boost::lexical_cast;
 #include <htslib/sam.h>
 #include <htslib/bgzf.h>
 
-#include "bam_master.hpp"
-#include "bam_alignment.hpp"
+#include <portcullis/bam/bam_master.hpp>
+#include <portcullis/bam/bam_alignment.hpp>
 using portcullis::bam::BamAlignment;
 using portcullis::bam::BamAlignmentPtr;
 
-#include "bam_reader.hpp"
+#include <portcullis/bam/bam_reader.hpp>
 
 // ****** BamReader methods *********
 

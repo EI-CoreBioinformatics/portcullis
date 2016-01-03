@@ -38,7 +38,7 @@ using boost::lexical_cast;
 #include <htslib/faidx.h>
 #include <htslib/sam.h>
 
-#include "bam_master.hpp"
+#include <portcullis/bam/bam_master.hpp>
 
 namespace portcullis { namespace bam {
 

@@ -42,12 +42,11 @@ namespace bfs = boost::filesystem;
 using bfs::path;
 namespace po = boost::program_options;
 
-#include "bam/bam_master.hpp"
-#include "bam/genome_mapper.hpp"
-using namespace portcullis::bam;
-
-#include "portcullis_fs.hpp"
+#include <portcullis/bam/bam_master.hpp>
+#include <portcullis/bam/genome_mapper.hpp>
+#include <portcullis/portcullis_fs.hpp>
 using portcullis::PortcullisFS;
+using namespace portcullis::bam;
 
 #include "prepare.hpp"
 

@@ -40,7 +40,7 @@ using boost::filesystem::create_directory;
 using boost::filesystem::symbolic_link_exists;
 namespace po = boost::program_options;
 
-#include "junction_system.hpp"
+#include <portcullis/junction_system.hpp>
 
 #include <dlib/clustering.h>
 using namespace dlib;

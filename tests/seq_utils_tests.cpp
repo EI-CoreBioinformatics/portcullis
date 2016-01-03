@@ -23,7 +23,7 @@ using std::endl;
 
 #include <boost/filesystem.hpp>
 
-#include "../src/seq_utils.hpp"
+#include <portcullis/seq_utils.hpp>
 using portcullis::SeqUtils;
 
 

@@ -17,10 +17,10 @@
 
 #include <gtest/gtest.h>
 
-#include "../src/bam/bam_master.hpp"
+#include <portcullis/bam/bam_master.hpp>
 using portcullis::bam::RefSeq;
 
-#include "../src/intron.hpp"
+#include <portcullis/intron.hpp>
 using portcullis::Intron;
 
 const RefSeq rd2(2, "seq_2", 100);

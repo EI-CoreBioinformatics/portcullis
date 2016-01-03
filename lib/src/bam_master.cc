@@ -42,7 +42,7 @@ using boost::lexical_cast;
 #include <htslib/sam.h>
 #include <htslib/bgzf.h>
 
-#include "bam_master.hpp"
+#include <portcullis/bam/bam_master.hpp>
 
 
 bool portcullis::bam::BamHelper::isCoordSortedBam(const path& bamFile) {

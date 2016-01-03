@@ -28,10 +28,10 @@ using std::shared_ptr;
 #include <boost/functional/hash.hpp>
 using boost::lexical_cast;
 
-#include "bam/bam_master.hpp"
+#include <portcullis/bam/bam_master.hpp>
 using portcullis::bam::RefSeq;
 
-#include "intron.hpp"
+#include <portcullis/intron.hpp>
 
 
 portcullis::Intron::Intron(const Intron& other) {

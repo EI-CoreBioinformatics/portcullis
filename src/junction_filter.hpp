@@ -57,12 +57,13 @@ using boost::property_tree::ptree;
 namespace qi    = boost::spirit::qi;
 namespace phx   = boost::phoenix;
 
-#include "intron.hpp"
-#include "junction_system.hpp"
-#include "portcullis_fs.hpp"
+#include <portcullis/intron.hpp>
+#include <portcullis/portcullis_fs.hpp>
+#include <portcullis/junction_system.hpp>
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
+
 
 namespace portcullis {
     
@@ -243,7 +244,6 @@ private:
 public:
     
     static path defaultFilterFile;
-    static path filterJuncsPy;
     
     JunctionFilter( const path& _junctionFile, 
                     const path& _filterFile, 

@@ -35,8 +35,8 @@ using boost::lexical_cast;
 namespace bfs = boost::filesystem;
 namespace po = boost::program_options;
 
-#include "bam/bam_reader.hpp"
-#include "bam/bam_writer.hpp"
+#include <portcullis/bam/bam_reader.hpp>
+#include <portcullis/bam/bam_writer.hpp>
 using namespace portcullis::bam;
 
 #include "bam_filter.hpp"

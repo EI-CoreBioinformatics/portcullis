@@ -36,7 +36,7 @@ using boost::lexical_cast;
 #include <htslib/faidx.h>
 #include <htslib/sam.h>
 
-#include "genome_mapper.hpp"
+#include <portcullis/bam/genome_mapper.hpp>
 
 // ******** Genome mapper ********
 

@@ -86,7 +86,7 @@ BUILT_TEST_PROGRAMS = \
 	test/test-vcf-api \
 	test/test-vcf-sweep
 
-all: lib-static lib-shared $(BUILT_PROGRAMS) plugins $(BUILT_TEST_PROGRAMS)
+all: lib-static $(BUILT_PROGRAMS) plugins $(BUILT_TEST_PROGRAMS)
 
 HTSPREFIX =
 include htslib_vars.mk
@@ -230,17 +230,17 @@ libhts.a: $(LIBHTS_OBJS)
 # As a byproduct invisible to make, libhts.so.NN is also created, as it is the
 # file used at runtime (when $LD_LIBRARY_PATH includes the build directory).
 
-libhts.so: $(LIBHTS_OBJS:.o=.pico)
-	$(CC) -shared -Wl,-soname,libhts.so.$(LIBHTS_SOVERSION) -pthread $(LDFLAGS) -o $@ $(LIBHTS_OBJS:.o=.pico) -lz -lm $(LIBS)
-	ln -sf $@ libhts.so.$(LIBHTS_SOVERSION)
+libhts.so: #$(LIBHTS_OBJS:.o=.pico)
+	#$(CC) -shared -Wl,-soname,libhts.so.$(LIBHTS_SOVERSION) -pthread $(LDFLAGS) -o $@ $(LIBHTS_OBJS:.o=.pico) -lz -lm $(LIBS)
+	#ln -sf $@ libhts.so.$(LIBHTS_SOVERSION)
 
 # Similarly this also creates libhts.NN.dylib as a byproduct, so that programs
 # when run can find this uninstalled shared library (when $DYLD_LIBRARY_PATH
 # includes this project's build directory).
 
-libhts.dylib: $(LIBHTS_OBJS)
-	$(CC) -dynamiclib -install_name $(libdir)/libhts.$(LIBHTS_SOVERSION).dylib -current_version $(NUMERIC_VERSION) -compatibility_version $(LIBHTS_SOVERSION) $(LDFLAGS) -o $@ $(LIBHTS_OBJS) -lz $(LIBS)
-	ln -sf $@ libhts.$(LIBHTS_SOVERSION).dylib
+libhts.dylib: #$(LIBHTS_OBJS)
+	#$(CC) -dynamiclib -install_name $(libdir)/libhts.$(LIBHTS_SOVERSION).dylib -current_version $(NUMERIC_VERSION) -compatibility_version $(LIBHTS_SOVERSION) $(LDFLAGS) -o $@ $(LIBHTS_OBJS) -lz $(LIBS)
+	#ln -sf $@ libhts.$(LIBHTS_SOVERSION).dylib
 
 
 .pico.so:

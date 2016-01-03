@@ -43,10 +43,10 @@ namespace bfs = boost::filesystem;
 using bfs::path;
 namespace po = boost::program_options;
 
-#include "bam/bam_master.hpp"
+#include <portcullis/bam/bam_master.hpp>
 using portcullis::bam::Strandedness;
 
-#include "portcullis_fs.hpp"
+#include <portcullis/portcullis_fs.hpp>
 using portcullis::PortcullisFS;
 
 

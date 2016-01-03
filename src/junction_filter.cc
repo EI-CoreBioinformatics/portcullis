@@ -51,10 +51,10 @@ using boost::property_tree::ptree;
 namespace qi    = boost::spirit::qi;
 namespace phx   = boost::phoenix;
 
-#include "intron.hpp"
-#include "junction.hpp"
-#include "junction_system.hpp"
-#include "portcullis_fs.hpp"
+#include <portcullis/intron.hpp>
+#include <portcullis/junction.hpp>
+#include <portcullis/junction_system.hpp>
+#include <portcullis/portcullis_fs.hpp>
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
@@ -582,4 +582,3 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 }
 
 path portcullis::JunctionFilter::defaultFilterFile = DEFAULT_FILTER_FILE;
-path portcullis::JunctionFilter::filterJuncsPy = "";

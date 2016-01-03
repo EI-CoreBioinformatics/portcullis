@@ -25,7 +25,7 @@ using std::vector;
 
 #include <boost/filesystem.hpp>
 
-#include "../src/bam/bam_alignment.hpp"
+#include <portcullis/bam/bam_alignment.hpp>
 using portcullis::bam::CigarOp;
 using portcullis::bam::BamAlignment;
 
