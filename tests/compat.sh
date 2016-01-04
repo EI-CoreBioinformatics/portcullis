@@ -1,6 +1,6 @@
 PORTCULLIS="../src/portcullis"
-SRCDIR=/home/dan/dev/portcullis
-BUILDDIR=/home/dan/dev/portcullis
+SRCDIR=/home/maplesod/dev/portcullis
+BUILDDIR=/home/maplesod/dev/portcullis
 data=${SRCDIR}/tests/resources
 
 set -e

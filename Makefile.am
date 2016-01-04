@@ -3,12 +3,13 @@
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
 # ADDITIONAL FILES TO INSTALL
-EXTRA_DIST = etc \
+EXTRA_DIST = data \
 README.md \
 COPYING \
 AUTHORS \
 tests/resources \
 deps/dlib-18.16/dlib
+
 
 # FILES NOT TO INSTALL
 dist_noinst_SCRIPTS = autogen.sh antigen.sh

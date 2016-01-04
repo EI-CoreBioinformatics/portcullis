@@ -10,6 +10,7 @@ config.log
 config.mk
 config.status
 configure
+htslib.pc
 
 hfile_*.bundle
 hfile_*.so

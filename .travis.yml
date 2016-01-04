@@ -40,5 +40,8 @@ install:
 
 # Build portcullis and run tests
 script:
-- ./configure && make -j2 && make check
+- ./configure
+- make
+- make check
+#- make distcheck	# Doesn't work due to issue in htslib (don't think htslib is designed to handle this target, I'll need to make some modifcations to support this)
 
