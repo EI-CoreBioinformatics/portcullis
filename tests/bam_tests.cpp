@@ -18,8 +18,10 @@
 #include <gtest/gtest.h>
 
 #include <iostream>
+#include <string>
 using std::cout;
 using std::endl;
+using std::stringstream;
 
 
 #include <boost/algorithm/string.hpp>
@@ -34,12 +36,15 @@ using namespace portcullis::bam;
         
 TEST(bam, sort) {
     
-    string unsortedBam = "resources/unsorted.bam";
-    string sortedBam = "resources/sorted.test.bam";
+    string unsortedBam = RESOURCESDIR "/unsorted.bam";
+    string sortedBam = RESOURCESDIR "/sorted.test.bam";
     
     string cmd = BamHelper::createSortBamCmd(unsortedBam, sortedBam);
     
-    string correct("samtools sort -@ 1 -m 1G resources/unsorted.bam resources/sorted.test.bam");
+    stringstream ss;
+    ss << "samtools sort -@ 1 -m 1G " << RESOURCESDIR << "/unsorted.bam " 
+            << RESOURCESDIR << "/sorted.test.bam";
+    string correct = ss.str();
     
     //cout << "cmd=" << cmd << endl;
     
@@ -58,24 +63,26 @@ TEST(bam, merge) {
     path mergedBam = RESOURCESDIR "/merged.bam";
     string cmd = BamHelper::createMergeBamCmd(bamFiles, mergedBam, 1);
     
-    string correct("samtools merge -f -@ 1 ./resources/merged.bam ./resources/bam1.bam ./resources/bam2.bam");
+    stringstream ss;
+    ss << "samtools merge -f -@ 1 " << RESOURCESDIR << "/merged.bam " 
+            << RESOURCESDIR << "/bam1.bam " << RESOURCESDIR << "/bam2.bam";
+    string correct = ss.str();
     
     EXPECT_EQ(cmd, correct);
 }
 
 TEST(bam, is_sorted1) {
     
-    string unsortedBam = "resources/unsorted.bam";
+    string unsortedBam = RESOURCESDIR "/unsorted.bam";
     bool sorted = BamHelper::isCoordSortedBam(unsortedBam);
     
     // Check the merged bam file exists
-    //BOOST_CHECK(!sorted);    
     EXPECT_EQ(sorted, true);    
 }
 
 TEST(bam, is_sorted2) {
     
-    string sortedBam = "resources/sorted.bam";
+    string sortedBam = RESOURCESDIR "/sorted.bam";
     bool sorted = BamHelper::isCoordSortedBam(sortedBam);
     
     // Check the merged bam file exists
@@ -85,7 +92,7 @@ TEST(bam, is_sorted2) {
 
 TEST(bam, depth_test_1) {
     
-    DepthParser dp1("resources/sorted.bam", 0, true);
+    DepthParser dp1(RESOURCESDIR "/sorted.bam", 0, true);
     
     vector<uint32_t> batch1;
         
@@ -106,7 +113,7 @@ TEST(bam, depth_test_1) {
     EXPECT_EQ(allPos1, true);
     //cout << count1 << std::endl;
     
-    DepthParser dp2("resources/sorted.bam", 0, false);
+    DepthParser dp2(RESOURCESDIR "/sorted.bam", 0, false);
     
     vector<uint32_t> batch2;
         
@@ -133,7 +140,7 @@ TEST(bam, depth_test_1) {
 TEST(bam, genome_mapper_ecoli) {
     
     // Create a new faidx
-    GenomeMapper genomeMapper("resources/ecoli.fa");
+    GenomeMapper genomeMapper(RESOURCESDIR "/ecoli.fa");
     genomeMapper.buildFastaIndex();
     genomeMapper.loadFastaIndex();
     

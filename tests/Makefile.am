@@ -1,6 +1,23 @@
 AUTOMAKE_OPTIONS = subdir-objects
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
+EXTRA_DIST = \
+	resources/artha_chr4.fa \
+	resources/bam1.bam \
+	resources/bam2.bam \
+	resources/clipped3.bam \
+	resources/clipped3.bam.bai \
+	resources/ecoli.bam.depth \
+	resources/ecoli.fa \
+	resources/sorted.bam \
+	resources/sorted.bam.bai \
+	resources/unsorted.bam
+
+noinst_HEADERS =    gtest/gtest.h \
+		    gtest/src/gtest-all.cc \
+		    gtest/src/gtest_main.cc
+
+
 TESTS = check_unit_tests
 check_PROGRAMS = check_unit_tests
 
@@ -13,14 +30,14 @@ check_unit_tests_SOURCES =	bam_tests.cpp \
 check_unit_tests_CXXFLAGS = -g -g3 -gdwarf-4 -O0 @AM_CXXFLAGS@
 
 check_unit_tests_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
-				-isystem $(top_srcdir)/deps/dlib-18.16 \
 				-isystem $(top_srcdir)/lib/include \
-				-DRESOURCESDIR=\"$(srcdir)/resources\" \
+				-DRESOURCESDIR=\"$(top_srcdir)/tests/resources\" \
 				-DDATADIR=\"$(datadir)\" \
 				@AM_CPPFLAGS@ 
 
-check_unit_tests_LDADD =	$(top_srcdir)/lib/libportcullis-0.11.la \
-				$(top_srcdir)/deps/htslib-1.3/libhts.a \
+check_unit_tests_LDADD =	../lib/libportcullis-0.11.la \
+				../deps/htslib-1.3/libphts.la \
+				-ldl \
 				libgtest.la \
 				@AM_LIBS@	
 	

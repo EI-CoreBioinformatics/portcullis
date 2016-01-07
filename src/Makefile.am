@@ -8,7 +8,6 @@ portcullis_noinstdir = $(top_srcdir)/src
 portcullis_CXXFLAGS = -g -g3 -gdwarf-4 -O3 -pedantic @AM_CXXFLAGS@
 
 portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
-			-isystem $(top_srcdir)/deps/dlib-18.16 \
 			-isystem $(top_srcdir)/lib/include \
 			-I$(top_srcdir)/src \
 			-DDATADIR=\"$(datadir)\" \
@@ -16,8 +15,9 @@ portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 
 portcullis_LDFLAGS = @AM_LDFLAGS@
 
-portcullis_LDADD =	$(top_srcdir)/lib/libportcullis-0.11.la \
-			$(top_srcdir)/deps/htslib-1.3/libhts.a \
+portcullis_LDADD =	../lib/libportcullis-0.11.la \
+			../deps/htslib-1.3/libphts.la \
+			-ldl \
 			@AM_LIBS@
 
 

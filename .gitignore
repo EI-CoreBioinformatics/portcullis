@@ -39,3 +39,4 @@ callgrind*
 /scripts/__pycache__/
 *.travis.yml.swp
 *.h
+*.ac~

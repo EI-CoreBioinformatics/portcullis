@@ -7,7 +7,7 @@ AC_INIT([portcullis],[0.11.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://
 
 # I built this with autoconf 2.53 and have only tested it on 2.69 systems.  You can change this but I don't
 # make any guarentees
-AC_PREREQ([2.53])
+AC_PREREQ([2.69])
 
 # Check that the configure script is being run from the right directory
 AC_CONFIG_SRCDIR([src/portcullis.cc])
@@ -26,7 +26,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([1.11 subdir-objects foreign -Wall no-define tar-ustar])
 
 # Most of portcullis is written in C++.  This is what this macro means: "Do compilation tests using CXX and CXXCPP and use extension .C for test programs. Use compilation flags: CPPFLAGS with CXXCPP, and both CPPFLAGS and CXXFLAGS with CXX."
-AC_LANG_CPLUSPLUS
+AC_LANG([C++])
 
 # Set output variable CXXCPP to a command that runs the C++ preprocessor. If ‘$CXX -E’ doesn't work, /lib/cpp is used. It is portable to run CXXCPP only on files with a .c, .C, .cc, or .cpp extension.
 AC_PROG_CXXCPP
@@ -55,7 +55,7 @@ AM_PROG_AR
 
 
 # Uses libtool for creating libraries
-AC_PROG_LIBTOOL
+LT_INIT
 
 
 ######################################################################
@@ -84,6 +84,12 @@ AC_CHECK_HEADERS([stdio.h])
 AC_CHECK_HEADERS([fstream])
 AC_CHECK_HEADERS([vector])
 AC_CHECK_HEADERS([glob.h])
+
+with_dlib=yes
+AC_CHECK_HEADER([dlib/clustering.h], , [with_dlib=no])
+if test "$with_dlib" == no ; then
+  AC_MSG_ERROR([dlib not found])
+fi 
 
 # Save libs (restore as and when needed)
 SAVED_LIBS="${LIBS}"
@@ -136,10 +142,10 @@ AC_SUBST([AM_CXXFLAGS])
 AM_CPPFLAGS="${BOOST_CPPFLAGS} ${ZLIB_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
-AM_LDFLAGS="${BOOST_LDFLAGS} ${ZLIB_LDFLAGS}"
+AM_LDFLAGS="${BOOST_LDFLAGS} ${PTHREAD_CFLAGS} ${ZLIB_LDFLAGS}"
 AC_SUBST([AM_LDFLAGS])
 
-AM_LIBS="${BOOST_LIBS} ${PTHREAD_CFLAGS} ${ZLIB_LIB} ${RT_LIB}"
+AM_LIBS="${BOOST_LIBS} ${ZLIB_LIB} ${RT_LIB}"
 AC_SUBST([AM_LIBS])
 
 AC_CONFIG_HEADERS([config.h])

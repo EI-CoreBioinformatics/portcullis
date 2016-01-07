@@ -3,14 +3,11 @@
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
 # ADDITIONAL FILES TO INSTALL
-EXTRA_DIST = data/default_filter.json \
-	data/default_filter.0.9.2.json
+EXTRA_DIST = \
 	README.md \
 	COPYING \
 	AUTHORS \
-	tests/resources \
-	deps/dlib-18.16/dlib
-
+	ChangeLog
 
 # FILES NOT TO INSTALL
 dist_noinst_SCRIPTS = autogen.sh antigen.sh
