@@ -22,13 +22,13 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-CC     = gcc
-RANLIB = ranlib
+CC     = @CC@
+RANLIB = @RANLIB@
 
-CPPFLAGS =  -I/usr/local/include -I/usr/local/include
-CFLAGS   = -g -O2
-LDFLAGS  =  -L/usr/local/lib -L/usr/local/lib
-LIBS     = 
+CPPFLAGS = @CPPFLAGS@
+CFLAGS   = @CFLAGS@
+LDFLAGS  = @LDFLAGS@
+LIBS     = @LIBS@
 EXTRA_CFLAGS_PIC = -fpic
 
 # For now these don't work too well as samtools also needs to know to
@@ -49,14 +49,14 @@ EXTRA_CFLAGS_PIC = -fpic
 # LIBS     += -llzma
 # endif
 
-prefix       = /usr/local
-exec_prefix  = ${prefix}
-bindir       = ${exec_prefix}/bin
-includedir   = ${prefix}/include
-libdir       = ${exec_prefix}/lib
-libexecdir   = ${exec_prefix}/libexec
-datarootdir  = ${prefix}/share
-mandir       = ${datarootdir}/man
+prefix       = @prefix@
+exec_prefix  = @exec_prefix@
+bindir       = @bindir@
+includedir   = @includedir@
+libdir       = @libdir@
+libexecdir   = @libexecdir@
+datarootdir  = @datarootdir@
+mandir       = @mandir@
 man1dir     = $(mandir)/man1
 man5dir     = $(mandir)/man5
 pkgconfigdir= $(libdir)/pkgconfig
@@ -364,13 +364,13 @@ install-dylib: #libhts.dylib installdirs
 # Substitute these pseudo-autoconf variables only at install time
 # so that "make install prefix=/prefix/path" etc continue to work.
 install-pkgconfig: #installdirs
-	#sed -e 's#${prefix}/include#$(includedir)#g;s#${exec_prefix}/lib#$(libdir)#g;s#1.3#$(PACKAGE_VERSION)#g' htslib.pc.in > $(DESTDIR)$(pkgconfigdir)/htslib.pc
+	#sed -e 's#@includedir@#$(includedir)#g;s#@libdir@#$(libdir)#g;s#@PACKAGE_VERSION@#$(PACKAGE_VERSION)#g' htslib.pc.in > $(DESTDIR)$(pkgconfigdir)/htslib.pc
 	#chmod 644 $(DESTDIR)$(pkgconfigdir)/htslib.pc
 
 # A pkg-config file (suitable for copying to $PKG_CONFIG_PATH) that provides
 # flags for building against the uninstalled library in this build directory.
 htslib-uninstalled.pc: #htslib.pc.in
-	#sed -e 's#${prefix}/include#'`pwd`'#g;s#${exec_prefix}/lib#'`pwd`'#g' htslib.pc.in > $@
+	#sed -e 's#@includedir@#'`pwd`'#g;s#@libdir@#'`pwd`'#g' htslib.pc.in > $@
 
 
 testclean:

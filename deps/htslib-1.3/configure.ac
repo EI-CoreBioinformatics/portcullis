@@ -188,5 +188,5 @@ Either configure with --disable-libcurl or resolve this error to build HTSlib.])
 fi
 AC_SUBST([CRYPTO_LIBS])
 
-AC_CONFIG_FILES(config.mk htslib.pc)
+AC_CONFIG_FILES(htslib.pc htslib.mk htslib_vars.mk Makefile)
 AC_OUTPUT

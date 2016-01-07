@@ -31,7 +31,7 @@
 #	include $(HTSDIR)/htslib.mk
 #
 #	foo.o: foo.c $(htslib_hts_h) $(htslib_kstring_h)
-HTSDIR = .
+HTSDIR = @top_srcdir@
 HTSPREFIX = $(HTSDIR)/
 include $(HTSDIR)/htslib_vars.mk
 
