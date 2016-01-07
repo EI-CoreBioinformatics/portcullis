@@ -1,7 +1,14 @@
+/.deps/
+/.libs/
+/build-aux/
+/m4/
+
 *.o
+*.lo
+*.Plo
 *.pico
 *-uninstalled.pc
-/version.h
+
 
 autom4te.cache
 config.cache
@@ -15,6 +22,7 @@ htslib.pc
 hfile_*.bundle
 hfile_*.so
 
+lib*.la
 lib*.a
 lib*.dylib
 lib*.so
@@ -34,3 +42,17 @@ lib*.so.*
 /test/*.tmp.*
 
 /TAGS
+/stamp-h1
+/test-driver
+/phtslib.pc
+/ltmain.sh
+/missing
+/compile
+config.*
+*.h.in
+*.h.in~
+/install-sh
+/libtool
+*~
+/depcomp
+*.log
