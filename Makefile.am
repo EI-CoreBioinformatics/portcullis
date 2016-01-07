@@ -3,12 +3,13 @@
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
 # ADDITIONAL FILES TO INSTALL
-EXTRA_DIST = data \
-README.md \
-COPYING \
-AUTHORS \
-tests/resources \
-deps/dlib-18.16/dlib
+EXTRA_DIST = data/default_filter.json \
+	data/default_filter.0.9.2.json
+	README.md \
+	COPYING \
+	AUTHORS \
+	tests/resources \
+	deps/dlib-18.16/dlib
 
 
 # FILES NOT TO INSTALL
@@ -37,6 +38,11 @@ configdir = $(datadir)/portcullis
 dist_config_DATA = data/default_filter.json
 
 # SRC DIRS
-SUBDIRS = deps/htslib-1.3 lib src tests
+make_dirs=deps/htslib-1.3 lib src tests
+
+if test @MAKE_DOCS@ = 1; then
+    make_dirs +=  doc
+
+SUBDIRS = $(make_dirs)
 
 

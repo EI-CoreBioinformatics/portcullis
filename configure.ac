@@ -105,6 +105,14 @@ if test "$with_samtools" == no ; then
   AC_MSG_ERROR([samtools not found])
 fi 
 
+AC_CHECK_PROG([sphinx], [sphinx-build], [yes], [no])
+if test x"${sphinx}" = x"no"; then
+    AC_MSG_WARN([Sphinx not detected, won't create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/])
+    MAKE_DOCS=0
+else
+    MAKE_DOCS=1
+fi
+
 ## Check for boost
 AX_BOOST_BASE([1.52],, [AC_MSG_ERROR([Boost not found.  Please ensure that boost is properly built and the BOOST_ROOT environment variable is set.  Alternatively you can override BOOST_ROOT with the --with-boost option.])])
 AX_BOOST_SYSTEM
@@ -135,6 +143,6 @@ AM_LIBS="${BOOST_LIBS} ${PTHREAD_CFLAGS} ${ZLIB_LIB} ${RT_LIB}"
 AC_SUBST([AM_LIBS])
 
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile lib/portcullis-0.11.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile])
+AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis-0.11.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile])
 AC_CONFIG_SUBDIRS([deps/htslib-1.3])
 AC_OUTPUT

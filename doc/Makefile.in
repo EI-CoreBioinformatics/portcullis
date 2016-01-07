@@ -10,16 +10,16 @@ MKDIR_P	      = mkdir -p
 INSTALL	      = /usr/bin/install -c -m 644
 
 # Set autoconf variables
-prefix	      = /usr/local
-PACKAGE_TARNAME = portcullis
-top_srcdir    = ..
-srcdir	      = .
-docdir	      = ${prefix}/share/doc/${PACKAGE_TARNAME}
-mandir	      = ${prefix}/share/man
-htmldir	      = ${docdir}
-pdfdir        = ${docdir}
-infodir       = ${prefix}/share/info
-top_builddir  = ..
+prefix	      = @prefix@
+PACKAGE_TARNAME = @PACKAGE_TARNAME@
+top_srcdir    = @top_srcdir@
+srcdir	      = @srcdir@
+docdir	      = @docdir@
+mandir	      = @mandir@
+htmldir	      = @htmldir@
+pdfdir        = @pdfdir@
+infodir       = @infodir@
+top_builddir  = @top_builddir@
 
 # User-friendly check for sphinx-build
 #if test $(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?) = 1; then
@@ -226,11 +226,11 @@ install-data: install-man install-pdf install-html
 
 # Fail on error
 install-man:
-	test -s build && test -s build/man && $(INSTALL) build/man/portcullis.1 $(DESTDIR)$(mandir)/man1/portcullis.1
+	test -s build && test -s build/man && $(INSTALL) build/man/@PACKAGE_TARNAME@.1 $(DESTDIR)$(mandir)/man1/@PACKAGE_TARNAME@.1
 
 # Skip any errors here... we don't require the PDF to be generated
 install-pdf:
-	-test -s build && test -s build/latex && test -s build/latex/portcullis.pdf && $(INSTALL) build/latex/portcullis.pdf $(DESTDIR)$(pdfdir)/portcullis.pdf;
+	-test -s build && test -s build/latex && test -s build/latex/@PACKAGE_TARNAME@.pdf && $(INSTALL) build/latex/@PACKAGE_TARNAME@.pdf $(DESTDIR)$(pdfdir)/@PACKAGE_TARNAME@.pdf;
 
 install-html:
 	test -s build && test -s build/html && $(MKDIR_P) $(DESTDIR)$(htmldir) && cp -rf build/html $(DESTDIR)$(htmldir) && chmod 755 -R $(DESTDIR)$(htmldir)
@@ -244,7 +244,7 @@ installdirs: mkinstalldirs
 		$(DESTDIR)$(mandir)/man1
 
 uninstall:
-	rm -Rf "$(DESTDIR)$(mandir)/man1/portcullis.1" "$(DESTDIR)$(pdfdir)/portcullis.pdf" "$(DESTDIR)$(htmldir)"
+	rm -Rf "$(DESTDIR)$(mandir)/man1/@PACKAGE_TARNAME@.1" "$(DESTDIR)$(pdfdir)/@PACKAGE_TARNAME@.pdf" "$(DESTDIR)$(htmldir)"
 
 	
 distdir: $(DISTFILES)
