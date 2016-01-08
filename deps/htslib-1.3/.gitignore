@@ -56,3 +56,5 @@ config.*
 *~
 /depcomp
 *.log
+/Makefile
+/Makefile.in

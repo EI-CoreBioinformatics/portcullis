@@ -22,3 +22,4 @@ check_seq*
 /check_unit_tests.log
 /check_unit_tests.trs
 *.la
+/compat.sh
