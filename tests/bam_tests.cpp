@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include <iostream>
+#include <fstream>
 #include <string>
 using std::cout;
 using std::endl;
@@ -25,6 +26,10 @@ using std::stringstream;
 
 
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
+namespace bfs = boost::filesystem;
+using bfs::path;
 
 #include <portcullis/bam/bam_master.hpp>
 #include <portcullis/bam/bam_alignment.hpp>
@@ -140,13 +145,22 @@ TEST(bam, depth_test_1) {
 TEST(bam, genome_mapper_ecoli) {
     
     // Create a new faidx
-    GenomeMapper genomeMapper(RESOURCESDIR "/ecoli.fa");
+    bfs::create_directories("temp");
+    path in(RESOURCESDIR "/ecoli.fa");
+    path out("temp/ecoli.fa");
+    
+    std::ifstream  src(in.c_str(), std::ios::binary);
+    std::ofstream  dst(out.c_str(), std::ios::binary);
+
+    dst << src.rdbuf();
+    
+    GenomeMapper genomeMapper(out);
     genomeMapper.buildFastaIndex();
     genomeMapper.loadFastaIndex();
     
     // Check faidx file exists
     path faidxFile = genomeMapper.getFastaIndexFile();    
-    EXPECT_EQ(boost::filesystem::exists(faidxFile), true);
+    EXPECT_EQ(bfs::exists(faidxFile), true);
     
     // Check number of seqs is what we expect
     int nbSeqs = genomeMapper.getNbSeqs();    
@@ -172,7 +186,7 @@ TEST(bam, genome_mapper_ecoli) {
     EXPECT_EQ(len, 10);
     
     // Delete the faidx file
-    boost::filesystem::remove(faidxFile);
+    bfs::remove(faidxFile);
 }
 
 TEST(bam, padding) {

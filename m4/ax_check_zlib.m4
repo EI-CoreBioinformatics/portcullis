@@ -107,6 +107,7 @@ then
         LDFLAGS="$LDFLAGS -L${ZLIB_HOME}/lib"
         CPPFLAGS="$CPPFLAGS -I${ZLIB_HOME}/include"
   fi
+
   AC_LANG_SAVE
   AC_LANG_C
   AC_CHECK_LIB([z], [inflateEnd], [zlib_cv_libz=yes], [zlib_cv_libz=no])
@@ -121,16 +122,15 @@ then
                 
                 ZLIB_CPPFLAGS="-I${ZLIB_HOME}/include"
                 AC_SUBST([ZLIB_CPPFLAGS])
-                CPPFLAGS="$CPPFLAGS ${ZLIB_CPPFLAGS}"
+                CPPFLAGS="$ZLIB_OLD_CPPFLAGS"
                 
                 ZLIB_LDFLAGS="-L${ZLIB_HOME}/lib"
                 AC_SUBST([ZLIB_LDFLAGS])
-                LDFLAGS="$LDFLAGS ${ZLIB_LDFLAGS}"
+                LDFLAGS="$ZLIB_OLD_LDFLAGS"
                 
                 ZLIB_LIB="-lz"
                 AC_SUBST([ZLIB_LIB])
-                LIBS="${ZLIB_LIB} $LIBS"
-
+                
                 AC_DEFINE([HAVE_LIBZ], [1],
                           [Define to 1 if you have `z' library (-lz)])
                ],[

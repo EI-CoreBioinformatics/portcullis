@@ -226,7 +226,7 @@ install-data: install-man install-pdf install-html
 
 # Fail on error
 install-man:
-	test -s build && test -s build/man && $(INSTALL) build/man/portcullis.1 $(DESTDIR)$(mandir)/man1/portcullis.1
+	test -s build && test -s build/man && $(MKDIR_P) $(DESTDIR)$(mandir)/man1 && $(INSTALL) build/man/portcullis.1 $(DESTDIR)$(mandir)/man1/portcullis.1
 
 # Skip any errors here... we don't require the PDF to be generated
 install-pdf:

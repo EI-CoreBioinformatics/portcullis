@@ -7,7 +7,7 @@ EXTRA_DIST = \
 	README.md \
 	COPYING \
 	AUTHORS \
-	ChangeLog
+	NEWS
 
 # FILES NOT TO INSTALL
 dist_noinst_SCRIPTS = autogen.sh antigen.sh

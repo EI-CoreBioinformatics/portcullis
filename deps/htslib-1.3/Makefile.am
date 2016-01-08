@@ -50,14 +50,14 @@ libphts_la_SOURCES = \
 	cram/string_alloc.c \
 	cram/thread_pool.c \
 	cram/vlen.c \
-	cram/zfio.c
+	cram/zfio.c \
+	hfile_internal.h \
+	hts_internal.h
 
-library_includedir=$(includedir)/phtslib-@PACKAGE_VERSION@/
+htslib_library_includedir=$(includedir)/phtslib-@PACKAGE_VERSION@/htslib
 HI = $(top_srcdir)/htslib
 CI = $(top_srcdir)/cram
-library_include_HEADERS = \
-	$(top_srcdir)/hfile_internal.h \
-	$(top_srcdir)/hts_internal.h \
+htslib_library_include_HEADERS = \	
 	$(HI)/bgzf.h \
 	$(HI)/cram.h \
 	$(HI)/faidx.h \
@@ -79,7 +79,11 @@ library_include_HEADERS = \
 	$(HI)/tbx.h \
 	$(HI)/vcf.h \
 	$(HI)/vcf_sweep.h \
-	$(HI)/vcfutils.h \
+	$(HI)/vcfutils.h
+	
+cram_library_includedir=$(includedir)/phtslib-@PACKAGE_VERSION@/cram
+CI = $(top_srcdir)/cram
+cram_library_include_HEADERS = \
 	$(CI)/cram_codecs.h \
 	$(CI)/cram_decode.h \
 	$(CI)/cram_encode.h \

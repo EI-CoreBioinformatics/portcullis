@@ -33,7 +33,18 @@ install:
 - cd ..
 
 # Samtools installation (just use an old version for now... ideally use V1.3 to be consistent with internal htslib)
-- sudo apt-get install samtools
+- wget -q https://github.com/samtools/samtools/releases/download/1.3/samtools-1.3.tar.bz2
+- tar -xf samtools-1.3.tar.bz2
+- cd samtools-1.3
+- make
+- make check
+- sudo make install
+- cd ..
+
+# Get Dlib
+- wget -q http://dlib.net/files/dlib-18.18.tar.bz2
+- tar -xf dlib-18.18.tar.bz2
+- export CPPFLAGS="$CPPFLAGS -isystem $TRAVIS_BUILD_DIR/dlib-18.18"
 
 # Create portcullis configure script
 - ./autogen.sh
@@ -43,5 +54,5 @@ script:
 - ./configure
 - make
 - make check
-#- make distcheck	# Doesn't work due to issue in htslib (don't think htslib is designed to handle this target, I'll need to make some modifcations to support this)
+- make distcheck	# Doesn't work due to issue in htslib (don't think htslib is designed to handle this target, I'll need to make some modifcations to support this)
 

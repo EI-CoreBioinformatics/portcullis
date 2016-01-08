@@ -85,18 +85,13 @@ AC_CHECK_HEADERS([fstream])
 AC_CHECK_HEADERS([vector])
 AC_CHECK_HEADERS([glob.h])
 
-with_dlib=yes
-AC_CHECK_HEADER([dlib/clustering.h], , [with_dlib=no])
-if test "$with_dlib" == no ; then
-  AC_MSG_ERROR([dlib not found])
-fi 
-
 # Save libs (restore as and when needed)
 SAVED_LIBS="${LIBS}"
 
 # Check pthreads and zlib exist and are available
 AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
-AX_CHECK_ZLIB(, [AC_MSG_ERROR([Zlib not found.  Please ensure that zlib is properly built and configured.])])
+AX_CHECK_ZLIB
+AX_DLIB
 
 AC_CHECK_FUNCS(clock_gettime, [], [
   AC_CHECK_LIB(rt, clock_gettime, [
@@ -139,7 +134,7 @@ LIBS="${SAVED_LIBS}"
 AM_CXXFLAGS="-DCPLUSPLUS"
 AC_SUBST([AM_CXXFLAGS])
 
-AM_CPPFLAGS="${BOOST_CPPFLAGS} ${ZLIB_CPPFLAGS}"
+AM_CPPFLAGS="${BOOST_CPPFLAGS} ${DLIB_CPPFLAGS} ${ZLIB_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
 AM_LDFLAGS="${BOOST_LDFLAGS} ${PTHREAD_CFLAGS} ${ZLIB_LDFLAGS}"

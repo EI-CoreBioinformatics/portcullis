@@ -30,16 +30,21 @@ check_unit_tests_SOURCES =	bam_tests.cpp \
 check_unit_tests_CXXFLAGS = -g -g3 -gdwarf-4 -O0 @AM_CXXFLAGS@
 
 check_unit_tests_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
-				-isystem $(top_srcdir)/lib/include \
+				-I$(top_srcdir)/lib/include \
 				-DRESOURCESDIR=\"$(top_srcdir)/tests/resources\" \
 				-DDATADIR=\"$(datadir)\" \
 				@AM_CPPFLAGS@ 
 
-check_unit_tests_LDADD =	../lib/libportcullis-0.11.la \
+check_unit_tests_LDADD =	libgtest.la \
+				../lib/libportcullis-0.11.la \
 				../deps/htslib-1.3/libphts.la \
 				-ldl \
-				libgtest.la \
 				@AM_LIBS@	
+
+clean-local: clean-local-check
+.PHONY: clean-local-check
+clean-local-check:
+	-rm -rf temp
 	
 include gtest.mk
 	
