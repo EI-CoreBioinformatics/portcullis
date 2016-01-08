@@ -22,25 +22,23 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-dnl Process this file with autoconf to produce a configure script
+# Autoconf initialisation
+AC_PREREQ([2.68])
 AC_INIT([HTSlib],[1.3],[samtools-help@lists.sourceforge.net],[],[http://www.htslib.org/])
-AC_PREREQ([2.69])  dnl This version introduced 4-argument AC_CHECK_HEADER
 AC_CONFIG_SRCDIR([hts.c])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
-
-# Automake initialisation.
-AM_INIT_AUTOMAKE([1.11 subdir-objects foreign no-define tar-ustar])
-AM_SILENT_RULES([yes])
-
-dnl Copyright notice to be copied into the generated configure script
+AC_PROG_CC
+AC_PROG_INSTALL
 AC_COPYRIGHT([Portions copyright (C) 2015 Genome Research Ltd.
 
 This configure script is free software: you are free to change and
 redistribute it.  There is NO WARRANTY, to the extent permitted by law.])
 
-AC_PROG_CC
-AC_PROG_INSTALL
+# Automake initialisation.
+AM_INIT_AUTOMAKE([1.11 subdir-objects foreign no-define tar-ustar])
+AM_SILENT_RULES([yes])
+
 LT_INIT
 
 dnl FIXME This pulls in dozens of standard header checks
