@@ -23,7 +23,7 @@ before_install:
 - export CC="gcc-4.9"
 - gcc --version
 
-# Install dependencies: (Boost and python, and setup KAT)
+# Install dependencies: (Boost, samtools and dlib)
 install:
 
 # Boost installation
@@ -53,8 +53,8 @@ install:
 - echo $TRAVIS_BUILD_DIR/dlib-18.18
 - export CPPFLAGS="$CPPFLAGS -isystem $TRAVIS_BUILD_DIR/dlib-18.18"
 
-before_script:
 # Create portcullis configure script
+before_script:
 - echo "\n\n##### Setting up portcullis #####\n"
 - ./autogen.sh
 
@@ -63,5 +63,5 @@ script:
 - ./configure
 - make
 - make check
-- make distcheck	# Doesn't work due to issue in htslib (don't think htslib is designed to handle this target, I'll need to make some modifcations to support this)
+- make distcheck
 
