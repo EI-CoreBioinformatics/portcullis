@@ -13,6 +13,7 @@ sudo: required
 
 # Setup compiler
 before_install:
+- echo "\n\n##### Setting up development environment #####\n"
 - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 - sudo apt-get update -qq
 - sudo apt-get install -qq g++-4.9
@@ -26,6 +27,7 @@ before_install:
 install:
 
 # Boost installation
+- echo "\n\n##### Installing Boost #####\n"
 - wget -q http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.gz/download
 - mv download boost.tar.gz
 - tar -xf boost.tar.gz
@@ -35,6 +37,7 @@ install:
 - cd ..
 
 # Samtools installation (just use an old version for now... ideally use V1.3 to be consistent with internal htslib)
+- echo "\n\n##### Installing Samtoools #####\n"
 - wget -q https://github.com/samtools/samtools/releases/download/1.3/samtools-1.3.tar.bz2
 - tar -xf samtools-1.3.tar.bz2
 - cd samtools-1.3
@@ -44,11 +47,15 @@ install:
 - cd ..
 
 # Get Dlib
+- echo "\n\n##### Installing DLIB #####\n"
 - wget -q http://dlib.net/files/dlib-18.18.tar.bz2
 - tar -xf dlib-18.18.tar.bz2
+- echo $TRAVIS_BUILD_DIR/dlib-18.18
 - export CPPFLAGS="$CPPFLAGS -isystem $TRAVIS_BUILD_DIR/dlib-18.18"
 
+before_script:
 # Create portcullis configure script
+- echo "\n\n##### Setting up portcullis #####\n"
 - ./autogen.sh
 
 # Build portcullis and run tests
