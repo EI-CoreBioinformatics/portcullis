@@ -47,23 +47,7 @@ dnl FIXME This pulls in dozens of standard header checks
 AC_FUNC_MMAP
 AC_CHECK_FUNCS(gmtime_r)
 
-save_LIBS=$LIBS
-zlib_devel=ok
-dnl Set a trivial non-empty INCLUDES to avoid excess default includes tests
-AC_CHECK_HEADER([zlib.h], [], [zlib_devel=missing], [;])
-AC_CHECK_LIB(z, inflate,  [], [zlib_devel=missing])
-LIBS=$save_LIBS
-
-if test $zlib_devel != ok; then
-  AC_MSG_ERROR([zlib development files not found
-
-HTSlib uses compression routines from the zlib library <http://zlib.net>.
-Building HTSlib requires zlib development files to be installed on the build
-machine; you may need to ensure a package such as zlib1g-dev (on Debian or
-Ubuntu Linux) or zlib-devel (on RPM-based Linux distributions) is installed.
-
-FAILED.  This error must be resolved in order to build HTSlib successfully.])
-fi
+AX_CHECK_ZLIB
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES(phtslib.pc Makefile)

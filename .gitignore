@@ -1,5 +1,6 @@
 /build-aux/
 /autom4te.cache/
+/.idea/
 /Makefile
 /Makefile.in
 /config.h

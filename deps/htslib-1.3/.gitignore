@@ -1,7 +1,6 @@
 /.deps/
 /.libs/
 /build-aux/
-/m4/
 
 *.o
 *.lo
@@ -15,6 +14,7 @@ config.cache
 config.h
 config.log
 config.mk
+config.in
 config.status
 configure
 htslib.pc
