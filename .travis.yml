@@ -31,6 +31,10 @@ install:
 - mkdir -p exdeps
 - cd exdeps
 
+# Python3 and sphinx
+- sudo apt-get install python3-dev
+- sudo apt-get install python-sphinx
+
 # Boost installation
 - echo "Installing Boost"
 - wget -q http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.gz/download
