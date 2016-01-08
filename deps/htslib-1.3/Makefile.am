@@ -13,7 +13,7 @@ lib_LTLIBRARIES = libphts.la
 
 libphts_la_LDFLAGS = -version-info 1:3:0 $(HTSLIB_LDFLAGS)
 libphts_la_CPPFLAGS = $(HTSLIB_CPPFLAGS)
-libphts_la_CXXFLAGS = -g -g3 -gdwarf-4 -O3 @AM_CXXFLAGS@
+libphts_la_CXXFLAGS = -g -g3 -gdwarf-4 -O3 -Wno-deprecated-declarations @AM_CXXFLAGS@
 libphts_la_SOURCES = \
 	bgzf.c \
 	faidx.c \

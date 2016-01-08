@@ -33,7 +33,10 @@ install:
 
 # Python3 and sphinx
 - sudo apt-get install python3-dev
-- sudo apt-get install python-sphinx
+- sudo apt-get install python-pip
+- sudo pip install --upgrade pip
+- sudo pip install sphinx
+- sudo pip install --upgrade sphinx
 - sudo apt-get install samtools
 
 # Boost installation
