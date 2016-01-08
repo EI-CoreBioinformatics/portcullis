@@ -3,8 +3,8 @@
 ##########################################################################
 
 # Autoconf setup
-AC_INIT([portcullis],[0.11.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
 AC_PREREQ([2.69])
+AC_INIT([portcullis],[0.11.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
 AC_CONFIG_SRCDIR([src/portcullis.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])

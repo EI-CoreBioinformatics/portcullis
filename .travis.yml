@@ -13,21 +13,23 @@ sudo: required
 
 # Setup compiler
 before_install:
-- echo "\n\n##### Setting up development environment\n"
+- echo "Setting up development environment"
 - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 - sudo apt-get update -qq
 - sudo apt-get install -qq g++-4.9
-- sudo apt-get install autoconf
-- sudo apt-get install automake
+- sudo apt-get install -qq build-essential
 - export CXX="g++-4.9"
 - export CC="gcc-4.9"
 - gcc --version
+- autoconf --version
+- automake --version
+- m4 --version
 
 # Install dependencies: (Boost, samtools and dlib)
 install:
 
 # Boost installation
-- echo "\n\n##### Installing Boost\n"
+- echo "Installing Boost"
 - wget -q http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.gz/download
 - mv download boost.tar.gz
 - tar -xf boost.tar.gz
@@ -37,17 +39,16 @@ install:
 - cd ..
 
 # Samtools installation (just use an old version for now... ideally use V1.3 to be consistent with internal htslib)
-- echo "\n\n##### Installing Samtoools\n"
+- echo "Installing Samtools"
 - wget -q https://github.com/samtools/samtools/releases/download/1.3/samtools-1.3.tar.bz2
 - tar -xf samtools-1.3.tar.bz2
 - cd samtools-1.3
 - make
-- make check
 - sudo make install
 - cd ..
 
 # Get Dlib
-- echo "\n\n##### Installing DLIB\n"
+- echo "Installing DLIB"
 - wget -q http://dlib.net/files/dlib-18.18.tar.bz2
 - tar -xf dlib-18.18.tar.bz2
 - echo $TRAVIS_BUILD_DIR/dlib-18.18
@@ -55,18 +56,17 @@ install:
 
 # Create portcullis configure script
 before_script:
-- echo "\n\n##### Setting up portcullis\n"
+- echo "Setting up portcullis"
 - ./autogen.sh
 
 # Build portcullis and run tests
 script:
-- echo "\n\n##### Configuring portcullis\n"
+- echo "Configuring portcullis"
 - ./configure
-
-- echo "\n\n##### Building portcullis\n"
+- echo "Building portcullis"
 - make
-- echo "\n\n##### Testing portcullis\n"
+- echo "Testing portcullis"
 - make check
-- echo "\n\n##### Testing portcullis works from a distributable and installs and uninstalls correctly\n"
+- echo "Testing portcullis works from a distributable and installs and uninstalls correctly"
 - make distcheck
 
