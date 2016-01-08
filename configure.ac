@@ -2,59 +2,30 @@
 # Setup
 ##########################################################################
 
-# Autoconf initialistion.  Sets package name version and contact details
+# Autoconf setup
 AC_INIT([portcullis],[0.11.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
-
-# I built this with autoconf 2.53 and have only tested it on 2.69 systems.  You can change this but I don't
-# make any guarentees
 AC_PREREQ([2.69])
-
-# Check that the configure script is being run from the right directory
 AC_CONFIG_SRCDIR([src/portcullis.cc])
-
-# Put auxillary build scripts in 'build-aux' directory
 AC_CONFIG_AUX_DIR([build-aux])
-
-# Set the macro directory
 AC_CONFIG_MACRO_DIR([m4])
-
-# Automake initialisation.  Sets some default flags.  We use 'foreign' because we have a markdown README file.
-# I've only tried this with automake 1.11 and above, so you require at least that version installed on your 
-# machine if you want to regenerate 'the Makefile.in's.  If you're looking at this comment in the 'configure' 
-#script then this the am__api_version, will be set to whatever I used to create this file.  Or it might be 
-#whatever you used if you made it yourself with autoconf (or autoreconf, or the autogen.sh script)
-AM_INIT_AUTOMAKE([1.11 subdir-objects foreign -Wall no-define tar-ustar])
-
-# Most of portcullis is written in C++.  This is what this macro means: "Do compilation tests using CXX and CXXCPP and use extension .C for test programs. Use compilation flags: CPPFLAGS with CXXCPP, and both CPPFLAGS and CXXFLAGS with CXX."
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis-0.11.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile])
+AC_CONFIG_SUBDIRS([deps/htslib-1.3])
 AC_LANG([C++])
-
-# Set output variable CXXCPP to a command that runs the C++ preprocessor. If ‘$CXX -E’ doesn't work, /lib/cpp is used. It is portable to run CXXCPP only on files with a .c, .C, .cc, or .cpp extension.
-AC_PROG_CXXCPP
-
-# AC_PROG_CXX determine a C++ compiler to use. Check whether the environment variable CXX or CCC (in that order) is set; if so, then set output variable CXX to its value.  We ignore the CXXFLAGS already set in the environment. This is necessary to avoid AC_PROG_XX automatically adding "-g -O2" to CXXFLAGS
-CXXFLAGS=""
+AC_PROG_INSTALL
 AC_PROG_CXX
-
-# Determine a C compiler to use. If CC is not already set in the environment, check for gcc and cc, then for other C compilers. Set output variable CC to the name of the compiler found.
-# NOTE: This probably isn't necessary.  I don't think we have any C code in portcullis.
-CFLAGS=""
 AC_PROG_CC
 
 # Ensure there's C++11 support
 AX_CXX_COMPILE_STDCXX_11(,[mandatory])
 
-# Create the 'install-sh' script, which is used as the 'install' make target
-AC_PROG_INSTALL
-
-# Required for using the archiver
+# Automake setup
+AM_INIT_AUTOMAKE([1.11 subdir-objects foreign -Wall no-define tar-ustar])
 m4_pattern_allow([AM_PROG_AR])
 AM_PROG_AR
+AM_SILENT_RULES([yes])
 
-# Use this to display simplified compilation output (can be explicitly disabled by using --disable-silent-rules option in the configure script)
-#AM_SILENT_RULES([yes])
-
-
-# Uses libtool for creating libraries
+# Libtool setup
 LT_INIT
 
 
@@ -62,7 +33,7 @@ LT_INIT
 # Dependency checks
 ######################################################################
 
-# Check some (almost) standard functionality is present that we require to run portcullis.
+# Check some (almost) standard functionality is present that we require
 #AC_CHECK_HEADER_STDBOOL
 AC_FUNC_ERROR_AT_LINE
 AC_TYPE_INT16_T
@@ -88,9 +59,11 @@ AC_CHECK_HEADERS([glob.h])
 # Save libs (restore as and when needed)
 SAVED_LIBS="${LIBS}"
 
-# Check pthreads and zlib exist and are available
+# Check pthreads, zlib exist and are available
 AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
 AX_CHECK_ZLIB
+
+# Check for dlib (required)
 AX_DLIB
 
 AC_CHECK_FUNCS(clock_gettime, [], [
@@ -100,12 +73,13 @@ AC_CHECK_FUNCS(clock_gettime, [], [
   ])
 ])
 
-# Check for samtools
+# Check for samtools (reqired)
 AC_CHECK_PROG([with_samtools],[samtools],[yes],[no])
 if test "$with_samtools" == no ; then
   AC_MSG_ERROR([samtools not found])
 fi 
 
+# Check for sphinx to build documentation (optional)
 AC_CHECK_PROG([sphinx], [sphinx-build], [yes], [no])
 if test x"${sphinx}" = x"no"; then
     AC_MSG_WARN([Sphinx not detected, won't create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/])
@@ -114,7 +88,7 @@ else
     MAKE_DOCS=1
 fi
 
-## Check for boost
+## Check for boost (required)
 AX_BOOST_BASE([1.52],, [AC_MSG_ERROR([Boost not found.  Please ensure that boost is properly built and the BOOST_ROOT environment variable is set.  Alternatively you can override BOOST_ROOT with the --with-boost option.])])
 AX_BOOST_SYSTEM
 AX_BOOST_FILESYSTEM
@@ -143,7 +117,4 @@ AC_SUBST([AM_LDFLAGS])
 AM_LIBS="${BOOST_LIBS} ${ZLIB_LIB} ${RT_LIB}"
 AC_SUBST([AM_LIBS])
 
-AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis-0.11.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile])
-AC_CONFIG_SUBDIRS([deps/htslib-1.3])
 AC_OUTPUT

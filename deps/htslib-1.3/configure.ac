@@ -31,7 +31,7 @@ AC_CONFIG_MACRO_DIR([m4])
 
 # Automake initialisation.
 AM_INIT_AUTOMAKE([1.11 subdir-objects foreign no-define tar-ustar])
-#AM_SILENT_RULES([yes])
+AM_SILENT_RULES([yes])
 
 dnl Copyright notice to be copied into the generated configure script
 AC_COPYRIGHT([Portions copyright (C) 2015 Genome Research Ltd.

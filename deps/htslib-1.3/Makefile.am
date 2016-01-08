@@ -56,8 +56,7 @@ libphts_la_SOURCES = \
 
 htslib_library_includedir=$(includedir)/phtslib-@PACKAGE_VERSION@/htslib
 HI = $(top_srcdir)/htslib
-CI = $(top_srcdir)/cram
-htslib_library_include_HEADERS = \	
+htslib_library_include_HEADERS = \
 	$(HI)/bgzf.h \
 	$(HI)/cram.h \
 	$(HI)/faidx.h \
