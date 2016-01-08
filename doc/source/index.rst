@@ -9,7 +9,7 @@ Welcome to portcullis' documentation!
 #.. image:: images/spectre.png
 #    :scale: 50%
 
-Portcullis is designed to predict junctions from aligned RNA-seq data.  We expect
+Portcullis predicts junctions from aligned RNA-seq data.  We expect
 the user to have already generated a BAM file using a splice aware aligner of their
 choice.  For example, Tophat, Gsnap, STAR or HISAT will work fine.  Portcullis is designed to
 be as portable as possible so where possible does not rely on esoteric SAM tags and other
