@@ -34,6 +34,7 @@ install:
 # Python3 and sphinx
 - sudo apt-get install python3-dev
 - sudo apt-get install python-sphinx
+- sudo apt-get install samtools
 
 # Boost installation
 - echo "Installing Boost"
@@ -46,13 +47,13 @@ install:
 - cd ..
 
 # Samtools installation (just use an old version for now... ideally use V1.3 to be consistent with internal htslib)
-- echo "Installing Samtools"
-- wget -q https://github.com/samtools/samtools/releases/download/1.3/samtools-1.3.tar.bz2
-- tar -xf samtools-1.3.tar.bz2
-- cd samtools-1.3
-- make
-- sudo make install
-- cd ..
+#- echo "Installing Samtools"
+#- wget -q https://github.com/samtools/samtools/releases/download/1.3/samtools-1.3.tar.bz2
+#- tar -xf samtools-1.3.tar.bz2
+#- cd samtools-1.3
+#- make
+#- sudo make install
+#- cd ..
 
 # Get Dlib
 - echo "Installing DLIB"
