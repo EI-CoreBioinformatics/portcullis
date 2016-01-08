@@ -12,6 +12,7 @@ EXTRA_DIST = \
 	resources/sorted.bam \
 	resources/sorted.bam.bai \
 	resources/unsorted.bam
+	
 
 noinst_HEADERS =    gtest/gtest.h \
 		    gtest/src/gtest-all.cc \

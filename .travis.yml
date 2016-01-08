@@ -28,6 +28,9 @@ before_install:
 # Install dependencies: (Boost, samtools and dlib)
 install:
 
+- mkdir -p exdeps
+- cd exdeps
+
 # Boost installation
 - echo "Installing Boost"
 - wget -q http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.gz/download
@@ -35,7 +38,7 @@ install:
 - tar -xf boost.tar.gz
 - cd boost_1_59_0
 - sudo ./bootstrap.sh --with-libraries=chrono,timer,program_options,filesystem,system
-- sudo ./b2 -d1 --toolset=gcc-4.9 install
+- sudo ./b2 -d0 --toolset=gcc-4.9 install
 - cd ..
 
 # Samtools installation (just use an old version for now... ideally use V1.3 to be consistent with internal htslib)
@@ -51,8 +54,11 @@ install:
 - echo "Installing DLIB"
 - wget -q http://dlib.net/files/dlib-18.18.tar.bz2
 - tar -xf dlib-18.18.tar.bz2
-- echo $TRAVIS_BUILD_DIR/dlib-18.18
-- export CPPFLAGS="$CPPFLAGS -isystem $TRAVIS_BUILD_DIR/dlib-18.18"
+- echo $TRAVIS_BUILD_DIR/exdeps/dlib-18.18
+- export CPPFLAGS="$CPPFLAGS -isystem $TRAVIS_BUILD_DIR/exdeps/dlib-18.18"
+
+# Go back
+- cd $TRAVIS_BUILD_DIR
 
 # Create portcullis configure script
 before_script:
