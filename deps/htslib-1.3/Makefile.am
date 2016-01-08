@@ -118,12 +118,6 @@ test_fieldarith_CPPFLAGS = -I.. $(HTSLIB_CPPFLAGS)
 test_fieldarith_LDFLAGS = $(HTSLIB_LDFLAGS)
 test_fieldarith_LDADD = $(HTSLIB_LIBS)
 
-test_hfile_SOURCES = test/hfile.c
-test_hfile_CXXFLAGS = $(HTSLIB_TEST_CXXFLAGS)
-test_hfile_CPPFLAGS = $(HTSLIB_CPPFLAGS)
-test_hfile_LDFLAGS = $(HTSLIB_LDFLAGS)
-test_hfile_LDADD = $(HTSLIB_LIBS)
-
 test_sam_SOURCES = test/sam.c
 test_sam_CXXFLAGS = $(HTSLIB_TEST_CXXFLAGS)
 test_sam_CPPFLAGS = $(HTSLIB_CPPFLAGS)
