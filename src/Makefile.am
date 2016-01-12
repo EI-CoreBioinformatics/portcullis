@@ -13,7 +13,7 @@ portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 			-DDATADIR=\"$(datadir)\" \
 			@AM_CPPFLAGS@
 
-portcullis_LDFLAGS = @AM_LDFLAGS@
+portcullis_LDFLAGS = -all-static @AM_LDFLAGS@
 
 portcullis_LDADD =	../lib/libportcullis-0.11.la \
 			../deps/htslib-1.3/libphts.la \
