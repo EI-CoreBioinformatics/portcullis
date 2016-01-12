@@ -12,6 +12,8 @@
 autom4te.cache
 config.cache
 config.h
+config.h.in
+config.h.in~
 config.log
 config.mk
 config.in
@@ -48,9 +50,6 @@ lib*.so.*
 /ltmain.sh
 /missing
 /compile
-config.*
-*.h.in
-*.h.in~
 /install-sh
 /libtool
 *~

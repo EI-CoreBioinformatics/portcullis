@@ -88,6 +88,8 @@ else
     MAKE_DOCS=1
 fi
 
+AC_SUBST([MAKE_DOCS])
+
 ## Check for boost (required)
 AX_BOOST_BASE([1.52],, [AC_MSG_ERROR([Boost not found.  Please ensure that boost is properly built and the BOOST_ROOT environment variable is set.  Alternatively you can override BOOST_ROOT with the --with-boost option.])])
 AX_BOOST_SYSTEM
