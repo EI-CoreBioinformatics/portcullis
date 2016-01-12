@@ -57,3 +57,5 @@ lib*.so.*
 *.log
 /Makefile
 /Makefile.in
+/config.guess
+/config.sub
