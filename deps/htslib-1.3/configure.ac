@@ -45,7 +45,24 @@ dnl FIXME This pulls in dozens of standard header checks
 AC_FUNC_MMAP
 AC_CHECK_FUNCS(gmtime_r)
 
-AX_CHECK_ZLIB
+SAVE_LIBS=${LIBS}
+
+AC_SEARCH_LIBS([dlopen], [dl],
+    [DL_LIB="-ldl"],
+    [AC_MSG_ERROR([dl lib not found.  Please ensure that dl is properly built and configured.])])
+
+AC_SEARCH_LIBS([sin], [m],
+    [M_LIB="-lm"],
+    [AC_MSG_ERROR([libm not found.  Please ensure that maths lib is properly built and configured.])])
+
+
+AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
+AX_CHECK_ZLIB(, [AC_MSG_ERROR([zlib not found.  Please ensure that zlib is properly built and configured.])])
+
+LIBS=${SAVE_LIBS}
+
+AM_CXXFLAGS="-g -g3 -gdwarf-4 -Wno-deprecated-declarations"
+AC_SUBST([AM_CXXFLAGS])
 
 AM_CPPFLAGS=${ZLIB_CPPFLAGS}
 AC_SUBST([AM_CPPFLAGS])
@@ -53,7 +70,7 @@ AC_SUBST([AM_CPPFLAGS])
 AM_LDFLAGS="${PTHREAD_CFLAGS} ${ZLIB_LDFLAGS}"
 AC_SUBST([AM_LDFLAGS])
 
-AM_LIBS="${ZLIB_LIB}"
+AM_LIBS="${M_LIB} ${DL_LIB} ${ZLIB_LIB} ${PTHREAD_LIBS}"
 AC_SUBST([AM_LIBS])
 
 AC_CONFIG_HEADERS([config.h])

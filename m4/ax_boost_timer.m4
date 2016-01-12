@@ -87,7 +87,6 @@ AC_DEFUN([AX_BOOST_TIMER],
             if test "x$ax_boost_user_timer_lib" = "x"; then
                 for libextension in `ls $BOOSTLIBDIR/libboost_timer*.so* $BOOSTLIBDIR/libboost_timer*.dylib* 2>/dev/null | sed 's,.*/,,' | sed -e 's;^lib\(boost_timer.*\)\.so.*$;\1;' -e 's;^lib\(boost_timer.*\)\.dylib.*$;\1;'` ; do
                     ax_lib=${libextension}
-                    echo $ax_lib
                     AC_SEARCH_LIBS(exit, $ax_lib,
                         [BOOST_TIMER_LIB="-l$ax_lib"; AC_SUBST(BOOST_TIMER_LIB) link_timer="yes"; break],
                         [link_timer="no"])

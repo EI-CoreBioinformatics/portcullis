@@ -87,7 +87,7 @@ AC_DEFUN([AX_BOOST_CHRONO],
                 for libextension in `ls $BOOSTLIBDIR/libboost_chrono*.so* $BOOSTLIBDIR/libboost_chrono*.dylib* 2>/dev/null | sed 's,.*/,,' | sed -e 's;^lib\(boost_chrono.*\)\.so.*$;\1;' -e 's;^lib\(boost_chrono.*\)\.dylib.*$;\1;'` ; do
                     ax_lib=${libextension}
                     AC_SEARCH_LIBS(exit, $ax_lib,
-                        [BOOST_CHRONO_LIB="-lrt -l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
+                        [BOOST_CHRONO_LIB="-l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
                         [link_chrono="no"],
 			[-lrt])
                 done
@@ -95,7 +95,7 @@ AC_DEFUN([AX_BOOST_CHRONO],
                     for libextension in `ls $BOOSTLIBDIR/boost_chrono*.dll* 2>/dev/null | sed 's,.*/,,' | sed -e 's;^\(boost_chrono.*\)\.dll.*$;\1;'` ; do
                         ax_lib=${libextension}
                         AC_SEARCH_LIBS(exit, $ax_lib,
-                            [BOOST_CHRONO_LIB="-lrt -l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
+                            [BOOST_CHRONO_LIB="-l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
                             [link_chrono="no"],
 			    [-lrt])
                     done
@@ -103,7 +103,7 @@ AC_DEFUN([AX_BOOST_CHRONO],
                 for libextension in `ls $BOOSTLIBDIR/libboost_chrono*.a* 2>/dev/null` ; do
                     ax_static_lib=${libextension}
                     AC_CHECK_FILE($ax_static_lib,
-                        [BOOST_CHRONO_STATIC_LIB="-lrt $ax_static_lib"; AC_SUBST(BOOST_CHRONO_STATIC_LIB) link_chrono_static="yes"; break],
+                        [BOOST_CHRONO_STATIC_LIB="$ax_static_lib"; AC_SUBST(BOOST_CHRONO_STATIC_LIB) link_chrono_static="yes"; break],
                         [link_chrono_static="no"])
                 done
 

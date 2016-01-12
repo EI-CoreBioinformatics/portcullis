@@ -7,7 +7,7 @@ pkgconfig_DATA = portcullis.pc
 lib_LTLIBRARIES = libportcullis.la
 
 # Library inputs
-libportcullis_la_LDFLAGS = -version-info 11:0:11 -L$(top_srcdir)/deps/htslib-1.3
+libportcullis_la_LDFLAGS = -version-info 11:0:11
 libportcullis_la_SOURCES =	\
 	src/bam_master.cc \
 	src/bam_alignment.cc \
@@ -38,6 +38,7 @@ libportcullis_la_CPPFLAGS = \
 	-isystem $(top_srcdir)/deps/htslib-1.3 \
 	-isystem $(top_srcdir)/lib/include \
 	-DDATADIR=\"$(datadir)\" \
-	@AM_CPPFLAGS@
+	@AM_CPPFLAGS@ \
+	@CPPFLAGS@
 
 libportcullis_la_CXXFLAGS = -g -g3 -gdwarf-4 -O3 -pedantic @AM_CXXFLAGS@

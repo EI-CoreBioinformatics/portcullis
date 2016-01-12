@@ -5,15 +5,13 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = phtslib.pc
 
 HTSLIB_CPPFLAGS = -I$(top_srcdir) -I$(srcdir) @AM_CPPFLAGS@ @CPPFLAGS@
-HTSLIB_LDFLAGS = @AM_LDFLAGS@ @LDFLAGS@
-HTSLIB_LIBS = libphts.la @AM_LIBS@ -lm -ldl
 
 # Create portcullis library
 lib_LTLIBRARIES = libphts.la
 
-libphts_la_LDFLAGS = -version-info 4:1:3 $(HTSLIB_LDFLAGS)
+libphts_la_LDFLAGS = -version-info 4:1:3
 libphts_la_CPPFLAGS = $(HTSLIB_CPPFLAGS)
-libphts_la_CXXFLAGS = -g -g3 -gdwarf-4 -O3 -Wno-deprecated-declarations @AM_CXXFLAGS@
+libphts_la_CXXFLAGS = -O3 @AM_CXXFLAGS@
 libphts_la_SOURCES = \
 	bgzf.c \
 	faidx.c \
@@ -113,18 +111,19 @@ check_PROGRAMS = \
 	test/fieldarith \
 	test/sam
 	
-HTSLIB_TEST_CXXFLAGS = -g -g3 -gdwarf-4 -O0 -Wno-deprecated-declarations @AM_CXXFLAGS@
+HTSLIB_TEST_CXXFLAGS = -O0 @AM_CXXFLAGS@
+HTSLIB_LIBS = libphts.la @AM_LIBS@
 	
 test_fieldarith_SOURCES = test/fieldarith.c
 test_fieldarith_CXXFLAGS = $(HTSLIB_TEST_CXXFLAGS)
 test_fieldarith_CPPFLAGS = -I.. $(HTSLIB_CPPFLAGS)
-test_fieldarith_LDFLAGS = $(HTSLIB_LDFLAGS)
+test_fieldarith_LDFLAGS = @AM_LDFLAGS@ @LDFLAGS@
 test_fieldarith_LDADD = $(HTSLIB_LIBS)
 
 test_sam_SOURCES = test/sam.c
 test_sam_CXXFLAGS = $(HTSLIB_TEST_CXXFLAGS)
 test_sam_CPPFLAGS = $(HTSLIB_CPPFLAGS)
-test_sam_LDFLAGS = $(HTSLIB_LDFLAGS)
+test_sam_LDFLAGS = @AM_LDFLAGS@ @LDFLAGS@
 test_sam_LDADD = $(HTSLIB_LIBS)
 
 

@@ -5,19 +5,23 @@ bin_PROGRAMS = portcullis
 
 portcullis_noinstdir = $(top_srcdir)/src
 
-portcullis_CXXFLAGS = -g -g3 -gdwarf-4 -O3 -pedantic @AM_CXXFLAGS@
+portcullis_CXXFLAGS = -O3 -pedantic @AM_CXXFLAGS@ @CXXFLAGS@
 
 portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 			-isystem $(top_srcdir)/lib/include \
 			-I$(top_srcdir)/src \
 			-DDATADIR=\"$(datadir)\" \
-			@AM_CPPFLAGS@
+			@AM_CPPFLAGS@ \
+			@CPPFLAGS@
 
-portcullis_LDFLAGS = -all-static -L../lib -L../deps/htslib-1.3 @AM_LDFLAGS@
+portcullis_LDFLAGS =	-all-static \
+			-L../lib \
+			-L../deps/htslib-1.3 \
+			@AM_LDFLAGS@ \
+			@LDFLAGS@
 
 portcullis_LDADD =	-lportcullis \
 			-lphts \
-			-ldl \
 			@AM_LIBS@
 
 

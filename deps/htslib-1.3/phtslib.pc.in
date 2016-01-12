@@ -8,5 +8,5 @@ Description: C library for high-throughput sequencing data formats
 Version: @PACKAGE_VERSION@
 Cflags: -I${includedir}
 Libs: -L${libdir} -lphts
-Libs.private: -L${libdir} -lphts -lm -lpthread
+Libs.private: -L${libdir} -lphts -lm -ldl -lpthread
 Requires.private: zlib
