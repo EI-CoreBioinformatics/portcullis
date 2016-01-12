@@ -1,14 +1,14 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = portcullis-0.11.pc
+pkgconfig_DATA = portcullis.pc
 
 # Create portcullis library
-lib_LTLIBRARIES = libportcullis-0.11.la
+lib_LTLIBRARIES = libportcullis.la
 
 # Library inputs
-libportcullis_0_11_la_LDFLAGS = -version-info 0:11:0 -L$(top_srcdir)/deps/htslib-1.3
-libportcullis_0_11_la_SOURCES =	\
+libportcullis_la_LDFLAGS = -version-info 11:0:11 -L$(top_srcdir)/deps/htslib-1.3
+libportcullis_la_SOURCES =	\
 	src/bam_master.cc \
 	src/bam_alignment.cc \
 	src/bam_reader.cc \
@@ -34,10 +34,10 @@ library_include_HEADERS = \
 	$(PI)/portcullis_fs.hpp \
 	$(PI)/seq_utils.hpp
 
-libportcullis_0_11_la_CPPFLAGS = \
+libportcullis_la_CPPFLAGS = \
 	-isystem $(top_srcdir)/deps/htslib-1.3 \
 	-isystem $(top_srcdir)/lib/include \
 	-DDATADIR=\"$(datadir)\" \
 	@AM_CPPFLAGS@
 
-libportcullis_0_11_la_CXXFLAGS = -g -g3 -gdwarf-4 -O3 -pedantic @AM_CXXFLAGS@
+libportcullis_la_CXXFLAGS = -g -g3 -gdwarf-4 -O3 -pedantic @AM_CXXFLAGS@

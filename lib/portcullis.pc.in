@@ -7,5 +7,5 @@ Name: portcullis
 Description: The portcullis library.
 Version: @PACKAGE_VERSION@
 Requires.private: hts
-Libs: -L${libdir} -lportcullis-0.11 -lpthread
+Libs: -L${libdir} -lportcullis -lpthread
 Cflags: -I${includedir}/portcullis-@PACKAGE_VERSION@
