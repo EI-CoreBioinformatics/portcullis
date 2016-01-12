@@ -61,7 +61,7 @@ AC_DEFUN([AX_BOOST_TIMER],
 		export CPPFLAGS
 
 		LDFLAGS_SAVED="$LDFLAGS"
-		LDFLAGS="$LDFLAGS -lrt $BOOST_LDFLAGS"
+		LDFLAGS="$LDFLAGS $BOOST_LDFLAGS"
 		export LDFLAGS
 
         AC_CACHE_CHECK(whether the Boost::Timer library is available,
@@ -87,6 +87,7 @@ AC_DEFUN([AX_BOOST_TIMER],
             if test "x$ax_boost_user_timer_lib" = "x"; then
                 for libextension in `ls $BOOSTLIBDIR/libboost_timer*.so* $BOOSTLIBDIR/libboost_timer*.dylib* 2>/dev/null | sed 's,.*/,,' | sed -e 's;^lib\(boost_timer.*\)\.so.*$;\1;' -e 's;^lib\(boost_timer.*\)\.dylib.*$;\1;'` ; do
                     ax_lib=${libextension}
+                    echo $ax_lib
                     AC_CHECK_LIB($ax_lib, exit,
                         [BOOST_TIMER_LIB="-l$ax_lib"; AC_SUBST(BOOST_TIMER_LIB) link_timer="yes"; break],
                         [link_timer="no"])

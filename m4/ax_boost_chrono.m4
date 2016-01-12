@@ -60,7 +60,7 @@ AC_DEFUN([AX_BOOST_CHRONO],
 		export CPPFLAGS
 
 		LDFLAGS_SAVED="$LDFLAGS"
-		LDFLAGS="$LDFLAGS -lrt $BOOST_LDFLAGS"
+		LDFLAGS="$LDFLAGS $BOOST_LDFLAGS"
 		export LDFLAGS
 
         AC_CACHE_CHECK(whether the Boost::Chrono library is available,
@@ -86,15 +86,16 @@ AC_DEFUN([AX_BOOST_CHRONO],
             if test "x$ax_boost_user_chrono_lib" = "x"; then
                 for libextension in `ls $BOOSTLIBDIR/libboost_chrono*.so* $BOOSTLIBDIR/libboost_chrono*.dylib* 2>/dev/null | sed 's,.*/,,' | sed -e 's;^lib\(boost_chrono.*\)\.so.*$;\1;' -e 's;^lib\(boost_chrono.*\)\.dylib.*$;\1;'` ; do
                     ax_lib=${libextension}
+                    echo $ax_lib
                     AC_CHECK_LIB($ax_lib, exit,
-                        [BOOST_CHRONO_LIB="-l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
+                        [BOOST_CHRONO_LIB="-lrt -l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
                         [link_chrono="no"])
                 done
                 if test "x$link_chrono" != "xyes"; then
                     for libextension in `ls $BOOSTLIBDIR/boost_chrono*.dll* 2>/dev/null | sed 's,.*/,,' | sed -e 's;^\(boost_chrono.*\)\.dll.*$;\1;'` ; do
                         ax_lib=${libextension}
                         AC_CHECK_LIB($ax_lib, exit,
-                            [BOOST_CHRONO_LIB="-l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
+                            [BOOST_CHRONO_LIB="-lrt -l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
                             [link_chrono="no"])
                     done
                 fi
@@ -122,7 +123,7 @@ AC_DEFUN([AX_BOOST_CHRONO],
             else
                 for ax_lib in $ax_boost_user_chrono_lib boost_chrono-$ax_boost_user_chrono_lib; do
                     AC_CHECK_LIB($ax_lib, exit,
-                        [BOOST_CHRONO_LIB="-l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
+                        [BOOST_CHRONO_LIB="-lrt -l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
                         [link_chrono="no"])
                 done
 
