@@ -43,7 +43,8 @@ dist_config_DATA = data/default_filter.json
 make_dirs=deps/htslib-1.3 lib src tests
 
 if test @MAKE_DOCS@ = 1; then
-    make_dirs +=  doc
+    make_dirs += doc
+fi
 
 SUBDIRS = $(make_dirs)
 
