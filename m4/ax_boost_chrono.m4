@@ -86,17 +86,18 @@ AC_DEFUN([AX_BOOST_CHRONO],
             if test "x$ax_boost_user_chrono_lib" = "x"; then
                 for libextension in `ls $BOOSTLIBDIR/libboost_chrono*.so* $BOOSTLIBDIR/libboost_chrono*.dylib* 2>/dev/null | sed 's,.*/,,' | sed -e 's;^lib\(boost_chrono.*\)\.so.*$;\1;' -e 's;^lib\(boost_chrono.*\)\.dylib.*$;\1;'` ; do
                     ax_lib=${libextension}
-                    echo $ax_lib
-                    AC_CHECK_LIB($ax_lib, exit,
+                    AC_SEARCH_LIBS(exit, $ax_lib,
                         [BOOST_CHRONO_LIB="-lrt -l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
-                        [link_chrono="no"])
+                        [link_chrono="no"],
+			[-lrt])
                 done
                 if test "x$link_chrono" != "xyes"; then
                     for libextension in `ls $BOOSTLIBDIR/boost_chrono*.dll* 2>/dev/null | sed 's,.*/,,' | sed -e 's;^\(boost_chrono.*\)\.dll.*$;\1;'` ; do
                         ax_lib=${libextension}
-                        AC_CHECK_LIB($ax_lib, exit,
+                        AC_SEARCH_LIBS(exit, $ax_lib,
                             [BOOST_CHRONO_LIB="-lrt -l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
-                            [link_chrono="no"])
+                            [link_chrono="no"],
+			    [-lrt])
                     done
                 fi
                 for libextension in `ls $BOOSTLIBDIR/libboost_chrono*.a* 2>/dev/null` ; do

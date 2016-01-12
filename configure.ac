@@ -81,10 +81,17 @@ fi
 
 # Check for sphinx to build documentation (optional)
 AC_CHECK_PROG([sphinx], [sphinx-build], [yes], [no])
-AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
-if test x"${sphinx}" = x"no"; then
-    AC_MSG_WARN([Sphinx not detected, won't create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/])    
+if test x"${sphinx}" = x"yes"; then
+	# Now check if the version is correct
+	sphinx_version=`sphinx-build 2>&1 | head -n1 | grep v1 | tr -d " \t\n\r"`
+	if test x"${sphinx_version}" != x"" ; then
+    		AC_MSG_WARN([Sphinx detected, but version is too old.  Wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/])
+		sphinx="no"
+	fi
+else
+    AC_MSG_WARN([Sphinx not detected, wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/])    
 fi
+AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
 
 AC_SUBST([MAKE_DOCS])
 
