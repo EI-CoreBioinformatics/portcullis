@@ -4,9 +4,9 @@ ACLOCAL_AMFLAGS = -I m4
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = phtslib.pc
 
-HTSLIB_CPPFLAGS = -I$(top_srcdir) -I$(srcdir) @CPPFLAGS@
-HTSLIB_LDFLAGS = -pthread @LDFLAGS@
-HTSLIB_LIBS = libphts.la -lz -lm -ldl
+HTSLIB_CPPFLAGS = -I$(top_srcdir) -I$(srcdir) @AM_CPPFLAGS@ @CPPFLAGS@
+HTSLIB_LDFLAGS = @AM_LDFLAGS@ @LDFLAGS@
+HTSLIB_LIBS = libphts.la @AM_LIBS@ -lm -ldl
 
 # Create portcullis library
 lib_LTLIBRARIES = libphts.la

@@ -42,9 +42,9 @@ dist_config_DATA = data/default_filter.json
 # SRC DIRS
 make_dirs=deps/htslib-1.3 lib src tests
 
-if test @MAKE_DOCS@ = 1; then
+if MAKE_DOCS
     make_dirs += doc
-fi
+endif
 
 SUBDIRS = $(make_dirs)
 

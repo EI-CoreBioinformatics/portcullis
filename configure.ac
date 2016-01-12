@@ -81,11 +81,9 @@ fi
 
 # Check for sphinx to build documentation (optional)
 AC_CHECK_PROG([sphinx], [sphinx-build], [yes], [no])
+AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
 if test x"${sphinx}" = x"no"; then
-    AC_MSG_WARN([Sphinx not detected, won't create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/])
-    MAKE_DOCS=0
-else
-    MAKE_DOCS=1
+    AC_MSG_WARN([Sphinx not detected, won't create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/])    
 fi
 
 AC_SUBST([MAKE_DOCS])
