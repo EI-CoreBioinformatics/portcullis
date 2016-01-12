@@ -60,7 +60,7 @@ AC_DEFUN([AX_BOOST_CHRONO],
 		export CPPFLAGS
 
 		LDFLAGS_SAVED="$LDFLAGS"
-		LDFLAGS="$LDFLAGS $BOOST_LDFLAGS"
+		LDFLAGS="$LDFLAGS -lrt $BOOST_LDFLAGS"
 		export LDFLAGS
 
         AC_CACHE_CHECK(whether the Boost::Chrono library is available,
