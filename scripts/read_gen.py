@@ -15,6 +15,8 @@ parser.add_argument("config",
                     help="Configuration file to use for running pp.")
 parser.add_argument("--force_incomplete",
                     help="Force snakemake to rerun incomplete steps")
+parser.add_argument("--make_dag",
+                    help="Produce a DAG rather than execute the workflow")
 args=parser.parse_args()
 
 
@@ -32,5 +34,7 @@ snakemake.snakemake(this_dir + "/read_gen.snakefile",
                     snakemakepath="/tgac/software/testing/python/3.4.2/x86_64/bin/snakemake",
                     stats="pp_" + now + ".stats",
                     force_incomplete=args.force_incomplete,
-                    latency_wait=30
+                    latency_wait=30,
+                    printdag=args.make_dag,
+                    forceall=args.make_dag
                     )

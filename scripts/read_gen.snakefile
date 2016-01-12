@@ -18,7 +18,7 @@ MIN_INTRON = config["min_intron"]
 MAX_INTRON = config["max_intron"]
 STRANDEDNESS = config["strandedness"]
 THREADS = config["threads"]
-READ_LENGTH = config["read_length"]
+READ_LENGTH = config["min_read_length"]
 READ_LENGTH_MINUS_1 = int(READ_LENGTH) - 1
 
 LOAD_BOWTIE = config["load_bowtie"]
@@ -75,8 +75,8 @@ Rules
 # Define 
 rule all:
 	input: 
-		SIM_DIR_FULL+"/var/sim.bam",
-		SIM_DIR_FULL+"/fixed/sim.bam"
+		SIM_DIR_FULL+"/var/sim.sam",
+		SIM_DIR_FULL+"/fixed/sim.sam"
 		#expand(PORT_DIR + "/output/portcullis-{align_method}-{reads}.unfiltered.bed", align_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
 		
 
@@ -236,16 +236,22 @@ rule bam_index_wref:
 rule asm_cufflinks_wref:
 	input:
 		bam=ALIGN_DIR+"/output/tophat-real_wref.sorted.bam",
-		ref=REF
+		ref=REF_GTF
 	output:
-		cov=ASM_DIR+"/cufflinks-tophat_wref-real/transcripts.cov"
+		isoforms=ASM_DIR+"/cufflinks-tophat_wref-real/isoforms.fpkm_tracking"
 	params: 
 		outdir=ASM_DIR+"/cufflinks-tophat_wref-real",
-		isoforms=ASM_DIR+"/cufflinks-tophat_wref-real/isoforms.fpkm_tracking"
 	log: ASM_DIR+"/cufflinks-tophat_wref-real.log"
 	threads: int(THREADS)
 	message: "Using cufflinks to assemble: {input.bam}"
-	shell: "{LOAD_CUFFLINKS}; cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --no-update-check {ASM_CUFFLINKS_EXTRA} {input.bam} > {log} 2>&1 && {LOAD_PORTCULLIS} && {LOAD_PYTHON3} && cufflinks2spankicov.py {params.isoforms} > {output.cov}"
+	shell: "{LOAD_CUFFLINKS}; cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --GTF={input.ref}  --no-update-check {ASM_CUFFLINKS_EXTRA} {input.bam} > {log} 2>&1"
+
+rule convert_isoform_fpkm_2_spanki:
+	input: isoforms=ASM_DIR+"/cufflinks-tophat_wref-real/isoforms.fpkm_tracking"
+	output: cov=ASM_DIR+"/cufflinks-tophat_wref-real/transcripts.cov"
+	threads: 1
+	message: "Converting cufflinks isoforms file to spanki format"
+	shell: "{LOAD_PORTCULLIS} && {LOAD_PYTHON3} && cufflinks2spankicov.py {input.isoforms} > {output.cov}"
 
 
 rule simgen_model:
@@ -264,7 +270,7 @@ rule sim_fixed_reads:
                 fa=REF,
 		model=rules.simgen_model.output
 	output: 
-		bam=SIM_DIR_FULL+"/fixed/sim.bam",
+		sam=SIM_DIR_FULL+"/fixed/sim.sam",
 		linkr1=READS_DIR+"/sim_fixed.R1.fq",
 		linkr2=READS_DIR+"/sim_fixed.R2.fq"
 	params: 
@@ -282,10 +288,10 @@ rule sim_var_reads:
 	input:
 		gtf=REF_GTF,
                 fa=REF,
-                transcript_cov=rules.asm_cufflinks_wref.output.cov,
+                transcript_cov=rules.convert_isoform_fpkm_2_spanki.output.cov,
 		model=rules.simgen_model.output
 	output:
-		bam=SIM_DIR_FULL+"/var/sim.bam",
+		sam=SIM_DIR_FULL+"/var/sim.sam",
 		linkr1=READS_DIR+"/sim_var.R1.fq",
 		linkr2=READS_DIR+"/sim_var.R2.fq"
 	params: 
