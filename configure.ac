@@ -59,19 +59,26 @@ AC_CHECK_HEADERS([glob.h])
 # Save libs (restore as and when needed)
 SAVED_LIBS="${LIBS}"
 
+# Required for HTS lib
+AC_SEARCH_LIBS([dlopen], [dl],
+    [DL_LIB="-ldl"],
+    [AC_MSG_ERROR([dl lib not found.  Please ensure that dl is properly built and configured.])])
+
+AC_SEARCH_LIBS([sin], [m],
+    [M_LIB="-lm"],
+    [AC_MSG_ERROR([libm not found.  Please ensure that maths lib is properly built and configured.])])
+
+# Required for Boost
+AC_SEARCH_LIBS([clock_gettime], [rt],
+    [RT_LIB="-lrt"],
+    [AC_MSG_ERROR([rt lib not found.  Please ensure that rt is properly built and configured.])])
+
 # Check pthreads, zlib exist and are available
 AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
-AX_CHECK_ZLIB
+AX_CHECK_ZLIB(, [AC_MSG_ERROR([zlib not found.  Please ensure that zlib is properly built and configured.])])
 
 # Check for dlib (required)
 AX_DLIB
-
-AC_CHECK_FUNCS(clock_gettime, [], [
-  AC_CHECK_LIB(rt, clock_gettime, [
-    AC_DEFINE(HAVE_CLOCK_GETTIME, 1)
-    RT_LIB="-lrt"    
-  ])
-])
 
 # Check for samtools (reqired)
 AC_CHECK_PROG([with_samtools],[samtools],[yes],[no])
@@ -112,7 +119,7 @@ LIBS="${SAVED_LIBS}"
 
 #########
 
-AM_CXXFLAGS="-DCPLUSPLUS"
+AM_CXXFLAGS="-g -g3 -gdwarf-4"
 AC_SUBST([AM_CXXFLAGS])
 
 AM_CPPFLAGS="${BOOST_CPPFLAGS} ${DLIB_CPPFLAGS} ${ZLIB_CPPFLAGS}"
@@ -121,7 +128,7 @@ AC_SUBST([AM_CPPFLAGS])
 AM_LDFLAGS="${BOOST_LDFLAGS} ${PTHREAD_CFLAGS} ${ZLIB_LDFLAGS}"
 AC_SUBST([AM_LDFLAGS])
 
-AM_LIBS="${BOOST_LIBS} ${ZLIB_LIB}"
+AM_LIBS="${BOOST_LIBS} ${RT_LIB} ${M_LIB} ${DL_LIB} ${ZLIB_LIB} ${PTHREAD_LIBS}"
 AC_SUBST([AM_LIBS])
 
 AC_OUTPUT
