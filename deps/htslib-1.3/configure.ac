@@ -47,17 +47,11 @@ AC_CHECK_FUNCS(gmtime_r)
 
 SAVE_LIBS=${LIBS}
 
-AC_SEARCH_LIBS([dlopen], [dl],
-    [DL_LIB="-ldl"],
-    [AC_MSG_ERROR([dl lib not found.  Please ensure that dl is properly built and configured.])])
+AC_SEARCH_LIBS([dlopen], [dl], [DL_LIB="-ldl"])
+AC_SEARCH_LIBS([sin], [m], [M_LIB="-lm"])
 
-AC_SEARCH_LIBS([sin], [m],
-    [M_LIB="-lm"],
-    [AC_MSG_ERROR([libm not found.  Please ensure that maths lib is properly built and configured.])])
-
-
-AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
-AX_CHECK_ZLIB(, [AC_MSG_ERROR([zlib not found.  Please ensure that zlib is properly built and configured.])])
+AX_PTHREAD
+AX_CHECK_ZLIB
 
 LIBS=${SAVE_LIBS}
 

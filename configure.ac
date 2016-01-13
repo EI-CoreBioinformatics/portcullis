@@ -83,7 +83,7 @@ AX_DLIB
 # Check for samtools (reqired)
 AC_CHECK_PROG([with_samtools],[samtools],[yes],[no])
 if test "$with_samtools" == no ; then
-  AC_MSG_ERROR([samtools not found])
+    AC_MSG_ERROR([samtools not found])
 fi 
 
 # Check for sphinx to build documentation (optional)
