@@ -115,8 +115,8 @@ AX_BOOST_CHRONO
 AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_TIMER
 
-# Combine BOOST variables (apart for BOOST_TEST)
-BOOST_LIBS="${BOOST_TIMER_LIB} ${BOOST_CHRONO_LIB} ${BOOST_FILESYSTEM_LIB} ${BOOST_PROGRAM_OPTIONS_LIB} ${BOOST_SYSTEM_LIB}"
+# Combine BOOST variables
+BOOST_LIBS="${BOOST_TIMER_STATIC_LIB} ${BOOST_CHRONO_STATIC_LIB} ${BOOST_FILESYSTEM_STATIC_LIB} ${BOOST_PROGRAM_OPTIONS_STATIC_LIB} ${BOOST_SYSTEM_STATIC_LIB}"
 AC_SUBST([BOOST_LIBS])
 
 LIBS="${SAVED_LIBS}"
@@ -137,3 +137,7 @@ AM_LIBS="${BOOST_LIBS} ${RT_LIB} ${M_LIB} ${DL_LIB} ${ZLIB_LIB} ${PTHREAD_LIBS}"
 AC_SUBST([AM_LIBS])
 
 AC_OUTPUT
+
+if test x"${sphinx}" = x"no"; then
+    AC_MSG_WARN([Sphinx not detected, or version is too old.  Wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/])    
+fi

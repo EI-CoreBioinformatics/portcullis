@@ -37,7 +37,8 @@ check_unit_tests_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 				@AM_CPPFLAGS@
 				@CPPFLAGS@
 
-check_unit_tests_LDFLAGS =	-L../lib \
+check_unit_tests_LDFLAGS =	-all-static \
+				-L../lib \
 				-L../deps/htslib-1.3 \
 				@AM_LDFLAGS@ \
 				@LDFLAGS@
