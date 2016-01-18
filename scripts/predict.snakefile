@@ -78,7 +78,6 @@ Rules
 rule all:
 	input: 
 		expand(JUNC_DIR+"/output/{aln_method}-{reads}-{junc_method}.bed", aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS, junc_method=JUNC_METHODS)
-		
 
 #rule clean:
 #	shell: "rm -rf {out}"
@@ -243,10 +242,11 @@ rule asm_stringtie:
 
 rule portcullis_prep:
         input:	ref=REF,
-                bam=rules.bam_sort.output
-        output: PORTCULLIS_DIR+"/{aln_method}-{reads}-prep/portcullis.sorted.alignments.bam.bai"
+                bam=rules.bam_sort.output,
+		idx=rules.bam_index.output
+        output: PORTCULLIS_DIR+"/{aln_method}-{reads}/prep/portcullis.sorted.alignments.bam.bai"
         params: 
-                outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}-prep",
+                outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep",
                 load=LOAD_PORTCULLIS
         log: PORTCULLIS_DIR+"/{aln_method}-{reads}-prep.log"
         threads: int(THREADS)
@@ -257,10 +257,10 @@ rule portcullis_prep:
 rule portcullis_junc:
         input: 
                 bai=rules.portcullis_prep.output
-        output: PORTCULLIS_DIR+"/{aln_method}-{reads}-junc/{aln_method}-{reads}.junctions.tab"
+        output: PORTCULLIS_DIR+"/{aln_method}-{reads}/junc/{aln_method}-{reads}.junctions.tab"
         params: 
-                prepdir=PORTCULLIS_DIR+"/{aln_method}-{reads}-prep",
-                outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}-junc",
+                prepdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep",
+                outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/junc",
                 load=LOAD_PORTCULLIS
         log: PORTCULLIS_DIR+"/{aln_method}-{reads}-junc.log"
         threads: int(THREADS)
@@ -272,9 +272,9 @@ rule portcullis_filter:
         output:
                 link=JUNC_DIR+"/output/{aln_method}-{reads}-portcullis.bed"
         params: 
-                outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}-filtered",
+                outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/filt",
                 load=LOAD_PORTCULLIS,
-                bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}-filtered/{aln_method}-{reads}.pass.junctions.bed",
+                bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}/filt/{aln_method}-{reads}.pass.junctions.bed",
         log: PORTCULLIS_DIR+"/{aln_method}-{reads}-filter.log"
         threads: 1
         message: "Using portcullis to filter invalid junctions: {input}"
@@ -285,31 +285,40 @@ rule spanki:
 	input:
                 bam=rules.bam_sort.output,
 		fa=REF,
-		gtf=REF_GTF
-	output: JUNC_DIR+"/output/{aln_method}-{reads}-spanki.bed"
+		gtf=REF_GTF,
+		idx=rules.bam_index.output
+	output: link=JUNC_DIR+"/output/{aln_method}-{reads}-spanki.bed",
+		bed=JUNC_DIR+"/spanki/{aln_method}-{reads}/junctions_out/{aln_method}-{reads}-spanki.bed"
 	params:
 		load_spanki=LOAD_SPANKI,
 		load_portcullis=LOAD_PORTCULLIS,
 		outdir=JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}",
-		bed=JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}/{aln_method}-{reads}-spanki.bed"
-		
-	log: JUNC_DIR+"/spanki/{aln_method}-{reads}-spanki.log"
+		bam=ALIGN_DIR_FULL+"/output/{aln_method}-{reads}.sorted.bam",
+		fa=os.path.abspath(REF),
+		gtf=os.path.abspath(REF_GTF),
+		all_juncs=JUNC_DIR+"/spanki/{aln_method}-{reads}/junctions_out/juncs.all",
+		filt_juncs=JUNC_DIR+"/spanki/{aln_method}-{reads}/junctions_out/juncs.filtered",
+		bed=JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}/junctions_out/{aln_method}-{reads}-spanki.bed"
+	log: JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}-spanki.log"
 	threads: 1
 	message: "Using SPANKI to anlayse junctions: {input.bam}"
-	shell: "{params.load_spanki}; cd {params.outdir}; spankijunc -i {input.bam} -g {input.gtf} -f {input.fa} > {log} 2>&1 && {params.load_portcullis}; spanki_filter.py junctions_out/juncs.all > junctions_out/juncs.filtered && spanki2bed.py junctions_out/juncs.filtered > {params.bed}; cd {CWD} && ln -sf {params.bed} {output} && touch -h {output}"
+	shell: "{params.load_spanki} ; cd {params.outdir} ; spankijunc -i {params.bam} -g {params.gtf} -f {params.fa} > {log} 2>&1 ; cd {CWD} ; if [[ -s {params.all_juncs} ]] ; then {params.load_portcullis} && spanki_filter.py {params.all_juncs} > {params.filt_juncs} && spanki2bed.py {params.filt_juncs} > {output.bed} ; else touch {output.bed} ; fi ; ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 	
 rule finesplice:
-	input:
-                bam=rules.bam_sort.output
-	output: JUNC_DIR+"/output/{aln_method}-{reads}-finesplice.bed"
+	input: bam=rules.bam_sort.output,
+		idx=rules.bam_sort.output
+	output: link=JUNC_DIR+"/output/{aln_method}-{reads}-finesplice.bed",
+		bed=JUNC_DIR+"/finesplice/{aln_method}-{reads}/{aln_method}-{reads}-finesplice.bed"
 	params:
 		load_fs=LOAD_FINESPLICE,
 		load_portcullis=LOAD_PORTCULLIS,
+		bam=ALIGN_DIR_FULL+"/output/{aln_method}-{reads}.sorted.bam",
 		outdir=JUNC_DIR_FULL+"/finesplice/{aln_method}-{reads}",
+		junc=JUNC_DIR_FULL+"/finesplice/{aln_method}-{reads}/{aln_method}-{reads}.sorted.accepted.junc",
 		bed=JUNC_DIR_FULL+"/finesplice/{aln_method}-{reads}/{aln_method}-{reads}-finesplice.bed"
-	log: JUNC_DIR+"/finesplice/{aln_method}-{reads}-finesplice.log"
+	log: JUNC_DIR_FULL+"/finesplice/{aln_method}-{reads}-finesplice.log"
 	threads: 1
-	message: "Using SPANKI to anlayse junctions: {input.bam}"
-	shell: "{params.load_fs}; cd {params.outdir}; FineSplice.py -i {input.bam} -l {READ_LENGTH} > {log} 2>&1 && {params.load_portcullis}; fs2bed.py *.accepted.junc > {params.bed} && cd {CWD} && ln -sf {params.bed} {output} && touch -h {output}"
+	message: "Using FineSplice to anlayse junctions: {input.bam}"
+	shell: "{params.load_fs} && cd {params.outdir} ; if FineSplice.py -i {params.bam} -l {READ_LENGTH} > {log} 2>&1 ; then cd {CWD}; {params.load_portcullis} && fs2bed.py {params.junc} > {output.bed} ; else cd {CWD}; touch {output.bed} ; fi ; ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
