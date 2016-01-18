@@ -267,18 +267,21 @@ rule portcullis_junc:
         message: "Using portcullis to analyse potential junctions: {input}"
         shell: "{params.load}; portcullis junc -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} -t {threads} {params.prepdir} > {log} 2>&1"
 
+
 rule portcullis_filter:
         input: rules.portcullis_junc.output
         output:
-                link=JUNC_DIR+"/output/{aln_method}-{reads}-portcullis.bed"
+                link=JUNC_DIR+"/output/{aln_method}-{reads}-portcullis.bed",
+		unfilt_link=JUNC_DIR+"/output/{aln_method}-{reads}.all.bed"
         params: 
                 outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/filt",
                 load=LOAD_PORTCULLIS,
-                bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}/filt/{aln_method}-{reads}.pass.junctions.bed",
+	        bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}/filt/{aln_method}-{reads}.pass.junctions.bed",
+	        unfilt_bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}/junc/{aln_method}-{reads}.junctions.bed"
         log: PORTCULLIS_DIR+"/{aln_method}-{reads}-filter.log"
         threads: 1
         message: "Using portcullis to filter invalid junctions: {input}"
-        shell: "{params.load}; portcullis filter -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} {input} > {log} 2>&1 && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+        shell: "{params.load}; portcullis filter -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} {input} > {log} 2>&1 && ln -sf {params.bed} {output.link} && touch -h {output.link} && ln -sf {params.unfilt_bed} {output.unfilt_link} && touch -h {output.unfilt_link}"
 
 
 rule spanki:
