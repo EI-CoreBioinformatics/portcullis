@@ -8,48 +8,41 @@ from rpy2.robjects.packages import importr
 import itertools
 import argparse
 
+def loadbed(filepath, usestrand, tophat) :
+    with open(filepath) as f:
+        index = 0
+        items = set()
+        for line in f:
+            if index > 0:
+                words = line.split()
+                overhang = words[10]
+                overhang_parts = overhang.split(",")
+                lo = int(overhang_parts[0])
+                ro = int(overhang_parts[1])
+                chr = words[0]
+                start = str(int(words[6]) + lo) if tophat else words[6]
+                end = str(int(words[7]) - ro) if tophat else words[7]
+                strand = words[5]
+                key = chr + "_" + start + "_" + end
+                if usestrand:
+                    key += "_" + strand
+                items.add(key)
+            index += 1
+    if len(items) != index - 1 :
+        print ("non unique items in bed file " + filepath)
+    return items
 
 def main():
     
-    parser = argparse.ArgumentParser("Script to create the Venn Plots")
-    parser.add_argument("-t", "--type", choices = ["missing", "full", "fusion"],
-                        required=True)
-    parser.add_argument("-o", "--out-folder", dest="out_folder",
-                        type=str, help="Output folder", default=".")
+    parser = argparse.ArgumentParser("Script to create the Venn Plots from BED files")
+    parser.add_argument("input", nargs='+', help="The input BED files")
     args = parser.parse_args()
 
-    sets = OrderedDict.fromkeys(["class", "cufflinks", "stringtie",
-                                 "trinity", "mikado"])
-    for k in sets:
-        sets[k] = set()
+    bed_list = ()
+    for b in args.input:
+        bed_list.append(loadbed(b, false, false))
 
-    total = Counter()
-    total_wo_mikado = Counter()
-    first = True
-
-    for val in sets:
-        if val == "mikado":
-            file_val = "mikado_split"
-        else:
-            file_val = val
-        tsv = csv.DictReader(open("{0}.refmap".format(file_val)), delimiter="\t")
-        for row in tsv:
-            if first:
-                total.update([row["ref_gene"]])
-                total_wo_mikado.update([row["ref_gene"]])
-            if row["ccode"].lower() in ("na", "x", "p", "i")  and args.type == "missing":
-                sets[val].add(row["ref_gene"])
-            elif row["ccode"] in ("=", "_") and args.type == "full":
-                sets[val].add(row["ref_gene"])
-            elif row["ccode"][0] == "f" and args.type == "fusion":
-                sets[val].add(row["ref_gene"])
-            else:
-                continue
-        if first:
-            for gid in total:
-                total[gid] = 0
-                total_wo_mikado[gid] = 0
-
+    '''
     r = rpy2.robjects.r  # Start the R thread                                                                                       
     base = importr("base")
     venn = importr("VennDiagram")
@@ -149,5 +142,5 @@ def main():
                         cex = 2.2,
                         **nums)
     grdevices.dev_off()
-
+    '''
 main()
