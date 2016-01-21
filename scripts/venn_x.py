@@ -42,6 +42,8 @@ def main():
     for b in args.input:
         bed_list.append(loadbed(b, false, false))
 
+    print(str(len(bed_list)))
+
     '''
     r = rpy2.robjects.r  # Start the R thread                                                                                       
     base = importr("base")
