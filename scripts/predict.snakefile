@@ -272,7 +272,7 @@ rule portcullis_filter:
         input: rules.portcullis_junc.output
         output:
                 link=JUNC_DIR+"/output/{aln_method}-{reads}-portcullis.bed",
-		unfilt_link=JUNC_DIR+"/output/{aln_method}-{reads}.all.bed"
+		unfilt_link=JUNC_DIR+"/output/{aln_method}-{reads}-all.bed"
         params: 
                 outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/filt",
                 load=LOAD_PORTCULLIS,
