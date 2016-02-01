@@ -183,10 +183,19 @@ def loadbed(filepath, usestrand, tophat) :
             key = makekey(line, usestrand, tophat)
             items.add(key)
             index += 1
-    if len(items) != index :
+    if len(items) != index:
         print ("duplicated items in bed file " + filepath)
     return items
 
+
+def saveList(filepath, list) :
+    o = open(filepath, 'w')
+
+    o.write("track name=\"junctions\"\n")
+
+    for b in list:
+        print(b, file=o)
+    o.close()
 
 
 def filterbed(filepath, refset, mode, usestrand, tophat, outfile) :
