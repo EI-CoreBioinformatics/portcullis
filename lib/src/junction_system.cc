@@ -472,7 +472,7 @@ void portcullis::JunctionSystem::outputBED(string& path, CanonicalSS type) {
 }
 
 void portcullis::JunctionSystem::outputBED(std::ostream &strm, CanonicalSS type) {
-    strm << "track name=\"junctions\" description=\"Portcullis V" << (version.empty() ? "X.X.X" : version) << " junctions" << endl;
+    strm << "track name=\"junctions\" description=\"Portcullis V" << (version.empty() ? "X.X.X" : version) << " junctions\"" << endl;
     uint64_t i = 0;
     for(JunctionPtr j : junctionList) {
         if (type == ALL || j->getSpliceSiteType() == type) {
