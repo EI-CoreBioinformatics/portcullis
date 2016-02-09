@@ -533,7 +533,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
                 "The filter configuration file to use.")
             ("save_bad,b", po::bool_switch(&saveBad)->default_value(false),
                 "Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)")
-            ("source,c", po::value<string>(&source)->default_value(DEFAULT_FILTER_SOURCE),
+            ("source", po::value<string>(&source)->default_value(DEFAULT_FILTER_SOURCE),
                 "The value to enter into the \"source\" field in GFF files.")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                 "Print extra information")

@@ -424,7 +424,7 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
                 "Calculate additional metrics that take some time to generate.  Automatically activates BAM splitting mode.")
             ("separate,s", po::bool_switch(&separate)->default_value(false),
                 "Separate spliced from unspliced reads.")
-            ("source", po::value<string>(&source)->default_value(DEFAULT_SOURCE),
+            ("source", po::value<string>(&source)->default_value(DEFAULT_JUNC_SOURCE),
                 "The value to enter into the \"source\" field in GFF files.")
             ("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads).  By default we assume the user does not know the strand specific protocol used for this BAM file.  This has the affect that strand information is derived from splice site information alone, assuming junctions are either canonical or semi-canonical in form.  Default: \"unknown\"")

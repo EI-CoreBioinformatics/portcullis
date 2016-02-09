@@ -64,7 +64,7 @@ namespace portcullis {
 
 const string DEFAULT_JUNC_OUTPUT_DIR = "portcullis_junc_out";
 const string DEFAULT_JUNC_OUTPUT_PREFIX = "portcullis";
-const string DEFAULT_SOURCE = "portcullis";
+const string DEFAULT_JUNC_SOURCE = "portcullis";
 const uint16_t DEFAULT_JUNC_THREADS = 1;
 
 typedef boost::error_info<struct JunctionBuilderError,string> JunctionBuilderErrorInfo;

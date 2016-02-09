@@ -146,6 +146,7 @@ int mainFull(int argc, char *argv[]) {
     bool force;
     bool useCsi;
     bool bamFilter;
+    string source;
     bool verbose;
     bool help;
     
@@ -171,6 +172,8 @@ int mainFull(int argc, char *argv[]) {
                 "The filter configuration file to use.")
             ("bam_filter,b", po::bool_switch(&bamFilter)->default_value(false), 
                 "Filter out alignments corresponding with false junctions")
+            ("source", po::value<string>(&source)->default_value("portcullis"),
+                "The value to enter into the \"source\" field in GFF files.")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                 "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -261,9 +264,10 @@ int mainFull(int argc, char *argv[]) {
     // Identify junctions and calculate metrics
     JunctionBuilder jb(prepDir.string(), juncDir.string(), "portcullis_all");
     jb.setThreads(threads);
-    jb.setExtra(false);
-    jb.setSeparate(false);
+    jb.setExtra(false);     // Run in fast mode
+    jb.setSeparate(false);  // Run in fast mode
     jb.setStrandSpecific(strandednessFromString(strandSpecific));
+    jb.setSource(source);
     jb.setUseCsi(useCsi);
     jb.setVerbose(verbose);
     
@@ -280,6 +284,7 @@ int mainFull(int argc, char *argv[]) {
     
     JunctionFilter filter(juncTab, filterFile, filtDir, "portcullis_filtered");
     filter.setVerbose(verbose);
+    filter.setSource(source);
     filter.filter();
 
     
