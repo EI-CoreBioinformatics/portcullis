@@ -2,61 +2,38 @@
 # Setup
 ##########################################################################
 
-# Autoconf initialistion.  Sets package name version and contact details
-AC_INIT([Portcullis],[0.10.4],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
-
-# I built this with autoconf 2.53 and have only tested it on 2.69 systems.  You can change this but I don't
-# make any guarentees
-AC_PREREQ([2.53])
-
-# Check that the configure script is being run from the right directory
+# Autoconf setup
+AC_PREREQ([2.68])
+AC_INIT([portcullis],[0.12.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
 AC_CONFIG_SRCDIR([src/portcullis.cc])
-
-# Put auxillary build scripts in 'build-aux' directory
 AC_CONFIG_AUX_DIR([build-aux])
-
-# Set the macro directory
 AC_CONFIG_MACRO_DIR([m4])
-
-# Automake initialisation.  Sets some default flags.  We use 'foreign' because we have a markdown README file.
-# I've only tried this with automake 1.11 and above, so you require at least that version installed on your 
-# machine if you want to regenerate 'the Makefile.in's.  If you're looking at this comment in the 'configure' 
-#script then this the am__api_version, will be set to whatever I used to create this file.  Or it might be 
-#whatever you used if you made it yourself with autoconf (or autoreconf, or the autogen.sh script)
-AM_INIT_AUTOMAKE([1.11 subdir-objects foreign -Wall no-define tar-ustar])
-
-# Most of portcullis is written in C++.  This is what this macro means: "Do compilation tests using CXX and CXXCPP and use extension .C for test programs. Use compilation flags: CPPFLAGS with CXXCPP, and both CPPFLAGS and CXXFLAGS with CXX."
-AC_LANG_CPLUSPLUS
-
-# Set output variable CXXCPP to a command that runs the C++ preprocessor. If ‘$CXX -E’ doesn't work, /lib/cpp is used. It is portable to run CXXCPP only on files with a .c, .C, .cc, or .cpp extension.
-AC_PROG_CXXCPP
-
-# AC_PROG_CXX determine a C++ compiler to use. Check whether the environment variable CXX or CCC (in that order) is set; if so, then set output variable CXX to its value.  We ignore the CXXFLAGS already set in the environment. This is necessary to avoid AC_PROG_XX automatically adding "-g -O2" to CXXFLAGS
-CXXFLAGS=""
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile])
+AC_CONFIG_SUBDIRS([deps/htslib-1.3])
+AC_LANG([C++])
+AC_PROG_INSTALL
 AC_PROG_CXX
-
-# Determine a C compiler to use. If CC is not already set in the environment, check for gcc and cc, then for other C compilers. Set output variable CC to the name of the compiler found.
-# NOTE: This probably isn't necessary.  I don't think we have any C code in portcullis.
-CFLAGS=""
 AC_PROG_CC
 
 # Ensure there's C++11 support
 AX_CXX_COMPILE_STDCXX_11(,[mandatory])
 
-# Delegates building of libraries to libtool
-LT_PREREQ([2.4.2])
+# Automake setup
+AM_INIT_AUTOMAKE([1.11 subdir-objects foreign -Wall no-define tar-ustar])
+m4_pattern_allow([AM_PROG_AR])
+AM_PROG_AR
+AM_SILENT_RULES([yes])
+
+# Libtool setup
 LT_INIT
-
-# Create the 'install-sh' script, which is used as the 'install' make target
-AC_PROG_INSTALL
-
 
 
 ######################################################################
 # Dependency checks
 ######################################################################
 
-# Check some (almost) standard functionality is present that we require to run portcullis.
+# Check some (almost) standard functionality is present that we require
 #AC_CHECK_HEADER_STDBOOL
 AC_FUNC_ERROR_AT_LINE
 AC_TYPE_INT16_T
@@ -82,20 +59,63 @@ AC_CHECK_HEADERS([glob.h])
 # Save libs (restore as and when needed)
 SAVED_LIBS="${LIBS}"
 
-# Check pthreads and zlib exist and are available
-AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
-AX_CHECK_ZLIB(, [AC_MSG_ERROR([Zlib not found.  Please ensure that zlib is properly built and configured.])])
+# Required for HTS lib
+AC_SEARCH_LIBS([dlopen], [dl],
+    [DL_LIB="-ldl"],
+    [AC_MSG_ERROR([dl lib not found.  Please ensure that dl is properly built and configured.])])
 
-## Check for boost
+AC_SEARCH_LIBS([sin], [m],
+    [M_LIB="-lm"],
+    [AC_MSG_ERROR([libm not found.  Please ensure that maths lib is properly built and configured.])])
+
+# Required for Boost
+AC_SEARCH_LIBS([clock_gettime], [rt],
+    [RT_LIB="-lrt"],
+    [AC_MSG_ERROR([rt lib not found.  Please ensure that rt is properly built and configured.])])
+
+# Check pthreads, zlib exist and are available
+AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
+AX_CHECK_ZLIB(, [AC_MSG_ERROR([zlib not found.  Please ensure that zlib is properly built and configured.])])
+
+# Check for dlib (required)
+AX_DLIB
+
+# Check for samtools (reqired)
+AC_CHECK_PROG([with_samtools],[samtools],[yes],[no])
+if test "$with_samtools" == no ; then
+    AC_MSG_ERROR([samtools not found])
+fi 
+
+# Check for sphinx to build documentation (optional)
+AC_CHECK_PROG([sphinx], [sphinx-build], [yes], [no])
+if test x"${sphinx}" = x"yes"; then
+	#Now check if the version is correct
+	sphinx_major_version=`sphinx-build --version 2>&1 | cut -d' ' -f3 | cut -d '.' -f 1 | tr -d " \t\n\r"`
+        sphinx_minor_version=`sphinx-build --version 2>&1 | cut -d' ' -f3 | cut -d '.' -f 2 | tr -d " \t\n\r"`
+	if test x"${sphinx_major_version}" = x""; then sphinx_major_version=0; fi
+	if test x"${sphinx_minor_version}" = x""; then sphinx_minor_version=0; fi
+	major_size=${#sphinx_major_version}
+	minor_size=${#sphinx_minor_version}
+	if (( ("${major_size}" > 2) || ("${minor_size}" > 2) )); then sphinx_major_version=0; sphinx_minor_version=0; fi
+	if (( ("${sphinx_major_version}" < 1 ) || (  ( "${sphinx_major_version}" >= 1 ) && ( "${sphinx_minor_version}" < 3 ) ) )); then
+    		AC_MSG_WARN([Sphinx detected, but version is too old.  Wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/])
+		sphinx="no"
+	fi
+else
+    AC_MSG_WARN([Sphinx not detected, wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/])    
+fi
+AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
+AC_SUBST([MAKE_DOCS])
+
+## Check for boost (required)
 AX_BOOST_BASE([1.52],, [AC_MSG_ERROR([Boost not found.  Please ensure that boost is properly built and the BOOST_ROOT environment variable is set.  Alternatively you can override BOOST_ROOT with the --with-boost option.])])
 AX_BOOST_SYSTEM
 AX_BOOST_FILESYSTEM
 AX_BOOST_CHRONO
 AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_TIMER
-AX_BOOST_UNIT_TEST_FRAMEWORK
 
-# Combine BOOST variables (apart for BOOST_TEST)
+# Combine BOOST variables
 BOOST_LIBS="${BOOST_TIMER_STATIC_LIB} ${BOOST_CHRONO_STATIC_LIB} ${BOOST_FILESYSTEM_STATIC_LIB} ${BOOST_PROGRAM_OPTIONS_STATIC_LIB} ${BOOST_SYSTEM_STATIC_LIB}"
 AC_SUBST([BOOST_LIBS])
 
@@ -104,18 +124,22 @@ LIBS="${SAVED_LIBS}"
 
 #########
 
-AM_CXXFLAGS="-DCPLUSPLUS"
+AM_CXXFLAGS="-g -g3 -gdwarf-4"
 AC_SUBST([AM_CXXFLAGS])
 
-AM_CPPFLAGS="${BOOST_CPPFLAGS} ${ZLIB_CPPFLAGS}"
+AM_CPPFLAGS="${BOOST_CPPFLAGS} ${DLIB_CPPFLAGS} ${ZLIB_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
-AM_LDFLAGS="${BOOST_LDFLAGS} ${ZLIB_LDFLAGS}"
+AM_LDFLAGS="${BOOST_LDFLAGS} ${PTHREAD_CFLAGS} ${ZLIB_LDFLAGS}"
 AC_SUBST([AM_LDFLAGS])
 
-AM_LIBS="${BOOST_LIBS} ${PTHREAD_CFLAGS} ${ZLIB_LIB}"
+AM_LIBS="${BOOST_LIBS} ${RT_LIB} ${M_LIB} ${DL_LIB} ${ZLIB_LIB} ${PTHREAD_LIBS}"
 AC_SUBST([AM_LIBS])
 
-AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile deps/htslib-1.2.1/Makefile deps/samtools-1.2/Makefile src/Makefile tests/Makefile])
 AC_OUTPUT
+
+if [[ "${sphinx}" == "no" ]]; then
+    AC_MSG_WARN([Sphinx not detected, or version is too old.  Wont create documentation.  You can still find the documentation online at: https://kat.readthedocs.org/en/latest/])    
+else
+    AC_MSG_NOTICE([Building documentation with sphinx])
+fi

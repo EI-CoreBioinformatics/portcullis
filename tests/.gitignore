@@ -3,6 +3,7 @@
 /test-suite.log
 /.deps/
 /.libs/
+/temp/
 /check_portculis-check_portculis.o
 /check_portculis-genome_mapper_tests.o
 /check_portculis-portculis_tests.o
@@ -18,3 +19,8 @@ check_bam*
 check_intron*
 check_junction*
 check_seq*
+/check_unit_tests
+/check_unit_tests.log
+/check_unit_tests.trs
+*.la
+/compat.sh

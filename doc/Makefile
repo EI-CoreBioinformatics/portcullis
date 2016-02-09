@@ -6,20 +6,46 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = build
+MKDIR_P	      = mkdir -p
+INSTALL	      = /usr/bin/install -c -m 644
+
+# Set autoconf variables
+prefix	      = /usr/local
+PACKAGE_TARNAME = portcullis
+top_srcdir    = ..
+srcdir	      = .
+docdir	      = ${datarootdir}/doc/${PACKAGE_TARNAME}
+mandir	      = ${datarootdir}/man
+htmldir	      = ${docdir}
+pdfdir        = ${docdir}
+infodir       = ${datarootdir}/info
+top_builddir  = ..
+datarootdir   = ${prefix}/share
+datadir       = ${datarootdir}
 
 # User-friendly check for sphinx-build
-ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
-$(error The '$(SPHINXBUILD)' command was not found. Make sure you have Sphinx installed, then set the SPHINXBUILD environment variable to point to the full path of the '$(SPHINXBUILD)' executable. Alternatively you can add the directory with the executable to your PATH. If you don't have Sphinx installed, grab it from http://sphinx-doc.org/)
-endif
+#if test $(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?) = 1; then
+#$(error The '$(SPHINXBUILD)' command was not found. Make sure you have Sphinx installed, then set the SPHINXBUILD environment variable to point to the full path of the '$(SPHINXBUILD)' executable. Alternatively you can add the directory with the executable to your PATH. If you don't have Sphinx installed, grab it from http://sphinx-doc.org/)
+#fi
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
-ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) source
+ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) -c source $(top_srcdir)/doc/source
 # the i18n builder cannot share the environment and doctrees with the others
-I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) source
+I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) -c source $(top_srcdir)/doc/source
 
 .PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest gettext
+
+
+DPS=$(top_srcdir)/doc/source
+DPI=$(DPS)/images
+DISTFILES = $(DPS)/index.rst \
+	    $(DPS)/installation.rst \
+	    $(DPS)/metrics.rst \
+	    $(DPS)/using.rst	    
+
+	
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
@@ -85,17 +111,17 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/portcullis.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/KAT.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/portcullis.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/KAT.qhc"
 
 devhelp:
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/portcullis"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/portcullis"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/KAT"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/KAT"
 	@echo "# devhelp"
 
 epub:
@@ -175,3 +201,81 @@ pseudoxml:
 	$(SPHINXBUILD) -b pseudoxml $(ALLSPHINXOPTS) $(BUILDDIR)/pseudoxml
 	@echo
 	@echo "Build finished. The pseudo-XML files are in $(BUILDDIR)/pseudoxml."
+
+# Automake targets that we'll ignore
+EMPTY_AUTOMAKE_TARGETS = check installcheck tags ctags dvi install-exec install-dvi install-ps install-info
+.PHONY: $(EMPTY_AUTOMAKE_TARGETS)
+$(EMPTY_AUTOMAKE_TARGETS):
+
+# Automake targets that we'll use (that aren't already described)
+.PHONY: all man pdf mostly-clean distclean maintainer-clean install install-data install-man install-html install-pdf installdirs uninstall distdirs
+
+# Hook in conventional make targets for building docs
+all: html man
+        
+# Redirect pdf to latexpdf
+pdf: latexpdf
+
+# Redirect all cleaning targets to clean
+mostly-clean: clean
+distclean: clean
+maintainer-clean: clean
+
+# Install and uninstall overrides
+install: install-data
+
+install-data: install-man install-pdf install-html
+
+# Fail on error
+install-man:
+	test -s build && test -s build/man && $(MKDIR_P) $(DESTDIR)$(mandir)/man1 && $(INSTALL) build/man/portcullis.1 $(DESTDIR)$(mandir)/man1/portcullis.1
+
+# Skip any errors here... we don't require the PDF to be generated
+install-pdf:
+	-test -s build && test -s build/latex && test -s build/latex/portcullis.pdf && $(INSTALL) build/latex/portcullis.pdf $(DESTDIR)$(pdfdir)/portcullis.pdf;
+
+install-html:
+	test -s build && test -s build/html && $(MKDIR_P) $(DESTDIR)$(htmldir) && cp -rf build/html $(DESTDIR)$(htmldir) && chmod 755 -R $(DESTDIR)$(htmldir)
+
+# Make sure all installation directories (e.g. $(bindir))
+# actually exist by making them if necessary.
+installdirs: mkinstalldirs
+	$(srcdir)/mkinstalldirs \
+		$(DESTDIR)$(pdfdir) \
+		$(DESTDIR)$(htmldir) \
+		$(DESTDIR)$(mandir)/man1
+
+uninstall:
+	rm -Rf "$(DESTDIR)$(mandir)/man1/portcullis.1" "$(DESTDIR)$(pdfdir)/portcullis.pdf" "$(DESTDIR)$(htmldir)"
+
+	
+distdir: $(DISTFILES)
+	@srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
+	topsrcdirstrip=`echo "$(top_srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
+	list='$(DISTFILES)'; \
+	  dist_files=`for file in $$list; do echo $$file; done | \
+	  sed -e "s|^$$srcdirstrip/||;t" \
+	      -e "s|^$$topsrcdirstrip/|$(top_builddir)/|;t"`; \
+	case $$dist_files in \
+	  */*) $(MKDIR_P) `echo "$$dist_files" | \
+			   sed '/\//!d;s|^|$(distdir)/|;s,/[^/]*$$,,' | \
+			   sort -u` ;; \
+	esac; \
+	for file in $$dist_files; do \
+	  if test -f $$file || test -d $$file; then d=.; else d=$(srcdir); fi; \
+	  if test -d $$d/$$file; then \
+	    dir=`echo "/$$file" | sed -e 's,/[^/]*$$,,'`; \
+	    if test -d "$(distdir)/$$file"; then \
+	      find "$(distdir)/$$file" -type d ! -perm -700 -exec chmod u+rwx {} \;; \
+	    fi; \
+	    if test -d $(srcdir)/$$file && test $$d != $(srcdir); then \
+	      cp -fpR $(srcdir)/$$file "$(distdir)$$dir" || exit 1; \
+	      find "$(distdir)/$$file" -type d ! -perm -700 -exec chmod u+rwx {} \;; \
+	    fi; \
+	    cp -fpR $$d/$$file "$(distdir)$$dir" || exit 1; \
+	  else \
+	    test -f "$(distdir)/$$file" \
+	    || cp -p $$d/$$file "$(distdir)/$$file" \
+	    || exit 1; \
+	  fi; \
+	done

@@ -43,10 +43,10 @@ namespace bfs = boost::filesystem;
 using bfs::path;
 namespace po = boost::program_options;
 
-#include "bam/bam_master.hpp"
+#include <portcullis/bam/bam_master.hpp>
 using portcullis::bam::Strandedness;
 
-#include "portcullis_fs.hpp"
+#include <portcullis/portcullis_fs.hpp>
 using portcullis::PortcullisFS;
 
 
@@ -70,11 +70,6 @@ const string BCF_EXTENSION = ".bcf";
 const string BCF_INDEX_EXTENSION = ".bci";
 const string BAM_DEPTH_EXTENSION = ".bdp";
    
-
-struct Settings {
-    Strandedness ss = Strandedness::UNKNOWN;
-    bool useCsi = false;
-};
 
 class PreparedFiles {
     
@@ -131,15 +126,9 @@ public:
         return path(getGenomeFilePath().string() + FASTA_INDEX_EXTENSION);
     }
     
-    path getSettingsFilePath() const {
-        return path(prepDir.string() + "/" + PORTCULLIS + ".settings");
-    }
-    
     bool valid(bool useCsi) const;
     
-    void clean();
-    
-    Settings loadSettings();
+    void clean();    
 };
 
 
@@ -190,6 +179,14 @@ protected:
     bool bamSort();
     
     bool bamIndex(const bool copied);
+    
+    /**
+     * Checks whether the specified indexing method can support the genome sequence lengths
+     * @param genomeFile
+     * @param useCsi
+     * @return 
+     */
+    bool checkIndexMode(const path& genomeIndexFile, const bool useCsi);
 
 public:
     
@@ -202,8 +199,10 @@ public:
   
     static string helpMessage() {
         return string("\nPortcullis Prepare Mode Help.\n\n") +
+                      "Prepares a genome and bam file(s) ready for junction analysis.  This involves\n" +
+                      "ensuring the bam file is sorted and indexed and the genome file is indexed.\n"
                       "Usage: portcullis prep [options] <genome-file> (<bam-file>)+ \n\n" +
-                      "Allowed options";
+                      "Options";
     }
     
     

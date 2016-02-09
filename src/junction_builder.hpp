@@ -48,13 +48,14 @@ using namespace boost::filesystem;
 using boost::filesystem::path;
 namespace po = boost::program_options;
 
-#include "intron.hpp"
-#include "junction.hpp"
-#include "junction_system.hpp"
-#include "prepare.hpp"
+#include <portcullis/intron.hpp>
+#include <portcullis/junction.hpp>
+#include <portcullis/junction_system.hpp>
 using portcullis::Intron;
 using portcullis::Junction;
 using portcullis::JunctionSystem;
+
+#include "prepare.hpp"
 using portcullis::PreparedFiles;
 
 
@@ -63,6 +64,7 @@ namespace portcullis {
 
 const string DEFAULT_JUNC_OUTPUT_DIR = "portcullis_junc_out";
 const string DEFAULT_JUNC_OUTPUT_PREFIX = "portcullis";
+const string DEFAULT_JUNC_SOURCE = "portcullis";
 const uint16_t DEFAULT_JUNC_THREADS = 1;
 
 typedef boost::error_info<struct JunctionBuilderError,string> JunctionBuilderErrorInfo;
@@ -84,11 +86,12 @@ private:
     PreparedFiles prepData;
     path outputDir;
     string outputPrefix;
-    Settings settings;
     uint16_t threads;
+    Strandedness strandSpecific;
     bool extra;
     bool separate;
-    path samtoolsExe;
+    bool useCsi;
+    string source;
     bool verbose;
     
     // The set of distinct junctions found in the BAM file
@@ -176,6 +179,30 @@ public:
         this->separate = separate;
     }
 
+    string getSource() const {
+        return source;
+    }
+
+    void setSource(string source) {
+        this->source = source;
+    }
+    
+    Strandedness getStrandSpecific() const {
+        return strandSpecific;
+    }
+
+    void setStrandSpecific(Strandedness strandSpecific) {
+        this->strandSpecific = strandSpecific;
+    }
+
+    bool isUseCsi() const {
+        return useCsi;
+    }
+
+    void setUseCsi(bool useCsi) {
+        this->useCsi = useCsi;
+    }
+
 
     
     
@@ -186,20 +213,13 @@ public:
      */
     void process();
     
-    path getSamtoolsExe() const {
-        return samtoolsExe;
-    }
-
-    void setSamtoolsExe(path samtoolsExe) {
-        this->samtoolsExe = samtoolsExe;
-    }
-
-    
     static string helpMessage() {
         return string("\nPortcullis Junction Builder Mode Help.\n\n") +
+                      "Analyses all potential junctions found in the input BAM file.\n" +
+                      "Run \"portcullis prep ...\" to generate data suitable for junction finding\n" +
+                      "before running \"portcullis junc ...\"\n\n" +
                       "Usage: portcullis junc [options] <prep_data_dir> \n\n" +
-                      "Run \"portcullis prep ...\" to generate data suitable for junction finding before running \"portcullis junc ...\"\n\n" +
-                      "Allowed options";
+                      "Options";
     }
     
     static int main(int argc, char *argv[]);

@@ -15,10 +15,7 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
-#define BOOST_TEST_DYN_LINK
-#ifdef STAND_ALONE
-#define BOOST_TEST_MODULE PORTCULLIS
-#endif
+#include <gtest/gtest.h>
 
 #include <iostream>
 #include <vector>
@@ -26,20 +23,17 @@ using std::cout;
 using std::endl;
 using std::vector;
 
-#include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
 
-#include "../src/samtools_helper.hpp"
-using portcullis::CigarOp;
-using portcullis::BamAlignment;
+#include <portcullis/bam/bam_alignment.hpp>
+using portcullis::bam::CigarOp;
+using portcullis::bam::BamAlignment;
 
 #include "../src/bam_filter.hpp"
 using portcullis::BamFilter;
 
 
-BOOST_AUTO_TEST_SUITE(bam_filter)
-
-BOOST_AUTO_TEST_CASE(completePass) {
+TEST(bam_filter, completePass) {
     
     vector<CigarOp> completeOkCigar;
     completeOkCigar.push_back(CigarOp('M',10));
@@ -58,5 +52,3 @@ BOOST_AUTO_TEST_CASE(completePass) {
     // Check the merged bam file exists
     //BOOST_CHECK(boost::filesystem::exists(mergedBam));    
 }
-
-BOOST_AUTO_TEST_SUITE_END()

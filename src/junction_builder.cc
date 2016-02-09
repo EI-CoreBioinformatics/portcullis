@@ -15,6 +15,7 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+#include <sys/ioctl.h>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -40,24 +41,26 @@ using namespace boost::filesystem;
 using boost::filesystem::path;
 namespace po = boost::program_options;
 
-#include "bam/bam_master.hpp"
-#include "bam/bam_reader.hpp"
-#include "bam/bam_writer.hpp"
-#include "bam/depth_parser.hpp"
-#include "bam/genome_mapper.hpp"
+#include "htslib/sam.h"
+
+#include <portcullis/bam/bam_master.hpp>
+#include <portcullis/bam/bam_reader.hpp>
+#include <portcullis/bam/bam_writer.hpp>
+#include <portcullis/bam/depth_parser.hpp>
+#include <portcullis/bam/genome_mapper.hpp>
+#include <portcullis/seq_utils.hpp>
 using namespace portcullis::bam;
 
-#include "intron.hpp"
-#include "junction.hpp"
-#include "junction_system.hpp"
-#include "prepare.hpp"
-#include "seq_utils.hpp"
+#include <portcullis/intron.hpp>
+#include <portcullis/junction.hpp>
+#include <portcullis/junction_system.hpp>
 using portcullis::Intron;
 using portcullis::Junction;
 using portcullis::JunctionSystem;
 
+#include "prepare.hpp"
+
 #include "junction_builder.hpp"
-#include "htslib/sam.h"
 using portcullis::JBThreadPool;
 
 portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _outputDir, string _outputPrefix) {
@@ -66,27 +69,10 @@ portcullis::JunctionBuilder::JunctionBuilder(const path& _prepDir, const path& _
     outputPrefix = _outputPrefix;
     threads = 1;
     extra = false;
+    useCsi = false;
+    strandSpecific = Strandedness::UNKNOWN;
+    source = "portcullis";
     verbose = false;        
-
-    if (!bfs::exists(outputDir)) {
-        if (!bfs::create_directories(outputDir)) {
-            BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                    "Could not create output directory: ") + outputDir.string()));
-        }
-    }
-    else if (!bfs::is_directory(outputDir)) {
-        BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                    "File exists with name of suggested output directory: ") + outputDir.string()));            
-    }
-
-    // Loading settings stored in prep data
-    settings = prepData.loadSettings();
-
-    // Test if we have all the required data
-    if (!prepData.valid(settings.useCsi)) {
-        BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
-                    "Prepared data is not complete: ") + prepData.getPrepDir().string()));
-    }    
 }
     
 portcullis::JunctionBuilder::~JunctionBuilder() {
@@ -109,6 +95,12 @@ void portcullis::JunctionBuilder::process() {
             BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
                     "Could not create output directory at: ") + outputDir.string()));
         }
+    }
+    
+    // Test if we have all the required data
+    if (!prepData.valid(useCsi)) {
+        BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                    "Prepared data is not complete: ") + prepData.getPrepDir().string()));
     }
     
     const path sortedBamFile = prepData.getSortedBamFilePath();
@@ -137,8 +129,8 @@ void portcullis::JunctionBuilder::process() {
     // Output settings requested
     cout << "Settings:" << endl
          << std::boolalpha
-         << " - BAM Strandedness (from prepare mode): " << strandednessToString(settings.ss) << endl
-         << " - BAM Indexing mode (from prepare mode): " << (settings.useCsi ? "CSI" : "BAI") << endl
+         << " - BAM Strandedness: " << strandednessToString(strandSpecific) << endl
+         << " - BAM Indexing mode: " << (useCsi ? "CSI" : "BAI") << endl
          << " - Threads: " << threads << endl
          << " - Separate BAMs: " << separate << endl
          << " - Calculate additional metrics: " << extra << endl
@@ -159,7 +151,7 @@ void portcullis::JunctionBuilder::process() {
     }
 
     cout << "Saving junctions: " << endl;
-    junctionSystem.saveAll(path(outputDir.string() + "/" + outputPrefix));
+    junctionSystem.saveAll(path(outputDir.string() + "/" + outputPrefix), source);
 }
 
 void portcullis::JunctionBuilder::separateBams() {
@@ -236,7 +228,7 @@ void portcullis::JunctionBuilder::separateBams() {
     cout.flush();
 
     // Create BAM index
-    string unsplicedIndexCmd = BamHelper::createIndexBamCmd(unsplicedFile, settings.useCsi);                
+    string unsplicedIndexCmd = BamHelper::createIndexBamCmd(unsplicedFile, useCsi);                
 
     int unsExitCode = system(unsplicedIndexCmd.c_str());                    
 
@@ -245,7 +237,7 @@ void portcullis::JunctionBuilder::separateBams() {
     cout.flush();
 
     // Create BAM index
-    string splicedIndexCmd = BamHelper::createIndexBamCmd(splicedFile, settings.useCsi);                
+    string splicedIndexCmd = BamHelper::createIndexBamCmd(splicedFile, useCsi);                
 
     int sExitCode = system(splicedIndexCmd.c_str());                    
 
@@ -339,7 +331,7 @@ void portcullis::JunctionBuilder::calcExtraMetrics() {
 
     cout << " - Calculating unspliced alignment coverage around junctions ...";
     cout.flush();
-    junctionSystem.calcCoverage(getUnsplicedBamFile(), settings.ss);
+    junctionSystem.calcCoverage(getUnsplicedBamFile(), strandSpecific);
 }
 
 void portcullis::JunctionBuilder::findJuncs(BamReader& reader, GenomeMapper& gmap, int32_t seq) {
@@ -409,11 +401,18 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
     uint16_t threads;
     bool extra;
     bool separate;
+    string strandSpecific;
+    bool useCsi;
+    string source;
     bool verbose;
     bool help;
+    
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
 
     // Declare the supported options.
-    po::options_description generic_options(helpMessage(), 100);
+    po::options_description generic_options(helpMessage(), w.ws_col, (unsigned)((double)w.ws_col/1.7));
     generic_options.add_options()
             ("output_dir,o", po::value<string>(&outputDir)->default_value(DEFAULT_JUNC_OUTPUT_DIR), 
                 "Output directory for files generated by this program.")
@@ -425,6 +424,12 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
                 "Calculate additional metrics that take some time to generate.  Automatically activates BAM splitting mode.")
             ("separate,s", po::bool_switch(&separate)->default_value(false),
                 "Separate spliced from unspliced reads.")
+            ("source", po::value<string>(&source)->default_value(DEFAULT_JUNC_SOURCE),
+                "The value to enter into the \"source\" field in GFF files.")
+            ("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
+                "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads).  By default we assume the user does not know the strand specific protocol used for this BAM file.  This has the affect that strand information is derived from splice site information alone, assuming junctions are either canonical or semi-canonical in form.  Default: \"unknown\"")
+            ("use_csi,c", po::bool_switch(&useCsi)->default_value(false), 
+                "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                 "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -472,8 +477,10 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
     jb.setThreads(threads);
     jb.setExtra(extra);
     jb.setSeparate(separate);
+    jb.setSource(source);
+    jb.setStrandSpecific(strandednessFromString(strandSpecific));
+    jb.setUseCsi(useCsi);
     jb.setVerbose(verbose);
-    jb.setSamtoolsExe(BamHelper::samtoolsExe);
     jb.process();
 
     return 0;

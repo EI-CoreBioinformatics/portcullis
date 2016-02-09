@@ -158,7 +158,6 @@ print ("Specificity: " + str(spc))
 print ("Precision: " + str(prc))
 print
 
-
 acc = float(tp + tn) / float(tp + fp + tn + fn)
 f1 = float(2 * tp) / float(2 * tp + fp + fn)
 

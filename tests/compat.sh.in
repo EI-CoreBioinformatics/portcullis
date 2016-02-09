@@ -1,0 +1,6 @@
+PORTCULLIS="../src/portcullis"
+SRCDIR=@abs_top_srcdir@
+BUILDDIR=@abs_top_builddir@
+data=${SRCDIR}/tests/resources
+
+set -e

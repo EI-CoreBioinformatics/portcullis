@@ -22,7 +22,7 @@
 #include <dlib/svm.h>
 #include <dlib/rand.h>
 
-#include "junction_system.hpp"
+#include <portcullis/junction_system.hpp>
 
 using namespace std;
 using namespace dlib;
@@ -122,8 +122,8 @@ public:
         string goodFile = resultsFile + ".good";
         string badFile = resultsFile + ".bad";
         
-        good.saveAll(goodFile);
-        bad.saveAll(badFile);        
+        good.saveAll(goodFile, "portcullis");
+        bad.saveAll(badFile, "portcullis");        
     }
     
     

@@ -1,0 +1,8 @@
+/.libs/
+/.deps/
+*.la
+/Makefile
+
+/Makefile.in
+/portcullis-0.11.pc
+/portcullis.pc

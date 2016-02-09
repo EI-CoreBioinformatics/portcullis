@@ -57,12 +57,13 @@ using boost::property_tree::ptree;
 namespace qi    = boost::spirit::qi;
 namespace phx   = boost::phoenix;
 
-#include "intron.hpp"
-#include "junction_system.hpp"
-#include "portcullis_fs.hpp"
+#include <portcullis/intron.hpp>
+#include <portcullis/portcullis_fs.hpp>
+#include <portcullis/junction_system.hpp>
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
+
 
 namespace portcullis {
     
@@ -72,6 +73,7 @@ struct JuncFilterException: virtual boost::exception, virtual std::exception { }
 
 const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
 const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
+const string DEFAULT_FILTER_SOURCE = "portcullis";
 const string DEFAULT_FILTER_FILE = "default_filter.json";
 
 
@@ -235,20 +237,18 @@ private:
     path outputDir;
     string outputPrefix;
     bool saveBad;
+    string source;
     bool verbose;    
     
     
 public:
     
     static path defaultFilterFile;
-    static path filterJuncsPy;
     
     JunctionFilter( const path& _junctionFile, 
                     const path& _filterFile, 
                     const path& _outputDir, 
-                    const string& _outputPrefix, 
-                    const bool _saveBad,
-                    bool _verbose);
+                    const string& _outputPrefix);
     
     virtual ~JunctionFilter() {
     }
@@ -304,6 +304,15 @@ public:
     void setVerbose(bool verbose) {
         this->verbose = verbose;
     }
+    
+    string getSource() const {
+        return source;
+    }
+
+    void setSource(string source) {
+        this->source = source;
+    }
+
 
     
     
@@ -328,8 +337,10 @@ public:
   
     static string helpMessage() {
         return string("\nPortcullis Filter Mode Help.\n\n") +
+                      "Filters out junctions that are unlikely to be genuine or that have too little\n" +
+                      "supporting evidence.\n\n" +
                       "Usage: portcullis filter [options] <junction-file>\n\n" +
-                      "Allowed options";
+                      "Options";
     }
     
     static int main(int argc, char *argv[]);

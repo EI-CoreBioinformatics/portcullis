@@ -15,12 +15,8 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
-#define BOOST_TEST_MAIN
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE PORTCULLIS
-#define BOOST_TEST_LOG_LEVEL all
+#include <gtest/gtest.h>
 
-#include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/operations.hpp>
 using boost::filesystem::remove_all;
@@ -33,10 +29,7 @@ using portcullis::Prepare;
 using portcullis::PortcullisFS;
 using portcullis::JunctionBuilder;
 
-BOOST_AUTO_TEST_SUITE(interface)
-
-BOOST_AUTO_TEST_CASE(test1)
-{
+TEST(interface, test1) {
     vector<path> bams;
     bams.push_back("resources/clipped3.bam");
     
@@ -56,29 +49,25 @@ BOOST_AUTO_TEST_CASE(test1)
     //JunctionBuilder(prepdir, juncdir, "test", 1, false, true).process();
     remove_all(outdir);
     
-    BOOST_CHECK(true);
+    EXPECT_EQ(true, true);
 }
 
-BOOST_AUTO_TEST_CASE(glob1)
-{
+TEST(interface, glob1) {
     vector<path> bams;
     bams.push_back("resources/*.bam");
     
     vector<path> globbedFiles = portcullis::Prepare::globFiles(bams);
     
-    BOOST_CHECK(globbedFiles.size() >= 5);
-    BOOST_CHECK(globbedFiles.size() < 10);
+    EXPECT_GE(globbedFiles.size(), 5);
+    EXPECT_LT(globbedFiles.size(), 10);
 }
 
-BOOST_AUTO_TEST_CASE(glob2)
-{
+TEST(interface, glob2) {
     vector<path> bams;
     bams.push_back("resources/*.bam");
     bams.push_back("resources/*.bam");
     
     vector<path> globbedFiles = portcullis::Prepare::globFiles(bams);
     
-    BOOST_CHECK(globbedFiles.size() >= 10);
+    EXPECT_GE(globbedFiles.size() >= 10);
 }
-
-BOOST_AUTO_TEST_SUITE_END()

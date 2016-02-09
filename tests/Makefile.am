@@ -1,35 +1,57 @@
 AUTOMAKE_OPTIONS = subdir-objects
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
-AM_CXXFLAGS = -g -g3 -gdwarf-4 -O0 @AM_CXXFLAGS@
-AM_CPPFLAGS = -I$(top_srcdir)/deps/htslib-1.2.1 -I$(top_srcdir)/deps/samtools-1.2 -I$(top_srcdir)/deps/dlib-18.16 -I$(top_srcdir)/src @AM_CPPFLAGS@ 
-AM_LDFLAGS = -L$(top_srcdir)/src @AM_LDFLAGS@
-LDADD = $(top_srcdir)/deps/htslib-1.2.1/libhts.a @BOOST_UNIT_TEST_FRAMEWORK_LIB@ @AM_LIBS@
-
-TESTS_ENVIRONMENT=BOOST_TEST_REPORT_LEVEL=detailed BOOST_TEST_LOG_LEVEL=all
-TESTS = check_bam check_seq check_intron check_junction
-check_PROGRAMS = check_bam check_seq check_intron check_junction
-
-check_bam_SOURCES = ../src/bam/bam_master.cc \
-		    ../src/bam/bam_alignment.cc \
-		    ../src/bam/bam_reader.cc \
-		    ../src/bam/depth_parser.cc \
-		    ../src/bam/genome_mapper.cc \
-		    bam_tests.cpp
+EXTRA_DIST = \
+	resources/artha_chr4.fa \
+	resources/bam1.bam \
+	resources/bam2.bam \
+	resources/clipped3.bam \
+	resources/clipped3.bam.bai \
+	resources/ecoli.bam.depth \
+	resources/ecoli.fa \
+	resources/sorted.bam \
+	resources/sorted.bam.bai \
+	resources/unsorted.bam
 	
-check_seq_SOURCES = seq_utils_tests.cpp
 
-check_intron_SOURCES =  ../src/bam/bam_master.cc \
-			../src/intron.cc \
-			intron_tests.cpp
+noinst_HEADERS =    gtest/gtest.h \
+		    gtest/src/gtest-all.cc \
+		    gtest/src/gtest_main.cc
+
+
+TESTS = check_unit_tests
+check_PROGRAMS = check_unit_tests
+
+check_unit_tests_SOURCES =	bam_tests.cpp \
+				seq_utils_tests.cpp \
+				intron_tests.cpp \
+				junction_tests.cpp \
+				check_portcullis.cc
+
+check_unit_tests_CXXFLAGS = -O0 @AM_CXXFLAGS@ @CXXFLAGS@
+
+check_unit_tests_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
+				-I$(top_srcdir)/lib/include \
+				-DRESOURCESDIR=\"$(top_srcdir)/tests/resources\" \
+				-DDATADIR=\"$(datadir)\" \
+				@AM_CPPFLAGS@
+				@CPPFLAGS@
+
+check_unit_tests_LDFLAGS =	-all-static \
+				-L../lib \
+				-L../deps/htslib-1.3 \
+				@AM_LDFLAGS@ \
+				@LDFLAGS@
 	
-check_junction_SOURCES =    ../src/bam/bam_master.cc \
-			    ../src/bam/bam_alignment.cc \
-			    ../src/bam/bam_reader.cc \
-			    ../src/bam/genome_mapper.cc \
-			    ../src/intron.cc \
-			    ../src/junction.cc \
-			    junction_tests.cpp
+check_unit_tests_LDADD =	libgtest.la \
+				-lportcullis \
+				-lphts \
+				@AM_LIBS@	
 
-
+clean-local: clean-local-check
+.PHONY: clean-local-check
+clean-local-check:
+	-rm -rf temp
+	
+include gtest.mk
 	
