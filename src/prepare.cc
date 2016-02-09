@@ -15,18 +15,23 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+#include <sys/ioctl.h>
+#include <climits>
 #include <glob.h>
 #include <fstream>
 #include <string>
 #include <memory>
 #include <iostream>
+#include <iterator>
 #include <vector>
+#include <algorithm>
 using std::boolalpha;
 using std::ifstream;
 using std::string;
 using std::shared_ptr;
 using std::make_shared;
 using std::vector;
+using std::istream_iterator;
 
 #include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
@@ -72,11 +77,6 @@ bool portcullis::PreparedFiles::valid(bool useCsi) const {
                 "Could not find genome index at: ") + getGenomeIndexFilePath().string()));
     }
 
-    if (!bfs::exists(getSettingsFilePath()) && !bfs::symbolic_link_exists(getSettingsFilePath())) {
-        BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                "Could not find settings file at: ") + getSettingsFilePath().string()));
-    } 
-
     return true;
 }
     
@@ -90,43 +90,8 @@ void portcullis::PreparedFiles::clean() {
     bfs::remove(getGenomeIndexFilePath());
     bfs::remove(getBcfFilePath());
     bfs::remove(getBcfIndexFilePath());
-    bfs::remove(getSettingsFilePath());
 }
     
-portcullis::Settings portcullis::PreparedFiles::loadSettings() {
-    ifstream ifs(getSettingsFilePath().c_str());
-    string line;
-    Settings settings;
-    while ( std::getline(ifs, line) ) {
-        if ( !line.empty() ) {
-           if (line.find("SS") == 0) {
-               size_t eqPos = line.find("=");                   
-               if (eqPos > 0) {
-                   string val = (line.substr(eqPos+1)); 
-                   boost::trim(val);
-                   std::istringstream is(val);
-                   string ss;
-                   is >> ss;
-                   settings.ss = strandednessFromString(ss);
-               }
-           } 
-           if (line.find("INDEX") == 0) {
-               size_t eqPos = line.find("=");                   
-               if (eqPos > 0) {
-                   string val = (line.substr(eqPos+1)); 
-                   boost::trim(val);
-                   std::istringstream is(val);
-                   string idx;
-                   is >> idx;
-                   settings.useCsi = boost::iequals(idx, "CSI");
-               }
-           } 
-        }
-    }
-    
-    return settings;
-}
-
     
 portcullis::Prepare::Prepare(const path& _outputPrefix, Strandedness _strandSpecific, bool _force, bool _useLinks, bool _useCsi, uint16_t _threads, bool _verbose) {
     output = make_shared<PreparedFiles>(_outputPrefix);
@@ -380,6 +345,27 @@ bool portcullis::Prepare::bamIndex(const bool copied) {
     
 void portcullis::Prepare::prepare(vector<path> bamFiles, const path& originalGenomeFile) {
 
+    // Copy / Symlink the genome file to the output dir
+    if (!copy(originalGenomeFile, output->getGenomeFilePath(), "genome", true)) {
+        BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                "Could not copy/symlink genome file to: ") + output->getGenomeFilePath().string()));
+    }
+    
+    // Copy / Symlink the genome index file to the output dir, or create it
+    if (!copy(originalGenomeFile.string() + FASTA_INDEX_EXTENSION, output->getGenomeFilePath().string() + FASTA_INDEX_EXTENSION, "genome index", false)) {
+        if (!genomeIndex()) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                "Could not create genome index")));
+        }
+    }
+    
+    bool validIndexingMode = checkIndexMode(output->getGenomeFilePath(), useCsi);
+    
+    if (!validIndexingMode) {
+        BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                    "User requested ") + (useCsi ? "CSI" : "BAI") + " indexing mode, however, genome file contains sequences too long to properly index using this method.  To continue, restart using the --use_csi option."));
+    }
+    
     const bool doMerge = bamFiles.size() > 1;        
 
     if (bamFiles.empty()) {
@@ -422,35 +408,6 @@ void portcullis::Prepare::prepare(vector<path> bamFiles, const path& originalGen
                 "Failed to index: ") + output->getSortedBamFilePath().string()));
     }
 
-    // Copy / Symlink the genome file to the output dir
-    if (!copy(originalGenomeFile, output->getGenomeFilePath(), "genome", true)) {
-        BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                "Could not copy/symlink genome file to: ") + output->getGenomeFilePath().string()));
-    }
-    
-    // Copy / Symlink the genome index file to the output dir, or create it
-    if (!copy(originalGenomeFile.string() + FASTA_INDEX_EXTENSION, output->getGenomeFilePath().string() + FASTA_INDEX_EXTENSION, "genome index", false)) {
-        if (!genomeIndex()) {
-            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                "Could not create genome index")));
-        }
-    }
-}
-
-
-bool portcullis::Prepare::outputDetails() {
-
-    const path settingsFile = output->getSettingsFilePath();
-
-    std::ofstream outfile(settingsFile.c_str());
-    if(!outfile.is_open()) {
-        BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                "Could not open settings file for writing: ") + settingsFile.string()));
-    }
-
-    outfile << "SS=" << strandednessToString(strandSpecific) << endl;
-    outfile << "INDEX=" << useCsi ? "CSI" : "BAI";
-    outfile.close();
 }
 
 vector<path> portcullis::Prepare::globFiles(vector<path> input) {
@@ -473,6 +430,29 @@ vector<path> portcullis::Prepare::globFiles(vector<path> input) {
 
     return transformedBams;
 }
+
+bool portcullis::Prepare::checkIndexMode(const path& genomeIndexFile, const bool useCsi) {
+    
+    ifstream genomeIndex(genomeIndexFile.string());
+    
+    vector<string> myLines;
+    std::copy(istream_iterator<string>(genomeIndex),
+          istream_iterator<string>(),
+          back_inserter(myLines));
+    
+    for (auto& l : myLines) {
+        vector<string> parts;
+        boost::split( parts, l, boost::is_any_of("\t"), boost::token_compress_on );
+        
+        if (parts.size() >= 2) {
+            if (boost::lexical_cast<int>(parts[1]) >= LONG_MAX) {
+                return false;
+            }
+        }    
+    }
+    
+    return true;
+}
     
 int portcullis::Prepare::main(int argc, char *argv[]) {
 
@@ -487,15 +467,18 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
     uint16_t threads;
     bool verbose;
     bool help;
+    
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
     // Declare the supported options.
-    po::options_description generic_options(helpMessage(), 100);
+    po::options_description generic_options(helpMessage(), w.ws_col, (unsigned)((double)w.ws_col/1.7));
     generic_options.add_options()
             ("output,o", po::value<path>(&outputDir)->default_value(DEFAULT_PREP_OUTPUT_DIR), 
                 (string("Output directory for prepared files. Default: ") + DEFAULT_PREP_OUTPUT_DIR).c_str())
-            ("force,f", po::bool_switch(&force)->default_value(false), 
+            ("force", po::bool_switch(&force)->default_value(false), 
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
-            ("strandedness,s", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
+            ("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads).  By default we assume the user does not know the strand specific protocol used for this BAM file.  This has the affect that strand information is derived from splice site information alone, assuming junctions are either canonical or semi-canonical in form.  Default: \"unknown\"")
             ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
                 "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
@@ -512,14 +495,14 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
     // in config file, but will not be shown to the user.
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
-            ("bam-files,i", po::value< vector<path> >(&bamFiles), "Path to the BAM files to process.")
-            ("genome-file,g", po::value<path>(&genomeFile), "Path to the genome file to process.")
+            ("bam-files", po::value< vector<path> >(&bamFiles), "Path to the BAM files to process.")
+            ("genome-file", po::value<path>(&genomeFile), "Path to the genome file to process.")
             ;
 
     // Positional option for the input bam file
     po::positional_options_description p;
     p.add("genome-file", 1);
-    p.add("bam-files", 100);
+    p.add("bam-files", -1);
 
     // Combine non-positional options
     po::options_description cmdline_options;
@@ -571,9 +554,6 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information
     prep.prepare(transformedBams, genomeFile);
-
-    // Output any remaining details
-    prep.outputDetails();
 
     return 0;        
 }

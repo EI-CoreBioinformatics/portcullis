@@ -86,10 +86,11 @@ private:
     PreparedFiles prepData;
     path outputDir;
     string outputPrefix;
-    Settings settings;
     uint16_t threads;
+    Strandedness strandSpecific;
     bool extra;
     bool separate;
+    bool useCsi;
     string source;
     bool verbose;
     
@@ -185,6 +186,23 @@ public:
     void setSource(string source) {
         this->source = source;
     }
+    
+    Strandedness getStrandSpecific() const {
+        return strandSpecific;
+    }
+
+    void setStrandSpecific(Strandedness strandSpecific) {
+        this->strandSpecific = strandSpecific;
+    }
+
+    bool isUseCsi() const {
+        return useCsi;
+    }
+
+    void setUseCsi(bool useCsi) {
+        this->useCsi = useCsi;
+    }
+
 
     
     
@@ -197,9 +215,11 @@ public:
     
     static string helpMessage() {
         return string("\nPortcullis Junction Builder Mode Help.\n\n") +
+                      "Analyses all potential junctions found in the input BAM file.\n" +
+                      "Run \"portcullis prep ...\" to generate data suitable for junction finding\n" +
+                      "before running \"portcullis junc ...\"\n\n" +
                       "Usage: portcullis junc [options] <prep_data_dir> \n\n" +
-                      "Run \"portcullis prep ...\" to generate data suitable for junction finding before running \"portcullis junc ...\"\n\n" +
-                      "Allowed options";
+                      "Options";
     }
     
     static int main(int argc, char *argv[]);

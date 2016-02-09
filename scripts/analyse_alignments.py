@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 import os
 from os.path import basename
@@ -8,6 +9,7 @@ from collections import OrderedDict, Counter
 from rpy2.robjects.packages import importr
 import itertools
 import argparse
+import bed12
 
 
 class PEntry:
@@ -36,63 +38,35 @@ class PEntry:
     def header():
         return "Dataset\tAligner\tInRef\tInRef%\tMissing\tMissing%\tOutRef"
 
-def make_key(line, usestrand, tophat):
-    words = line.split()
-    overhang = words[10]
-    overhang_parts = overhang.split(",")
-    lo = int(overhang_parts[0])
-    ro = int(overhang_parts[1])
-    chr = words[0]
-    start = str(int(words[6]) + lo) if tophat else words[6]
-    end = str(int(words[7]) - ro) if tophat else words[7]
-    strand = words[5]
-    key = chr + "_" + start + "_" + end
-    if usestrand:
-        key += "_" + strand
-    return key
-
-
-def loadbed(filepath, usestrand, tophat) :
-    with open(filepath) as f:
-        index = 0
-        items = set()
-        for line in f:
-            if index > 0:
-                items.add(make_key(line, usestrand, tophat))
-            index += 1
-    if len(items) != index - 1 :
-        print ("non unique items in bed file " + filepath)
-    return items
-
 def main():
     
     parser = argparse.ArgumentParser("Script to create the Venn Plots from BED files")
-    parser.add_argument("input", help="The directory containing BED files from pipeline")
+    parser.add_argument("input", nargs="+", help="The BED files to analyse")
     parser.add_argument("-r", "--reference", required=True, help="The reference BED file to compare against")
     parser.add_argument("-o", "--output", required=True, help="The output prefix")
     args = parser.parse_args()
 
-    ref_bed = loadbed(args.reference, False, False)
+    ref_bed = bed12.loadbed(args.reference, False, False)
     print ("Loaded Reference BED file.  # junctions: " + str(len(ref_bed)))
 
     # Load all bed files
     bed_data = {}
     aligners = set()
     reads = set()
-    junc_analysers = set()
-    for bed_file in os.listdir(args.input):
-        if bed_file.endswith(".bed"):
-            bed_base = os.path.splitext(bed_file)[0]
-            bed_data[bed_base] = loadbed(args.input + "/" + bed_file, False, False)
-            parts = bed_base.split('-')
-            aligners.add(parts[0])
-            reads.add(parts[1])
-            junc_analysers.add(parts[2])
-            print ("Loaded: " + bed_file + "; # junctions: " + str(len(bed_data[bed_base])))
+    #junc_analysers = set()
+    for bed_path in args.input:
+        bed_file = os.path.split(bed_path)[1]
+        bed_base = os.path.splitext(bed_file)[0]
+        bed_data[bed_base] = bed12.loadbed(bed_path, False, False)
+        parts = bed_base.split('-')
+        aligners.add(parts[0])
+        reads.add(parts[1])
+        #junc_analysers.add(parts[2])
+        print ("Loaded: " + bed_file + "; # junctions: " + str(len(bed_data[bed_base])))
 
     print ("Found these aligners: " + ', '.join(aligners))
     print ("Found these reads: " + ', '.join(reads))
-    print ("Found these junction analysis tools: " + ', '.join(junc_analysers))
+    #print ("Found these junction analysis tools: " + ', '.join(junc_analysers))
 
 
     # Build table
@@ -102,9 +76,9 @@ def main():
             p = PEntry()
             p.aligner = a
             p.input = r
-            p.junctions_in_ref = len(ref_bed & bed_data[a + "-" + r + "-all"])
-            p.junctions_out_ref = len(bed_data[a + "-" + r + "-all"] - ref_bed)
-            p.junctions_missing = len(ref_bed - bed_data[a + "-" + r + "-all"])
+            p.junctions_in_ref = len(ref_bed & bed_data[a + "-" + r])
+            p.junctions_out_ref = len(bed_data[a + "-" + r] - ref_bed)
+            p.junctions_missing = len(ref_bed - bed_data[a + "-" + r])
             p.calc_percs(len(ref_bed))
 
             tab.append(p)
@@ -138,7 +112,7 @@ def main():
         nums["area1"] = len(ref_bed)
         i=2
         for a in aligners:
-            s = bed_data[a + "-" + r + "-all"]
+            s = bed_data[a + "-" + r]
             sets.append(s)
             categories.append(a)
             nums["area{0}".format(i)] = len(s)

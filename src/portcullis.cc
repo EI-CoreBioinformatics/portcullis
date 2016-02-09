@@ -19,6 +19,7 @@
 #include <config.h>
 #endif
 
+#include <sys/ioctl.h>
 #include <string.h>
 #include <iostream>
 #include <fstream>
@@ -121,13 +122,14 @@ string helpHeader() {
                   " - bamfilt - Filters a BAM to remove any reads associated with invalid junctions\n" + 
                   " - full    - Runs prep, junc, filter and bamfilt as a complete pipeline\n" +
                   " - cluster - Clusters potential junctions to help distinguish real junctions for false\n\n" +
-                  "\nAvailable options";
+                  "\nOptions";
 }
 
 static string fullHelp() {
     return string("\nPortcullis Full Pipeline Mode Help.\n\n") +
+                  "Runs prep, junc, filter and bamfilt as a complete pipeline\n\n" + 
                   "Usage: portcullis full [options] <genome-file> (<bam-file>)+ \n\n" +
-                  "Allowed options";
+                  "Options";
 }
 
 
@@ -137,20 +139,25 @@ int mainFull(int argc, char *argv[]) {
     std::vector<path> bamFiles;
     path genomeFile;
     path outputDir;
+    path filterFile;
     string strandSpecific;
     uint16_t threads;
     bool useLinks;
     bool force;
     bool useCsi;
+    bool bamFilter;
     bool verbose;
     bool help;
+    
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
     // Declare the supported options.
-    po::options_description generic_options(fullHelp(), 100);
+    po::options_description generic_options(fullHelp(), w.ws_col, (unsigned)((double)w.ws_col/1.7));
     generic_options.add_options()
             ("output,o", po::value<path>(&outputDir)->default_value("portcullis_out"), 
                 "Output directory for prepared files. Default: portcullis_out")
-            ("force,f", po::bool_switch(&force)->default_value(false), 
+            ("force", po::bool_switch(&force)->default_value(false), 
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
             ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unknown\"")
@@ -160,6 +167,10 @@ int mainFull(int argc, char *argv[]) {
                 "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(1),
                 "The number of threads to use.  Default: 1")
+            ("filter_file,f", po::value<path>(&filterFile)->default_value(JunctionFilter::defaultFilterFile), 
+                "The filter configuration file to use.")
+            ("bam_filter,b", po::bool_switch(&bamFilter)->default_value(false), 
+                "Filter out alignments corresponding with false junctions")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                 "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -169,14 +180,14 @@ int mainFull(int argc, char *argv[]) {
     // in config file, but will not be shown to the user.
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
-            ("bam-files,i", po::value< std::vector<path> >(&bamFiles), "Path to the BAM files to process.")
-            ("genome-file,g", po::value<path>(&genomeFile), "Path to the genome file to process.")
+            ("bam-files", po::value< std::vector<path> >(&bamFiles), "Path to the BAM files to process.")
+            ("genome-file", po::value<path>(&genomeFile), "Path to the genome file to process.")
             ;
 
     // Positional option for the input bam file
     po::positional_options_description p;
     p.add("genome-file", 1);
-    p.add("bam-files", 100);
+    p.add("bam-files", -1);
 
     // Combine non-positional options
     po::options_description cmdline_options;
@@ -230,7 +241,7 @@ int mainFull(int argc, char *argv[]) {
     cout << "Preparing input data (BAMs + genome)" << endl
          << "----------------------------------" << endl << endl;
     
-    path prepDir = path(outputDir.string() + "/prepare");
+    path prepDir = path(outputDir.string() + "/1-prep");
 
     // Create the prepare class
     Prepare prep(prepDir, strandednessFromString(strandSpecific), force, useLinks, useCsi, threads, verbose);
@@ -239,22 +250,21 @@ int mainFull(int argc, char *argv[]) {
     // genome and queryable coverage information
     prep.prepare(transformedBams, genomeFile);
 
-    // Output any remaining details
-    prep.outputDetails();
-    
     
     // ************ Identify all junctions and calculate metrics ***********
     
     cout << "Identifying junctions and calculating metrics" << endl
          << "---------------------------------------------" << endl << endl;
     
-    path juncDir = outputDir.string() + "/all_junctions";
+    path juncDir = outputDir.string() + "/2-junc";
     
     // Identify junctions and calculate metrics
     JunctionBuilder jb(prepDir.string(), juncDir.string(), "portcullis_all");
     jb.setThreads(threads);
     jb.setExtra(false);
     jb.setSeparate(false);
+    jb.setStrandSpecific(strandednessFromString(strandSpecific));
+    jb.setUseCsi(useCsi);
     jb.setVerbose(verbose);
     
     jb.process();
@@ -265,26 +275,29 @@ int mainFull(int argc, char *argv[]) {
     cout << "Filtering junctions" << endl
          << "-------------------" << endl << endl;
     
-    path filtDir = outputDir.string() + "/filtered_junctions";
+    path filtDir = outputDir.string() + "/3-filt";
     path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
     
-    JunctionFilter filter(juncTab, JunctionFilter::defaultFilterFile, filtDir, "portcullis_filtered");
+    JunctionFilter filter(juncTab, filterFile, filtDir, "portcullis_filtered");
     filter.setVerbose(verbose);
     filter.filter();
 
     
     // *********** BAM filter *********
-    
-    cout << "Filtering BAMs" << endl
-         << "--------------" << endl << endl;
-    
-    path filtJuncTab = path(filtDir.string() + "/portcullis_filtered.junctions.tab");
-    path bamFile = path(prepDir.string() + "/portcullis.sorted.alignments.bam");
-    path filteredBam = path(outputDir.string() + "/portcullis.filtered.bam");
-    
-    BamFilter bamFilter(filtJuncTab.string(), bamFile.string(), filteredBam.string(), verbose);
-    bamFilter.setStrandSpecific(strandednessFromString(strandSpecific));
-    bamFilter.filter();
+    if (bamFilter) {
+        cout << "Filtering BAMs" << endl
+             << "--------------" << endl << endl;
+
+        path filtJuncTab = path(filtDir.string() + "/portcullis_filtered.pass.junctions.tab");
+        path bamFile = path(prepDir.string() + "/portcullis.sorted.alignments.bam");
+        path filteredBam = path(outputDir.string() + "/portcullis.filtered.bam");
+
+        BamFilter bamFilter(filtJuncTab.string(), bamFile.string(), filteredBam.string());
+        bamFilter.setStrandSpecific(strandednessFromString(strandSpecific));
+        bamFilter.setUseCsi(useCsi);
+        bamFilter.setVerbose(verbose);
+        bamFilter.filter();
+    }
 
     return 0;        
 }
@@ -302,11 +315,14 @@ int main(int argc, char *argv[]) {
         bool version;
         bool help;
 
+        struct winsize w;
+        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    
         // Declare the supported options.
-        po::options_description generic_options(helpHeader(), 100);
+        po::options_description generic_options(helpHeader(), w.ws_col, (unsigned)((double)w.ws_col/1.7));
         generic_options.add_options()
                 ("verbose,v", po::bool_switch(&verbose)->default_value(false), "Print extra information")
-                ("version,V", po::bool_switch(&version)->default_value(false), "Print version string")
+                ("version", po::bool_switch(&version)->default_value(false), "Print version string")
                 ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
                 ;
 

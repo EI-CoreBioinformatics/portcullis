@@ -337,8 +337,10 @@ public:
   
     static string helpMessage() {
         return string("\nPortcullis Filter Mode Help.\n\n") +
+                      "Filters out junctions that are unlikely to be genuine or that have too little\n" +
+                      "supporting evidence.\n\n" +
                       "Usage: portcullis filter [options] <junction-file>\n\n" +
-                      "Allowed options";
+                      "Options";
     }
     
     static int main(int argc, char *argv[]);

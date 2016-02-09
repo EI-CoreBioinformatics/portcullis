@@ -93,11 +93,12 @@ private:
     Strandedness strandSpecific;
     ClipMode clipMode;
     bool saveMSRs;
+    bool useCsi;
     bool verbose;
     
 public:
     
-    BamFilter(const path& _junctionFile, const path& _bamFile, const path& _outputBam, bool _verbose);
+    BamFilter(const path& _junctionFile, const path& _bamFile, const path& _outputBam);
     
     virtual ~BamFilter() {
     }
@@ -166,6 +167,23 @@ public:
     void setSaveMSRs(bool saveMSRs) {
         this->saveMSRs = saveMSRs;
     }
+    
+    bool isUseCsi() const {
+        return useCsi;
+    }
+
+    void setUseCsi(bool useCsi) {
+        this->useCsi = useCsi;
+    }
+
+    bool isVerbose() const {
+        return verbose;
+    }
+
+    void setVerbose(bool verbose) {
+        this->verbose = verbose;
+    }
+
 
 
 
@@ -176,7 +194,7 @@ public:
         return string("\nPortcullis BAM Filter Mode Help.\n\n") +
                       "Removes alignments associated with bad junctions from BAM file\n\n" + 
                       "Usage: portcullis bamfilt [options] <junction-file> <bam-file>\n\n" +
-                      "Allowed options";
+                      "Options";
     }
     
     static int main(int argc, char *argv[]);
