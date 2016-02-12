@@ -75,6 +75,7 @@ const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
 const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
 const string DEFAULT_FILTER_SOURCE = "portcullis";
 const string DEFAULT_FILTER_FILE = "default_filter.json";
+const string DEFAULT_MODEL_FILE = "default_model.ml";
 
 
 const unordered_set<string> numericParams = {
@@ -201,16 +202,15 @@ template <typename It, typename Skipper = qi::space_type>
     struct parser : qi::grammar<It, expr(), Skipper>
 {
         parser() : parser::base_type(expr_) {
-            using namespace qi;
-
+            
             expr_  = or_.alias();
 
-            or_  = (and_ >> '|'  >> or_ ) [ _val = phx::construct<binop<op_or > >(_1_type(), _2_type()) ] | and_   [ _val = _1_type() ];
-            and_ = (not_ >> '&' >> and_)  [ _val = phx::construct<binop<op_and> >(_1_type(), _2_type()) ] | not_   [ _val = _1_type() ];
-            not_ = ('!' > simple       )  [ _val = phx::construct<unop <op_not> >(_1_type())     ] | simple [ _val = _1_type() ];
+            or_  = (and_ >> '|'  >> or_ ) [ qi::_val = phx::construct<binop<op_or > >(qi::_1_type(), qi::_2_type()) ] | and_   [ qi::_val = qi::_1_type() ];
+            and_ = (not_ >> '&' >> and_)  [ qi::_val = phx::construct<binop<op_and> >(qi::_1_type(), qi::_2_type()) ] | not_   [ qi::_val = qi::_1_type() ];
+            not_ = ('!' > simple       )  [ qi::_val = phx::construct<unop <op_not> >(qi::_1_type())     ] | simple [ qi::_val = qi::_1_type() ];
 
             simple = (('(' > expr_ > ')') | var_);
-            var_ = lexeme[+(alpha|digit|char_("-")|char_("_")|char_("."))];
+            var_ = qi::lexeme[+(qi::alpha|qi::digit|qi::char_("-")|qi::char_("_")|qi::char_("."))];
 
             BOOST_SPIRIT_DEBUG_NODE(expr_);
             BOOST_SPIRIT_DEBUG_NODE(or_);
@@ -233,6 +233,7 @@ class JunctionFilter {
 private:
     
     path junctionFile;
+    path modelFile;
     path filterFile;
     path outputDir;
     string outputPrefix;
@@ -243,10 +244,12 @@ private:
     
 public:
     
+    static path defaultModelFile;
     static path defaultFilterFile;
+    static path scriptsDir;
     
     JunctionFilter( const path& _junctionFile, 
-                    const path& _filterFile, 
+                    const path& _modelFile, 
                     const path& _outputDir, 
                     const string& _outputPrefix);
     
@@ -332,6 +335,10 @@ protected:
      */
     bool parse(const string& expression, JunctionPtr junc, NumericFilterMap& numericFilters, SetFilterMap& stringFilters, JuncResultMap* results);
         
+    
+    wchar_t* convertCharToWideChar(const char* c);
+    
+    void executeMLFilter(const path& mlOutputFile);
     
 public:
   

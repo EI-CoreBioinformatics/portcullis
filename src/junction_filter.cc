@@ -15,6 +15,8 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <fstream>
 #include <string>
@@ -31,6 +33,8 @@ using std::map;
 using std::unordered_map;
 using std::unordered_set;
 using std::vector;
+
+#include <Python.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
@@ -292,13 +296,14 @@ bool portcullis::eval::evalSetLeaf(Operator op, unordered_set<string>& set, stri
 
 
 portcullis::JunctionFilter::JunctionFilter( const path& _junctionFile, 
-                    const path& _filterFile, 
+                    const path& _modelFile, 
                     const path& _outputDir, 
                     const string& _outputPrefix) {
     junctionFile = _junctionFile;
-    filterFile = _filterFile;
+    modelFile = _modelFile;
     outputDir = _outputDir;
     outputPrefix = _outputPrefix;
+    filterFile = "";
     saveBad = false;
     source = DEFAULT_FILTER_SOURCE;
     verbose = false;
@@ -314,7 +319,12 @@ void portcullis::JunctionFilter::filter() {
     }
 
     // Test if provided filter config file exists
-    if (!exists(filterFile)) {
+    if (!exists(modelFile)) {
+        BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                    "Could not find filter model file at: ") + modelFile.string()));
+    }
+    
+    if (!filterFile.empty() && !exists(filterFile)) {
         BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
                     "Could not find filter configuration file at: ") + filterFile.string()));
     }
@@ -330,34 +340,6 @@ void portcullis::JunctionFilter::filter() {
                     "File exists with name of suggested output directory: ") + outputDir.string()));            
     }
 
-    /*string tmpOutputTabFile = outputDir.string() + "/tmp.tab";
-
-    string filterCmd = string("python3 ") + filterJuncsPy.string() +
-           " --input " + junctionFile.string() + 
-           " --json " + filterFile.string() +
-           " --out " + tmpOutputTabFile;
-
-    if (verbose) {
-        filterCmd += " --debug";
-
-        cout << "Applying filter script: " << filterCmd << endl;
-    }
-
-
-    int exitCode = system(filterCmd.c_str());                    
-
-    if (exitCode != 0 || !exists(tmpOutputTabFile)) {
-            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                    "Failed to successfully filter: ") + junctionFile.string()));
-    }*/
-
-    cout << "Loading JSON config ...";
-
-    ptree pt;
-    boost::property_tree::read_json(filterFile.string(), pt);
-
-    cout << " done." << endl << endl;
-
     cout << "Loading junctions ...";
     cout.flush();
 
@@ -366,64 +348,114 @@ void portcullis::JunctionFilter::filter() {
 
     cout << " done." << endl << endl;
 
+    
     // Record junctions that pass the filter
     JunctionSystem passJunc;
     JunctionSystem failJunc;
-
-    cout << "Filtering junctions ...";
-    cout.flush();
-
-    NumericFilterMap numericFilters;
-    SetFilterMap stringFilters;
-    JuncResultMap junctionResultMap;
     
-    for(ptree::value_type& v : pt.get_child("parameters")) {
-        string name = v.first;
-        Operator op = stringToOp(v.second.get_child("operator").data());
-        if (isNumericOp(op)) {
-            double threshold = lexical_cast<double>(v.second.get_child("value").data());     
-            numericFilters[name] = pair<Operator,double>(op, threshold);
-        }
-        else {
+    if (!filterFile.empty() && exists(filterFile)) {
+        
+        // Do rule based filtering
+        
+        cout << "Loading JSON config ...";
 
-            unordered_set<string> set;
-            for (auto& item : v.second.get_child("value")) {
-                string val = item.second.get_value<string>();
-                set.insert(val); 
+        ptree pt;
+        boost::property_tree::read_json(filterFile.string(), pt);
+
+        cout << " done." << endl << endl;
+
+        cout << "Filtering junctions ...";
+        cout.flush();
+
+        NumericFilterMap numericFilters;
+        SetFilterMap stringFilters;
+        JuncResultMap junctionResultMap;
+
+        for(ptree::value_type& v : pt.get_child("parameters")) {
+            string name = v.first;
+            Operator op = stringToOp(v.second.get_child("operator").data());
+            if (isNumericOp(op)) {
+                double threshold = lexical_cast<double>(v.second.get_child("value").data());     
+                numericFilters[name] = pair<Operator,double>(op, threshold);
             }
-            stringFilters[name] = pair<Operator,unordered_set<string>>(op, set);
-        }
-    }
+            else {
 
-    const string expression = pt.get_child("expression").data();
-
-    map<string,int> filterCounts;
-    
-    for (JunctionPtr junc : originalJuncs.getJunctions()) {
-
-        junctionResultMap[*(junc->getIntron())] = vector<string>();
-
-        if (parse(expression, junc, numericFilters, stringFilters, &junctionResultMap)) {
-            passJunc.addJunction(junc);
-        }
-        else {
-            failJunc.addJunction(junc);
-            
-            vector<string> failed = junctionResultMap[*(junc->getIntron())];
-            
-            for(string s : failed) {
-                filterCounts[s]++;
+                unordered_set<string> set;
+                for (auto& item : v.second.get_child("value")) {
+                    string val = item.second.get_value<string>();
+                    set.insert(val); 
+                }
+                stringFilters[name] = pair<Operator,unordered_set<string>>(op, set);
             }
         }
-    }        
 
-    cout << " done." << endl << endl
-         << "Number of junctions failing for each filter: " << endl;
-    
-    for(map<string,int>::iterator iterator = filterCounts.begin(); iterator != filterCounts.end(); iterator++) {        
-        cout << iterator->first << ": " << iterator->second << endl;
+        const string expression = pt.get_child("expression").data();
+
+        map<string,int> filterCounts;
+
+        for (JunctionPtr junc : originalJuncs.getJunctions()) {
+
+            junctionResultMap[*(junc->getIntron())] = vector<string>();
+
+            if (parse(expression, junc, numericFilters, stringFilters, &junctionResultMap)) {
+                passJunc.addJunction(junc);
+            }
+            else {
+                failJunc.addJunction(junc);
+
+                vector<string> failed = junctionResultMap[*(junc->getIntron())];
+
+                for(string s : failed) {
+                    filterCounts[s]++;
+                }
+            }
+        }        
+
+        cout << " done." << endl << endl
+             << "Number of junctions failing for each filter: " << endl;
+
+        for(map<string,int>::iterator iterator = filterCounts.begin(); iterator != filterCounts.end(); iterator++) {        
+            cout << iterator->first << ": " << iterator->second << endl;
+        }
+        
+        saveResults(originalJuncs, junctionResultMap);
     }
-    
+    else {
+        // Do ML based filtering
+        path tempOutput = outputDir.string() + "/" + outputPrefix + ".mlout";
+        executeMLFilter(tempOutput);
+        
+        std::ifstream res_in(tempOutput.c_str());
+        std::string line;
+        uint32_t lineCount = 0;
+        for(auto& j : originalJuncs.getJunctions()) {
+            if (!std::getline(res_in, line)) {
+               BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                    "Output from ML filtering is shorter than original junctions file.  Got to line ") + lexical_cast<string>(lineCount) + " expected " + lexical_cast<string>(originalJuncs.size()) + " lines.")); 
+            }
+            
+            boost::trim(line);
+            
+            if (lexical_cast<bool>(line)) {
+                passJunc.addJunction(j);
+            }
+            else {
+                failJunc.addJunction(j);
+            }
+            
+            // process pair (a,b)
+            lineCount++;
+        }
+        
+        if (lineCount != originalJuncs.size()) {
+            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                    "Output from ML filtering is not the same length as the original junctions file")));
+        }
+        
+        // Clean up temporary output file
+        std::remove(tempOutput.c_str());
+    }
+
     cout << endl
          << "Recalculating junction grouping and distance stats based on new junction list that passed filters ...";
     cout.flush();
@@ -450,7 +482,6 @@ void portcullis::JunctionFilter::filter() {
         failJunc.saveAll(outputDir.string() + "/" + outputPrefix + ".fail", source);
     }
 
-    saveResults(originalJuncs, junctionResultMap);
 }
     
 void portcullis::JunctionFilter::saveResults(const JunctionSystem& js, JuncResultMap& results) {
@@ -506,10 +537,62 @@ bool portcullis::JunctionFilter::parse(const string& expression, JunctionPtr jun
     return boost::apply_visitor(eval(numericFilters, stringFilters, junc, results), result);
 }
     
+wchar_t* portcullis::JunctionFilter::convertCharToWideChar(const char* c) {
+    const size_t cSize = strlen(c)+1;
+    wchar_t* wc = new wchar_t[cSize];
+    mbstowcs (wc, c, cSize);    
+    return wc;
+}       
+
+void portcullis::JunctionFilter::executeMLFilter(const path& mlOutputFile) {
+    
+    const path script_name = "ml_filter.py";
+    const path scripts_dir = JunctionFilter::scriptsDir;
+    const path full_script_path = path(scripts_dir.string() + "/" + script_name.string());
+    
+    stringstream ss;
+    
+    // Create wide char alternatives
+    wchar_t* wsn = convertCharToWideChar(script_name.c_str());
+    wchar_t* wsp = convertCharToWideChar(full_script_path.c_str());    
+    wchar_t* wargv[10]; // Can't use variable length arrays!
+    wargv[0] = wsp;
+    ss << full_script_path.c_str();
+    string model = string("--model=") + modelFile.string();
+    wargv[1] = convertCharToWideChar(model.c_str());
+    ss << " " << model;
+    string mloFile = string("--output=") + mlOutputFile.string();
+    wargv[2] = convertCharToWideChar(mloFile.c_str());
+    ss << " " << mloFile;
+    wargv[3] = convertCharToWideChar(junctionFile.c_str());
+    ss << " " << junctionFile.string();
         
+    if (verbose) {
+        cout << endl << "Effective command line: " << ss.str() << endl << endl;
+    }
+
+    std::ifstream script_in(full_script_path.c_str());
+    std::string contents((std::istreambuf_iterator<char>(script_in)), std::istreambuf_iterator<char>());
+
+    // Run python script
+    Py_Initialize();
+    Py_SetProgramName(wsp);
+    PySys_SetArgv(4, wargv);
+    PyRun_SimpleString(contents.c_str());
+    Py_Finalize();
+
+    // Cleanup
+    delete wsn;
+    // No need to free up "wsp" as it is element 0 in the array
+    for(int i = 0; i < 4; i++) {
+        delete wargv[i];
+    }
+}
+
 int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 
     path junctionFile;
+    path modelFile;
     path filterFile;
     path outputDir;
     string outputPrefix;
@@ -529,8 +612,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
                 "Output directory for files generated by this program.")
             ("output_prefix,p", po::value<string>(&outputPrefix)->default_value(DEFAULT_FILTER_OUTPUT_PREFIX), 
                 "File name prefix for files generated by this program.")
-            ("filter_file,f", po::value<path>(&filterFile)->default_value(JunctionFilter::defaultFilterFile.string()), 
-                "The filter configuration file to use.")
+            ("filter_file,f", po::value<path>(&filterFile), 
+                "If you wish to custom filter the junctions file, use this option to provide a list of the rules you wish to use.  By default we filter via an internal model.  See manual for more details.")
             ("save_bad,b", po::bool_switch(&saveBad)->default_value(false),
                 "Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)")
             ("source", po::value<string>(&source)->default_value(DEFAULT_FILTER_SOURCE),
@@ -545,6 +628,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
             ("junction-file,g", po::value<path>(&junctionFile), "Path to the junction file to process.")
+            ("model_file,m", po::value<path>(&modelFile)->default_value(DEFAULT_MODEL_FILE), "Path to the model file to use that determines genuine from false junctions")
             ;
 
     // Positional option for the input bam file
@@ -575,13 +659,21 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
          << "--------------------------------" << endl << endl;
 
     // Create the prepare class
-    JunctionFilter filter(junctionFile, filterFile, outputDir, outputPrefix);
+    JunctionFilter filter(junctionFile, modelFile, outputDir, outputPrefix);
     filter.setSaveBad(saveBad);
     filter.setSource(source);
     filter.setVerbose(verbose);
+    
+    // Only set the filter rules if specified.
+    if (!filterFile.empty()) {
+        filter.setFilterFile(filterFile);
+    }
+    
     filter.filter();
 
     return 0;
 }
 
+path portcullis::JunctionFilter::scriptsDir = "";
+path portcullis::JunctionFilter::defaultModelFile = DEFAULT_MODEL_FILE;
 path portcullis::JunctionFilter::defaultFilterFile = DEFAULT_FILTER_FILE;

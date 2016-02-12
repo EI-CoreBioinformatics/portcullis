@@ -66,6 +66,9 @@ const uint16_t DEFAULT_THREADS = 4;
 const uint32_t DEFAULT_CHUNK_SIZE_PER_THREAD = 10000;
 const uint32_t DEFAULT_GAP_SIZE = 100;
 
+// Global variable! :(
+portcullis::PortcullisFS portcullis::pfs;
+
 enum Mode {
     PREP,
     JUNC,
@@ -352,9 +355,20 @@ int main(int argc, char *argv[]) {
         po::variables_map vm;
         po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).allow_unregistered().run(), vm);
         po::notify(vm);
+        
+        portcullis::pfs = PortcullisFS(argv[0]);
 
+        // End if verbose was requested at this level, outputting file system details.
+        if (verbose) {
+            cout << endl 
+                 << "Project filesystem" << endl 
+                 << "------------------" << endl
+                 << portcullis::pfs << endl;
+            //return 0;
+        }       
+        
         // Output help information the exit if requested
-        if (argc == 1 || argc == 2 && help) {
+        if (argc == 1 || (argc == 2 && verbose) || (argc == 2 && help) || (argc == 3 && verbose && help)) {
             cout << generic_options << endl;
             return 1;
         }
@@ -374,19 +388,12 @@ int main(int argc, char *argv[]) {
             cout << PACKAGE_NAME << " " << PACKAGE_VERSION << endl;
             return 0;
         }
+        else {        
+            cout << "Portcullis V" << PACKAGE_VERSION << endl << endl;
+        }
         
-        cout << "Portcullis V" << PACKAGE_VERSION << endl << endl;
+        portcullis::pfs.setVersion(PACKAGE_VERSION);
         
-        PortcullisFS fs(argv[0], PACKAGE_VERSION);
-        
-        // End if verbose was requested at this level, outputting file system details.
-        if (verbose) {
-            cout << endl 
-                 << "Project filesystem" << endl 
-                 << "------------------" << endl
-                 << fs << endl;
-            //return 0;
-        }        
         
         // If we've got this far parse the command line properly
         Mode mode = parseMode(modeStr);
@@ -395,8 +402,10 @@ int main(int argc, char *argv[]) {
         char** modeArgV = argv+1;
         
         // Set static variables in downstream subtools so they know where to get their resources from
-        JunctionFilter::defaultFilterFile = path(fs.getDataDir().string() + "/default_filter.json");
-        JunctionSystem::version = fs.getVersion();
+        JunctionFilter::defaultFilterFile = path(portcullis::pfs.getDataDir().string() + "/default_filter.json");
+        JunctionFilter::defaultModelFile = path(portcullis::pfs.getDataDir().string() + "/default_model.ml");
+        JunctionFilter::scriptsDir = portcullis::pfs.getScriptsDir();
+        JunctionSystem::version = portcullis::pfs.getVersion();
         
         if (mode == PREP) {
             Prepare::main(modeArgC, modeArgV);

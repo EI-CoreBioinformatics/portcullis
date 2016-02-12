@@ -48,8 +48,9 @@ class BedEntry:
                  self.thick_start, self.thick_end,
                  rgb,
                  self.block_count,
-                 bstarts,
-                 bsizes]
+                 bsizes,
+                 bstarts
+                 ]
         return "\t".join([str(_) for _ in line])
     
     def __cmp__(self, other):
@@ -147,6 +148,42 @@ class BedEntry:
             
         return b
 
+    @staticmethod
+    def create_from_tabline(key, use_strand=True, tophat=False):
+
+        b = BedEntry(use_strand=use_strand)
+
+        parts = key.split("\t")
+
+        b.chrom = parts[2]
+        b.start = int(parts[6])
+        b.end = int(parts[7])+1
+        b.strand = parts[12]
+        b.score = int(parts[14])
+        b.thick_start = int(parts[4])
+        b.thick_end = int(parts[5]) + 1
+        b.name = "junc"
+
+        b.red = 255
+        b.green = 0
+        b.blue = 0
+        b.block_count = 2
+
+        b.block_sizes = [(b.thick_start - b.start + 1), (b.end - b.thick_end + 1)]
+        # for bp in bsize_parts:
+        #     b.block_sizes.append(int(bp))
+
+        b.block_starts = [0, b.thick_end - b.start]
+
+        # for bp in bstart_parts:
+        #     b.block_starts.append(int(bp))
+        assert len(b.block_sizes) == len(b.block_starts) == b.block_count, (key,
+                                                                            b.block_count,
+                                                                            b.block_sizes,
+                                                                            b.block_starts)
+
+        return b
+
 
 def makekey(line, usestrand, tophat) :
     words = line.split()
@@ -165,16 +202,17 @@ def makekey(line, usestrand, tophat) :
     return key
 
 def makekeyfromtab(line, usestrand) :
-    words = line.split()
+    words = line.split("\t")
     chr = words[2]
     start = words[4]
-    end = words[5]
+    end = str(int(words[5]) - 1)
     strand = words[11]
     if usestrand:
         key = (chr, start, end, strand)
     else:
-        key = (chr, start, end, '?')
+        key = (chr, start, end, None)
     return key
+
 
 def loadbed(filepath, usestrand, tophat) :
 
