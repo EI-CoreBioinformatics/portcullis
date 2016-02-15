@@ -33,7 +33,12 @@ dist_bin_SCRIPTS =  scripts/bed12.py \
 		    scripts/hpc.json \
 		    scripts/read_gen.py \
 		    scripts/read_gen.snakefile \
-		    scripts/example_pp_ath.yaml
+		    scripts/predict.py \
+		    scripts/predict.snakefile \		    
+		    scripts/example_pp_ath.yaml \
+		    scripts/analyse_alignments.py \
+		    scripts/analyse_junctions.py \
+		    scripts/merge_bed.py
 
 # Config files
 configdir = $(datadir)/portcullis
