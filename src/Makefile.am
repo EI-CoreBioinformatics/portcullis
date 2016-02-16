@@ -33,8 +33,4 @@ portcullis_SOURCES =	prepare.cc \
 			junction_builder.cc \
 			bam_filter.cc \
 			junction_filter.cc \
-			cluster.hpp \
-			test.hpp \
-			train.hpp \
 			portcullis.cc
-                

@@ -34,7 +34,7 @@ dist_bin_SCRIPTS =  scripts/bed12.py \
 		    scripts/read_gen.py \
 		    scripts/read_gen.snakefile \
 		    scripts/predict.py \
-		    scripts/predict.snakefile \		    
+		    scripts/predict.snakefile \
 		    scripts/example_pp_ath.yaml \
 		    scripts/analyse_alignments.py \
 		    scripts/analyse_junctions.py \

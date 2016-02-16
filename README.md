@@ -18,7 +18,7 @@ analyses such as gene prediction and genome annotation.
 ##Installation:
 
   - If you cloned the git repository you must first run ```./autogen.sh``` to create the configure and make files for your project, this step requires automake and autoconf installed.  If you downloaded a source code distribution tarball then you can skip this step.
-  - Portcullis depends on some external software: samtools, dlib, boost and zlib.  Please make sure these programs are correctly configured and installed on your system prior to building portcullis.
+  - Portcullis depends on some external software: samtools, boost and zlib.  Please make sure these programs are correctly configured and installed on your system prior to building portcullis.
   - Optionally install python3 and sphinx to generate documentation and use supplementary scripts.
   - Now, for a typical installation on a machine where you have root access type ```./configure; make; sudo make install;```
 
@@ -26,7 +26,6 @@ The configure script can take several options as arguments.  One commonly modifi
 
   - ```--with-boost``` - for specifying a custom boost installation directory
   - ```--with-zlib``` - for specifying a custom zlib installation directory
-  - ```--with-dlib``` - for specifying a custom dlib installation directory
 
 Type ```./configure --help``` for full details.
 

@@ -47,16 +47,10 @@ using portcullis::PortcullisFS;
 #include "prepare.hpp"
 #include "junction_filter.hpp"
 #include "bam_filter.hpp"
-#include "cluster.hpp"
-#include "train.hpp"
-#include "test.hpp"
 using portcullis::JunctionBuilder;
 using portcullis::Prepare;
 using portcullis::JunctionFilter;
 using portcullis::BamFilter;
-using portcullis::Cluster;
-using portcullis::Train;
-using portcullis::Test;
 
 typedef boost::error_info<struct PortcullisError,string> PortcullisErrorInfo;
 struct PortcullisException: virtual boost::exception, virtual std::exception { };
@@ -74,10 +68,7 @@ enum Mode {
     JUNC,
     FILTER,
     BAM_FILT,
-    FULL,
-    CLUSTER,
-    TRAIN,
-    TEST
+    FULL
 };
 
 Mode parseMode(string mode) {
@@ -99,15 +90,6 @@ Mode parseMode(string mode) {
     else if (upperMode == string("FULL")) {
         return FULL;
     }
-    else if (upperMode == string("CLUSTER")) {
-        return CLUSTER;
-    }
-    else if (upperMode == string("TRAIN")) {
-        return TRAIN;
-    }
-    else if (upperMode == string("TEST")) {
-        return TEST;
-    }
     else {
         BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
                     "Could not recognise mode string: ") + mode));
@@ -124,7 +106,6 @@ string helpHeader() {
                   " - filter  - Discard unlikely junctions and produce BAM containing alignments to genuine junctions\n" +
                   " - bamfilt - Filters a BAM to remove any reads associated with invalid junctions\n" + 
                   " - full    - Runs prep, junc, filter and bamfilt as a complete pipeline\n" +
-                  " - cluster - Clusters potential junctions to help distinguish real junctions for false\n\n" +
                   "\nOptions";
 }
 
@@ -421,15 +402,6 @@ int main(int argc, char *argv[]) {
         }
         else if (mode == FULL) {
             mainFull(modeArgC, modeArgV);
-        }
-        else if (mode == CLUSTER) {
-            Cluster::main(modeArgC, modeArgV);            
-        }
-        else if (mode == TRAIN) {
-            Train::main(modeArgC, modeArgV);            
-        }
-        else if (mode == TEST) {
-            Test::main(modeArgC, modeArgV);            
         }
         else {
             BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
