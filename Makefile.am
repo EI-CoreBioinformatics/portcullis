@@ -45,7 +45,7 @@ configdir = $(datadir)/portcullis
 dist_config_DATA = data/default_filter.json
 
 # SRC DIRS
-make_dirs=deps/htslib-1.3 lib src tests
+make_dirs=deps/htslib-1.3 deps/ranger-0.3.8 lib src tests
 
 if MAKE_DOCS
     make_dirs += doc

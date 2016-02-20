@@ -10,7 +10,7 @@ AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile])
-AC_CONFIG_SUBDIRS([deps/htslib-1.3])
+AC_CONFIG_SUBDIRS([deps/htslib-1.3 deps/ranger-0.3.8])
 AC_LANG([C++])
 AC_PROG_INSTALL
 AC_PROG_CXX

@@ -1,0 +1,5 @@
+This directory contains a structurally modified V0.3.8 of the ranger codebase so 
+it's suitable for integration as a C++ library into other projects.  No changes
+were made to the source code other than relative directories for include directives
+and removing the main.cpp and argument handler files, which are not needed in the
+library.
