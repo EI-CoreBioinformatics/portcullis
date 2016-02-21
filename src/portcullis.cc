@@ -47,10 +47,12 @@ using portcullis::PortcullisFS;
 #include "prepare.hpp"
 #include "junction_filter.hpp"
 #include "bam_filter.hpp"
+#include "train.hpp"
 using portcullis::JunctionBuilder;
 using portcullis::Prepare;
 using portcullis::JunctionFilter;
 using portcullis::BamFilter;
+using portcullis::Train;
 
 typedef boost::error_info<struct PortcullisError,string> PortcullisErrorInfo;
 struct PortcullisException: virtual boost::exception, virtual std::exception { };
@@ -68,7 +70,8 @@ enum Mode {
     JUNC,
     FILTER,
     BAM_FILT,
-    FULL
+    FULL,
+    TRAIN
 };
 
 Mode parseMode(string mode) {
@@ -90,6 +93,9 @@ Mode parseMode(string mode) {
     else if (upperMode == string("FULL")) {
         return FULL;
     }
+    else if (upperMode == string("TRAIN")) {
+        return TRAIN;
+    }
     else {
         BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
                     "Could not recognise mode string: ") + mode));
@@ -100,12 +106,17 @@ string helpHeader() {
     return string("\nPortcullis Help.\n\n") +
                   "Portcullis is a tool to identify genuine splice junctions using aligned RNAseq reads\n\n" +
                   "Usage: portcullis [options] <mode> <mode_args>\n\n" +
-                  "Available modes:\n" +
+                  "Available modes:\n\n" +
+                  " - full    - Runs prep, junc, filter and bamfilt as a complete pipeline\n\n" +
+                  "******** Portcullis sub-steps ******************************\n\n" +
                   " - prep    - Prepares a genome and bam file(s) ready for junction analysis\n" +
                   " - junc    - Perform junction analysis on prepared data\n" +
-                  " - filter  - Discard unlikely junctions and produce BAM containing alignments to genuine junctions\n" +
-                  " - bamfilt - Filters a BAM to remove any reads associated with invalid junctions\n" + 
-                  " - full    - Runs prep, junc, filter and bamfilt as a complete pipeline\n" +
+                  " - filter  - Discard unlikely junctions and produce BAM containing alignments\n" +
+                  "             to genuine junctions\n" +
+                  " - bamfilt - Filters a BAM to remove any reads associated with invalid\n" +
+                  "             junctions\n\n" + 
+                  "******** Miscellaneous **************************************\n\n" +
+                  " - train   - Train a random forest model to use for filtering junctions\n" +
                   "\nOptions";
 }
 
@@ -399,6 +410,9 @@ int main(int argc, char *argv[]) {
         }
         else if (mode == BAM_FILT) {
             BamFilter::main(modeArgC, modeArgV);
+        }
+        else if (mode == TRAIN) {
+            Train::main(modeArgC, modeArgV);
         }
         else if (mode == FULL) {
             mainFull(modeArgC, modeArgV);
