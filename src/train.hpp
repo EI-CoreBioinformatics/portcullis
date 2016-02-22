@@ -109,6 +109,8 @@ public:
                 "M8-max_min_anc", "M9-dif_anc", "M10-dist_anc", "M11-entropy", 
                 "M12-maxmmes", "M13-hammping5p", "M14-hamming3p", "Genuine" };
     
+    Train() {}
+    
     Train(const path& _junctionFile, const path& _refFile);
     
     virtual ~Train() {

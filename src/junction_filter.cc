@@ -589,6 +589,93 @@ void portcullis::JunctionFilter::executeMLFilter(const path& mlOutputFile) {
     }
 }
 
+shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x) {
+    
+    // Convert junction list info to double*
+    double* d = new double[x.size() * variableNames.size()];
+    
+    uint32_t row = 0;
+    for (const auto& j : x) {        
+        d[0 * x.size() + row] = (double)j->getNbJunctionAlignments();
+        d[1 * x.size() + row] = (double)j->getNbDistinctAlignments();
+        d[2 * x.size() + row] = (double)j->getNbReliableAlignments();
+        d[3 * x.size() + row] = (double)j->getMaxMinAnchor();
+        d[4 * x.size() + row] = (double)j->getDiffAnchor();
+        d[5 * x.size() + row] = (double)j->getNbDistinctAnchors();
+        d[6 * x.size() + row] = (double)j->getEntropy();
+        d[7 * x.size() + row] = (double)j->getMaxMMES();
+        d[8 * x.size() + row] = (double)j->getHammingDistance5p();
+        d[9 * x.size() + row] = (double)j->getHammingDistance3p();
+        d[10 * x.size() + row] = (double)j->isGenuine();
+        
+        row++;
+    }
+    
+    Data* trainingData = new DataDouble(d, variableNames, x.size(), variableNames.size());
+    
+    
+    
+    delete d;
+    
+    return f;
+}
+
+void portcullis::JunctionFilter::forestPredict(const JunctionList& y) {
+    
+    const vector<string> vn = Train().variableNames;
+    // Convert junction list info to double*
+    double* d = new double[y.size() * vn.size()];
+    
+    uint32_t row = 0;
+    for (const auto& j : y) {        
+        d[0 * y.size() + row] = (double)j->getNbJunctionAlignments();
+        d[1 * y.size() + row] = (double)j->getNbDistinctAlignments();
+        d[2 * y.size() + row] = (double)j->getNbReliableAlignments();
+        d[3 * y.size() + row] = (double)j->getMaxMinAnchor();
+        d[4 * y.size() + row] = (double)j->getDiffAnchor();
+        d[5 * y.size() + row] = (double)j->getNbDistinctAnchors();
+        d[6 * y.size() + row] = (double)j->getEntropy();
+        d[7 * y.size() + row] = (double)j->getMaxMMES();
+        d[8 * y.size() + row] = (double)j->getHammingDistance5p();
+        d[9 * y.size() + row] = (double)j->getHammingDistance3p();
+        d[10 * y.size() + row] = (double)j->isGenuine();
+        
+        row++;
+    }
+    
+    Data* testingData = new DataDouble(d, , y.size(), vn.size());
+    
+    shared_ptr<Forest> f = make_shared<ForestClassification>();
+    
+    vector<string> catVars;
+    
+    f->init(
+        "Genuine",                  // Dependant variable name
+        MEM_DOUBLE,                 // Memory mode
+        testingData,                // Data object
+        0,                          // M Try
+        outputPrefix.string(),      // Output prefix 
+        trees,                      // Number of trees
+        0,                          // Seed
+        threads,                    // Number of threads
+        DEFAULT_IMPORTANCE_MODE,    // Importance measure 
+        0,                          // Target partition size
+        "",                         // Status var name 
+        true,                       // Prediction mode
+        true,                       // Replace 
+        catVars,                    // Unordered categorical variable names (vector<string>)
+        false,                      // Memory saving
+        DEFAULT_SPLITRULE,          // Split rule
+        false,                      // predall
+        1.0);                       // Sample fraction
+            
+    f->setVerboseOut(&cerr);
+    f->run(verbose);
+    
+    delete d;
+    
+}
+
 int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 
     path junctionFile;
