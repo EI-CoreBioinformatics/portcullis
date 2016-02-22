@@ -16,9 +16,12 @@
 //  *******************************************************************
 
 #include <sys/ioctl.h>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <vector>
+using std::ifstream;
 using std::vector;
 using std::cout;
 using std::cerr;
@@ -28,9 +31,11 @@ using std::make_shared;
 #include <boost/program_options.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/timer/timer.hpp>
 using boost::timer::auto_cpu_timer;
-using boost::filesystem::path;
+namespace bfs = boost::filesystem;
+using bfs::path;
 using boost::lexical_cast;
 namespace po = boost::program_options;
 
@@ -50,7 +55,7 @@ using portcullis::Train;
 portcullis::Train::Train(const path& _junctionFile, const path& _refFile){
     junctionFile = _junctionFile;
     refFile = _refFile;
-    outputFile = "";
+    outputPrefix = "";
     folds = DEFAULT_TRAIN_FOLDS;
     trees = DEFAULT_TRAIN_TREES;
     threads = DEFAULT_TRAIN_THREADS;
@@ -90,7 +95,7 @@ shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x) {
         MEM_DOUBLE,                 // Memory mode
         trainingData,               // Data object
         0,                          // M Try
-        outputFile.string(),        // Output prefix 
+        outputPrefix.string(),        // Output prefix 
         trees,                      // Number of trees
         0,                          // Seed
         threads,                    // Number of threads
@@ -105,7 +110,8 @@ shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x) {
         false,                      // predall
         1.0);                       // Sample fraction
             
-    f->run(false);
+    f->setVerboseOut(&cerr);
+    f->run(verbose);
     
     delete d;
     
@@ -136,9 +142,9 @@ void portcullis::Train::testInstance(shared_ptr<Forest> f, const JunctionList& y
     
     Data* testingData = new DataDouble(d, variableNames, y.size(), variableNames.size());
     
-    f->setPrediction_mode(true);   
+    f->setPredictionMode(true);   
     f->setData(testingData);
-    f->run(false);
+    f->run(verbose);
     
     delete d;
     
@@ -146,28 +152,65 @@ void portcullis::Train::testInstance(shared_ptr<Forest> f, const JunctionList& y
 
 void portcullis::Train::train() {
     
-    if (outputFile.empty() && folds < 2) {
+    // Ensure output directory exists
+    if (!outputPrefix.parent_path().empty()) {
+        if (!bfs::exists(outputPrefix.parent_path())) {
+            if (!bfs::create_directories(outputPrefix.parent_path())) {
+                BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
+                        "Could not create output directory at: ") + outputPrefix.parent_path().string()));
+            }
+        }
+    }
+    
+    if (outputPrefix.empty() && folds < 2) {
         BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
                         "You must specify either an output file to save the model too, and/or request a number of folds >= 2 for model evaluation")));
     }
+    
+    if (!bfs::exists(junctionFile) && !bfs::symbolic_link_exists(junctionFile)) {
+        BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
+                        "Junctions input file does not exist")));
+    }
+    
+    if (!bfs::exists(refFile) && !bfs::symbolic_link_exists(refFile)) {
+        BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
+                        "Reference file does not exist")));
+    }
+    
     
     // Load junction data
     JunctionSystem junctions(junctionFile);
     cout << "Loaded " << junctions.size() << " junctions from " << junctionFile << endl;
            
-    // Load reference data
-    for(uint32_t i = 0; i < junctions.size(); i++) {
-        junctions.getJunctionAt(i)->setGenuine(true);
+    // Load reference data    
+    ifstream refs(refFile.string());
+    string line;
+    uint32_t lineNb = 0;
+    while (std::getline(refs, line)) {
+        std::istringstream iss(line);
+        bool res;
+        iss >> res;
+        junctions.getJunctionAt(lineNb++)->setGenuine(res);
     }
+    
+    if (lineNb != junctions.size()) {
+        BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
+                        "Ref data does not contain the same number of entries as the junctions input file.")));
+    }
+    
     cout << "Loaded reference data from " << refFile << endl;
     
-    if (!outputFile.empty()) {
+    if (!outputPrefix.empty()) {
      
-        cout << "Training on full dataset...";
+        cout << "Training on full dataset ...";
         cout.flush();
 
-
-        cout << "Saving random forest model to " << outputFile << endl;
+        shared_ptr<Forest> f = trainInstance(junctions.getJunctions());
+        
+        cout << " done." << endl;
+        
+        f->saveToFile();
+        f->writeOutput();
     }
     
     // Assess performance of the model if requested
@@ -182,7 +225,8 @@ void portcullis::Train::train() {
         JunctionList test, train;
         vector<double> scores;
 
-        cout << "Starting " << folds << "-fold cross validation" << endl;
+        cout << endl << "Starting " << folds << "-fold cross validation" << endl;
+        cout << std::fixed << std::setprecision(2);
 
         for (uint16_t i = 1; i <= folds; i++) {
 
@@ -192,22 +236,31 @@ void portcullis::Train::train() {
             // Populate train and test for this step
             kf.getFold(i, back_inserter(train), back_inserter(test));
             
-            cout << "Training size: " << train.size() << endl;
-            cout << "Testing size: " << test.size() << endl;
+            if (verbose) {
+                cout << endl;
+                cout << "Training size: " << train.size() << endl;
+                cout << "Testing size: " << test.size() << endl;
+            }
 
             // Train on this particular set
             shared_ptr<Forest> f = trainInstance(train);
             
-            f->writeOutput();
-            
             // Test model instance
-            for(const auto& j : test) {
-                testInstance(f, test);
+            testInstance(f, test);
+            
+            uint32_t correct = 0;
+                        
+            for(size_t j = 0; j < test.size(); j++) {
+                double p = f->getPredictions()[j][0];
+                bool r = test[j]->isGenuine();
+                
+                correct += ((p == 1.0 && r) || (p == 0.0 && !r)) ? 1 : 0;
             }
             
-            cout << "Score: " << 1 << endl;
+            double score = ((double)correct / (double)test.size()) * 100.0;
+            cout << "Score: " << score << "%" << endl;
 
-            scores.push_back(1); // 
+            scores.push_back(score); // 
 
             // Clear the train and test vectors in preparation for the next step
             train.clear();
@@ -221,7 +274,7 @@ void portcullis::Train::train() {
         double sq_sum = std::inner_product(scores.begin(), scores.end(), scores.begin(), 0.0);
         double stdev = std::sqrt(sq_sum / scores.size() - mean * mean);
 
-        cout << "Mean score: " << mean << "% (+/- " << stdev << ")";
+        cout << "Mean score: " << mean << "% (+/- " << stdev << "%)" << endl;
     }
     
 }    
@@ -230,9 +283,9 @@ void portcullis::Train::train() {
 int portcullis::Train::main(int argc, char *argv[]) {
         
     // Portcullis args
-    string junctionFile;
-    string outputFile = "";
-    string refFile;
+    path junctionFile;
+    string outputPrefix = "";
+    path refFile;
     uint16_t folds;
     uint16_t trees;
     uint16_t threads;
@@ -245,9 +298,9 @@ int portcullis::Train::main(int argc, char *argv[]) {
     // Declare the supported options.
     po::options_description generic_options(helpMessage(), w.ws_col, (unsigned)((double)w.ws_col/1.7));
     generic_options.add_options()
-            ("output,o", po::value<string>(&outputFile), 
-                "File name for the random forest produced by this tool.")
-            ("reference,r", po::value<string>(&refFile), 
+            ("output,o", po::value<string>(&outputPrefix), 
+                "File name prefix for the random forest produced by this tool.")
+            ("reference,r", po::value<path>(&refFile)->required(), 
                 "Either a reference bed file containing genuine junctions or file containing a line separated list of 1/0 corresponding to each entry in the input junction file indicating whether that entry is or isn't a genuine junction")
             ("folds,k", po::value<uint16_t>(&folds)->default_value(DEFAULT_TRAIN_FOLDS), 
                 "The level of cross validation to perform.  A value of 0 means do not do cross validation.  Normally a level of 5 is sufficient to get a reasonable feel for the accuracy of the model on portcullis datasets.")
@@ -264,7 +317,7 @@ int portcullis::Train::main(int argc, char *argv[]) {
     // in config file, but will not be shown to the user.
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
-            ("junction-file", po::value<string>(&junctionFile), "Path to the junction file to process.")
+            ("junction-file", po::value<path>(&junctionFile), "Path to the junction file to process.")
             ;
 
     // Positional option for the input bam file
@@ -296,8 +349,8 @@ int portcullis::Train::main(int argc, char *argv[]) {
 
     // Create the prepare class
     Train trainer(junctionFile, refFile);
-    if (outputFile.empty()) {
-        trainer.setOutputFile(outputFile);
+    if (!outputPrefix.empty()) {
+        trainer.setOutputPrefix(outputPrefix);
     }    
     trainer.setFolds(folds);
     trainer.setTrees(trees);

@@ -96,7 +96,7 @@ private:
     
     path junctionFile;
     path refFile;
-    path outputFile;
+    path outputPrefix;
     uint16_t folds;
     uint16_t trees;
     uint16_t threads;
@@ -154,12 +154,12 @@ public:
         this->junctionFile = junctionFile;
     }
 
-    path getOutputFile() const {
-        return outputFile;
+    path getOutputPrefix() const {
+        return outputPrefix;
     }
 
-    void setOutputFile(path outputFile) {
-        this->outputFile = outputFile;
+    void setOutputPrefix(path outputPrefix) {
+        this->outputPrefix = outputPrefix;
     }
 
 

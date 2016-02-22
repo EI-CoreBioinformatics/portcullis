@@ -145,13 +145,18 @@ public:
     return result;
   }
   
-    void setPrediction_mode(bool prediction_mode) {
+    void setPredictionMode(bool prediction_mode) {
         this->prediction_mode = prediction_mode;
     }
 
     void setData(Data* data) {
         this->data = data;
     }
+    
+    void setVerboseOut(std::ostream* verbose_out) {
+        this->verbose_out = verbose_out;
+    }
+
 
     
 protected:
