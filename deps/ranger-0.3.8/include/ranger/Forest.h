@@ -144,7 +144,16 @@ public:
     }
     return result;
   }
+  
+    void setPrediction_mode(bool prediction_mode) {
+        this->prediction_mode = prediction_mode;
+    }
 
+    void setData(Data* data) {
+        this->data = data;
+    }
+
+    
 protected:
   void grow();
   virtual void growInternal() = 0;

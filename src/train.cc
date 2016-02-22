@@ -17,10 +17,13 @@
 
 #include <sys/ioctl.h>
 #include <iostream>
+#include <memory>
 #include <vector>
 using std::vector;
 using std::cout;
+using std::cerr;
 using std::endl;
+using std::make_shared;
 
 #include <boost/program_options.hpp>
 #include <boost/lexical_cast.hpp>
@@ -31,48 +34,155 @@ using boost::filesystem::path;
 using boost::lexical_cast;
 namespace po = boost::program_options;
 
+#include <ranger/globals.h>
+#include <ranger/DataDouble.h>
+#include <ranger/Forest.h>
+#include <ranger/ForestClassification.h>
+
+#include <portcullis/junction_system.hpp>
+using portcullis::JunctionSystem;
+using portcullis::JunctionList;
 
 #include "train.hpp"
 using portcullis::KFold;
 using portcullis::Train;
 
-portcullis::Train::Train(const path& _junctionFile, const path& _refFile, const path& _outputFile){
+portcullis::Train::Train(const path& _junctionFile, const path& _refFile){
     junctionFile = _junctionFile;
     refFile = _refFile;
-    outputFile = _outputFile;
+    outputFile = "";
     folds = DEFAULT_TRAIN_FOLDS;
     trees = DEFAULT_TRAIN_TREES;
     threads = DEFAULT_TRAIN_THREADS;
     verbose = false;    
 }
     
+shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x) {
+    
+    // Convert junction list info to double*
+    double* d = new double[x.size() * variableNames.size()];
+    
+    uint32_t row = 0;
+    for (const auto& j : x) {        
+        d[0 * x.size() + row] = (double)j->getNbJunctionAlignments();
+        d[1 * x.size() + row] = (double)j->getNbDistinctAlignments();
+        d[2 * x.size() + row] = (double)j->getNbReliableAlignments();
+        d[3 * x.size() + row] = (double)j->getMaxMinAnchor();
+        d[4 * x.size() + row] = (double)j->getDiffAnchor();
+        d[5 * x.size() + row] = (double)j->getNbDistinctAnchors();
+        d[6 * x.size() + row] = (double)j->getEntropy();
+        d[7 * x.size() + row] = (double)j->getMaxMMES();
+        d[8 * x.size() + row] = (double)j->getHammingDistance5p();
+        d[9 * x.size() + row] = (double)j->getHammingDistance3p();
+        d[10 * x.size() + row] = (double)j->isGenuine();
+        
+        row++;
+    }
+    
+    Data* trainingData = new DataDouble(d, variableNames, x.size(), variableNames.size());
+    
+    shared_ptr<Forest> f = make_shared<ForestClassification>();
+    
+    vector<string> catVars;
+    
+    f->init(
+        "Genuine",                  // Dependant variable name
+        MEM_DOUBLE,                 // Memory mode
+        trainingData,               // Data object
+        0,                          // M Try
+        outputFile.string(),        // Output prefix 
+        trees,                      // Number of trees
+        0,                          // Seed
+        threads,                    // Number of threads
+        DEFAULT_IMPORTANCE_MODE,    // Importance measure 
+        0,                          // Target partition size
+        "",                         // Status var name 
+        false,                      // Prediction mode
+        true,                       // Replace 
+        catVars,                    // Unordered categorical variable names (vector<string>)
+        false,                      // Memory saving
+        DEFAULT_SPLITRULE,          // Split rule
+        false,                      // predall
+        1.0);                       // Sample fraction
+            
+    f->run(false);
+    
+    delete d;
+    
+    return f;
+}
+
+void portcullis::Train::testInstance(shared_ptr<Forest> f, const JunctionList& y) {
+    
+    // Convert junction list info to double*
+    double* d = new double[y.size() * variableNames.size()];
+    
+    uint32_t row = 0;
+    for (const auto& j : y) {        
+        d[0 * y.size() + row] = (double)j->getNbJunctionAlignments();
+        d[1 * y.size() + row] = (double)j->getNbDistinctAlignments();
+        d[2 * y.size() + row] = (double)j->getNbReliableAlignments();
+        d[3 * y.size() + row] = (double)j->getMaxMinAnchor();
+        d[4 * y.size() + row] = (double)j->getDiffAnchor();
+        d[5 * y.size() + row] = (double)j->getNbDistinctAnchors();
+        d[6 * y.size() + row] = (double)j->getEntropy();
+        d[7 * y.size() + row] = (double)j->getMaxMMES();
+        d[8 * y.size() + row] = (double)j->getHammingDistance5p();
+        d[9 * y.size() + row] = (double)j->getHammingDistance3p();
+        d[10 * y.size() + row] = (double)j->isGenuine();
+        
+        row++;
+    }
+    
+    Data* testingData = new DataDouble(d, variableNames, y.size(), variableNames.size());
+    
+    f->setPrediction_mode(true);   
+    f->setData(testingData);
+    f->run(false);
+    
+    delete d;
+    
+}
 
 void portcullis::Train::train() {
     
+    if (outputFile.empty() && folds < 2) {
+        BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
+                        "You must specify either an output file to save the model too, and/or request a number of folds >= 2 for model evaluation")));
+    }
+    
     // Load junction data
-    cout << "Loaded junction data from " << junctionFile << endl;
-            
+    JunctionSystem junctions(junctionFile);
+    cout << "Loaded " << junctions.size() << " junctions from " << junctionFile << endl;
+           
     // Load reference data
+    for(uint32_t i = 0; i < junctions.size(); i++) {
+        junctions.getJunctionAt(i)->setGenuine(true);
+    }
     cout << "Loaded reference data from " << refFile << endl;
     
+    if (!outputFile.empty()) {
+     
+        cout << "Training on full dataset...";
+        cout.flush();
+
+
+        cout << "Saving random forest model to " << outputFile << endl;
+    }
     
-    cout << "Training on full dataset...";
-    cout.flush();
-    
-    
-    cout << "Saving random forest model to " << outputFile << endl;
-    
-    
+    // Assess performance of the model if requested
     // Makes no sense to do cross validation on less than 2-fold
     if (folds >= 2) {
-        vector<uint32_t> v;
+        
+        JunctionList jl = junctions.getJunctions();
+        
         // Setup k fold cross validation to estimate real performance
-        KFold<vector<uint32_t>::const_iterator> kf(folds, v.begin(), v.end());
+        KFold<JunctionList::const_iterator> kf(folds, jl.begin(), jl.end());
 
-        vector<uint32_t> test, train;
-        double meanScore;
+        JunctionList test, train;
+        vector<double> scores;
 
-        cout << "Starting cross validation" << endl;
+        cout << "Starting " << folds << "-fold cross validation" << endl;
 
         for (uint16_t i = 1; i <= folds; i++) {
 
@@ -81,12 +191,23 @@ void portcullis::Train::train() {
 
             // Populate train and test for this step
             kf.getFold(i, back_inserter(train), back_inserter(test));
+            
+            cout << "Training size: " << train.size() << endl;
+            cout << "Testing size: " << test.size() << endl;
 
-
-
+            // Train on this particular set
+            shared_ptr<Forest> f = trainInstance(train);
+            
+            f->writeOutput();
+            
+            // Test model instance
+            for(const auto& j : test) {
+                testInstance(f, test);
+            }
+            
             cout << "Score: " << 1 << endl;
 
-            meanScore += 1; // 
+            scores.push_back(1); // 
 
             // Clear the train and test vectors in preparation for the next step
             train.clear();
@@ -95,9 +216,12 @@ void portcullis::Train::train() {
 
         cout << "Cross validation completed" << endl << endl;
     
-        meanScore /= folds;
+        double sum = std::accumulate(scores.begin(), scores.end(), 0.0);
+        double mean = sum / scores.size();
+        double sq_sum = std::inner_product(scores.begin(), scores.end(), scores.begin(), 0.0);
+        double stdev = std::sqrt(sq_sum / scores.size() - mean * mean);
 
-        cout << "Mean score: " << meanScore << "% (+/- " << 0.0 << ")";
+        cout << "Mean score: " << mean << "% (+/- " << stdev << ")";
     }
     
 }    
@@ -107,7 +231,7 @@ int portcullis::Train::main(int argc, char *argv[]) {
         
     // Portcullis args
     string junctionFile;
-    string outputFile;
+    string outputFile = "";
     string refFile;
     uint16_t folds;
     uint16_t trees;
@@ -121,12 +245,12 @@ int portcullis::Train::main(int argc, char *argv[]) {
     // Declare the supported options.
     po::options_description generic_options(helpMessage(), w.ws_col, (unsigned)((double)w.ws_col/1.7));
     generic_options.add_options()
-            ("output,o", po::value<string>(&outputFile)->default_value("trained_model.forest"), 
+            ("output,o", po::value<string>(&outputFile), 
                 "File name for the random forest produced by this tool.")
             ("reference,r", po::value<string>(&refFile), 
-                "Either a reference bed file containing genuine junctions or file containing a line seperated list of 1/0 corresponding to each entry in the input junction file indicating whether that entry is or isn't a genuine junction")
+                "Either a reference bed file containing genuine junctions or file containing a line separated list of 1/0 corresponding to each entry in the input junction file indicating whether that entry is or isn't a genuine junction")
             ("folds,k", po::value<uint16_t>(&folds)->default_value(DEFAULT_TRAIN_FOLDS), 
-                "The level of cross validation to perform.  A value of 0 means do not do cross validation.  Normally a level of 10 is more than sufficient to get a reasonable feel for the accuracy of the model.")
+                "The level of cross validation to perform.  A value of 0 means do not do cross validation.  Normally a level of 5 is sufficient to get a reasonable feel for the accuracy of the model on portcullis datasets.")
             ("trees,n", po::value<uint16_t>(&trees)->default_value(DEFAULT_TRAIN_TREES), 
                 "The number of trees to build in the random forest.  More trees will produce better results but at computational expense.")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_TRAIN_THREADS), 
@@ -171,7 +295,10 @@ int portcullis::Train::main(int argc, char *argv[]) {
          << "-----------------------------------" << endl << endl;
 
     // Create the prepare class
-    Train trainer(junctionFile, refFile, outputFile);
+    Train trainer(junctionFile, refFile);
+    if (outputFile.empty()) {
+        trainer.setOutputFile(outputFile);
+    }    
     trainer.setFolds(folds);
     trainer.setTrees(trees);
     trainer.setThreads(threads);

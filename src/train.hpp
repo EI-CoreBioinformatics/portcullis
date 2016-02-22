@@ -20,14 +20,18 @@
 #include <string>
 #include <algorithm>
 #include <iterator>
+#include <memory>
 #include <vector>
 using std::string;
 using std::vector;
 using std::random_shuffle;
+using std::shared_ptr;
 
 #include <boost/exception/all.hpp>
 #include <boost/filesystem/path.hpp>
 using boost::filesystem::path;
+
+#include <ranger/Forest.h>
 
 
 namespace portcullis {
@@ -86,7 +90,8 @@ private:
 
 
 class Train {
-
+    
+    
 private:
     
     path junctionFile;
@@ -98,8 +103,13 @@ private:
     bool verbose;
     
 public:
+
+    // List of variable names
+    const vector<string> variableNames = { "M2-nb-reads", "M3-nb_dist_aln", "M4-nb_rel_aln", 
+                "M8-max_min_anc", "M9-dif_anc", "M10-dist_anc", "M11-entropy", 
+                "M12-maxmmes", "M13-hammping5p", "M14-hamming3p", "Genuine" };
     
-    Train(const path& _junctionFile, const path& _refFile, const path& _outputFile);
+    Train(const path& _junctionFile, const path& _refFile);
     
     virtual ~Train() {
     }
@@ -167,7 +177,10 @@ public:
      * Run a supervised training algorithm on the input data using k fold cross validation
      */
     void train();
-        
+    
+    shared_ptr<Forest> trainInstance(const JunctionList& x);
+    
+    void testInstance(shared_ptr<Forest> f, const JunctionList& y);  
     
     static string helpMessage() {
         return string("\nPortcullis Training Mode Help.\n\n") +

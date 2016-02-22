@@ -249,7 +249,7 @@ private:
     Strand ssStrand;        // Strand derived from splice sites    
     Strand consensusStrand; // If readStrand and ssStrand agree then strand is the same, otherwise UNKNOWN
     
-    
+    bool genuine;           // Used as a hidden variable for use with cross validating a trained model instance.
     
     // **** Additional properties ****
     
@@ -778,6 +778,14 @@ public:
 
     void setTrimmedLogDevCov(vector<double> trimmedLogDevCov) {
         this->trimmedLogDevCov = trimmedLogDevCov;
+    }
+
+    bool isGenuine() const {
+        return genuine;
+    }
+
+    void setGenuine(bool genuine) {
+        this->genuine = genuine;
     }
 
     

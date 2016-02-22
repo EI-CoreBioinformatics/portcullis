@@ -8,7 +8,7 @@ portcullis_noinstdir = $(top_srcdir)/src
 portcullis_CXXFLAGS = -O3 -pedantic @AM_CXXFLAGS@ @CXXFLAGS@
 
 portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
-			-isystem $(top_srcdir)/deps/ranger-0.3.8 \
+			-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
 			-isystem $(top_srcdir)/lib/include \
 			-I$(top_srcdir)/src \
 			-DDATADIR=\"$(datadir)\" \
