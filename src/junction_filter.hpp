@@ -338,7 +338,9 @@ protected:
     
     wchar_t* convertCharToWideChar(const char* c);
     
-    void executeMLFilter(const path& mlOutputFile);
+    void executePythonMLFilter(const path& mlOutputFile);
+    
+    void forestPredict(const JunctionList& all, JunctionSystem& pass, JunctionSystem& fail);
     
 public:
   
