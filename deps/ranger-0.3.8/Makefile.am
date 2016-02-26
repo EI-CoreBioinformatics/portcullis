@@ -3,7 +3,7 @@
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = ranger.pc
+pkgconfig_DATA = $(top_srcdir)/ranger.pc
 
 # Create portcullis library
 lib_LTLIBRARIES = libranger.la
