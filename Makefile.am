@@ -38,7 +38,11 @@ dist_bin_SCRIPTS =  scripts/bed12.py \
 		    scripts/example_pp_ath.yaml \
 		    scripts/analyse_alignments.py \
 		    scripts/analyse_junctions.py \
-		    scripts/merge_bed.py
+		    scripts/bed_merge.py \
+		    scripts/tab.py \
+		    scripts/tab_bed12_set.py \
+		    scripts/tab_in_bedref.py \
+		    scripts/tab_combine.py
 
 # Config files
 configdir = $(datadir)/portcullis

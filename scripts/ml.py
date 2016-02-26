@@ -116,6 +116,7 @@ def loadtab(tabfile):
 
 
 def main():
+
 	parser = argparse.ArgumentParser("Script to build a random forest decision tree")
 	parser.add_argument("input", nargs="+", help="The tab file produce by portcullis")
 	parser.add_argument("-r", "--reference", required=True, help="The reference BED file to compare against")
@@ -131,7 +132,7 @@ def main():
 	bed=[]
 	tab=[]
 	for i in args.input:
-		b, t = loadtab(i)
+		b, t = tab.loadtab(i)
 		bed.extend(b)
 		tab.extend(t)
 		print ("Loaded " + str(len(b)) + " entries from: " + i)
@@ -220,4 +221,5 @@ def main():
 
 	# Print
 
+	
 main()

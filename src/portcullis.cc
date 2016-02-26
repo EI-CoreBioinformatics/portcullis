@@ -134,6 +134,7 @@ int mainFull(int argc, char *argv[]) {
     std::vector<path> bamFiles;
     path genomeFile;
     path outputDir;
+    path modelFile;
     path filterFile;
     string strandSpecific;
     uint16_t threads;
@@ -142,6 +143,8 @@ int mainFull(int argc, char *argv[]) {
     bool useCsi;
     bool bamFilter;
     string source;
+    uint32_t max_length;
+    bool canonical;
     bool verbose;
     bool help;
     
@@ -157,14 +160,20 @@ int mainFull(int argc, char *argv[]) {
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
             ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unknown\"")
-            ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
+            ("use_links", po::bool_switch(&useLinks)->default_value(false), 
                 "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
-            ("use_csi,c", po::bool_switch(&useCsi)->default_value(false), 
+            ("use_csi", po::bool_switch(&useCsi)->default_value(false), 
                 "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(1),
                 "The number of threads to use.  Default: 1")
+            ("model_file,m", po::value<path>(&modelFile)->default_value(JunctionFilter::defaultModelFile), 
+                "If you wish to use a custom random forest model to filter the junctions file, use this option to. See manual for more details.")
             ("filter_file,f", po::value<path>(&filterFile)->default_value(JunctionFilter::defaultFilterFile), 
-                "The filter configuration file to use.")
+                "The rule-based filter configuration file to use.")
+            ("max_length", po::value<uint32_t>(&max_length)->default_value(0),
+                "Filter junctions longer than this value.  Default (0) is to not filter based on length.")
+            ("canonical", po::bool_switch(&canonical)->default_value(false),
+                "Filter out non-canonical junctions.  If set then only canonical and semi-canonical junctions are kept.  Default is to not filter based on the junction's canonical label.")
             ("bam_filter,b", po::bool_switch(&bamFilter)->default_value(false), 
                 "Filter out alignments corresponding with false junctions")
             ("source", po::value<string>(&source)->default_value("portcullis"),
@@ -277,9 +286,14 @@ int mainFull(int argc, char *argv[]) {
     path filtDir = outputDir.string() + "/3-filt";
     path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
     
-    JunctionFilter filter(juncTab, filterFile, filtDir, "portcullis_filtered");
+    JunctionFilter filter(juncTab, filtDir, "portcullis_filtered");
     filter.setVerbose(verbose);
     filter.setSource(source);
+    filter.setMaxLength(max_length);
+    filter.setCanonical(canonical);
+    filter.setFilterFile(filterFile);
+    filter.setModelFile(modelFile);
+    filter.setThreads(threads);
     filter.filter();
 
     
@@ -347,9 +361,21 @@ int main(int argc, char *argv[]) {
         po::variables_map vm;
         po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).allow_unregistered().run(), vm);
         po::notify(vm);
+
+        // Always output version information but exit if version info was all user requested
+        
+#ifndef PACKAGE_NAME
+#define PACKAGE_NAME "Portcullis"
+#endif
+
+#ifndef PACKAGE_VERSION
+#define PACKAGE_VERSION "0.13.X"
+#endif
+
         
         portcullis::pfs = PortcullisFS(argv[0]);
-
+        portcullis::pfs.setVersion(PACKAGE_VERSION);
+        
         // End if verbose was requested at this level, outputting file system details.
         if (verbose) {
             cout << endl 
@@ -365,15 +391,6 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        // Always output version information but exit if version info was all user requested
-        
-#ifndef PACKAGE_NAME
-#define PACKAGE_NAME "Portcullis"
-#endif
-
-#ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.11.X"
-#endif
         
         // End if version was requested.
         if (version) {    
@@ -383,9 +400,6 @@ int main(int argc, char *argv[]) {
         else {        
             cout << "Portcullis V" << PACKAGE_VERSION << endl << endl;
         }
-        
-        portcullis::pfs.setVersion(PACKAGE_VERSION);
-        
         
         // If we've got this far parse the command line properly
         Mode mode = parseMode(modeStr);

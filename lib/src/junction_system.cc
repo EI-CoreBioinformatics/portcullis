@@ -104,7 +104,7 @@ const JunctionList& portcullis::JunctionSystem::getJunctions() const {
 
 size_t portcullis::JunctionSystem::size() {
 
-    assert(distinctJunctions.size() == junctionList.size());
+    //assert(distinctJunctions.size() == junctionList.size());
 
     return distinctJunctions.size();
 }
@@ -432,7 +432,7 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string&
     cout.flush();
 
     // Print junctions in BED format to file
-    outputBED(junctionBEDAllPath, ALL);
+    outputBED(junctionBEDAllPath, ALL, source);
 
     cout << "done." << endl;
 }
@@ -464,24 +464,28 @@ void portcullis::JunctionSystem::outputIntronGFF(std::ostream &strm, const strin
 }
 
 
-void portcullis::JunctionSystem::outputBED(string& path, CanonicalSS type) {
+void portcullis::JunctionSystem::outputBED(string& path, CanonicalSS type, const string& prefix) {
 
     ofstream junctionBEDStream(path.c_str());
-    outputBED(junctionBEDStream, type);
+    outputBED(junctionBEDStream, type, prefix);
     junctionBEDStream.close();
 }
 
-void portcullis::JunctionSystem::outputBED(std::ostream &strm, CanonicalSS type) {
+void portcullis::JunctionSystem::outputBED(std::ostream &strm, CanonicalSS type, const string& prefix) {
     strm << "track name=\"junctions\" description=\"Portcullis V" << (version.empty() ? "X.X.X" : version) << " junctions\"" << endl;
-    uint64_t i = 0;
+    uint64_t i = 1;
     for(JunctionPtr j : junctionList) {
         if (type == ALL || j->getSpliceSiteType() == type) {
-            j->outputBED(strm, i++);
+            j->outputBED(strm, prefix, i++);
         }
     }
 }
 
 void portcullis::JunctionSystem::load(const path& junctionTabFile) {
+    load(junctionTabFile, false);
+}
+    
+void portcullis::JunctionSystem::load(const path& junctionTabFile, const bool simple) {
 
     ifstream ifs(junctionTabFile.c_str());
 
@@ -492,7 +496,9 @@ void portcullis::JunctionSystem::load(const path& junctionTabFile) {
         if ( !line.empty() && line.find("index") == std::string::npos ) {
             shared_ptr<Junction> j = Junction::parse(line);
             junctionList.push_back(j);
-            distinctJunctions[*(j->getIntron())] = j;
+            if (!simple) {
+                distinctJunctions[*(j->getIntron())] = j;
+            }
         }
     }
 

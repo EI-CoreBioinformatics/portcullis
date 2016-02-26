@@ -45,8 +45,10 @@ namespace po = boost::program_options;
 #include <ranger/ForestClassification.h>
 
 #include <portcullis/junction_system.hpp>
+#include <portcullis/performance.hpp>
 using portcullis::JunctionSystem;
 using portcullis::JunctionList;
+using portcullis::Performance;
 
 #include "train.hpp"
 using portcullis::KFold;
@@ -69,17 +71,18 @@ shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x) {
     
     uint32_t row = 0;
     for (const auto& j : x) {        
-        d[0 * x.size() + row] = (double)j->getNbJunctionAlignments();
-        d[1 * x.size() + row] = (double)j->getNbDistinctAlignments();
-        d[2 * x.size() + row] = (double)j->getNbReliableAlignments();
-        d[3 * x.size() + row] = (double)j->getMaxMinAnchor();
-        d[4 * x.size() + row] = (double)j->getDiffAnchor();
-        d[5 * x.size() + row] = (double)j->getNbDistinctAnchors();
-        d[6 * x.size() + row] = (double)j->getEntropy();
-        d[7 * x.size() + row] = (double)j->getMaxMMES();
-        d[8 * x.size() + row] = (double)j->getHammingDistance5p();
-        d[9 * x.size() + row] = (double)j->getHammingDistance3p();
-        d[10 * x.size() + row] = (double)j->isGenuine();
+        
+        d[0 * x.size() + row] = j->getNbJunctionAlignments();
+        d[1 * x.size() + row] = j->getNbDistinctAlignments();
+        d[2 * x.size() + row] = j->getNbReliableAlignments();
+        d[3 * x.size() + row] = j->getMaxMinAnchor();
+        d[4 * x.size() + row] = j->getDiffAnchor();
+        d[5 * x.size() + row] = j->getNbDistinctAnchors();
+        d[6 * x.size() + row] = j->getEntropy();
+        d[7 * x.size() + row] = j->getMaxMMES();
+        d[8 * x.size() + row] = j->getHammingDistance5p();
+        d[9 * x.size() + row] = j->getHammingDistance3p();
+        d[10 * x.size() + row] = j->isGenuine();
         
         row++;
     }
@@ -94,13 +97,13 @@ shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x) {
         "Genuine",                  // Dependant variable name
         MEM_DOUBLE,                 // Memory mode
         trainingData,               // Data object
-        0,                          // M Try
-        outputPrefix.string(),        // Output prefix 
+        0,                          // M Try (0 == use default)
+        outputPrefix.string(),      // Output prefix 
         trees,                      // Number of trees
-        0,                          // Seed
+        0,                          // Seed (0 == no random seed)
         threads,                    // Number of threads
-        DEFAULT_IMPORTANCE_MODE,    // Importance measure 
-        0,                          // Target partition size
+        IMP_GINI,                   // Importance measure 
+        DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
         "",                         // Status var name 
         false,                      // Prediction mode
         true,                       // Replace 
@@ -110,44 +113,43 @@ shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x) {
         false,                      // predall
         1.0);                       // Sample fraction
             
+    
     f->setVerboseOut(&cerr);
-    f->run(verbose);
+    f->run(false);
     
     delete d;
     
     return f;
 }
 
-void portcullis::Train::testInstance(shared_ptr<Forest> f, const JunctionList& y) {
+void portcullis::Train::testInstance(shared_ptr<Forest> f, const JunctionList& x) {
     
     // Convert junction list info to double*
-    double* d = new double[y.size() * variableNames.size()];
+    double* d = new double[x.size() * variableNames.size()];
     
     uint32_t row = 0;
-    for (const auto& j : y) {        
-        d[0 * y.size() + row] = (double)j->getNbJunctionAlignments();
-        d[1 * y.size() + row] = (double)j->getNbDistinctAlignments();
-        d[2 * y.size() + row] = (double)j->getNbReliableAlignments();
-        d[3 * y.size() + row] = (double)j->getMaxMinAnchor();
-        d[4 * y.size() + row] = (double)j->getDiffAnchor();
-        d[5 * y.size() + row] = (double)j->getNbDistinctAnchors();
-        d[6 * y.size() + row] = (double)j->getEntropy();
-        d[7 * y.size() + row] = (double)j->getMaxMMES();
-        d[8 * y.size() + row] = (double)j->getHammingDistance5p();
-        d[9 * y.size() + row] = (double)j->getHammingDistance3p();
-        d[10 * y.size() + row] = (double)j->isGenuine();
+    for (const auto& j : x) {        
+        d[0 * x.size() + row] = j->getNbJunctionAlignments();
+        d[1 * x.size() + row] = j->getNbDistinctAlignments();
+        d[2 * x.size() + row] = j->getNbReliableAlignments();
+        d[3 * x.size() + row] = j->getMaxMinAnchor();
+        d[4 * x.size() + row] = j->getDiffAnchor();
+        d[5 * x.size() + row] = j->getNbDistinctAnchors();
+        d[6 * x.size() + row] = j->getEntropy();
+        d[7 * x.size() + row] = j->getMaxMMES();
+        d[8 * x.size() + row] = j->getHammingDistance5p();
+        d[9 * x.size() + row] = j->getHammingDistance3p();
+        d[10 * x.size() + row] = j->isGenuine();
         
         row++;
     }
     
-    Data* testingData = new DataDouble(d, variableNames, y.size(), variableNames.size());
+    Data* testingData = new DataDouble(d, variableNames, x.size(), variableNames.size());
     
-    f->setPredictionMode(true);   
+    f->setPredictionMode(true);
     f->setData(testingData);
-    f->run(verbose);
-    
-    delete d;
-    
+    f->run(false);
+        
 }
 
 void portcullis::Train::train() {
@@ -179,23 +181,23 @@ void portcullis::Train::train() {
     
     
     // Load junction data
-    JunctionSystem junctions(junctionFile);
+    JunctionSystem js;
+    js.load(junctionFile, true);
+    JunctionList junctions = js.getJunctions();
     cout << "Loaded " << junctions.size() << " junctions from " << junctionFile << endl;
            
     // Load reference data    
-    ifstream refs(refFile.string());
-    string line;
-    uint32_t lineNb = 0;
-    while (std::getline(refs, line)) {
-        std::istringstream iss(line);
-        bool res;
-        iss >> res;
-        junctions.getJunctionAt(lineNb++)->setGenuine(res);
-    }
+    vector<bool> genuine;
+    Performance::loadGenuine(refFile, genuine);
     
-    if (lineNb != junctions.size()) {
+    if (genuine.size() != junctions.size()) {
         BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
                         "Ref data does not contain the same number of entries as the junctions input file.")));
+    }
+    
+    // Copy over results into junction list
+    for(size_t i = 0; i < junctions.size(); i++) {
+        junctions[i]->setGenuine(genuine[i]);
     }
     
     cout << "Loaded reference data from " << refFile << endl;
@@ -205,22 +207,20 @@ void portcullis::Train::train() {
         cout << "Training on full dataset ...";
         cout.flush();
 
-        shared_ptr<Forest> f = trainInstance(junctions.getJunctions());
+        shared_ptr<Forest> f = trainInstance(junctions);
         
         cout << " done." << endl;
         
         f->saveToFile();
-        f->writeOutput();
+        f->writeOutput();        
     }
     
     // Assess performance of the model if requested
     // Makes no sense to do cross validation on less than 2-fold
     if (folds >= 2) {
         
-        JunctionList jl = junctions.getJunctions();
-        
         // Setup k fold cross validation to estimate real performance
-        KFold<JunctionList::const_iterator> kf(folds, jl.begin(), jl.end());
+        KFold<JunctionList::const_iterator> kf(folds, junctions.begin(), junctions.end());
 
         JunctionList test, train;
         vector<double> scores;
@@ -248,17 +248,27 @@ void portcullis::Train::train() {
             // Test model instance
             testInstance(f, test);
             
-            uint32_t correct = 0;
-                        
+            uint32_t tp = 0, tn = 0, fp = 0, fn = 0;
+
             for(size_t j = 0; j < test.size(); j++) {
-                double p = f->getPredictions()[j][0];
+                double pred = f->getPredictions()[j][0];
+                bool p = std::isnan(pred) ? false : pred == 1.0;
                 bool r = test[j]->isGenuine();
                 
-                correct += ((p == 1.0 && r) || (p == 0.0 && !r)) ? 1 : 0;
+                //cout << pred << " " << p << " " << r << endl;                 
+                
+                if (r) {
+                    if (p) tp++; else fn++;
+                }
+                else {
+                    if (p) fp++; else tn++;
+                }
             }
             
-            double score = ((double)correct / (double)test.size()) * 100.0;
-            cout << "Score: " << score << "%" << endl;
+            Performance p(tp, tn, fp, fn);
+            
+            double score = p.getF1Score();
+            cout << p.toString() << endl;
 
             scores.push_back(score); // 
 
@@ -274,7 +284,7 @@ void portcullis::Train::train() {
         double sq_sum = std::inner_product(scores.begin(), scores.end(), scores.begin(), 0.0);
         double stdev = std::sqrt(sq_sum / scores.size() - mean * mean);
 
-        cout << "Mean score: " << mean << "% (+/- " << stdev << "%)" << endl;
+        cout << "Mean F1 score: " << mean << "% (+/- " << stdev << "%)" << endl;
     }
     
 }    
@@ -300,7 +310,7 @@ int portcullis::Train::main(int argc, char *argv[]) {
     generic_options.add_options()
             ("output,o", po::value<string>(&outputPrefix), 
                 "File name prefix for the random forest produced by this tool.")
-            ("reference,r", po::value<path>(&refFile)->required(), 
+            ("reference,r", po::value<path>(&refFile), 
                 "Either a reference bed file containing genuine junctions or file containing a line separated list of 1/0 corresponding to each entry in the input junction file indicating whether that entry is or isn't a genuine junction")
             ("folds,k", po::value<uint16_t>(&folds)->default_value(DEFAULT_TRAIN_FOLDS), 
                 "The level of cross validation to perform.  A value of 0 means do not do cross validation.  Normally a level of 5 is sufficient to get a reasonable feel for the accuracy of the model on portcullis datasets.")

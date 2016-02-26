@@ -19,10 +19,12 @@
 
 #include <string>
 #include <algorithm>
+#include <math.h>
 #include <iterator>
 #include <memory>
 #include <vector>
 using std::string;
+using std::stringstream;
 using std::vector;
 using std::random_shuffle;
 using std::shared_ptr;

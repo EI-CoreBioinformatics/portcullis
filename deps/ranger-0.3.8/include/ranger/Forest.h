@@ -151,13 +151,16 @@ public:
 
     void setData(Data* data) {
         this->data = data;
+        // Assume we want to reset predictions too
+        this->predictions.clear();
     }
     
     void setVerboseOut(std::ostream* verbose_out) {
         this->verbose_out = verbose_out;
     }
 
-
+void loadFromFile(std::string filename);
+  
     
 protected:
   void grow();
@@ -178,7 +181,6 @@ protected:
   void computeTreePermutationImportanceInThread(uint thread_idx, std::vector<double>* importance, std::vector<double>* variance);
 
   // Load forest from file
-  void loadFromFile(std::string filename);
   virtual void loadFromFileInternal(std::ifstream& infile) = 0;
 
   // Set split select weights and variables to be always considered for splitting

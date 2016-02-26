@@ -210,19 +210,21 @@ void ForestClassification::writeConfusionFile() {
   }
   outfile << std::endl;
   for (auto& predicted_value : class_values) {
-    outfile << "predicted " << predicted_value << "     ";
+    outfile << "predicted " << predicted_value << "      ";
     for (auto& real_value : class_values) {
       size_t value = classification_table[std::make_pair(real_value, predicted_value)];
       outfile << value;
       if (value < 10) {
-        outfile << "     ";
+        outfile << "      ";
       } else if (value < 100) {
-        outfile << "    ";
+        outfile << "     ";
       } else if (value < 1000) {
-        outfile << "   ";
+        outfile << "    ";
       } else if (value < 10000) {
-        outfile << "  ";
+        outfile << "   ";
       } else if (value < 100000) {
+        outfile << "  ";
+      } else if (value < 1000000) {
         outfile << " ";
       }
     }

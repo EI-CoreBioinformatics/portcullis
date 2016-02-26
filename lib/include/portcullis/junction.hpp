@@ -829,7 +829,7 @@ public:
      * Complete human readable description of this junction
      * @param strm
      */
-    void outputBED(std::ostream &strm, uint32_t id);
+    void outputBED(std::ostream &strm, const string& prefix, uint32_t id);
     
     
     /**
