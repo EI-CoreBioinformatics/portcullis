@@ -4,13 +4,13 @@
 
 # Autoconf setup
 AC_PREREQ([2.68])
-AC_INIT([portcullis],[0.12.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
+AC_INIT([portcullis],[0.13.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
 AC_CONFIG_SRCDIR([src/portcullis.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile])
-AC_CONFIG_SUBDIRS([deps/htslib-1.3])
+AC_CONFIG_SUBDIRS([deps/htslib-1.3 deps/ranger-0.3.8])
 AC_LANG([C++])
 AC_PROG_INSTALL
 AC_PROG_CXX
@@ -28,6 +28,14 @@ AM_SILENT_RULES([yes])
 # Libtool setup
 LT_INIT
 
+# Detect OS
+UNAME_S=`uname -s`
+if test x"${UNAME_S}" == x"Linux"; then
+    AC_DEFINE([OS_LINUX], [1], [Linux detected])
+fi
+if test x"${UNAME_S}" == x"Darwin"; then
+    AC_DEFINE([OS_MAC], [1], [Mac detected])
+fi
 
 ######################################################################
 # Dependency checks
@@ -77,32 +85,48 @@ AC_SEARCH_LIBS([clock_gettime], [rt],
 AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
 AX_CHECK_ZLIB(, [AC_MSG_ERROR([zlib not found.  Please ensure that zlib is properly built and configured.])])
 
-# Check for dlib (required)
-AX_DLIB
-
 # Check for samtools (reqired)
 AC_CHECK_PROG([with_samtools],[samtools],[yes],[no])
 if test "$with_samtools" == no ; then
     AC_MSG_ERROR([samtools not found])
 fi 
 
-# Check for sphinx to build documentation (optional)
+AM_PATH_PYTHON([], [], AC_MSG_ERROR([Python interpreter not found.]))
+
+AX_PYTHON_DEVEL([>= '3.1'])
+
+if [[ -z "${PYTHON_VERSION}" ]]; then
+    AC_MSG_ERROR([Python3 not detected. If running on a debian system try "sudo apt-get install python3-dev".])
+fi    
+
+if [[ -z "${PYTHON_EXTRA_LIBS}" ]]; then
+    AC_MSG_ERROR([Python3 detected but Python3 development library was not found. If running on a debian system try "sudo apt-get install python3-dev".])
+fi
+
+# Check for required python libraries
+AX_PYTHON_MODULE(numpy, [AC_MSG_ERROR([numpy not found])], python3)
+AX_PYTHON_MODULE(matplotlib, [AC_MSG_ERROR([matplotlib not found])], python3)
+AX_PYTHON_MODULE(scipy, [AC_MSG_ERROR([scipy not found])], python3)
+AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], python3)
+AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], python3)     
+
+
+# Check for sphinx executable to build documentation
 AC_CHECK_PROG([sphinx], [sphinx-build], [yes], [no])
-if test x"${sphinx}" = x"yes"; then
-	#Now check if the version is correct
-	sphinx_major_version=`sphinx-build --version 2>&1 | cut -d' ' -f3 | cut -d '.' -f 1 | tr -d " \t\n\r"`
-        sphinx_minor_version=`sphinx-build --version 2>&1 | cut -d' ' -f3 | cut -d '.' -f 2 | tr -d " \t\n\r"`
-	if test x"${sphinx_major_version}" = x""; then sphinx_major_version=0; fi
-	if test x"${sphinx_minor_version}" = x""; then sphinx_minor_version=0; fi
-	major_size=${#sphinx_major_version}
-	minor_size=${#sphinx_minor_version}
-	if (( ("${major_size}" > 2) || ("${minor_size}" > 2) )); then sphinx_major_version=0; sphinx_minor_version=0; fi
-	if (( ("${sphinx_major_version}" < 1 ) || (  ( "${sphinx_major_version}" >= 1 ) && ( "${sphinx_minor_version}" < 3 ) ) )); then
-    		AC_MSG_WARN([Sphinx detected, but version is too old.  Wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/])
-		sphinx="no"
-	fi
+if [[ "${sphinx}" == "yes" ]]; then
+    #Now check if the version is correct
+    sphinx_major_version=`sphinx-build --version 2>&1 | cut -d' ' -f3 | cut -d '.' -f 1 | tr -d " \t\n\r"`
+    sphinx_minor_version=`sphinx-build --version 2>&1 | cut -d' ' -f3 | cut -d '.' -f 2 | tr -d " \t\n\r"`
+    if test x"${sphinx_major_version}" = x""; then sphinx_major_version=0; fi
+    if test x"${sphinx_minor_version}" = x""; then sphinx_minor_version=0; fi
+    major_size=${#sphinx_major_version}
+    minor_size=${#sphinx_minor_version}
+    if (( ("${major_size}" > 2) || ("${minor_size}" > 2) )); then sphinx_major_version=0; sphinx_minor_version=0; fi
+    if (( ("${sphinx_major_version}" < 1 ) || (  ( "${sphinx_major_version}" >= 1 ) && ( "${sphinx_minor_version}" < 3 ) ) )); then
+        AC_MSG_ERROR([Sphinx detected, but version is too old.  Cant create documentation.])
+    fi
 else
-    AC_MSG_WARN([Sphinx not detected, wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/])    
+    AC_MSG_ERROR([Sphinx not detected, cant create documentation.])    
 fi
 AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
 AC_SUBST([MAKE_DOCS])
@@ -127,19 +151,14 @@ LIBS="${SAVED_LIBS}"
 AM_CXXFLAGS="-g -g3 -gdwarf-4"
 AC_SUBST([AM_CXXFLAGS])
 
-AM_CPPFLAGS="${BOOST_CPPFLAGS} ${DLIB_CPPFLAGS} ${ZLIB_CPPFLAGS}"
+AM_CPPFLAGS="${BOOST_CPPFLAGS} ${PYTHON_CPPFLAGS} ${DLIB_CPPFLAGS} ${ZLIB_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
-AM_LDFLAGS="${BOOST_LDFLAGS} ${PTHREAD_CFLAGS} ${ZLIB_LDFLAGS}"
+AM_LDFLAGS="${BOOST_LDFLAGS} ${PYTHON_EXTRA_LDFLAGS} ${ZLIB_LDFLAGS} ${PTHREAD_CFLAGS}"
 AC_SUBST([AM_LDFLAGS])
 
-AM_LIBS="${BOOST_LIBS} ${RT_LIB} ${M_LIB} ${DL_LIB} ${ZLIB_LIB} ${PTHREAD_LIBS}"
+# Order is important!
+AM_LIBS="${M_LIB} ${DL_LIB} ${BOOST_LIBS} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS} ${RT_LIB} ${ZLIB_LIB} ${PTHREAD_LIBS}"
 AC_SUBST([AM_LIBS])
 
 AC_OUTPUT
-
-if [[ "${sphinx}" == "no" ]]; then
-    AC_MSG_WARN([Sphinx not detected, or version is too old.  Wont create documentation.  You can still find the documentation online at: https://kat.readthedocs.org/en/latest/])    
-else
-    AC_MSG_NOTICE([Building documentation with sphinx])
-fi

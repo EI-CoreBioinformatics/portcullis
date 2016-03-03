@@ -17,262 +17,201 @@
 
 #pragma once
 
-#include <iostream>
+#include <string>
+#include <algorithm>
+#include <math.h>
+#include <iterator>
+#include <memory>
 #include <vector>
-#include <dlib/svm.h>
-#include <dlib/rand.h>
+using std::string;
+using std::stringstream;
+using std::vector;
+using std::random_shuffle;
+using std::shared_ptr;
 
-using namespace std;
-using namespace dlib;
+#include <boost/exception/all.hpp>
+#include <boost/filesystem/path.hpp>
+using boost::filesystem::path;
+
+#include <ranger/Forest.h>
+
 
 namespace portcullis {
     
 typedef boost::error_info<struct TrainError,string> TrainErrorInfo;
 struct TrainException: virtual boost::exception, virtual std::exception { };
 
-class Train {
+const uint16_t DEFAULT_TRAIN_FOLDS = 2;
+const uint16_t DEFAULT_TRAIN_TREES = 10;
+const uint16_t DEFAULT_TRAIN_THREADS = 1;
+const double DEFAULT_TRAIN_FRACTION = 1.0;
 
+// Derived from https://sureshamrita.wordpress.com/2011/08/24/c-implementation-of-k-fold-cross-validation/
+template<class In>
+class KFold {
+public:
+    KFold(int k, In _beg, In _end) :
+        beg(_beg), end(_end), K(k) {
+        if (K <= 0)
+            BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
+                        "The supplied value of K is =") + lexical_cast<string>(K) + 
+                        ". One cannot create " + lexical_cast<string>(K) + "no of folds"));
+
+        //create the vector of integers
+        int foldNo = 0;
+        for (In i = beg; i != end; i++) {
+            whichFoldToGo.push_back(++foldNo);
+            if (foldNo == K)
+                foldNo = 0;
+        }
+        if (!K)
+            BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
+                        "With this value of k (=") + lexical_cast<string>(K) + 
+                        ")Equal division of the data is not possible"));
+
+        random_shuffle(whichFoldToGo.begin(), whichFoldToGo.end());
+    }
+        
+    template<class Out>
+    void getFold(int foldNo, Out training, Out testing) {
+        int k = 0;
+        In i = beg;
+        while (i != end) {
+            if (whichFoldToGo[k++] == foldNo) {
+                *testing++ = *i++;
+            } else
+                *training++ = *i++;
+        }
+    }
+    
+private:
+    In beg;
+    In end;
+    int K; //how many folds in this
+    vector<int> whichFoldToGo; 
+};
+
+
+class Train {
+    
+    
 private:
     
-    string junctionFile;
-    string resultsFile;
-    double width;
+    path junctionFile;
+    path refFile;
+    path outputPrefix;
+    uint16_t folds;
+    uint16_t trees;
+    uint16_t threads;
+    double fraction;
     bool verbose;
     
 public:
+
+    // List of variable names
+    const vector<string> variableNames = { "M2-nb-reads", "M3-nb_dist_aln", "M4-nb_rel_aln", 
+                "M8-max_min_anc", "M9-dif_anc", "M10-dist_anc", "M11-entropy", 
+                "M12-maxmmes", "M13-hammping5p", "M14-hamming3p", "Genuine" };
     
-    Train() : Train("", "", 4.0, false) {}
+    Train() {}
     
-    Train(const string& _junctionFile, const string& _resultsFile, double _width, bool _verbose) {
-        junctionFile = _junctionFile;
-        resultsFile = _resultsFile;
-        width = _width;
-        verbose = _verbose;
-        
-        // Test if provided genome exists
-        if (!exists(junctionFile)) {
-            BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
-                        "Could not find junction file at: ") + junctionFile));
-        }
-    }
+    Train(const path& _junctionFile, const path& _refFile);
     
     virtual ~Train() {
     }
     
-       
-
-public:
-    
-    
-    void train() {
-        
-        // Load junction system
-        JunctionSystem js(junctionFile);
-        
-        // But putting the empirical_kernel_map aside, the most important step in turning a
-        // linear SVM into a one-class SVM is the following.  We append a -1 value onto the end
-        // of each feature vector and then tell the trainer to force the weight for this
-        // feature to 1.  This means that if the linear SVM assigned all other weights a value
-        // of 0 then the output from a learned decision function would always be -1.  The
-        // second step is that we ask the SVM to label each training sample with +1.  This
-        // causes the SVM to set the other feature weights such that the training samples have
-        // positive outputs from the learned decision function.  But the starting bias for all
-        // the points in the whole feature space is -1.  The result is that points outside our
-        // training set will not be affected, so their outputs from the decision function will
-        // remain close to -1.
-
-        // We will use column vectors to store our points.  Here we make a convenient typedef
-        // for the kind of vector we will use.
-        typedef matrix<double,0,1> sample_type;
-
-        // Use the radial basis kernel, which is normally quite effective.
-        typedef radial_basis_kernel<sample_type> kernel_type;
-
-        
-        std::vector<sample_type> samples;
-        sample_type m(6);
-        
-        // Load feature vector from junction file into matrix
-        for(const auto& j : js.getJunctions()) {
-        
-            // Calculate the metrics and add them into the vector
-            m(0) = j->getCoverage();
-            m(1) = j->getEntropy();
-            m(2) = j->getIntronSize();
-            m(3) = j->getMaxMMES();
-            m(4) = j->getHammingDistance3p();
-            m(5) = j->getHammingDistance5p();
-
-            if (verbose)
-                cout << m << endl;
-            
-            samples.push_back(m);
-        }
-        
-        cout << " - Created feature vector from " << samples.size() << " samples" << endl;
-
-        // Set the width of the radial basis kernel to 4 (may need adjusting later).
-        // Larger values make the width smaller and give the radial basis kernel more 
-        // resolution. 
-        linearly_independent_subset_finder<kernel_type> lisf(kernel_type(width), 500);
-        // populate lisf with samples.  We have configured it to allow at most 50 samples but this function 
-        // may determine that fewer samples are necessary to form a good basis.  In this example program
-        // it will select only 26.
-        fill_lisf(lisf, samples);
-    
-        cout << " - Created linearly independent subset (LIS) from samples using radial kernel of width 4.0.  LIS contains: " << lisf.size() << " samples" << endl;
-        
-        // Use an empirical kernel map for this problem.  These are normally effective
-        // when number of dimension are < 100.
-        empirical_kernel_map<kernel_type> ekm;
-        
-        // Load LISF samples into the EKM.
-        ekm.load(lisf);
-        
-        cout << " - Loaded LIS as basis for Empirical Kernel Map" << endl;
-        
-        // Set the label vector.  These will all be set to 1 as they should all be genuine.
-        std::vector<double> labels;
-        
-        // make a vector with just 1 element in it equal to -1.
-        sample_type bias(1);
-        bias = -1;
-        sample_type augmented;
-        std::vector<sample_type> augmentedSamples;
-        
-        for(sample_type s : samples) {
-            
-            // Apply the empirical_kernel_map transformation on the existing sample data and 
-            // then append the -1 value as the last column
-            augmented = join_cols(ekm.project(s), bias);
-            augmentedSamples.push_back(augmented);
-            labels.push_back(+1);       // All these examples are real junctions!             
-        }
-        
-        // Save memory
-        samples.clear();
-        
-        cout << " - Created augmented and labelled feature vector suitable for one-class SVM" << endl;
-
-        // The svm_c_linear_dcd_trainer is a very fast SVM solver which only works with the
-        // linear_kernel.  Use "force_last_weight_to_1" to make this a one class SVM.  As mentioned before
-        // the last weight will always be -1.  Implying that we need weighting applied from other weights
-        // for a real junction to be predicted.
-        svm_c_linear_dcd_trainer<linear_kernel<sample_type> > linear_trainer;
-        linear_trainer.force_last_weight_to_1(true);
-
-        // Train the one-class SVM
-        decision_function<linear_kernel<sample_type> > df = linear_trainer.train(augmentedSamples, labels);
-
-        cout << " - Trained one-class SVM" << endl;
-                
-        // Save the trained decision function to disk for use later
-        serialize(resultsFile + ".df") << df;
-        cout << " - Saved decision function to file: " << resultsFile << ".df" << endl;
-        
-        serialize(resultsFile + ".ekm") << ekm;
-        cout << " - Saved Empirical Kernel Map to file: " << resultsFile << ".ekm" << endl;
-        
-        
-        uint32_t no = 0;
-        uint32_t yes = 0;
-        
-        for(const auto& j : js.getJunctions()) {
-            sample_type m(6);
-        
-            // Calculate the metrics and add them into the vector
-            m(0) = j->getNbDistinctAlignments();
-            m(1) = j->getEntropy();
-            m(2) = j->getIntronSize();
-            m(3) = j->getMaxMMES();
-            m(4) = j->getHammingDistance3p();
-            m(5) = j->getHammingDistance5p();
-            
-            if (df(join_cols(ekm.project(m), bias)) > -1) {
-                yes++;                
-            }
-            else {
-                no++;
-            }
-            
-        }
-        
-        cout << "No: " << no << endl;
-        cout << "Yes: " << yes << endl;
-        
+    uint16_t getFolds() const {
+        return folds;
     }
-        
+
+    void setFolds(uint16_t folds) {
+        this->folds = folds;
+    }
+
+    uint16_t getTrees() const {
+        return trees;
+    }
+
+    void setTrees(uint16_t trees) {
+        this->trees = trees;
+    }
+    
+    uint16_t getThreads() const {
+        return threads;
+    }
+
+    void setThreads(uint16_t threads) {
+        this->threads = threads;
+    }
+    
+    path getRefFile() const {
+        return refFile;
+    }
+
+    void setRefFile(path refFile) {
+        this->refFile = refFile;
+    }
+
+    path getJunctionFile() const {
+        return junctionFile;
+    }
+
+    void setJunctionFile(path junctionFile) {
+        this->junctionFile = junctionFile;
+    }
+
+    path getOutputPrefix() const {
+        return outputPrefix;
+    }
+
+    void setOutputPrefix(path outputPrefix) {
+        this->outputPrefix = outputPrefix;
+    }
+
+    double getFraction() const {
+        return fraction;
+    }
+
+    void setFraction(double fraction) {
+        this->fraction = fraction;
+    }
+
+
+    bool isVerbose() const {
+        return verbose;
+    }
+
+    void setVerbose(bool verbose) {
+        this->verbose = verbose;
+    }
+
+    
+    
+    /**
+     * Run a supervised training algorithm on the input data using k fold cross validation
+     */
+    void train();
+    
     
     static string helpMessage() {
         return string("\nPortcullis Training Mode Help.\n\n") +
-                      "This is mode is intended to train a one class SVM with genuine junctions.\n" +
-                      "The trained model can then be used to filter potential junctions from real datasets\n\n" +
-                      "Usage: portcullis train [options] <junction-file>\n\n" +
+                      "This is mode is intended to train a random forest model for later use\n" +
+                      "by the junction filtering tool.  The current implementation uses \"ranger\"\n" +
+                      "for creating the decision trees and random forests.  We also provide k-fold\n" +
+                      "cross validation support to help reduce overfitting.\n\n" +
+                      "Usage: portcullis train [options] --reference=<bed_file> <junction_file>\n\n" +
                       "Allowed options";
     }
+
+    static int main(int argc, char *argv[]);
     
-    static int main(int argc, char *argv[]) {
-        
-        // Portcullis args
-        string junctionFile;
-        string resultsFile;
-        double width;
-        bool verbose;
-        bool help;
-        
-        // Declare the supported options.
-        po::options_description generic_options(helpMessage());
-        generic_options.add_options()
-                ("output,o", po::value<string>(&resultsFile)->default_value(""), 
-                    "File name for tabular results file generated by this program.")
-                ("width,w", po::value<double>(&width)->default_value(4.0), 
-                    "The width to give the radial basis kernel.")
-                ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
-                    "Print extra information")
-                ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
-                ;
-
-        // Hidden options, will be allowed both on command line and
-        // in config file, but will not be shown to the user.
-        po::options_description hidden_options("Hidden options");
-        hidden_options.add_options()
-                ("junction-file,g", po::value<string>(&junctionFile), "Path to the junction file to process.")
-                ;
-
-        // Positional option for the input bam file
-        po::positional_options_description p;
-        p.add("junction-file", 1);
-        
-        
-        // Combine non-positional options
-        po::options_description cmdline_options;
-        cmdline_options.add(generic_options).add(hidden_options);
-
-        // Parse command line
-        po::variables_map vm;
-        po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
-        po::notify(vm);
-
-        // Output help information the exit if requested
-        if (help || argc <= 1) {
-            cout << generic_options << endl;
-            return 1;
-        }
-        
-        
-
-        auto_cpu_timer timer(1, "\nPortcullis training completed.\nTotal runtime: %ws\n\n");        
-
-        cout << "Running portcullis in training mode" << endl
-             << "--------------------------------" << endl << endl;
-        
-        // Create the prepare class
-        Train trainer(junctionFile, resultsFile, width, verbose);
-        trainer.train();
-        
-        return 0;
-    }
+protected:
+    
+    shared_ptr<Forest> trainInstance(const JunctionList& x);
+    
+    void testInstance(shared_ptr<Forest> f, const JunctionList& y);  
+    
+    void getRandomSubset(const JunctionList& in, JunctionList& out);
 };
 }
-
 

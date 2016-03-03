@@ -74,7 +74,9 @@ struct JuncFilterException: virtual boost::exception, virtual std::exception { }
 const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
 const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
 const string DEFAULT_FILTER_SOURCE = "portcullis";
-const string DEFAULT_FILTER_FILE = "default_filter.json";
+const string DEFAULT_FILTER_RULE_FILE = "default_filter.json";
+const string DEFAULT_FILTER_MODEL_FILE = "default_model.forest";
+const uint16_t DEFAULT_FILTER_THREADS = 1;
 
 
 const unordered_set<string> numericParams = {
@@ -201,16 +203,15 @@ template <typename It, typename Skipper = qi::space_type>
     struct parser : qi::grammar<It, expr(), Skipper>
 {
         parser() : parser::base_type(expr_) {
-            using namespace qi;
-
+            
             expr_  = or_.alias();
 
-            or_  = (and_ >> '|'  >> or_ ) [ _val = phx::construct<binop<op_or > >(_1_type(), _2_type()) ] | and_   [ _val = _1_type() ];
-            and_ = (not_ >> '&' >> and_)  [ _val = phx::construct<binop<op_and> >(_1_type(), _2_type()) ] | not_   [ _val = _1_type() ];
-            not_ = ('!' > simple       )  [ _val = phx::construct<unop <op_not> >(_1_type())     ] | simple [ _val = _1_type() ];
+            or_  = (and_ >> '|'  >> or_ ) [ qi::_val = phx::construct<binop<op_or > >(qi::_1_type(), qi::_2_type()) ] | and_   [ qi::_val = qi::_1_type() ];
+            and_ = (not_ >> '&' >> and_)  [ qi::_val = phx::construct<binop<op_and> >(qi::_1_type(), qi::_2_type()) ] | not_   [ qi::_val = qi::_1_type() ];
+            not_ = ('!' > simple       )  [ qi::_val = phx::construct<unop <op_not> >(qi::_1_type())     ] | simple [ qi::_val = qi::_1_type() ];
 
             simple = (('(' > expr_ > ')') | var_);
-            var_ = lexeme[+(alpha|digit|char_("-")|char_("_")|char_("."))];
+            var_ = qi::lexeme[+(qi::alpha|qi::digit|qi::char_("-")|qi::char_("_")|qi::char_("."))];
 
             BOOST_SPIRIT_DEBUG_NODE(expr_);
             BOOST_SPIRIT_DEBUG_NODE(or_);
@@ -233,20 +234,26 @@ class JunctionFilter {
 private:
     
     path junctionFile;
+    path modelFile;
     path filterFile;
+    path genuineFile;
     path outputDir;
     string outputPrefix;
+    uint16_t threads;
     bool saveBad;
+    int32_t maxLength;
+    bool canonical;
     string source;
     bool verbose;    
     
     
 public:
     
+    static path defaultModelFile;
     static path defaultFilterFile;
+    static path scriptsDir;
     
     JunctionFilter( const path& _junctionFile, 
-                    const path& _filterFile, 
                     const path& _outputDir, 
                     const string& _outputPrefix);
     
@@ -288,6 +295,23 @@ public:
     void setOutputPrefix(string outputPrefix) {
         this->outputPrefix = outputPrefix;
     }
+    
+    path getGenuineFile() const {
+        return genuineFile;
+    }
+
+    void setGenuineFile(path genuineFile) {
+        this->genuineFile = genuineFile;
+    }
+
+    path getModelFile() const {
+        return modelFile;
+    }
+
+    void setModelFile(path modelFile) {
+        this->modelFile = modelFile;
+    }
+
 
     bool isSaveBad() const {
         return saveBad;
@@ -312,7 +336,30 @@ public:
     void setSource(string source) {
         this->source = source;
     }
+    
+    uint16_t getThreads() const {
+        return threads;
+    }
 
+    void setThreads(uint16_t threads) {
+        this->threads = threads;
+    }
+    
+    bool isCanonical() const {
+        return canonical;
+    }
+
+    void setCanonical(bool canonical) {
+        this->canonical = canonical;
+    }
+
+    int32_t isMaxLength() const {
+        return maxLength;
+    }
+
+    void setMaxLength(int32_t maxLength) {
+        this->maxLength = maxLength;
+    }
 
     
     
@@ -333,12 +380,26 @@ protected:
     bool parse(const string& expression, JunctionPtr junc, NumericFilterMap& numericFilters, SetFilterMap& stringFilters, JuncResultMap* results);
         
     
+    wchar_t* convertCharToWideChar(const char* c);
+    
+    void executePythonMLFilter(const path& mlOutputFile);
+    
+    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail);
+    
+    void calcPerformance(const JunctionList& pass, const JunctionList& fail);
+    
+    void printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, string prefix);
+    
 public:
   
     static string helpMessage() {
         return string("\nPortcullis Filter Mode Help.\n\n") +
                       "Filters out junctions that are unlikely to be genuine or that have too little\n" +
-                      "supporting evidence.\n\n" +
+                      "supporting evidence.  The user can control three stages of the filtering\n" +
+                      "process.  First the user can perform filtering based on a pre-defined random\n" +
+                      "forest model.  Second the user can specify a configuration file described a\n" +
+                      "set of filtering rules to apply.  Third, the user can directly through the\n" +
+                      "command line filter based on junction (intron) length, or the canonical label.\n\n" +
                       "Usage: portcullis filter [options] <junction-file>\n\n" +
                       "Options";
     }

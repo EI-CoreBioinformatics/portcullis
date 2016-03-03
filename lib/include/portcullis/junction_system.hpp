@@ -176,11 +176,12 @@ public:
     
     void outputGTF(std::ostream &strm) {}
     
-    void outputBED(string& path, CanonicalSS type);
+    void outputBED(string& path, CanonicalSS type, const string& prefix);
     
-    void outputBED(std::ostream &strm, CanonicalSS type);
+    void outputBED(std::ostream &strm, CanonicalSS type, const string& prefix);
     
     void load(const path& junctionTabFile);
+    void load(const path& junctionTabFile, const bool simple);
     
     JunctionPtr getJunctionAt(uint32_t index) const {
         return this->junctionList[index];

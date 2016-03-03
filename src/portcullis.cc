@@ -47,16 +47,12 @@ using portcullis::PortcullisFS;
 #include "prepare.hpp"
 #include "junction_filter.hpp"
 #include "bam_filter.hpp"
-#include "cluster.hpp"
 #include "train.hpp"
-#include "test.hpp"
 using portcullis::JunctionBuilder;
 using portcullis::Prepare;
 using portcullis::JunctionFilter;
 using portcullis::BamFilter;
-using portcullis::Cluster;
 using portcullis::Train;
-using portcullis::Test;
 
 typedef boost::error_info<struct PortcullisError,string> PortcullisErrorInfo;
 struct PortcullisException: virtual boost::exception, virtual std::exception { };
@@ -66,15 +62,16 @@ const uint16_t DEFAULT_THREADS = 4;
 const uint32_t DEFAULT_CHUNK_SIZE_PER_THREAD = 10000;
 const uint32_t DEFAULT_GAP_SIZE = 100;
 
+// Global variable! :(
+portcullis::PortcullisFS portcullis::pfs;
+
 enum Mode {
     PREP,
     JUNC,
     FILTER,
     BAM_FILT,
     FULL,
-    CLUSTER,
-    TRAIN,
-    TEST
+    TRAIN
 };
 
 Mode parseMode(string mode) {
@@ -96,14 +93,8 @@ Mode parseMode(string mode) {
     else if (upperMode == string("FULL")) {
         return FULL;
     }
-    else if (upperMode == string("CLUSTER")) {
-        return CLUSTER;
-    }
     else if (upperMode == string("TRAIN")) {
         return TRAIN;
-    }
-    else if (upperMode == string("TEST")) {
-        return TEST;
     }
     else {
         BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
@@ -115,13 +106,17 @@ string helpHeader() {
     return string("\nPortcullis Help.\n\n") +
                   "Portcullis is a tool to identify genuine splice junctions using aligned RNAseq reads\n\n" +
                   "Usage: portcullis [options] <mode> <mode_args>\n\n" +
-                  "Available modes:\n" +
+                  "Available modes:\n\n" +
+                  " - full    - Runs prep, junc, filter and bamfilt as a complete pipeline\n\n" +
+                  "******** Portcullis sub-steps ******************************\n\n" +
                   " - prep    - Prepares a genome and bam file(s) ready for junction analysis\n" +
                   " - junc    - Perform junction analysis on prepared data\n" +
-                  " - filter  - Discard unlikely junctions and produce BAM containing alignments to genuine junctions\n" +
-                  " - bamfilt - Filters a BAM to remove any reads associated with invalid junctions\n" + 
-                  " - full    - Runs prep, junc, filter and bamfilt as a complete pipeline\n" +
-                  " - cluster - Clusters potential junctions to help distinguish real junctions for false\n\n" +
+                  " - filter  - Discard unlikely junctions and produce BAM containing alignments\n" +
+                  "             to genuine junctions\n" +
+                  " - bamfilt - Filters a BAM to remove any reads associated with invalid\n" +
+                  "             junctions\n\n" + 
+                  "******** Miscellaneous **************************************\n\n" +
+                  " - train   - Train a random forest model to use for filtering junctions\n" +
                   "\nOptions";
 }
 
@@ -139,6 +134,7 @@ int mainFull(int argc, char *argv[]) {
     std::vector<path> bamFiles;
     path genomeFile;
     path outputDir;
+    path modelFile;
     path filterFile;
     string strandSpecific;
     uint16_t threads;
@@ -147,6 +143,8 @@ int mainFull(int argc, char *argv[]) {
     bool useCsi;
     bool bamFilter;
     string source;
+    uint32_t max_length;
+    bool canonical;
     bool verbose;
     bool help;
     
@@ -162,14 +160,20 @@ int mainFull(int argc, char *argv[]) {
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
             ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unknown\"")
-            ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
+            ("use_links", po::bool_switch(&useLinks)->default_value(false), 
                 "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
-            ("use_csi,c", po::bool_switch(&useCsi)->default_value(false), 
+            ("use_csi", po::bool_switch(&useCsi)->default_value(false), 
                 "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(1),
                 "The number of threads to use.  Default: 1")
+            ("model_file,m", po::value<path>(&modelFile)->default_value(JunctionFilter::defaultModelFile), 
+                "If you wish to use a custom random forest model to filter the junctions file, use this option to. See manual for more details.")
             ("filter_file,f", po::value<path>(&filterFile)->default_value(JunctionFilter::defaultFilterFile), 
-                "The filter configuration file to use.")
+                "The rule-based filter configuration file to use.")
+            ("max_length", po::value<uint32_t>(&max_length)->default_value(0),
+                "Filter junctions longer than this value.  Default (0) is to not filter based on length.")
+            ("canonical", po::bool_switch(&canonical)->default_value(false),
+                "Filter out non-canonical junctions.  If set then only canonical and semi-canonical junctions are kept.  Default is to not filter based on the junction's canonical label.")
             ("bam_filter,b", po::bool_switch(&bamFilter)->default_value(false), 
                 "Filter out alignments corresponding with false junctions")
             ("source", po::value<string>(&source)->default_value("portcullis"),
@@ -282,9 +286,14 @@ int mainFull(int argc, char *argv[]) {
     path filtDir = outputDir.string() + "/3-filt";
     path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
     
-    JunctionFilter filter(juncTab, filterFile, filtDir, "portcullis_filtered");
+    JunctionFilter filter(juncTab, filtDir, "portcullis_filtered");
     filter.setVerbose(verbose);
     filter.setSource(source);
+    filter.setMaxLength(max_length);
+    filter.setCanonical(canonical);
+    filter.setFilterFile(filterFile);
+    filter.setModelFile(modelFile);
+    filter.setThreads(threads);
     filter.filter();
 
     
@@ -353,12 +362,6 @@ int main(int argc, char *argv[]) {
         po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).allow_unregistered().run(), vm);
         po::notify(vm);
 
-        // Output help information the exit if requested
-        if (argc == 1 || argc == 2 && help) {
-            cout << generic_options << endl;
-            return 1;
-        }
-
         // Always output version information but exit if version info was all user requested
         
 #ifndef PACKAGE_NAME
@@ -366,27 +369,37 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.11.X"
+#define PACKAGE_VERSION "0.13.X"
 #endif
+
         
-        // End if version was requested.
-        if (version) {    
-            cout << PACKAGE_NAME << " " << PACKAGE_VERSION << endl;
-            return 0;
-        }
-        
-        cout << "Portcullis V" << PACKAGE_VERSION << endl << endl;
-        
-        PortcullisFS fs(argv[0], PACKAGE_VERSION);
+        portcullis::pfs = PortcullisFS(argv[0]);
+        portcullis::pfs.setVersion(PACKAGE_VERSION);
         
         // End if verbose was requested at this level, outputting file system details.
         if (verbose) {
             cout << endl 
                  << "Project filesystem" << endl 
                  << "------------------" << endl
-                 << fs << endl;
+                 << portcullis::pfs << endl;
             //return 0;
-        }        
+        }       
+        
+        // Output help information the exit if requested
+        if (argc == 1 || (argc == 2 && verbose) || (argc == 2 && help) || (argc == 3 && verbose && help)) {
+            cout << generic_options << endl;
+            return 1;
+        }
+
+        
+        // End if version was requested.
+        if (version) {    
+            cout << PACKAGE_NAME << " " << PACKAGE_VERSION << endl;
+            return 0;
+        }
+        else {        
+            cout << "Portcullis V" << PACKAGE_VERSION << endl << endl;
+        }
         
         // If we've got this far parse the command line properly
         Mode mode = parseMode(modeStr);
@@ -395,8 +408,10 @@ int main(int argc, char *argv[]) {
         char** modeArgV = argv+1;
         
         // Set static variables in downstream subtools so they know where to get their resources from
-        JunctionFilter::defaultFilterFile = path(fs.getDataDir().string() + "/default_filter.json");
-        JunctionSystem::version = fs.getVersion();
+        JunctionFilter::defaultFilterFile = path(portcullis::pfs.getDataDir().string() + "/default_filter.json");
+        JunctionFilter::defaultModelFile = path(portcullis::pfs.getDataDir().string() + "/default_model.forest");
+        JunctionFilter::scriptsDir = portcullis::pfs.getScriptsDir();
+        JunctionSystem::version = portcullis::pfs.getVersion();
         
         if (mode == PREP) {
             Prepare::main(modeArgC, modeArgV);
@@ -410,17 +425,11 @@ int main(int argc, char *argv[]) {
         else if (mode == BAM_FILT) {
             BamFilter::main(modeArgC, modeArgV);
         }
+        else if (mode == TRAIN) {
+            Train::main(modeArgC, modeArgV);
+        }
         else if (mode == FULL) {
             mainFull(modeArgC, modeArgV);
-        }
-        else if (mode == CLUSTER) {
-            Cluster::main(modeArgC, modeArgV);            
-        }
-        else if (mode == TRAIN) {
-            Train::main(modeArgC, modeArgV);            
-        }
-        else if (mode == TEST) {
-            Test::main(modeArgC, modeArgV);            
         }
         else {
             BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(

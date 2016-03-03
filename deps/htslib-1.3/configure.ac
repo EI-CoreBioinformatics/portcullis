@@ -28,6 +28,8 @@ AC_INIT([HTSlib],[1.3],[samtools-help@lists.sourceforge.net],[],[http://www.htsl
 AC_CONFIG_SRCDIR([hts.c])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_FILES(phtslib.pc Makefile)
 AC_PROG_CC
 AC_PROG_INSTALL
 AC_COPYRIGHT([Portions copyright (C) 2015 Genome Research Ltd.
@@ -67,6 +69,4 @@ AC_SUBST([AM_LDFLAGS])
 AM_LIBS="${M_LIB} ${DL_LIB} ${ZLIB_LIB} ${PTHREAD_LIBS}"
 AC_SUBST([AM_LIBS])
 
-AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES(phtslib.pc Makefile)
 AC_OUTPUT

@@ -249,7 +249,7 @@ private:
     Strand ssStrand;        // Strand derived from splice sites    
     Strand consensusStrand; // If readStrand and ssStrand agree then strand is the same, otherwise UNKNOWN
     
-    
+    bool genuine;           // Used as a hidden variable for use with cross validating a trained model instance.
     
     // **** Additional properties ****
     
@@ -780,6 +780,14 @@ public:
         this->trimmedLogDevCov = trimmedLogDevCov;
     }
 
+    bool isGenuine() const {
+        return genuine;
+    }
+
+    void setGenuine(bool genuine) {
+        this->genuine = genuine;
+    }
+
     
     
     // **** Output methods ****
@@ -821,7 +829,7 @@ public:
      * Complete human readable description of this junction
      * @param strm
      */
-    void outputBED(std::ostream &strm, uint32_t id);
+    void outputBED(std::ostream &strm, const string& prefix, uint32_t id);
     
     
     /**

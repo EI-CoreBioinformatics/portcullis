@@ -21,7 +21,6 @@ External Dependencies
 Portcullis depends on some external software:
  * boost
  * samtools
- * dlib
  * pthreads
  * zlib
  * sphinx (optional)
@@ -33,7 +32,6 @@ into non-standard locations you can direct portcullis to them by using the follo
 options when running the configure script.
 
   - ```--with-boost``` - for specifying a custom boost installation directory
-  - ```--with-dlib``` - for specifying a custom dlib installation directory
   - ```--with-zlib``` - for specifying a custom zlib installation directory
 
 Note there is not option for specifying a custom pthreads or samtools location.  

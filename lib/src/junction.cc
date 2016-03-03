@@ -1118,7 +1118,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id, co
  * Complete human readable description of this junction
  * @param strm
  */
-void portcullis::Junction::outputBED(std::ostream &strm, uint32_t id) {
+void portcullis::Junction::outputBED(std::ostream &strm, const string& prefix, uint32_t id) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
@@ -1126,7 +1126,7 @@ void portcullis::Junction::outputBED(std::ostream &strm, uint32_t id) {
                                 '.' :
                                 strandToChar(consensusStrand);
 
-    string juncId = string("portcullis_junc_") + lexical_cast<string>(id);
+    string juncId = prefix + "_" + lexical_cast<string>(id);
 
     int32_t sz1 = intron->start - leftAncStart;
     int32_t sz2 = rightAncEnd - intron->end;

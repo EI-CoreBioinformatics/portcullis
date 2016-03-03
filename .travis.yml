@@ -30,13 +30,15 @@ install:
 - mkdir -p exdeps
 - cd exdeps
 
-# Python3 and sphinx
-- sudo apt-get install python3-dev
-- sudo apt-get install python-pip
-- sudo pip install --upgrade pip
-- sudo pip install sphinx
-- sudo pip install --upgrade sphinx
-- sudo apt-get install samtools
+# Python3 anaconda
+- wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+- bash miniconda.sh -b -p $TRAVIS_BUILD_DIR/exdeps/miniconda; export PATH="$TRAVIS_BUILD_DIR/exdeps/miniconda/bin:$PATH"
+- hash -r
+- conda config --set always_yes yes --set changeps1 no
+- conda update -q conda
+- conda info -a
+- conda create -q -n test-environment python=3.5 anaconda
+- source activate test-environment;
 
 # Boost installation
 - wget -q http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.gz/download
@@ -48,6 +50,7 @@ install:
 - cd ..
 
 # Samtools installation (just use an old version for now... ideally use V1.3 to be consistent with internal htslib)
+- sudo apt-get install samtools
 #- echo "Installing Samtools"
 #- wget -q https://github.com/samtools/samtools/releases/download/1.3/samtools-1.3.tar.bz2
 #- tar -xf samtools-1.3.tar.bz2
