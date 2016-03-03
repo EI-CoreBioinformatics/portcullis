@@ -409,7 +409,7 @@ int main(int argc, char *argv[]) {
         
         // Set static variables in downstream subtools so they know where to get their resources from
         JunctionFilter::defaultFilterFile = path(portcullis::pfs.getDataDir().string() + "/default_filter.json");
-        JunctionFilter::defaultModelFile = path(portcullis::pfs.getDataDir().string() + "/default_model.ml");
+        JunctionFilter::defaultModelFile = path(portcullis::pfs.getDataDir().string() + "/default_model.forest");
         JunctionFilter::scriptsDir = portcullis::pfs.getScriptsDir();
         JunctionSystem::version = portcullis::pfs.getVersion();
         

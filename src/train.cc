@@ -61,6 +61,7 @@ portcullis::Train::Train(const path& _junctionFile, const path& _refFile){
     folds = DEFAULT_TRAIN_FOLDS;
     trees = DEFAULT_TRAIN_TREES;
     threads = DEFAULT_TRAIN_THREADS;
+    fraction = DEFAULT_TRAIN_FRACTION;
     verbose = false;    
 }
     
@@ -179,28 +180,46 @@ void portcullis::Train::train() {
                         "Reference file does not exist")));
     }
     
+    if (fraction <= 0.0 || fraction > 1.0) {
+        BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
+                        "Fraction: ") + lexical_cast<string>(fraction) + ". Valid values for \"fraction\" are between 0.0 and 1.0"));
+    }
+    
     
     // Load junction data
     JunctionSystem js;
     js.load(junctionFile, true);
-    JunctionList junctions = js.getJunctions();
-    cout << "Loaded " << junctions.size() << " junctions from " << junctionFile << endl;
+    JunctionList all_junctions = js.getJunctions();
+    cout << "Loaded " << all_junctions.size() << " junctions from " << junctionFile << endl;
            
     // Load reference data    
     vector<bool> genuine;
     Performance::loadGenuine(refFile, genuine);
     
-    if (genuine.size() != junctions.size()) {
+    if (genuine.size() != all_junctions.size()) {
         BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
                         "Ref data does not contain the same number of entries as the junctions input file.")));
     }
     
     // Copy over results into junction list
-    for(size_t i = 0; i < junctions.size(); i++) {
-        junctions[i]->setGenuine(genuine[i]);
+    for(size_t i = 0; i < all_junctions.size(); i++) {
+        all_junctions[i]->setGenuine(genuine[i]);
     }
     
     cout << "Loaded reference data from " << refFile << endl;
+    
+    
+    JunctionList junctions;
+    
+    if (fraction < 1.0) {
+        
+        getRandomSubset(all_junctions, junctions);
+        
+        cout << "Randomly subsampling input data to " << junctions.size() << " junctions." << endl;
+    }
+    else {
+        junctions = all_junctions;
+    }
     
     if (!outputPrefix.empty()) {
      
@@ -289,6 +308,21 @@ void portcullis::Train::train() {
     
 }    
 
+void portcullis::Train::getRandomSubset(const JunctionList& in, JunctionList& out) {
+
+    // Create a list of randomly shuffled indices with maximum of "in".
+    std::vector<unsigned int> indices(in.size());
+    std::iota(indices.begin(), indices.end(), 0);
+    std::random_shuffle(indices.begin(), indices.end());
+    
+    // Calculate number required in output
+    const uint32_t outSize = (uint32_t)((double)in.size() * fraction);
+
+    // Populate output
+    for(size_t i = 0; i < outSize; i++) {
+        out.push_back(in[indices[i]]);
+    }    
+}
 
 int portcullis::Train::main(int argc, char *argv[]) {
         
@@ -299,6 +333,7 @@ int portcullis::Train::main(int argc, char *argv[]) {
     uint16_t folds;
     uint16_t trees;
     uint16_t threads;
+    double fraction;
     bool verbose;
     bool help;
 
@@ -318,6 +353,8 @@ int portcullis::Train::main(int argc, char *argv[]) {
                 "The number of trees to build in the random forest.  More trees will produce better results but at computational expense.")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_TRAIN_THREADS), 
                 "The number of threads to use during training.")
+            ("fraction,f", po::value<double>(&fraction)->default_value(1.0), 
+                "Fraction of the input data to use of training.  Note this is NOT the training / testing set ratio.  This is essentially a method for subsampling the data.")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
                 "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -365,6 +402,7 @@ int portcullis::Train::main(int argc, char *argv[]) {
     trainer.setFolds(folds);
     trainer.setTrees(trees);
     trainer.setThreads(threads);
+    trainer.setFraction(fraction);
     trainer.setVerbose(verbose);
     trainer.train();
 

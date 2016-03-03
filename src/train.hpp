@@ -44,6 +44,7 @@ struct TrainException: virtual boost::exception, virtual std::exception { };
 const uint16_t DEFAULT_TRAIN_FOLDS = 2;
 const uint16_t DEFAULT_TRAIN_TREES = 10;
 const uint16_t DEFAULT_TRAIN_THREADS = 1;
+const double DEFAULT_TRAIN_FRACTION = 1.0;
 
 // Derived from https://sureshamrita.wordpress.com/2011/08/24/c-implementation-of-k-fold-cross-validation/
 template<class In>
@@ -102,6 +103,7 @@ private:
     uint16_t folds;
     uint16_t trees;
     uint16_t threads;
+    double fraction;
     bool verbose;
     
 public:
@@ -166,6 +168,13 @@ public:
         this->outputPrefix = outputPrefix;
     }
 
+    double getFraction() const {
+        return fraction;
+    }
+
+    void setFraction(double fraction) {
+        this->fraction = fraction;
+    }
 
 
     bool isVerbose() const {
@@ -177,14 +186,12 @@ public:
     }
 
     
+    
     /**
      * Run a supervised training algorithm on the input data using k fold cross validation
      */
     void train();
     
-    shared_ptr<Forest> trainInstance(const JunctionList& x);
-    
-    void testInstance(shared_ptr<Forest> f, const JunctionList& y);  
     
     static string helpMessage() {
         return string("\nPortcullis Training Mode Help.\n\n") +
@@ -197,6 +204,14 @@ public:
     }
 
     static int main(int argc, char *argv[]);
+    
+protected:
+    
+    shared_ptr<Forest> trainInstance(const JunctionList& x);
+    
+    void testInstance(shared_ptr<Forest> f, const JunctionList& y);  
+    
+    void getRandomSubset(const JunctionList& in, JunctionList& out);
 };
 }
 

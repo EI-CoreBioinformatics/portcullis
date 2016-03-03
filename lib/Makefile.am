@@ -32,7 +32,8 @@ library_include_HEADERS = \
 	$(PI)/junction.hpp \
 	$(PI)/junction_system.hpp \
 	$(PI)/portcullis_fs.hpp \
-	$(PI)/seq_utils.hpp
+	$(PI)/seq_utils.hpp \
+	$(PI)/performance.hpp
 
 libportcullis_la_CPPFLAGS = \
 	-isystem $(top_srcdir)/deps/htslib-1.3 \

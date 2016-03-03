@@ -75,7 +75,7 @@ const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
 const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
 const string DEFAULT_FILTER_SOURCE = "portcullis";
 const string DEFAULT_FILTER_RULE_FILE = "default_filter.json";
-const string DEFAULT_FILTER_MODEL_FILE = "default_model.ml";
+const string DEFAULT_FILTER_MODEL_FILE = "default_model.forest";
 const uint16_t DEFAULT_FILTER_THREADS = 1;
 
 

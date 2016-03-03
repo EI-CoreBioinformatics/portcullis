@@ -2,37 +2,29 @@
 __author__ = 'maplesod'
 
 
-import hashlib
-
 # Can't use bedtools as bedtools doesn't properly support bed12 files... specifically we need to base our intersections on the
 # thickstart and thickend columns
 
 class BedEntry:
 
-    chrom = ""
-    start = 0
-    end = 0
-    name = ""
-    score = 0
-    strand = "?"
-    thick_start = 0
-    thick_end = 0
-    red = 0
-    green = 0
-    blue = 0
-    block_count = 0
-    block_sizes = list()
-    block_starts = list()
+    __slots__ = ['__use_strand','chrom','start','end','name','score','strand','thick_start','thick_end','red','green','blue','block_count','block_sizes','block_starts']
 
     def __init__(self, use_strand=True):
-        self.data = []
         self.__use_strand = use_strand
-
-    def __repr__(self):
-        return self.chrom + "\t" + str(self.start) + "\t" + str(self.end)+ "\t" + self.name + "\t" + str(self.score) \
-                + "\t" + (self.strand if not self.strand == "" else "?") + "\t" + str(self.thick_start) + "\t" + str(self.thick_end) \
-                + "\t" + str(self.red) + "," + str(self.green) + "," + str(self.blue) \
-                + "\t" + str(self.block_count) + "\t" + ",".join(str(x) for x in self.block_sizes) + "\t" + ",".join(str(x) for x in self.block_starts)
+        self.chrom = ""
+        self.start = 0
+        self.end = 0
+        self.name = ""
+        self.score = 0
+        self.strand = "?"
+        self.thick_start = 0
+        self.thick_end = 0
+        self.red = 0
+        self.green = 0
+        self.blue = 0
+        self.block_count = 0
+        self.block_sizes = []
+        self.block_starts = []
 
     def __str__(self):
         
@@ -63,17 +55,14 @@ class BedEntry:
                 return 0
 
     def __key__(self):
-        return (self.chrom.encode(), self.thick_start, self.thick_end)
+        return (self.chrom.encode(), self.thick_start, self.thick_end, self.strand if self.__use_strand else None)
 
     def __hash__(self):
         return hash(self.__key__())
 
     @property
     def key(self):
-        if self.__use_strand is True:
-            return (self.chrom, self.thick_start, self.thick_end, self.strand)
-        else:
-            return (self.chrom, self.thick_start, self.thick_end, None)
+        return self.__key__()
 
     def __lt__(self, other):
         if self.chrom.__lt__(other.chrom):
@@ -117,6 +106,10 @@ class BedEntry:
         b = BedEntry(use_strand=use_strand)
 
         parts = key.split("\t")
+
+        # Handle header or blank lines
+        if (len(parts) != 12):
+            return None
 
         b.chrom = parts[0]
         b.start = int(parts[1])

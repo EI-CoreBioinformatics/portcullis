@@ -35,6 +35,16 @@ class TabEntry:
 			 ]
 		return "\t".join([str(_) for _ in line])
 
+	def __key__(self):
+		return (self.chrom.encode(), self.start, self.end)
+
+	def __hash__(self):
+		return hash(self.__key__())
+
+	@property
+	def key(self):
+		return (self.chrom, self.start, self.end)            
+
 	def makeMatrixRow(self):
 		return [ self.M2, self.M3, self.M4, self.M8, self.M9, self.M10, self.M11, self.M12, self.M13, self.M14 ]
 
@@ -104,3 +114,43 @@ def loadtab(tabfile):
 
 	return bed, tab
 
+def loadtabasset(tabfile):
+
+	tab=set()
+	with open(tabfile) as f:
+		# Skip header
+		f.readline()
+
+		for line in f:
+			line.strip()
+			if len(line) > 1:
+				t = TabEntry.create_from_tabline(line)
+				tab.add(t.key)
+
+
+	return tab
+
+
+
+def filtertab(filepath, outfile, tab_set, mode) :
+
+    o = open(outfile, 'w')
+
+    index = 0;
+    with open(filepath) as f:
+
+        o.write(f.readline())
+
+        for line in f:
+
+            line = line.strip()
+            if line != "":
+                key = TabEntry.create_from_tabline(line).key
+                if mode == 0:
+                    if key in tab_set:
+                        o.write(line + "\n")
+                elif mode == 1:
+                    if key not in tab_set:
+                        o.write(line + "\n")
+
+    o.close()
