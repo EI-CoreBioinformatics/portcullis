@@ -9,7 +9,7 @@ AC_CONFIG_SRCDIR([src/Tree.cpp])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([ranger.pc Makefile])
 AC_LANG([C++])
 AC_PROG_INSTALL
 AC_PROG_CXX
