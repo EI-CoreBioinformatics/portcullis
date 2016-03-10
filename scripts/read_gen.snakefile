@@ -18,7 +18,7 @@ MIN_INTRON = config["min_intron"]
 MAX_INTRON = config["max_intron"]
 STRANDEDNESS = config["strandedness"]
 THREADS = config["threads"]
-READ_LENGTH = config["read_length"]
+READ_LENGTH = config["min_read_length"]
 READ_LENGTH_MINUS_1 = int(READ_LENGTH) - 1
 
 LOAD_BOWTIE = config["load_bowtie"]
