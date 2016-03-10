@@ -21,6 +21,9 @@ THREADS = config["threads"]
 READ_LENGTH = config["min_read_length"]
 READ_LENGTH_MINUS_1 = int(READ_LENGTH) - 1
 
+
+RUN_TIME = config["run_time"]
+
 LOAD_BOWTIE = config["load_bowtie"]
 LOAD_SPANKI = config["load_spanki"]
 LOAD_TRIMGALORE = config["load_trimgalore"]
@@ -34,6 +37,7 @@ LOAD_STRINGTIE = config["load_stringtie"]
 LOAD_PORTCULLIS = config["load_portcullis"]
 LOAD_SPANKI = config["load_spanki"]
 LOAD_FINESPLICE = config["load_finesplice"]
+LOAD_TRUESIGHT = config["load_truesight"]
 LOAD_PYTHON3 = config["load_python3"]
 
 INDEX_STAR_EXTRA = config["index_star_extra"]
@@ -89,6 +93,19 @@ rule all:
 
 	
 
+rule align_bowtie_index:
+	input: REF
+	output: 
+		idx=ALIGN_DIR + "/bowtie/index/"+NAME+".3.ebwt",
+		fa_link=ALIGN_DIR+"/bowtie/index/"+NAME+".fa"
+	params:
+		out_prefix=ALIGN_DIR+"/bowtie/index/"+NAME,
+		ref=os.path.abspath(REF)
+	log: ALIGN_DIR + "/bowtie.index.log"
+	threads: 1
+	message: "Indexing genome with bowtie"
+	shell: "{LOAD_BOWTIE} && bowtie-build {input} {params.out_prefix} > {log} 2>&1 && ln -sf {params.ref} {output.fa_link} && touch -h {output.fa_link}"
+
 
 rule align_tophat_index:
     input: REF
@@ -96,7 +113,7 @@ rule align_tophat_index:
     log: ALIGN_DIR + "/tophat.index.log"
     threads: 1
     message: "Indexing genome with tophat"
-    shell: "{LOAD_TOPHAT}; bowtie2-build {REF} {ALIGN_DIR}/tophat/index/{NAME} > {log} 2>&1"
+    shell: "{LOAD_TOPHAT} && bowtie2-build {REF} {ALIGN_DIR}/tophat/index/{NAME} > {log} 2>&1"
 
 
 
@@ -107,7 +124,7 @@ rule align_gsnap_index:
     log: ALIGN_DIR +"/gsnap.index.log"
     threads: 1
     message: "Indexing genome with gsnap"
-    shell: "{LOAD_GMAP}; gmap_build --dir={ALIGN_DIR}/gsnap/index --db={NAME} {input} > {log} 2>&1"
+    shell: "{LOAD_GMAP} && gmap_build --dir={ALIGN_DIR}/gsnap/index --db={NAME} {input} > {log} 2>&1"
 
 
 
@@ -118,7 +135,7 @@ rule align_star_index:
     log: ALIGN_DIR_FULL+"/star.index.log"
     threads: int(THREADS)
     message: "Indexing genome with star"
-    shell: "{LOAD_STAR}; cd {ALIGN_DIR_FULL}/star; STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {params.indexdir} --genomeFastaFiles {input} {INDEX_STAR_EXTRA} > {log} 2>&1; cd {CWD}"
+    shell: "{LOAD_STAR} && cd {ALIGN_DIR_FULL}/star && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {params.indexdir} --genomeFastaFiles {input} {INDEX_STAR_EXTRA} > {log} 2>&1 && cd {CWD}"
 
 
 
@@ -128,7 +145,7 @@ rule align_hisat_index:
 	log: ALIGN_DIR+"/hisat.index.log"
 	threads: 1
 	message: "Indexing genome with hisat"
-	shell: "{LOAD_HISAT}; hisat2-build {input} {ALIGN_DIR}/hisat/index/{NAME} > {log} 2>&1"
+	shell: "{LOAD_HISAT} && hisat2-build {input} {ALIGN_DIR}/hisat/index/{NAME} > {log} 2>&1"
 
 
 
@@ -150,10 +167,10 @@ rule align_tophat:
         indexdir=ALIGN_DIR+"/tophat/index/"+NAME
     log: ALIGN_DIR + "/tophat-{reads}.log"
     threads: int(THREADS)
-    message: "Aligning RNAseq data with tophat: {input.r1}; {input.r2}"
+    message: "Aligning RNAseq data with tophat"
     run:
         strand = STRANDEDNESS if wildcards.reads.startswith("real") else "fr-unstranded"
-        shell("{LOAD_TOPHAT}; tophat2 --output-dir={params.outdir} --num-threads={threads} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --microexon-search --library-type={strand} {ALIGN_TOPHAT_EXTRA} {params.indexdir} {input.r1} {input.r2} > {log} 2>&1 && ln -sf {output.bam} {output.link} && touch -h {output.link}")
+        shell("{LOAD_TOPHAT} && {RUN_TIME} tophat2 --output-dir={params.outdir} --num-threads={threads} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --microexon-search --library-type={strand} {ALIGN_TOPHAT_EXTRA} {params.indexdir} {input.r1} {input.r2} > {log} 2>&1 && ln -sf {output.bam} {output.link} && touch -h {output.link}")
 
 
 
@@ -167,8 +184,8 @@ rule align_gsnap:
         link=ALIGN_DIR+"/output/gsnap-{reads}.bam"
     log: ALIGN_DIR+"/gsnap-{reads}.log"
     threads: int(THREADS)
-    message: "Aligning RNAseq with gsnap: {input.r1}; {input.r2}"
-    shell: "{LOAD_GMAP}; {LOAD_SAMTOOLS}; gsnap --dir={ALIGN_DIR}/gsnap/index --db={NAME} {ALIGN_GSNAP_EXTRA} --novelsplicing=1 --localsplicedist={MAX_INTRON} --nthreads={threads} --format=sam --npaths=20 {input.r1} {input.r2} 2> {log} | samtools view -b -@ {threads} - > {output.bam} && ln -sf {output.bam} {output.link} && touch -h {output.link}"
+    message: "Aligning RNAseq with gsnap"
+    shell: "{LOAD_GMAP} && {LOAD_SAMTOOLS} && {RUN_TIME} gsnap --dir={ALIGN_DIR}/gsnap/index --db={NAME} {ALIGN_GSNAP_EXTRA} --novelsplicing=1 --localsplicedist={MAX_INTRON} --nthreads={threads} --format=sam --npaths=20 {input.r1} {input.r2} 2> {log} | samtools view -b -@ {threads} - > {output.bam} && ln -sf {output.bam} {output.link} && touch -h {output.link}"
 
 
 
@@ -186,8 +203,8 @@ rule align_star:
         indexdir=ALIGN_DIR_FULL+"/star/index"
     log: ALIGN_DIR_FULL+"/star-{reads}.log"
     threads: int(THREADS)
-    message: "Aligning input with star: {input.r1}; {input.r2}"
-    shell: "{LOAD_STAR}; cd {params.outdir}; STAR --runThreadN {threads} --runMode alignReads --genomeDir {params.indexdir} --readFilesIn {input.r1} {input.r2} --outSAMtype BAM Unsorted --outSAMstrandField intronMotif --alignIntronMin {MIN_INTRON} --alignIntronMax {MAX_INTRON} --alignMatesGapMax 20000 --outFileNamePrefix {params.outdir}/ {ALIGN_STAR_EXTRA} > {log} 2>&1; cd {CWD}; ln -sf {output.bam} {output.link} && touch -h {output.link}"
+    message: "Aligning input with star"
+    shell: "{LOAD_STAR} && cd {params.outdir} && {RUN_TIME} STAR --runThreadN {threads} --runMode alignReads --genomeDir {params.indexdir} --readFilesIn {input.r1} {input.r2} --outSAMtype BAM Unsorted --outSAMstrandField intronMotif --alignIntronMin {MIN_INTRON} --alignIntronMax {MAX_INTRON} --alignMatesGapMax 20000 --outFileNamePrefix {params.outdir}/ {ALIGN_STAR_EXTRA} > {log} 2>&1 && cd {CWD} && ln -sf {output.bam} {output.link} && touch -h {output.link}"
 
 
 
@@ -203,10 +220,10 @@ rule align_hisat:
         indexdir=ALIGN_DIR+"/hisat/index/"+NAME
     log: ALIGN_DIR+"/hisat-{reads}.log"
     threads: int(THREADS)
-    message: "Aligning input with hisat: {input.r1}; {input.r2}"
+    message: "Aligning input with hisat"
     run:
         strand = HISAT_STRAND if wildcards.reads.startswith("real") else ""
-        shell("{LOAD_HISAT}; {LOAD_SAMTOOLS}; hisat2 -p {threads} --min-intronlen={MIN_INTRON} --max-intronlen={MAX_INTRON} {strand} -x {params.indexdir} -1 {input.r1} -2 {input.r2} 2> {log} | samtools view -b -@ {threads} - > {output.bam}; ln -sf {output.bam} {output.link} && touch -h {output.link}")
+        shell("{LOAD_HISAT} && {LOAD_SAMTOOLS} && {RUN_TIME} hisat2 -p {threads} --min-intronlen={MIN_INTRON} --max-intronlen={MAX_INTRON} {strand} -x {params.indexdir} -1 {input.r1} -2 {input.r2} 2> {log} | samtools view -b -@ {threads} - > {output.bam} && ln -sf {output.bam} {output.link} && touch -h {output.link}")
 
 rule bam_sort:
 	input: 
@@ -214,7 +231,7 @@ rule bam_sort:
 	output: ALIGN_DIR+"/output/{aln_method}-{reads}.sorted.bam"
 	threads: int(THREADS)
 	message: "Using samtools to sort {input.bam}"
-	shell: "{LOAD_SAMTOOLS}; samtools sort -o {output} -O bam -m 1G -T sort_{wildcards.aln_method}_{wildcards.reads} -@ {threads} {input.bam}"
+	shell: "{LOAD_SAMTOOLS} && samtools sort -o {output} -O bam -m 1G -T sort_{wildcards.aln_method}_{wildcards.reads} -@ {threads} {input.bam}"
 
 
 rule bam_index:
@@ -222,7 +239,7 @@ rule bam_index:
 	output: ALIGN_DIR+"/output/{aln_method}-{reads}.sorted.bam.bai"
 	threads: 1
 	message: "Using samtools to index: {input}"
-	shell: "{LOAD_SAMTOOLS}; samtools index {input}"
+	shell: "{LOAD_SAMTOOLS} && samtools index {input}"
 
 
 
@@ -237,7 +254,7 @@ rule asm_cufflinks:
     log: ASM_DIR+"/cufflinks-{aln_method}-real_wref.log"
     threads: int(THREADS)
     message: "Using cufflinks to assemble: {input.bam}"
-    shell: "{LOAD_CUFFLINKS}; cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --no-update-check {ASM_CUFFLINKS_EXTRA} {input.bam} > {log} 2>&1 && ln -sf {output.gtf} {output.link} && touch -h {output.link}"
+    shell: "{LOAD_CUFFLINKS} && cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --no-update-check {ASM_CUFFLINKS_EXTRA} {input.bam} > {log} 2>&1 && ln -sf {output.gtf} {output.link} && touch -h {output.link}"
 
 
 rule asm_stringtie:
@@ -250,7 +267,7 @@ rule asm_stringtie:
     log: ASM_DIR+"/stringtie-{aln_method}-{reads}.log"
     threads: int(THREADS)
     message: "Using stringtie to assemble: {input.bam}"
-    shell: "{LOAD_STRINGTIE}; stringtie {input.bam} -l Stringtie_{wildcards.aln_method}_{wildcards.reads} -f 0.05 -m 200 {ASM_STRINGTIE_EXTRA} -o {output.gtf} -p {threads} > {log} 2>&1 && ln -sf {output.gtf} {output.link} && touch -h {output.link}"
+    shell: "{LOAD_STRINGTIE} && stringtie {input.bam} -l Stringtie_{wildcards.aln_method}_{wildcards.reads} -f 0.05 -m 200 {ASM_STRINGTIE_EXTRA} -o {output.gtf} -p {threads} > {log} 2>&1 && ln -sf {output.gtf} {output.link} && touch -h {output.link}"
 
 rule portcullis_prep:
     input:
@@ -264,7 +281,7 @@ rule portcullis_prep:
     log: PORTCULLIS_DIR+"/{aln_method}-{reads}-prep.log"
     threads: int(THREADS)
     message: "Using portcullis to prepare: {input}"
-    shell: "{params.load}; portcullis prep -o {params.outdir} -l -s {PORTCULLIS_STRAND} -t {threads} {input.ref} {input.bam} > {log} 2>&1"
+    shell: "{params.load} && portcullis prep -o {params.outdir} -l -s {PORTCULLIS_STRAND} -t {threads} {input.ref} {input.bam} > {log} 2>&1"
 
 
 rule portcullis_junc:
@@ -278,7 +295,7 @@ rule portcullis_junc:
     log: PORTCULLIS_DIR+"/{aln_method}-{reads}-junc.log"
     threads: int(THREADS)
     message: "Using portcullis to analyse potential junctions: {input}"
-    shell: "{params.load}; portcullis junc -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} -t {threads} {params.prepdir} > {log} 2>&1"
+    shell: "{params.load} && {RUN_TIME} portcullis junc -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} -t {threads} {params.prepdir} > {log} 2>&1"
 
 
 rule portcullis_filter:
@@ -292,9 +309,9 @@ rule portcullis_filter:
         bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}/filt/{aln_method}-{reads}.pass.junctions.bed",
         unfilt_bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}/junc/{aln_method}-{reads}.junctions.bed"
     log: PORTCULLIS_DIR+"/{aln_method}-{reads}-filter.log"
-    threads: 1
+    threads: int(THREADS)
     message: "Using portcullis to filter invalid junctions: {input}"
-    shell: "{params.load}; portcullis filter -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} {input} > {log} 2>&1 && ln -sf {params.bed} {output.link} && touch -h {output.link} && ln -sf {params.unfilt_bed} {output.unfilt_link} && touch -h {output.unfilt_link}"
+    shell: "{params.load} && portcullis filter -t {threads} -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} {input} > {log} 2>&1 && ln -sf {params.bed} {output.link} && touch -h {output.link} && ln -sf {params.unfilt_bed} {output.unfilt_link} && touch -h {output.unfilt_link}"
 
 
 rule spanki:
@@ -317,8 +334,8 @@ rule spanki:
         bed=JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}/junctions_out/{aln_method}-{reads}-spanki.bed"
     log: JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}-spanki.log"
     threads: 1
-    message: "Using SPANKI to anlayse junctions: {input.bam}"
-    shell: "{params.load_spanki} ; cd {params.outdir} ; spankijunc -i {params.bam} -g {params.gtf} -f {params.fa} > {log} 2>&1 ; cd {CWD} ; if [[ -s {params.all_juncs} ]] ; then {params.load_portcullis} && spanki_filter.py {params.all_juncs} > {params.filt_juncs} && spanki2bed.py {params.filt_juncs} > {output.bed} ; else touch {output.bed} ; fi ; ln -sf {params.bed} {output.link} && touch -h {output.link}"
+    message: "Using SPANKI to analyse junctions: {input.bam}"
+    shell: "{params.load_spanki} && cd {params.outdir} && {RUN_TIME} spankijunc -i {params.bam} -g {params.gtf} -f {params.fa} > {log} 2>&1 && cd {CWD} && if [[ -s {params.all_juncs} ]] ; then {params.load_portcullis} && spanki_filter.py {params.all_juncs} > {params.filt_juncs} && spanki2bed.py {params.filt_juncs} > {output.bed} ; else touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 	
 rule finesplice:
@@ -336,7 +353,26 @@ rule finesplice:
         bed=JUNC_DIR_FULL+"/finesplice/{aln_method}-{reads}/{aln_method}-{reads}-finesplice.bed"
     log: JUNC_DIR_FULL+"/finesplice/{aln_method}-{reads}-finesplice.log"
     threads: 1
-    message: "Using FineSplice to anlayse junctions: {input.bam}"
-    shell: "{params.load_fs} && cd {params.outdir} ; if FineSplice.py -i {params.bam} -l {READ_LENGTH} > {log} 2>&1 ; then cd {CWD}; {params.load_portcullis} && fs2bed.py {params.junc} > {output.bed} ; else cd {CWD}; touch {output.bed} ; fi ; ln -sf {params.bed} {output.link} && touch -h {output.link}"
+    message: "Using FineSplice to analyse junctions: {input.bam}"
+    shell: "{params.load_fs} && cd {params.outdir} && if {RUN_TIME} FineSplice.py -i {params.bam} -l {READ_LENGTH} > {log} 2>&1  then cd {CWD} && {params.load_portcullis} && fs2bed.py {params.junc} > {output.bed} ; else cd {CWD}; touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 
+rule truesight:
+    input:
+        idx=rules.align_bowtie_index.output,
+        r1=READS_DIR+"/{reads}.R1.fq",
+        r2=READS_DIR+"/{reads}.R2.fq"
+    output:
+        link=JUNC_DIR+"/output/{aln_method}-{reads}-truesight.bed",
+        bed=JUNC_DIR+"/truesight/{aln_method}-{reads}/{aln_method}-{reads}-truesight.bed"
+    params:
+        load_fs=LOAD_TRUESIGHT,
+        load_portcullis=LOAD_PORTCULLIS,
+	index=ALIGN_DIR + "/bowtie/index/"+NAME,
+        outdir=JUNC_DIR+"/truesight/{aln_method}-{reads}",
+        junc=JUNC_DIR+"/truesight/{aln_method}-{reads}/GapAli.junc",
+        bed="../truesight/{aln_method}-{reads}/{aln_method}-{reads}-truesight.bed"
+    log: JUNC_DIR+"/truesight/{aln_method}-{reads}-truesight.log"
+    threads: int(THREADS)
+    message: "Using Truesight to find junctions"
+    shell: "{params.load_fs} && cd {params.outdir} && {RUN_TIME} truesight_pair.pl -i {MIN_INTRON} -I {MAX_INTRON} -v 1 -r {params.index} -p {threads} -o {params.outdir} -f {input.r1},{input.r2} > {log} 2>&1 && cd {PWD} && {params.load_portcullis} && ts2bed.py {params.junc} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"

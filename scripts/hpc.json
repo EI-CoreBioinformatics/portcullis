@@ -3,7 +3,11 @@
    {
       "threads" : "4",
       "memory" : "10000",
-      "queue" : "Prod128"
+      "queue" : "tgac-medium"
+   },
+   "align_gsnap" :
+   {
+	   "memory" : "20000"
    }
 
 }
