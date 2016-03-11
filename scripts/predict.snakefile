@@ -85,7 +85,12 @@ Rules
 # Define 
 rule all:
 	input: 
-		expand(JUNC_DIR+"/output/{aln_method}-{reads}-{junc_method}.bed", aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS, junc_method=JUNC_METHODS)
+		expand(JUNC_DIR+"/output/{aln_method}-{reads}-portcullis.bed", aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS),
+		expand(JUNC_DIR+"/output/tophat-{reads}-spanki.bed", reads=INPUT_SETS),
+		expand(JUNC_DIR+"/output/tophat-{reads}-finesplice.bed", reads=INPUT_SETS),
+		expand(JUNC_DIR+"/output/truesight-{reads}-truesight.bed", reads=INPUT_SETS),
+		expand(ASM_DIR+"/output/stringtie-{aln_method}-{reads}-normal.gtf", aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS),
+		expand(ASM_DIR+"/output/stringtie-{aln_method}-{reads}-filt.gtf", aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
 		
 
 #rule clean:
@@ -242,33 +247,6 @@ rule bam_index:
 	shell: "{LOAD_SAMTOOLS} && samtools index {input}"
 
 
-
-rule asm_cufflinks:
-    input:
-        bam=rules.bam_sort.output,
-        ref=REF
-    output:
-        gtf=ASM_DIR_FULL+"/cufflinks-{aln_method}-real_wref/transcripts.gtf",
-        link=ASM_DIR+"/output/cufflinks-{aln_method}-real_wref.gtf"
-    params: outdir=ASM_DIR+"/cufflinks-{aln_method}-real_wref"
-    log: ASM_DIR+"/cufflinks-{aln_method}-real_wref.log"
-    threads: int(THREADS)
-    message: "Using cufflinks to assemble: {input.bam}"
-    shell: "{LOAD_CUFFLINKS} && cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --no-update-check {ASM_CUFFLINKS_EXTRA} {input.bam} > {log} 2>&1 && ln -sf {output.gtf} {output.link} && touch -h {output.link}"
-
-
-rule asm_stringtie:
-    input:
-        bam=rules.bam_sort.output,
-        ref={REF}
-    output:
-        gtf=ASM_DIR_FULL+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}.gtf",
-        link=ASM_DIR+"/output/stringtie-{aln_method}-{reads}.gtf"
-    log: ASM_DIR+"/stringtie-{aln_method}-{reads}.log"
-    threads: int(THREADS)
-    message: "Using stringtie to assemble: {input.bam}"
-    shell: "{LOAD_STRINGTIE} && stringtie {input.bam} -l Stringtie_{wildcards.aln_method}_{wildcards.reads} -f 0.05 -m 200 {ASM_STRINGTIE_EXTRA} -o {output.gtf} -p {threads} > {log} 2>&1 && ln -sf {output.gtf} {output.link} && touch -h {output.link}"
-
 rule portcullis_prep:
     input:
         ref=REF,
@@ -281,7 +259,7 @@ rule portcullis_prep:
     log: PORTCULLIS_DIR+"/{aln_method}-{reads}-prep.log"
     threads: int(THREADS)
     message: "Using portcullis to prepare: {input}"
-    shell: "{params.load} && portcullis prep -o {params.outdir} -l -s {PORTCULLIS_STRAND} -t {threads} {input.ref} {input.bam} > {log} 2>&1"
+    shell: "{params.load} && portcullis prep -o {params.outdir} -l --strandedness={PORTCULLIS_STRAND} -t {threads} {input.ref} {input.bam} > {log} 2>&1"
 
 
 rule portcullis_junc:
@@ -299,20 +277,34 @@ rule portcullis_junc:
 
 
 rule portcullis_filter:
-    input: rules.portcullis_junc.output
-    output:
-        link=JUNC_DIR+"/output/{aln_method}-{reads}-portcullis.bed",
-        unfilt_link=JUNC_DIR+"/output/{aln_method}-{reads}-all.bed"
-    params:
-        outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/filt",
-        load=LOAD_PORTCULLIS,
-        bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}/filt/{aln_method}-{reads}.pass.junctions.bed",
-        unfilt_bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}/junc/{aln_method}-{reads}.junctions.bed"
-    log: PORTCULLIS_DIR+"/{aln_method}-{reads}-filter.log"
-    threads: int(THREADS)
-    message: "Using portcullis to filter invalid junctions: {input}"
-    shell: "{params.load} && portcullis filter -t {threads} -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} {input} > {log} 2>&1 && ln -sf {params.bed} {output.link} && touch -h {output.link} && ln -sf {params.unfilt_bed} {output.unfilt_link} && touch -h {output.unfilt_link}"
+	input: rules.portcullis_junc.output
+	output:
+		link=JUNC_DIR+"/output/{aln_method}-{reads}-portcullis.bed",
+		unfilt_link=JUNC_DIR+"/output/{aln_method}-{reads}-all.bed",
+		tab=PORTCULLIS_DIR+"/{aln_method}-{reads}/filt/{aln_method}-{reads}.pass.junctions.tab",
+	params:
+		outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/filt",
+		load=LOAD_PORTCULLIS,
+		bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}/filt/{aln_method}-{reads}.pass.junctions.bed",
+		unfilt_bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}/junc/{aln_method}-{reads}.junctions.bed"
+	log: PORTCULLIS_DIR+"/{aln_method}-{reads}-filter.log"
+	threads: int(THREADS)
+	message: "Using portcullis to filter invalid junctions: {input}"
+	shell: "{params.load} && portcullis filter -t {threads} -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} {input} > {log} 2>&1 && ln -sf {params.bed} {output.link} && touch -h {output.link} && ln -sf {params.unfilt_bed} {output.unfilt_link} && touch -h {output.unfilt_link}"
 
+
+rule portcullis_bamfilt:
+	input: 
+		bam=rules.bam_sort.output,
+		tab=rules.portcullis_filter.output.tab
+	output:
+		bam=PORTCULLIS_DIR+"/{aln_method}-{reads}/bam/{aln_method}-{reads}-portcullis.bam"
+	params:
+		load=LOAD_PORTCULLIS,
+	log: PORTCULLIS_DIR+"/{aln_method}-{reads}-bam.log"
+	threads: int(THREADS)
+	message: "Using portcullis to filter alignments containing invalid junctions: {input.tab}"
+	shell: "{params.load} && portcullis bamfilt --output={output.bam} {input.tab} {input.bam} > {log} 2>&1"
 
 rule spanki:
     input:
@@ -335,7 +327,7 @@ rule spanki:
     log: JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}-spanki.log"
     threads: 1
     message: "Using SPANKI to analyse junctions: {input.bam}"
-    shell: "{params.load_spanki} && cd {params.outdir} && {RUN_TIME} spankijunc -i {params.bam} -g {params.gtf} -f {params.fa} > {log} 2>&1 && cd {CWD} && if [[ -s {params.all_juncs} ]] ; then {params.load_portcullis} && spanki_filter.py {params.all_juncs} > {params.filt_juncs} && spanki2bed.py {params.filt_juncs} > {output.bed} ; else touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+    shell: "set +e && {params.load_spanki} && cd {params.outdir} && {RUN_TIME} spankijunc -i {params.bam} -g {params.gtf} -f {params.fa} > {log} 2>&1 && cd {CWD} && if [[ -s {params.all_juncs} ]] ; then {params.load_portcullis} && spanki_filter.py {params.all_juncs} > {params.filt_juncs} && spanki2bed.py {params.filt_juncs} > {output.bed} ; else touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 	
 rule finesplice:
@@ -354,7 +346,7 @@ rule finesplice:
     log: JUNC_DIR_FULL+"/finesplice/{aln_method}-{reads}-finesplice.log"
     threads: 1
     message: "Using FineSplice to analyse junctions: {input.bam}"
-    shell: "{params.load_fs} && cd {params.outdir} && if {RUN_TIME} FineSplice.py -i {params.bam} -l {READ_LENGTH} > {log} 2>&1  then cd {CWD} && {params.load_portcullis} && fs2bed.py {params.junc} > {output.bed} ; else cd {CWD}; touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+    shell: "set +e && {params.load_fs} && cd {params.outdir} && if {RUN_TIME} FineSplice.py -i {params.bam} -l {READ_LENGTH} > {log} 2>&1 ; then cd {CWD} && {params.load_portcullis} && fs2bed.py {params.junc} > {output.bed} ; else cd {CWD}; touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 
 rule truesight:
@@ -363,16 +355,55 @@ rule truesight:
         r1=READS_DIR+"/{reads}.R1.fq",
         r2=READS_DIR+"/{reads}.R2.fq"
     output:
-        link=JUNC_DIR+"/output/{aln_method}-{reads}-truesight.bed",
-        bed=JUNC_DIR+"/truesight/{aln_method}-{reads}/{aln_method}-{reads}-truesight.bed"
+        link=JUNC_DIR+"/output/truesight-{reads}-truesight.bed",
+        bed=JUNC_DIR+"/truesight/{reads}/truesight-{reads}-truesight.bed"
     params:
         load_fs=LOAD_TRUESIGHT,
         load_portcullis=LOAD_PORTCULLIS,
-	index=ALIGN_DIR + "/bowtie/index/"+NAME,
-        outdir=JUNC_DIR+"/truesight/{aln_method}-{reads}",
-        junc=JUNC_DIR+"/truesight/{aln_method}-{reads}/GapAli.junc",
-        bed="../truesight/{aln_method}-{reads}/{aln_method}-{reads}-truesight.bed"
-    log: JUNC_DIR+"/truesight/{aln_method}-{reads}-truesight.log"
+	index=ALIGN_DIR_FULL + "/bowtie/index/"+NAME,
+        outdir=JUNC_DIR+"/truesight/{reads}",
+        junc=JUNC_DIR+"/truesight/{reads}/GapAli.junc",
+        bed="../truesight/{reads}/trusight-{reads}-truesight.bed",
+	r1=READS_DIR_FULL+"/{reads}.R1.fq",
+	r2=READS_DIR_FULL+"/{reads}.R2.fq"
+    log: JUNC_DIR_FULL+"/truesight/{reads}-truesight.log"
     threads: int(THREADS)
     message: "Using Truesight to find junctions"
-    shell: "{params.load_fs} && cd {params.outdir} && {RUN_TIME} truesight_pair.pl -i {MIN_INTRON} -I {MAX_INTRON} -v 1 -r {params.index} -p {threads} -o {params.outdir} -f {input.r1},{input.r2} > {log} 2>&1 && cd {PWD} && {params.load_portcullis} && ts2bed.py {params.junc} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+    shell: "{params.load_fs} && cd {params.outdir} && {RUN_TIME} truesight_pair.pl -i {MIN_INTRON} -I {MAX_INTRON} -v 1 -r {params.index} -p {threads} -o . -f {params.r1} {params.r2} > {log} 2>&1 && cd {CWD} && {params.load_portcullis} && ts2bed.py {params.junc} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+
+
+###
+
+rule asm_stringtie_normal:
+	input: 	bam=rules.bam_sort.output
+	output: 
+		link=ASM_DIR+"/output/stringtie-{aln_method}-{reads}-normal.gtf",
+		gtf=ASM_DIR+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}-normal.gtf"
+	params:
+		load=LOAD_STRINGTIE,
+		gtf=ASM_DIR+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}-normal.gtf",
+		link_src="../stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}-normal.gtf",
+		name="Stringtie_{aln_method}_{reads}_normal"
+	log: ASM_DIR+"/stringtie-{aln_method}-{reads}-normal.log"
+	threads: int(THREADS)
+	message: "Using stringtie to assemble: {input.bam}"
+	shell: "{params.load} && {RUN_TIME} stringtie {input.bam} -l {params.name} -f 0.05 -m 200 -o {params.gtf} -p {threads} > {log} 2>&1 && ln -sf {params.link_src} {output.link} && touch -h {output.link}"
+
+
+
+rule asm_stringtie_bamfilt:
+	input: 
+		bam=rules.portcullis_bamfilt.output.bam
+	output: 
+		link=ASM_DIR+"/output/stringtie-{aln_method}-{reads}-filt.gtf",
+		gtf=ASM_DIR+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}-filt.gtf"
+	params:
+		load=LOAD_STRINGTIE,
+		gtf=ASM_DIR+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}-filt.gtf",
+		link_src="../stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}-filt.gtf",
+		name="Stringtie_{aln_method}_{reads}_filt"
+	log: ASM_DIR+"/stringtie-{aln_method}-{reads}-filt.log"
+	threads: int(THREADS)
+	message: "Using stringtie to assemble: {input.bam}"
+	shell: "{params.load} && {RUN_TIME} stringtie {input.bam} -l {params.name} -f 0.05 -m 200 -o {params.gtf} -p {threads} > {log} 2>&1 && ln -sf {params.link_src} {output.link} && touch -h {output.link}"
+

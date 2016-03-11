@@ -9,6 +9,8 @@ min_version("3.4.2")
 
 R1 = config["r1"]
 R2 = config["r2"]
+R1_NAME, ext1 = os.path.splitext(os.path.basename(R1))
+R2_NAME, ext2 = os.path.splitext(os.path.basename(R2))
 REF = config["ref_fa"]
 REF_GTF = config["ref_gtf"]
 NAME = config["name"]
@@ -93,8 +95,8 @@ rule trim_reads:
 		linkr2=READS_DIR+"/real.R2.fq"
 	params:
 		outdir=READS_DIR+"/trim",
-		r1="trim/"+R1+"_val_1.fq",
-		r2="trim/"+R2+"_val_2.fq",
+		r1="trim/"+R1_NAME+"_val_1.fq",
+		r2="trim/"+R2_NAME+"_val_2.fq",
 	log: READS_DIR+"/trim/trim.log"		
 	shell: "{LOAD_TRIMGALORE} && trim_galore --paired --length {READ_LENGTH} -o {params.outdir} {input.r1} {input.r2} > {log} 2>&1 && ln -sf {params.r1} {output.linkr1} && ln -sf {params.r2} {output.linkr2} && touch -h {output.linkr1} {output.linkr2}"
 

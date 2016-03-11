@@ -8,6 +8,20 @@
    "align_gsnap" :
    {
 	   "memory" : "20000"
+   },
+   "asm_stringtie_normal" :
+   {
+	   "memory" : "25000",
+	   "threads" : "4"
+   },
+   "asm_stringtie_bamfilt" :
+   {
+	   "memory" : "25000",
+	   "threads" : "4"
+   },
+   "portcullis_junc" :
+   {
+	   "memory" : "25000"
    }
 
 }
