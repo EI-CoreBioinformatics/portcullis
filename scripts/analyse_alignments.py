@@ -111,7 +111,7 @@ def main():
         nums = dict()
         nums["area1"] = len(ref_bed)
         i=2
-        for a in aligners:
+        for a in sorted(aligners):
             s = bed_data[a + "-" + r]
             sets.append(s)
             categories.append(a)
@@ -138,7 +138,7 @@ def main():
                                                                       "darkgreen",
                                                                       "darkorange",
                                                                       "darkred"]),
-                             cex=1,
+                             cex=2,
                              main="Comparison on junctions found by alignment tools",
                              main_col="black",
                              main_cex=8,

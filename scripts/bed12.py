@@ -131,7 +131,11 @@ class BedEntry:
         #     b.block_sizes.append(int(bp))
             
         b.block_starts = [int(_) for _ in parts[11].rstrip().split(",")]
-        
+
+        if tophat:
+            b.thick_start += b.block_sizes[0]
+            b.thick_end -= b.block_sizes[1]
+
         # for bp in bstart_parts:
         #     b.block_starts.append(int(bp))
         assert len(b.block_sizes) == len(b.block_starts) == b.block_count, (key,

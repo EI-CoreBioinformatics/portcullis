@@ -43,7 +43,7 @@ DPI=$(DPS)/images
 DISTFILES = $(DPS)/index.rst \
 	    $(DPS)/installation.rst \
 	    $(DPS)/metrics.rst \
-	    $(DPS)/using.rst	    
+	    $(DPS)/using.rst
 
 	
 
