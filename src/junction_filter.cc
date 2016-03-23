@@ -317,7 +317,9 @@ portcullis::JunctionFilter::JunctionFilter( const path& _junctionFile,
     saveBad = false;
     threads = 1;
     maxLength = 0;
-    canonical = false;
+    filterCanonical = false;
+    filterSemi = false;
+    filterNovel = false;
     source = DEFAULT_FILTER_SOURCE;
     verbose = false;
 }
@@ -353,12 +355,6 @@ void portcullis::JunctionFilter::filter() {
                     "File exists with name of suggested output directory: ") + outputDir.string()));            
     }
     
-    if (modelFile.empty() && filterFile.empty()) {
-        
-        BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                    "Must use either random forest prediction and / or rule-based filtering.")));            
-    }
-
 
     cout << "Loading junctions ...";
     cout.flush();
@@ -508,7 +504,7 @@ void portcullis::JunctionFilter::filter() {
         }
     }
     
-    if (maxLength > 0 || canonical) {
+    if (maxLength > 0 || this->doCanonicalFiltering()) {
         
         JunctionList passJuncs;
         JunctionList failJuncs;
@@ -522,8 +518,14 @@ void portcullis::JunctionFilter::filter() {
                 }
             }
             
-            if (pass && canonical) {
-                if (j->getSpliceSiteType() == CanonicalSS::NO) {
+            if (pass && this->doCanonicalFiltering()) {
+                if (this->filterNovel && j->getSpliceSiteType() == CanonicalSS::NO) {
+                    pass = false;
+                }
+                if (this->filterSemi && j->getSpliceSiteType() == CanonicalSS::SEMI_CANONICAL) {
+                    pass = false;
+                }
+                if (this->filterCanonical && j->getSpliceSiteType() == CanonicalSS::CANONICAL) {
                     pass = false;
                 }
             }
@@ -816,7 +818,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     bool saveBad;
     bool no_ml;
     int32_t max_length;
-    bool canonical;
+    string canonical;
     string source;
     bool verbose;
     bool help;
@@ -846,8 +848,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
                 "Whether or not to disable random forest prediction")
             ("max_length,l", po::value<int32_t>(&max_length)->default_value(0),
                 "Filter junctions longer than this value.  Default (0) is to not filter based on length.")
-            ("canonical,c", po::bool_switch(&canonical)->default_value(false),
-                "Filter out non-canonical junctions.  If set then only canonical and semi-canonical junctions are kept.  Default is to not filter based on the junction's canonical label.")
+            ("canonical,c", po::value<string>(&canonical)->default_value("OFF"),
+                "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GU-AG), S = Semi-canonical junctions (AT-AC, or  GT-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_FILTER_THREADS), 
                 "The number of threads to use during testing (only applies if using forest model).")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 

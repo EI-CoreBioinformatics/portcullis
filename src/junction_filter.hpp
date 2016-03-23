@@ -242,7 +242,9 @@ private:
     uint16_t threads;
     bool saveBad;
     int32_t maxLength;
-    bool canonical;
+    bool filterCanonical;
+    bool filterSemi;
+    bool filterNovel;    
     string source;
     bool verbose;    
     
@@ -345,12 +347,47 @@ public:
         this->threads = threads;
     }
     
-    bool isCanonical() const {
-        return canonical;
+    void setCanonical(const string& canonical) {
+        vector<string> modes;
+        boost::split( modes, canonical, boost::is_any_of(","), boost::token_compress_on );
+
+        if (modes.size() > 3) {
+            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                    "Canonical filter mode contains too many modes.  Max is 2.")));
+        }
+        
+        if (modes.empty()) {
+            this->filterCanonical = false;
+            this->filterSemi = false;
+            this->filterNovel = false;            
+        }
+        else {
+            this->filterCanonical = true;
+            this->filterSemi = true;
+            this->filterNovel = true;
+
+            for(auto& m : modes) {
+                string n = boost::to_upper_copy(m);
+                if (n == "OFF") {
+                    this->filterCanonical = false;
+                    this->filterSemi = false;
+                    this->filterNovel = false;
+                }
+                else if (n == "C") {
+                    this->filterCanonical = false;                    
+                }
+                else if (n == "S") {
+                    this->filterSemi = false;
+                }
+                else if (n == "N") {
+                    this->filterNovel = false;    
+                }
+            }
+        }
     }
 
-    void setCanonical(bool canonical) {
-        this->canonical = canonical;
+    bool doCanonicalFiltering() const {        
+        return this->filterCanonical || this->filterSemi || this->filterNovel;
     }
 
     int32_t isMaxLength() const {

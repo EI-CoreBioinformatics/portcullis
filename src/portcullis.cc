@@ -144,7 +144,7 @@ int mainFull(int argc, char *argv[]) {
     bool bamFilter;
     string source;
     uint32_t max_length;
-    bool canonical;
+    string canonical;
     bool verbose;
     bool help;
     
@@ -172,8 +172,8 @@ int mainFull(int argc, char *argv[]) {
                 "The rule-based filter configuration file to use.")
             ("max_length", po::value<uint32_t>(&max_length)->default_value(0),
                 "Filter junctions longer than this value.  Default (0) is to not filter based on length.")
-            ("canonical", po::bool_switch(&canonical)->default_value(false),
-                "Filter out non-canonical junctions.  If set then only canonical and semi-canonical junctions are kept.  Default is to not filter based on the junction's canonical label.")
+            ("canonical,c", po::value<string>(&canonical)->default_value("OFF"),
+                "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GU-AG), S = Semi-canonical junctions (AT-AC, or  GT-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")
             ("bam_filter,b", po::bool_switch(&bamFilter)->default_value(false), 
                 "Filter out alignments corresponding with false junctions")
             ("source", po::value<string>(&source)->default_value("portcullis"),
