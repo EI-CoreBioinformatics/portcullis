@@ -52,15 +52,19 @@ CWD=os.path.abspath(".")
 res_cmd = ""
 sub_cmd = ""
 
+if not os.path.exists("logs"):
+    os.makedirs("logs")
+
 if SCHEDULER == "LSF":
     sub_cmd = "bsub"
-    res_cmd = " -R rusage[mem={cluster.memory}]span[ptile={threads}] -n {threads} -q {cluster.queue} -oo /dev/null"
+    res_cmd = " -R rusage[mem={cluster.memory}]span[ptile={threads}] -n {threads} -q {cluster.queue} -J {rule} -oo /dev/null"
 elif SCHEDULER == "PBS":
     sub_cmd = "qsub"
-    res_cmd = " -lselect=1:mem={cluster.memory}MB:ncpus={threads} -q {cluster.queue}"
+    res_cmd = " -lselect=1:mem={cluster.memory}MB:ncpus={threads} -q {cluster.queue} -N {rule}"
 elif SCHEDULER == "SLURM":
     sub_cmd = "sbatch"
-    res_cmd = " -N 1 -n 1 -c {threads} -p {cluster.queue} --mem={cluster.memory}"
+    cores = "-c {threads} " if args.no_drmaa else ""
+    res_cmd = " " + cores + "-p {cluster.queue} --mem={cluster.memory} -J {rule} -o logs/" + now + "_{rule}_%j.out -e logs/" + now + "_{rule}_%j.out"
 
 
 
@@ -74,7 +78,7 @@ snakemake.snakemake(snakey_dir + "/" + args.snakefile,
                     cluster=sub_cmd + res_cmd if args.no_drmaa else None,
                     drmaa=res_cmd if not args.no_drmaa else None,
                     printshellcmds=True,
-                    snakemakepath="/tgac/software/testing/python/3.4.2/x86_64/bin/snakemake",
+                    snakemakepath="/tgac/software/testing/python_anaconda/2.4.1_dm/x86_64/bin/snakemake",
                     stats="snakemake_" + now + ".stats",
                     force_incomplete=args.force_incomplete,
                     detailed_summary=args.detailed_summary,

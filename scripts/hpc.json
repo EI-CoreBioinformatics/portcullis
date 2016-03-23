@@ -1,27 +1,61 @@
 {
-   "__default__" :
-   {
-      "threads" : "4",
-      "memory" : "10000",
-      "queue" : "tgac-medium"
-   },
-   "align_gsnap" :
-   {
-	   "memory" : "20000"
-   },
-   "asm_stringtie_normal" :
-   {
-	   "memory" : "25000",
-	   "threads" : "4"
-   },
-   "asm_stringtie_bamfilt" :
-   {
-	   "memory" : "25000",
-	   "threads" : "4"
-   },
-   "portcullis_junc" :
-   {
-	   "memory" : "25000"
-   }
+	"__default__" :
+	{
+		"threads" : "4",
+		"memory" : "10000",
+		"queue" : "tgac-medium"
+	},
+	"align_gsnap" :
+	{
+		"memory" : "20000"
+	},
+	"align_star" :
+	{
+		"memory" : "30000"
+	},
+	"asm_cufflinks" :
+	{
+		"memory" : "25000"
+	},
+	"asm_stringtie" :
+	{
+		"memory" : "25000"
+	},
+	"asm_class" :
+	{
+		"memory" : "25000"
+	},
+	"portcullis_junc" :
+	{
+		"memory" : "25000"
+	},
+	"truesight" :
+	{
+		"memory": "30000"
+	},
+	"finesplice" :
+	{
+		"memory": "20000"
+	},
+	"spanki" :
+	{
+		"memory": "20000"
+	},
+	"simgen_model" :
+	{
+		"memory": "30000"
+	},
+	"align_tophat_wref" :
+	{
+		"memory": "20000"
+	},
+	"simgen_bowtie_align" :
+	{
+		"memory": "20000"
+	},
+	"fastqc" :
+	{
+		"memory": "20000"
+	}
 
 }

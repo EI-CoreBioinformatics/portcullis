@@ -21,7 +21,6 @@ THREADS = config["threads"]
 READ_LENGTH = config["min_read_length"]
 READ_LENGTH_MINUS_1 = int(READ_LENGTH) - 1
 
-
 RUN_TIME = config["run_time"]
 
 LOAD_BOWTIE = config["load_bowtie"]
@@ -34,11 +33,13 @@ LOAD_HISAT = config["load_hisat"]
 LOAD_SAMTOOLS = config["load_samtools"]
 LOAD_CUFFLINKS = config["load_cufflinks"]
 LOAD_STRINGTIE = config["load_stringtie"]
+LOAD_CLASS = config["load_class"]
 LOAD_PORTCULLIS = config["load_portcullis"]
 LOAD_SPANKI = config["load_spanki"]
 LOAD_FINESPLICE = config["load_finesplice"]
 LOAD_TRUESIGHT = config["load_truesight"]
 LOAD_PYTHON3 = config["load_python3"]
+LOAD_GT = config["load_gt"]
 
 INDEX_STAR_EXTRA = config["index_star_extra"]
 ALIGN_TOPHAT_EXTRA = config["align_tophat_extra"]
@@ -50,9 +51,9 @@ JUNC_PORTCULLIS_PREP_EXTRA = config["junc_portcullis_prep_extra"]
 JUNC_PORTCULLIS_JUNC_EXTRA = config["junc_portcullis_junc_extra"]
 
 
-INPUT_SETS = ["real","sim_fixed","sim_var"]
-SIM_INPUT_SET = ["sim_fixed","sim_var"]
-REAL_INPUT_SET = ["real"]
+INPUT_SETS = config["input_sets"]
+SIM_INPUT_SET = [x for x in INPUT_SETS if x.startswith("sim")]
+REAL_INPUT_SET = [x for x in INPUT_SETS if x.startswith("real")]
 ALIGNMENT_METHODS = config["align_methods"]
 ASSEMBLY_METHODS = config["asm_methods"]
 JUNC_METHODS = config["junc_methods"]
@@ -89,8 +90,7 @@ rule all:
 		expand(JUNC_DIR+"/output/tophat-{reads}-spanki.bed", reads=INPUT_SETS),
 		expand(JUNC_DIR+"/output/tophat-{reads}-finesplice.bed", reads=INPUT_SETS),
 		expand(JUNC_DIR+"/output/truesight-{reads}-truesight.bed", reads=INPUT_SETS),
-		expand(ASM_DIR+"/output/stringtie-{aln_method}-{reads}-normal.gtf", aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS),
-		expand(ASM_DIR+"/output/stringtie-{aln_method}-{reads}-filt.gtf", aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
+		expand(ASM_DIR+"/output/{asm_method}-{aln_method}-{reads}.bed", asm_method=ASSEMBLY_METHODS, aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
 		
 
 #rule clean:
@@ -247,33 +247,38 @@ rule bam_index:
 	shell: "{LOAD_SAMTOOLS} && samtools index {input}"
 
 
+
 rule portcullis_prep:
-    input:
-        ref=REF,
-        bam=rules.bam_sort.output,
-        idx=rules.bam_index.output
-    output: PORTCULLIS_DIR+"/{aln_method}-{reads}/prep/portcullis.sorted.alignments.bam.bai"
-    params:
-        outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep",
-        load=LOAD_PORTCULLIS
-    log: PORTCULLIS_DIR+"/{aln_method}-{reads}-prep.log"
-    threads: int(THREADS)
-    message: "Using portcullis to prepare: {input}"
-    shell: "{params.load} && portcullis prep -o {params.outdir} -l --strandedness={PORTCULLIS_STRAND} -t {threads} {input.ref} {input.bam} > {log} 2>&1"
+	input:
+		ref=REF,
+		bam=rules.bam_sort.output,
+		idx=rules.bam_index.output
+	output: PORTCULLIS_DIR+"/{aln_method}-{reads}/prep/portcullis.sorted.alignments.bam.bai"
+	params:
+		outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep",
+		load=LOAD_PORTCULLIS
+	log: PORTCULLIS_DIR+"/{aln_method}-{reads}-prep.log"
+	threads: int(THREADS)
+	message: "Using portcullis to prepare: {input}"
+	run:
+		strand = PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"
+		shell("{params.load} && portcullis prep -o {params.outdir} -l --strandedness={strand} -t {threads} {input.ref} {input.bam} > {log} 2>&1")
 
 
 rule portcullis_junc:
-    input:
-        bai=rules.portcullis_prep.output
-    output: PORTCULLIS_DIR+"/{aln_method}-{reads}/junc/{aln_method}-{reads}.junctions.tab"
-    params:
-        prepdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep",
-        outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/junc",
-        load=LOAD_PORTCULLIS
-    log: PORTCULLIS_DIR+"/{aln_method}-{reads}-junc.log"
-    threads: int(THREADS)
-    message: "Using portcullis to analyse potential junctions: {input}"
-    shell: "{params.load} && {RUN_TIME} portcullis junc -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} -t {threads} {params.prepdir} > {log} 2>&1"
+	input:
+		bai=rules.portcullis_prep.output
+	output: PORTCULLIS_DIR+"/{aln_method}-{reads}/junc/{aln_method}-{reads}.junctions.tab"
+	params:
+		prepdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep",
+		outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/junc",
+		load=LOAD_PORTCULLIS
+	log: PORTCULLIS_DIR+"/{aln_method}-{reads}-junc.log"
+	threads: int(THREADS)
+	message: "Using portcullis to analyse potential junctions: {input}"
+	run:
+		strand = PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"		
+		shell("{params.load} && {RUN_TIME} portcullis junc -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} --strandedness={strand} -t {threads} {params.prepdir} > {log} 2>&1")
 
 
 rule portcullis_filter:
@@ -329,6 +334,28 @@ rule spanki:
     message: "Using SPANKI to analyse junctions: {input.bam}"
     shell: "set +e && {params.load_spanki} && cd {params.outdir} && {RUN_TIME} spankijunc -i {params.bam} -g {params.gtf} -f {params.fa} > {log} 2>&1 && cd {CWD} && if [[ -s {params.all_juncs} ]] ; then {params.load_portcullis} && spanki_filter.py {params.all_juncs} > {params.filt_juncs} && spanki2bed.py {params.filt_juncs} > {output.bed} ; else touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
+rule spanki_annot:
+    input:
+        bam=rules.bam_sort.output,
+        fa=REF,
+        gtf=REF_GTF,
+        idx=rules.bam_index.output
+    output: link=JUNC_DIR+"/output/{aln_method}-{reads}-spanki_annot.bed",
+        bed=JUNC_DIR+"/spanki/{aln_method}-{reads}/junctions_out/{aln_method}-{reads}-spanki_annot.bed"
+    params:
+        load_spanki=LOAD_SPANKI,
+        load_portcullis=LOAD_PORTCULLIS,
+        outdir=JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}",
+        bam=ALIGN_DIR_FULL+"/output/{aln_method}-{reads}.sorted.bam",
+        fa=os.path.abspath(REF),
+        gtf=os.path.abspath(REF_GTF),
+        all_juncs=JUNC_DIR+"/spanki/{aln_method}-{reads}/junctions_out/juncs.all",
+        filt_juncs=JUNC_DIR+"/spanki/{aln_method}-{reads}/junctions_out/juncs.filtered",
+        bed=JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}/junctions_out/{aln_method}-{reads}-spanki_annot.bed"
+    log: JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}-spanki_annot.log"
+    threads: 1
+    message: "Using SPANKI to analyse junctions: {input.bam}"
+    shell: "set +e && {params.load_spanki} && cd {params.outdir} && {RUN_TIME} spankijunc -i {params.bam} -g {params.gtf} -f {params.fa} -filter T > {log} 2>&1 && cd {CWD} && if [[ -s {params.all_juncs} ]] ; then {params.load_portcullis} && spanki2bed.py {params.all_juncs} > {output.bed} ; else touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 	
 rule finesplice:
     input:
@@ -369,41 +396,73 @@ rule truesight:
     log: JUNC_DIR_FULL+"/truesight/{reads}-truesight.log"
     threads: int(THREADS)
     message: "Using Truesight to find junctions"
-    shell: "{params.load_fs} && cd {params.outdir} && {RUN_TIME} truesight_pair.pl -i {MIN_INTRON} -I {MAX_INTRON} -v 1 -r {params.index} -p {threads} -o . -f {params.r1} {params.r2} > {log} 2>&1 && cd {CWD} && {params.load_portcullis} && ts2bed.py {params.junc} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+    shell: "{params.load_fs} && cd {params.outdir} && {RUN_TIME} truesight_pair.pl -i {MIN_INTRON} -I {MAX_INTRON} -v 1 -r {params.index} -p {threads} -o . -f {params.r1} {params.r2} > {log} 2>&1 && cd {CWD} && {params.load_portcullis} && truesight2bed.py {params.junc} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 
 ###
 
-rule asm_stringtie_normal:
+rule asm_cufflinks:
+        input: 
+                bam=rules.bam_sort.output,
+                ref=REF
+        output: 
+                gtf=ASM_DIR+"/output/cufflinks-{aln_method}-{reads}.gtf"
+        params: 
+                outdir=ASM_DIR+"/cufflinks-{aln_method}-{reads}",
+                gtf=ASM_DIR+"/cufflinks-{aln_method}-{reads}/transcripts.gtf",
+                link_src="../cufflinks-{aln_method}-{reads}/transcripts.gtf",
+                load=LOAD_CUFFLINKS,
+        log: ASM_DIR+"/cufflinks-{aln_method}-{reads}.log"
+        threads: int(THREADS)
+        message: "Using cufflinks to assemble: {input.bam}"
+        shell: "{params.load} && cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --no-update-check {input.bam} > {log} 2>&1 && ln -sf {params.link_src} {output.gtf} && touch -h {output.gtf}"
+
+
+
+rule asm_stringtie:
 	input: 	bam=rules.bam_sort.output
 	output: 
-		link=ASM_DIR+"/output/stringtie-{aln_method}-{reads}-normal.gtf",
-		gtf=ASM_DIR+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}-normal.gtf"
+		link=ASM_DIR+"/output/stringtie-{aln_method}-{reads}.gtf",
+		gtf=ASM_DIR+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}.gtf"
 	params:
 		load=LOAD_STRINGTIE,
-		gtf=ASM_DIR+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}-normal.gtf",
-		link_src="../stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}-normal.gtf",
-		name="Stringtie_{aln_method}_{reads}_normal"
-	log: ASM_DIR+"/stringtie-{aln_method}-{reads}-normal.log"
+		gtf=ASM_DIR+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}.gtf",
+		link_src="../stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}.gtf",
+		name="Stringtie_{aln_method}_{reads}"
+	log: ASM_DIR+"/stringtie-{aln_method}-{reads}.log"
 	threads: int(THREADS)
 	message: "Using stringtie to assemble: {input.bam}"
 	shell: "{params.load} && {RUN_TIME} stringtie {input.bam} -l {params.name} -f 0.05 -m 200 -o {params.gtf} -p {threads} > {log} 2>&1 && ln -sf {params.link_src} {output.link} && touch -h {output.link}"
 
 
+rule asm_class:
+        input:
+                bam=rules.bam_sort.output,
+                ref=REF
+        output: 
+                link=ASM_DIR+"/output/class-{aln_method}-{reads}.gtf",
+                gtf=ASM_DIR+"/class-{aln_method}-{reads}/class-{aln_method}-{reads}.gtf"
+        params: 
+                outdir=ASM_DIR+"/class-{aln_method}-{reads}",
+                load=LOAD_CLASS,
+                gtf=ASM_DIR+"/class-{aln_method}-{reads}/class-{aln_method}-{reads}.gtf",
+                link_src="../class-{aln_method}-{reads}/class-{aln_method}-{reads}.gtf"
+        log: ASM_DIR+"/class-{aln_method}-{reads}.log"
+        threads: int(THREADS)
+        message: "Using class to assemble: {input.bam}"
+        shell: "{params.load} && class_run.py --clean --force -p {threads} {input.bam} > {output.gtf} 2> {log} && ln -sf {params.link_src} {output.link} && touch -h {output.link}"
 
-rule asm_stringtie_bamfilt:
-	input: 
-		bam=rules.portcullis_bamfilt.output.bam
-	output: 
-		link=ASM_DIR+"/output/stringtie-{aln_method}-{reads}-filt.gtf",
-		gtf=ASM_DIR+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}-filt.gtf"
+
+rule gtf_2_bed:
+	input:
+		gtf=ASM_DIR+"/output/{asm_method}-{aln_method}-{reads}.gtf"
+	output:
+		bed=ASM_DIR+"/output/{asm_method}-{aln_method}-{reads}.bed"
 	params:
-		load=LOAD_STRINGTIE,
-		gtf=ASM_DIR+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}-filt.gtf",
-		link_src="../stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}-filt.gtf",
-		name="Stringtie_{aln_method}_{reads}_filt"
-	log: ASM_DIR+"/stringtie-{aln_method}-{reads}-filt.log"
-	threads: int(THREADS)
-	message: "Using stringtie to assemble: {input.bam}"
-	shell: "{params.load} && {RUN_TIME} stringtie {input.bam} -l {params.name} -f 0.05 -m 200 -o {params.gtf} -p {threads} > {log} 2>&1 && ln -sf {params.link_src} {output.link} && touch -h {output.link}"
+		load_gt=LOAD_GT,
+		load_p=LOAD_PORTCULLIS,
+		gff=ASM_DIR+"/output/{asm_method}-{aln_method}-{reads}.gff3",
+		gffi=ASM_DIR+"/output/{asm_method}-{aln_method}-{reads}.introns.gff3"
+	message: "Converting GTF to BED for: {input.gtf}"
+	shell: "{params.load_gt} && gt gtf_to_gff3 -tidy -force -o {params.gff} {input.gtf} && gt gff3 -sort -tidy -addintrons -force -o {params.gffi} {params.gff} && {params.load_p} && gff2bed.py {params.gffi} > {output.bed} && rm {params.gff} {params.gffi}"
 

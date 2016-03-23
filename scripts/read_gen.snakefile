@@ -24,6 +24,7 @@ READ_LENGTH = config["min_read_length"]
 READ_LENGTH_MINUS_1 = int(READ_LENGTH) - 1
 
 LOAD_BOWTIE = config["load_bowtie"]
+LOAD_FASTQC = config["load_fastqc"]
 LOAD_SPANKI = config["load_spanki"]
 LOAD_TRIMGALORE = config["load_trimgalore"]
 LOAD_TOPHAT = config["load_tophat"]
@@ -78,13 +79,10 @@ Rules
 rule all:
 	input: 
 		SIM_DIR_FULL+"/var/sim.bam",
-		SIM_DIR_FULL+"/fixed/sim.bam"
-		#expand(PORT_DIR + "/output/portcullis-{align_method}-{reads}.unfiltered.bed", align_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
+		SIM_DIR_FULL+"/fixed/sim.bam",
+		PORT_DIR+"/junc/portcullis_sim_var.junctions.bed",
+		READS_DIR+"/trim/fastqc/real.R1_fastqc.html"
 		
-
-#rule clean:
-#	shell: "rm -rf {out}"
-
 
 rule trim_reads:
 	input: 
@@ -100,6 +98,18 @@ rule trim_reads:
 	log: READS_DIR+"/trim/trim.log"		
 	shell: "{LOAD_TRIMGALORE} && trim_galore --paired --length {READ_LENGTH} -o {params.outdir} {input.r1} {input.r2} > {log} 2>&1 && ln -sf {params.r1} {output.linkr1} && ln -sf {params.r2} {output.linkr2} && touch -h {output.linkr1} {output.linkr2}"
 
+
+rule fastqc:
+	input:
+		r1=rules.trim_reads.output.linkr1,
+		r2=rules.trim_reads.output.linkr2
+	output: 
+		r1=READS_DIR+"/trim/fastqc/real.R1_fastqc.html",
+		r2=READS_DIR+"/trim/fastqc/real.R2_fastqc.html"
+	params:
+		outdir=READS_DIR+"/trim/fastqc"
+	log: READS_DIR+"/trim/fastqc.log"
+	shell: "{LOAD_FASTQC} && fastqc -o {params.outdir} {input.r1} {input.r2}"
 
 
 rule simgen_bowtie_index:
@@ -153,7 +163,7 @@ rule align_tophat_wref:
 	params:
 		outdir=ALIGN_DIR+"/tophat_wref/",
 		indexdir=ALIGN_DIR+"/tophat/index/"+NAME,
-		bam=ALIGN_DIR_FULL+"/tophat_wref/accepted_hits.bam",
+		bam="../tophat_wref/accepted_hits.bam",
 	log: ALIGN_DIR + "/tophat-real_wref.log"
 	threads: int(THREADS)
 	message: "Aligning RNAseq data with tophat using GTF reference: {input.r1} {input.r2} {input.gtf}"
@@ -237,5 +247,32 @@ rule sim_var_reads:
 	log: SIM_DIR+"/spanki_readgen_var.log"
 	threads: 1	
 	shell: "{LOAD_SPANKI} && {LOAD_CUFFLINKS} && spankisim_transcripts -g {input.gtf} -f {input.fa} -o {params.outdir} -m custom -mdir {params.mdir} -t {input.transcript_cov} -bp {READ_LENGTH} -ends 2 -frag 250 > {log} 2>&1 && ln -sf {params.r1} {output.linkr1} && ln -sf {params.r2} {output.linkr2} && touch -h {output.linkr1} {output.linkr2}"
+
+rule sim_var_portcullis_prep:
+	input:
+		bam=rules.sim_var_reads.output.bam,
+		ref=REF,
+	output: PORT_DIR+"/prep/portcullis.sorted.alignments.bam.bai"
+	params:
+		outdir=PORT_DIR+"/prep",
+		load=LOAD_PORTCULLIS
+	log: PORT_DIR+"/prep.log"
+	threads: int(THREADS)
+	message: "Using portcullis to prepare: {input}"
+	shell: "{params.load} && portcullis prep -o {params.outdir} -l --strandedness={PORTCULLIS_STRAND} -t {threads} {input.ref} {input.bam} > {log} 2>&1"
+
+
+rule sim_var_portcullis_junc:
+	input:
+		bai=rules.sim_var_portcullis_prep.output
+	output: PORT_DIR+"/junc/portcullis_sim_var.junctions.bed"
+	params:
+		prepdir=PORT_DIR+"/prep",
+		outdir=PORT_DIR+"/junc",
+		load=LOAD_PORTCULLIS
+	log: PORT_DIR+"/junc.log"
+	threads: int(THREADS)
+	message: "Using portcullis to analyse potential junctions: {input}"
+	shell: "{params.load} && portcullis junc -o {params.outdir} -p portcullis_sim_var -t {threads} {params.prepdir} > {log} 2>&1"
 
 
