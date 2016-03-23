@@ -212,6 +212,8 @@ protected:
     void testInstance(shared_ptr<Forest> f, const JunctionList& y);  
     
     void getRandomSubset(const JunctionList& in, JunctionList& out);
+    
+    void outputMeanScore(const vector<double>& scores, const string& score_type);
 };
 }
 

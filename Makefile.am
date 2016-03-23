@@ -57,5 +57,3 @@ if MAKE_DOCS
 endif
 
 SUBDIRS = $(make_dirs)
-
-

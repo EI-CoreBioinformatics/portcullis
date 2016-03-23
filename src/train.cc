@@ -242,7 +242,9 @@ void portcullis::Train::train() {
         KFold<JunctionList::const_iterator> kf(folds, junctions.begin(), junctions.end());
 
         JunctionList test, train;
-        vector<double> scores;
+        vector<double> f1s;
+        vector<double> recalls;
+        vector<double> precisions;
 
         cout << endl << "Starting " << folds << "-fold cross validation" << endl;
         cout << std::fixed << std::setprecision(2);
@@ -286,10 +288,12 @@ void portcullis::Train::train() {
             
             Performance p(tp, tn, fp, fn);
             
-            double score = p.getF1Score();
+            
             cout << p.toString() << endl;
 
-            scores.push_back(score); // 
+            f1s.push_back(p.getF1Score());
+            recalls.push_back(p.getRecall());
+            precisions.push_back(p.getPrecision());
 
             // Clear the train and test vectors in preparation for the next step
             train.clear();
@@ -298,15 +302,21 @@ void portcullis::Train::train() {
 
         cout << "Cross validation completed" << endl << endl;
     
-        double sum = std::accumulate(scores.begin(), scores.end(), 0.0);
-        double mean = sum / scores.size();
-        double sq_sum = std::inner_product(scores.begin(), scores.end(), scores.begin(), 0.0);
-        double stdev = std::sqrt(sq_sum / scores.size() - mean * mean);
-
-        cout << "Mean F1 score: " << mean << "% (+/- " << stdev << "%)" << endl;
+        outputMeanScore(recalls, "recall");
+        outputMeanScore(precisions, "precisions");
+        outputMeanScore(f1s, "F1");
     }
     
-}    
+}
+
+void portcullis::Train::outputMeanScore(const vector<double>& scores, const string& score_type) {
+    double sum = std::accumulate(scores.begin(), scores.end(), 0.0);
+    double mean = sum / scores.size();
+    double sq_sum = std::inner_product(scores.begin(), scores.end(), scores.begin(), 0.0);
+    double stdev = std::sqrt(sq_sum / scores.size() - mean * mean);
+
+    cout << "Mean " << score_type << ": " << mean << "% (+/- " << stdev << "%)" << endl;
+}
 
 void portcullis::Train::getRandomSubset(const JunctionList& in, JunctionList& out) {
 
