@@ -13,7 +13,7 @@ def main():
     parser = argparse.ArgumentParser("Script to compare bed file against reference bed")
     parser.add_argument("input", help="The BED file to analyse")
     parser.add_argument("-r", "--reference", required=True, help="The reference BED file to compare against")
-    parser.add_argument("-o", "--output", required=True, help="The output venn plot")
+    parser.add_argument("-o", "--output", help="The output venn plot")
     args = parser.parse_args()
 
     ref_bed = bed12.loadbed(args.reference, False, False)
@@ -34,10 +34,11 @@ def main():
     print(performance.PEntry.header())
     print(p)
 
-    # Create Venns
-    plt = figure(1, figsize=(6, 6))
-    venn2(subsets=(p.fn, p.fp, p.tp), set_labels=(args.reference, args.input))
-    plt.show()
-    plt.savefig(args.output)
+    if not args.output == None:
+        # Create Venns
+        plt = figure(1, figsize=(6, 6))
+        venn2(subsets=(p.fn, p.fp, p.tp), set_labels=(args.reference, args.input))
+        plt.show()
+        plt.savefig(args.output)
 
 main()

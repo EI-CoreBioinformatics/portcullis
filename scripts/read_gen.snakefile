@@ -75,6 +75,8 @@ PORTCULLIS_STRAND = "firststrand" if STRANDEDNESS == "fr-firststrand" else "seco
 #########################
 Rules
 
+localrules: all, asm_cufflinks_cov
+
 # Define 
 rule all:
 	input: 
@@ -187,17 +189,21 @@ rule bam_index_wref:
 rule asm_cufflinks_wref:
 	input:
 		bam=ALIGN_DIR+"/output/tophat-real_wref.sorted.bam",
-		ref=REF
-	output:
-		cov=ASM_DIR+"/cufflinks-tophat_wref-real/transcripts.cov"
-	params: 
-		outdir=ASM_DIR+"/cufflinks-tophat_wref-real",
-		isoforms=ASM_DIR+"/cufflinks-tophat_wref-real/isoforms.fpkm_tracking"
+		ref=REF_GTF
+	output:	ASM_DIR+"/cufflinks-tophat_wref-real/isoforms.fpkm_tracking"
+	params:	outdir=ASM_DIR+"/cufflinks-tophat_wref-real",
 	log: ASM_DIR+"/cufflinks-tophat_wref-real.log"
 	threads: int(THREADS)
 	message: "Using cufflinks to assemble: {input.bam}"
-	shell: "{LOAD_CUFFLINKS} && cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --no-update-check {ASM_CUFFLINKS_EXTRA} {input.bam} > {log} 2>&1 && {LOAD_PORTCULLIS} && {LOAD_PYTHON3} && cufflinks2spankicov.py {params.isoforms} > {output.cov}"
+	shell: "{LOAD_CUFFLINKS} && cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} -G {input.ref} -g {input.ref} --no-update-check {ASM_CUFFLINKS_EXTRA} {input.bam} > {log} 2>&1"
 
+rule asm_cufflinks_cov:
+	input: rules.asm_cufflinks_wref.output
+	output: ASM_DIR+"/cufflinks-tophat_wref-real/transcripts.cov"
+	params: fpkminref=ASM_DIR+"/cufflinks-tophat_wref-real/isoforms.fpkm_tracking_inref"
+	threads: 1
+	message: "Creating transcript coverage output file"
+	shell: "{LOAD_PORTCULLIS} && {LOAD_PYTHON3} && grep -v ^CUFF {input} > {params.fpkminref} && cufflinks2spankicov.py {params.fpkminref} > {output}"
 
 rule simgen_model:
 	input:
@@ -233,7 +239,7 @@ rule sim_var_reads:
 	input:
 		gtf=REF_GTF,
                 fa=REF,
-                transcript_cov=rules.asm_cufflinks_wref.output.cov,
+                transcript_cov=rules.asm_cufflinks_cov.output,
 		model=rules.simgen_model.output
 	output:
 		bam=SIM_DIR_FULL+"/var/sim.bam",

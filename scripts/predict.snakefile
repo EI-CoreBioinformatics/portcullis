@@ -40,6 +40,7 @@ LOAD_FINESPLICE = config["load_finesplice"]
 LOAD_TRUESIGHT = config["load_truesight"]
 LOAD_PYTHON3 = config["load_python3"]
 LOAD_GT = config["load_gt"]
+LOAD_MIKADO = config["load_mikado"]
 
 INDEX_STAR_EXTRA = config["index_star_extra"]
 ALIGN_TOPHAT_EXTRA = config["align_tophat_extra"]
@@ -56,6 +57,7 @@ SIM_INPUT_SET = [x for x in INPUT_SETS if x.startswith("sim")]
 REAL_INPUT_SET = [x for x in INPUT_SETS if x.startswith("real")]
 ALIGNMENT_METHODS = config["align_methods"]
 ASSEMBLY_METHODS = config["asm_methods"]
+ASSEMBLY_MODES = ["permissive","default","strict"]
 JUNC_METHODS = config["junc_methods"]
 
 #Shortcuts
@@ -77,20 +79,27 @@ CWD = os.getcwd()
 HISAT_STRAND = "--rna-strandness=RF" if STRANDEDNESS == "fr-firststrand" else "--rna-strandness=FR" if STRANDEDNESS == "fr-secondstrand" else ""
 PORTCULLIS_STRAND = "firststrand" if STRANDEDNESS == "fr-firststrand" else "secondstrand" if STRANDEDNESS == "fr-secondstrand" else "unstranded"
 
-
+# Min isoform fraction
+PERMISSIVE = 0.01
+DEFAULT = 0.1
+STRICT = 0.5
 
 
 #########################
 Rules
 
+localrules: all, truesight2bed
+
 # Define 
 rule all:
 	input: 
+		expand(ALIGN_DIR+"/output/{aln_method}-{reads}.sorted.bam.stats", aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS),
 		expand(JUNC_DIR+"/output/{aln_method}-{reads}-portcullis.bed", aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS),
 		expand(JUNC_DIR+"/output/tophat-{reads}-spanki.bed", reads=INPUT_SETS),
 		expand(JUNC_DIR+"/output/tophat-{reads}-finesplice.bed", reads=INPUT_SETS),
 		expand(JUNC_DIR+"/output/truesight-{reads}-truesight.bed", reads=INPUT_SETS),
-		expand(ASM_DIR+"/output/{asm_method}-{aln_method}-{reads}.bed", asm_method=ASSEMBLY_METHODS, aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
+		expand(ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.bed", asm_method=ASSEMBLY_METHODS, asm_mode=ASSEMBLY_MODES, aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
+#		expand(ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.stats", asm_method=ASSEMBLY_METHODS, asm_mode=ASSEMBLY_MODES, aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
 		
 
 #rule clean:
@@ -246,7 +255,17 @@ rule bam_index:
 	message: "Using samtools to index: {input}"
 	shell: "{LOAD_SAMTOOLS} && samtools index {input}"
 
-
+rule bam_stats:
+        input:
+                bam=rules.bam_sort.output,
+                idx=rules.bam_index.output
+        output: ALIGN_DIR+"/output/{aln_method}-{reads}.sorted.bam.stats"
+        params: 
+                load=LOAD_SAMTOOLS,
+                plot_out=ALIGN_DIR+"/output/plots/{aln_method}-{reads}/{aln_method}-{reads}"
+        threads: 1
+        message: "Using samtools to collected stats for: {input}"
+        shell: "{params.load} && samtools stats {input.bam} > {output} && plot-bamstats -p {params.plot_out} {output}"
 
 rule portcullis_prep:
 	input:
@@ -345,14 +364,14 @@ rule spanki_annot:
     params:
         load_spanki=LOAD_SPANKI,
         load_portcullis=LOAD_PORTCULLIS,
-        outdir=JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}",
+        outdir=JUNC_DIR_FULL+"/spanki_annot/{aln_method}-{reads}",
         bam=ALIGN_DIR_FULL+"/output/{aln_method}-{reads}.sorted.bam",
         fa=os.path.abspath(REF),
         gtf=os.path.abspath(REF_GTF),
-        all_juncs=JUNC_DIR+"/spanki/{aln_method}-{reads}/junctions_out/juncs.all",
-        filt_juncs=JUNC_DIR+"/spanki/{aln_method}-{reads}/junctions_out/juncs.filtered",
-        bed=JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}/junctions_out/{aln_method}-{reads}-spanki_annot.bed"
-    log: JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}-spanki_annot.log"
+        all_juncs=JUNC_DIR+"/spanki_annot/{aln_method}-{reads}/junctions_out/juncs.all",
+        filt_juncs=JUNC_DIR+"/spanki_annot/{aln_method}-{reads}/junctions_out/juncs.filtered",
+        bed=JUNC_DIR_FULL+"/spanki_annot/{aln_method}-{reads}/junctions_out/{aln_method}-{reads}-spanki_annot.bed"
+    log: JUNC_DIR_FULL+"/spanki_annot/{aln_method}-{reads}-spanki_annot.log"
     threads: 1
     message: "Using SPANKI to analyse junctions: {input.bam}"
     shell: "set +e && {params.load_spanki} && cd {params.outdir} && {RUN_TIME} spankijunc -i {params.bam} -g {params.gtf} -f {params.fa} -filter T > {log} 2>&1 && cd {CWD} && if [[ -s {params.all_juncs} ]] ; then {params.load_portcullis} && spanki2bed.py {params.all_juncs} > {output.bed} ; else touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
@@ -381,88 +400,116 @@ rule truesight:
         idx=rules.align_bowtie_index.output,
         r1=READS_DIR+"/{reads}.R1.fq",
         r2=READS_DIR+"/{reads}.R2.fq"
-    output:
-        link=JUNC_DIR+"/output/truesight-{reads}-truesight.bed",
-        bed=JUNC_DIR+"/truesight/{reads}/truesight-{reads}-truesight.bed"
+    output: JUNC_DIR+"/truesight/{reads}/GapAli.junc"
     params:
         load_fs=LOAD_TRUESIGHT,
-        load_portcullis=LOAD_PORTCULLIS,
 	index=ALIGN_DIR_FULL + "/bowtie/index/"+NAME,
         outdir=JUNC_DIR+"/truesight/{reads}",
         junc=JUNC_DIR+"/truesight/{reads}/GapAli.junc",
-        bed="../truesight/{reads}/trusight-{reads}-truesight.bed",
 	r1=READS_DIR_FULL+"/{reads}.R1.fq",
 	r2=READS_DIR_FULL+"/{reads}.R2.fq"
     log: JUNC_DIR_FULL+"/truesight/{reads}-truesight.log"
     threads: int(THREADS)
     message: "Using Truesight to find junctions"
-    shell: "{params.load_fs} && cd {params.outdir} && {RUN_TIME} truesight_pair.pl -i {MIN_INTRON} -I {MAX_INTRON} -v 1 -r {params.index} -p {threads} -o . -f {params.r1} {params.r2} > {log} 2>&1 && cd {CWD} && {params.load_portcullis} && truesight2bed.py {params.junc} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+    shell: "{params.load_fs} && cd {params.outdir} && {RUN_TIME} truesight_pair.pl -i {MIN_INTRON} -I {MAX_INTRON} -v 1 -r {params.index} -p {threads} -o . -f {params.r1} {params.r2} > {log} 2>&1 && cd {CWD}"
+
+rule truesight2bed:
+	input: rules.truesight.output
+	output:
+		link=JUNC_DIR+"/output/truesight-{reads}-truesight.bed",
+	        bed=JUNC_DIR+"/truesight/{reads}/truesight-{reads}-truesight.bed"
+	params:
+		load_portcullis=LOAD_PORTCULLIS,
+		bed="../truesight/{reads}/truesight-{reads}-truesight.bed"
+	threads: 1
+	message: "Creating bed file from truesight output: {input}"
+	shell: "{params.load_portcullis} && truesight2bed.py {input} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 
 ###
 
 rule asm_cufflinks:
-        input: 
-                bam=rules.bam_sort.output,
-                ref=REF
-        output: 
-                gtf=ASM_DIR+"/output/cufflinks-{aln_method}-{reads}.gtf"
-        params: 
-                outdir=ASM_DIR+"/cufflinks-{aln_method}-{reads}",
-                gtf=ASM_DIR+"/cufflinks-{aln_method}-{reads}/transcripts.gtf",
-                link_src="../cufflinks-{aln_method}-{reads}/transcripts.gtf",
-                load=LOAD_CUFFLINKS,
-        log: ASM_DIR+"/cufflinks-{aln_method}-{reads}.log"
-        threads: int(THREADS)
-        message: "Using cufflinks to assemble: {input.bam}"
-        shell: "{params.load} && cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --no-update-check {input.bam} > {log} 2>&1 && ln -sf {params.link_src} {output.gtf} && touch -h {output.gtf}"
+	input:
+		bam=rules.bam_sort.output,
+		ref=REF
+	output: 
+		gtf=ASM_DIR+"/output/cufflinks_{asm_mode}-{aln_method}-{reads}.gtf"
+	params:
+		outdir=ASM_DIR+"/cufflinks_{asm_mode}-{aln_method}-{reads}",
+		gtf=ASM_DIR+"/cufflinks_{asm_mode}-{aln_method}-{reads}/transcripts.gtf",
+		link_src="../cufflinks_{asm_mode}-{aln_method}-{reads}/transcripts.gtf",
+		load=LOAD_CUFFLINKS
+	log: ASM_DIR+"/cufflinks_{asm_mode}-{aln_method}-{reads}.log"
+	threads: int(THREADS)
+	message: "Using cufflinks to assemble {input.bam}"
+	run:
+		mode = PERMISSIVE if wildcards.asm_mode == "permissive" else STRICT if wildcards.asm_mode == "strict" else DEFAULT
+		shell("{params.load} && cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} -F {mode} --no-update-check {input.bam} > {log} 2>&1 && ln -sf {params.link_src} {output.gtf} && touch -h {output.gtf}")
 
 
 
 rule asm_stringtie:
 	input: 	bam=rules.bam_sort.output
 	output: 
-		link=ASM_DIR+"/output/stringtie-{aln_method}-{reads}.gtf",
-		gtf=ASM_DIR+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}.gtf"
+		link=ASM_DIR+"/output/stringtie_{asm_mode}-{aln_method}-{reads}.gtf",
+		gtf=ASM_DIR+"/stringtie_{asm_mode}-{aln_method}-{reads}/stringtie_{asm_mode}-{aln_method}-{reads}.gtf"
 	params:
 		load=LOAD_STRINGTIE,
-		gtf=ASM_DIR+"/stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}.gtf",
-		link_src="../stringtie-{aln_method}-{reads}/stringtie-{aln_method}-{reads}.gtf",
-		name="Stringtie_{aln_method}_{reads}"
-	log: ASM_DIR+"/stringtie-{aln_method}-{reads}.log"
+		gtf=ASM_DIR+"/stringtie_{asm_mode}-{aln_method}-{reads}/stringtie_{asm_mode}-{aln_method}-{reads}.gtf",
+		link_src="../stringtie_{asm_mode}-{aln_method}-{reads}/stringtie_{asm_mode}-{aln_method}-{reads}.gtf",
+		name="Stringtie_{asm_mode}_{aln_method}_{reads}"
+	log: ASM_DIR+"/stringtie_{asm_mode}-{aln_method}-{reads}.log"
 	threads: int(THREADS)
 	message: "Using stringtie to assemble: {input.bam}"
-	shell: "{params.load} && {RUN_TIME} stringtie {input.bam} -l {params.name} -f 0.05 -m 200 -o {params.gtf} -p {threads} > {log} 2>&1 && ln -sf {params.link_src} {output.link} && touch -h {output.link}"
+	run:
+		mode = PERMISSIVE if wildcards.asm_mode == "permissive" else STRICT if wildcards.asm_mode == "strict" else DEFAULT
+		shell("{params.load} && {RUN_TIME} stringtie {input.bam} -l {params.name} -f {mode} -m 200 -o {params.gtf} -p {threads} > {log} 2>&1 && ln -sf {params.link_src} {output.link} && touch -h {output.link}")
 
 
 rule asm_class:
-        input:
-                bam=rules.bam_sort.output,
-                ref=REF
-        output: 
-                link=ASM_DIR+"/output/class-{aln_method}-{reads}.gtf",
-                gtf=ASM_DIR+"/class-{aln_method}-{reads}/class-{aln_method}-{reads}.gtf"
-        params: 
-                outdir=ASM_DIR+"/class-{aln_method}-{reads}",
-                load=LOAD_CLASS,
-                gtf=ASM_DIR+"/class-{aln_method}-{reads}/class-{aln_method}-{reads}.gtf",
-                link_src="../class-{aln_method}-{reads}/class-{aln_method}-{reads}.gtf"
-        log: ASM_DIR+"/class-{aln_method}-{reads}.log"
-        threads: int(THREADS)
-        message: "Using class to assemble: {input.bam}"
-        shell: "{params.load} && class_run.py --clean --force -p {threads} {input.bam} > {output.gtf} 2> {log} && ln -sf {params.link_src} {output.link} && touch -h {output.link}"
+	input:
+		bam=rules.bam_sort.output,
+		ref=REF
+	output:
+		link=ASM_DIR+"/output/class_{asm_mode}-{aln_method}-{reads}.gtf",
+		gtf=ASM_DIR+"/class_{asm_mode}-{aln_method}-{reads}/class_{asm_mode}-{aln_method}-{reads}.gtf"
+	params:
+		outdir=ASM_DIR+"/class_{asm_mode}-{aln_method}-{reads}",
+		load=LOAD_CLASS,
+		gtf=ASM_DIR+"/class_{asm_mode}-{aln_method}-{reads}/class_{asm_mode}-{aln_method}-{reads}.gtf",
+		link_src="../class_{asm_mode}-{aln_method}-{reads}/class_{asm_mode}-{aln_method}-{reads}.gtf"
+	log: ASM_DIR+"/class_{asm_mode}-{aln_method}-{reads}.log"
+	threads: int(THREADS)
+	message: "Using class to assemble: {input.bam}"
+	run:
+		mode = PERMISSIVE if wildcards.asm_mode == "permissive" else STRICT if wildcards.asm_mode == "strict" else DEFAULT
+		shell("{params.load} && class_run.py -c '-F {mode}' -p {threads} {input.bam} > {output.gtf} 2> {log} && ln -sf {params.link_src} {output.link} && touch -h {output.link}")
 
 
 rule gtf_2_bed:
 	input:
-		gtf=ASM_DIR+"/output/{asm_method}-{aln_method}-{reads}.gtf"
+		gtf=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.gtf"
 	output:
-		bed=ASM_DIR+"/output/{asm_method}-{aln_method}-{reads}.bed"
+		bed=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.bed"
 	params:
 		load_gt=LOAD_GT,
 		load_p=LOAD_PORTCULLIS,
-		gff=ASM_DIR+"/output/{asm_method}-{aln_method}-{reads}.gff3",
-		gffi=ASM_DIR+"/output/{asm_method}-{aln_method}-{reads}.introns.gff3"
+		gff=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.gff3",
+		gffi=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.introns.gff3"
 	message: "Converting GTF to BED for: {input.gtf}"
-	shell: "{params.load_gt} && gt gtf_to_gff3 -tidy -force -o {params.gff} {input.gtf} && gt gff3 -sort -tidy -addintrons -force -o {params.gffi} {params.gff} && {params.load_p} && gff2bed.py {params.gffi} > {output.bed} && rm {params.gff} {params.gffi}"
+	shell: "{params.load_gt} && gt gtf_to_gff3 -tidy -force -o {params.gff} {input.gtf} 2> /dev/null && gt gff3 -sort -tidy -addintrons -force -o {params.gffi} {params.gff} && {params.load_p} && gff2bed.py {params.gffi} > {output.bed} && rm {params.gff} {params.gffi}"
+
+rule gtf_stats:
+	input:
+		gtf=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.gtf",
+		ref=REF_GTF
+	output: 
+		comp=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.comp.stats",
+		stats=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.stats"
+	params: 
+		load_mikado=LOAD_MIKADO,
+		prefix=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.comp"
+	message: "Calculating stats for: {input.gtf}"
+	shell: "{params.load_mikado} && mikado.py util stats {input.gtf} > {output.stats} && mikado.py compare -r {input.ref} -p {input.gtf} -o {params.prefix}"
+
 

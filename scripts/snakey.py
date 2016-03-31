@@ -57,19 +57,20 @@ if not os.path.exists("logs"):
 
 if SCHEDULER == "LSF":
     sub_cmd = "bsub"
-    res_cmd = " -R rusage[mem={cluster.memory}]span[ptile={threads}] -n {threads} -q {cluster.queue} -J {rule} -oo /dev/null"
+    res_cmd = " -R rusage[mem={cluster.memory}]span[ptile={threads}] -n {threads} -q {cluster.queue} -J {rule} -oo logs/" + now + "_{rule}_%j.out"
 elif SCHEDULER == "PBS":
     sub_cmd = "qsub"
-    res_cmd = " -lselect=1:mem={cluster.memory}MB:ncpus={threads} -q {cluster.queue} -N {rule}"
+    res_cmd = " -lselect=1:mem={cluster.memory}MB:ncpus={threads} -q {cluster.queue} -N {rule} -o logs/{rule}_%j.out -e logs/{rule}_%j.out"
 elif SCHEDULER == "SLURM":
     sub_cmd = "sbatch"
     cores = "-c {threads} " if args.no_drmaa else ""
     res_cmd = " " + cores + "-p {cluster.queue} --mem={cluster.memory} -J {rule} -o logs/" + now + "_{rule}_%j.out -e logs/" + now + "_{rule}_%j.out"
 
 
+sf = args.snakefile if os.path.exists(args.snakefile) else snakey_dir + "/" + args.snakefile
 
 
-snakemake.snakemake(snakey_dir + "/" + args.snakefile,
+snakemake.snakemake(sf,
                     cores=args.max_nodes,
                     nodes=args.max_cores,
                     configfile=args.config,

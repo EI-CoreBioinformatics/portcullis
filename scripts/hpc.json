@@ -2,20 +2,28 @@
 	"__default__" :
 	{
 		"threads" : "4",
-		"memory" : "10000",
-		"queue" : "tgac-medium"
+		"memory" : "5000",
+		"queue" : "Test"
 	},
 	"align_gsnap" :
 	{
-		"memory" : "20000"
+		"memory" : "30000"
 	},
 	"align_star" :
 	{
-		"memory" : "30000"
+		"memory" : "60000"
+	},
+	"align_hisat" :
+	{
+		"memory" : "20000"
+	},
+	"bam_sort" :
+	{
+		"memory" : "10000"
 	},
 	"asm_cufflinks" :
 	{
-		"memory" : "25000"
+		"memory" : "30000"
 	},
 	"asm_stringtie" :
 	{
@@ -23,7 +31,7 @@
 	},
 	"asm_class" :
 	{
-		"memory" : "25000"
+		"memory" : "30000"
 	},
 	"portcullis_junc" :
 	{
@@ -31,7 +39,7 @@
 	},
 	"truesight" :
 	{
-		"memory": "30000"
+		"memory": "60000"
 	},
 	"finesplice" :
 	{

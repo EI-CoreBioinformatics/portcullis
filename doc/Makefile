@@ -10,7 +10,7 @@ MKDIR_P	      = mkdir -p
 INSTALL	      = /usr/bin/install -c -m 644
 
 # Set autoconf variables
-prefix	      = /usr/local
+prefix	      = /tgac/software/testing/portcullis/0.11.0/x86_64
 PACKAGE_TARNAME = portcullis
 top_srcdir    = ..
 srcdir	      = .
@@ -43,7 +43,7 @@ DPI=$(DPS)/images
 DISTFILES = $(DPS)/index.rst \
 	    $(DPS)/installation.rst \
 	    $(DPS)/metrics.rst \
-	    $(DPS)/using.rst	    
+	    $(DPS)/using.rst
 
 	
 
