@@ -1040,11 +1040,12 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id, cons
          << nbJunctionAlignments << "\t"           // No score for the moment
          << strand << "\t"          // strand
          << "." << "\t"             // Just put "." for the phase
-         << "Note=cov:" << nbJunctionAlignments 
+         // Removing this as it causes issues with PASA downstream
+         /**<< "Note=cov:" << nbJunctionAlignments 
                         << "|rel:" << this->nbReliableAlignments 
                         << "|ent:" << std::setprecision(4) << this->entropy << std::setprecision(9) 
                         << "|maxmmes:" << this->maxMMES
-                        << "|ham:" << min(this->hammingDistance3p, this->hammingDistance5p) << ";"  // Number of times it was seen
+                        << "|ham:" << min(this->hammingDistance3p, this->hammingDistance5p) << ";"  // Number of times it was seen**/
          << "mult=" << nbJunctionAlignments << ";"  // Coverage for augustus
          << "grp=" << juncId << ";"  // ID for augustus
          << "src=E";                // Source for augustus
@@ -1091,7 +1092,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id, co
     
     // Output left exonic region
     strm << intron->ref.name << "\t"
-         << "portcullis" << "\t"
+         << source << "\t"
          << "match_part" << "\t"
          << leftAncStart + 1 << "\t"
          << (intron->start) << "\t"
@@ -1103,7 +1104,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id, co
 
     // Output right exonic region
     strm << intron->ref.name << "\t"
-         << "portcullis" << "\t"
+         << source << "\t"
          << "match_part" << "\t"
          << (intron->end + 2) << "\t"
          << rightAncEnd + 1 << "\t"

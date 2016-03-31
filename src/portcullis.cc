@@ -138,7 +138,7 @@ int mainFull(int argc, char *argv[]) {
     path filterFile;
     string strandSpecific;
     uint16_t threads;
-    bool useLinks;
+    bool copy;
     bool force;
     bool useCsi;
     bool bamFilter;
@@ -160,8 +160,8 @@ int mainFull(int argc, char *argv[]) {
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
             ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unknown\"")
-            ("use_links", po::bool_switch(&useLinks)->default_value(false), 
-                "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
+            ("copy", po::bool_switch(&copy)->default_value(false), 
+                "Whether to copy files from input data to prepared data where possible, otherwise will use symlinks.  Will require more time and disk space to prepare input but is potentially more robust.")
             ("use_csi", po::bool_switch(&useCsi)->default_value(false), 
                 "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(1),
@@ -251,7 +251,7 @@ int mainFull(int argc, char *argv[]) {
     path prepDir = path(outputDir.string() + "/1-prep");
 
     // Create the prepare class
-    Prepare prep(prepDir, strandednessFromString(strandSpecific), force, useLinks, useCsi, threads, verbose);
+    Prepare prep(prepDir, strandednessFromString(strandSpecific), force, !copy, useCsi, threads, verbose);
     
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information
@@ -408,8 +408,8 @@ int main(int argc, char *argv[]) {
         char** modeArgV = argv+1;
         
         // Set static variables in downstream subtools so they know where to get their resources from
-        JunctionFilter::defaultFilterFile = path(portcullis::pfs.getDataDir().string() + "default_filter.json");
-        JunctionFilter::defaultModelFile = path(portcullis::pfs.getDataDir().string() + "default_model.forest");
+        JunctionFilter::defaultFilterFile = path(portcullis::pfs.getDataDir().string() + "/default_filter.json");
+        JunctionFilter::defaultModelFile = path(portcullis::pfs.getDataDir().string() + "/default_model.forest");
         JunctionFilter::scriptsDir = portcullis::pfs.getScriptsDir();
         JunctionSystem::version = portcullis::pfs.getVersion();
         

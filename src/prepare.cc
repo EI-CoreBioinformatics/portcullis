@@ -401,7 +401,7 @@ void portcullis::Prepare::prepare(vector<path> bamFiles, const path& originalGen
         }
         
         // Save disk space by deleting the unsorted BAM if present
-        if (bfs::exists(output->getUnsortedBamFilePath())) {
+        if (!bfs::symbolic_link_exists(output->getUnsortedBamFilePath()) && bfs::exists(output->getUnsortedBamFilePath())) {
             bfs::remove(output->getUnsortedBamFilePath());
         }
     }
@@ -465,7 +465,7 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
     path outputDir;
     bool force;
     string strandSpecific;
-    bool useLinks;
+    bool copy;
     bool useCsi;
     uint16_t threads;
     bool verbose;
@@ -483,8 +483,8 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
             ("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads).  By default we assume the user does not know the strand specific protocol used for this BAM file.  This has the affect that strand information is derived from splice site information alone, assuming junctions are either canonical or semi-canonical in form.  Default: \"unknown\"")
-            ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
-                "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
+            ("copy", po::bool_switch(&copy)->default_value(false), 
+                "Whether to copy files from input data to prepared data where possible, otherwise will use symlinks.  Will require more time and disk space to prepare input but is potentially more robust.")
             ("use_csi,c", po::bool_switch(&useCsi)->default_value(false), 
                 "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_PREP_THREADS),
@@ -552,7 +552,7 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
          << "----------------------------------" << endl << endl;
 
     // Create the prepare class
-    Prepare prep(outputDir, strandednessFromString(strandSpecific), force, useLinks, useCsi, threads, verbose);
+    Prepare prep(outputDir, strandednessFromString(strandSpecific), force, !copy, useCsi, threads, verbose);
     
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information
