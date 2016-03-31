@@ -55,6 +55,8 @@ public:
         ref(_ref), start(_start), end(_end) {
     }
     
+    Intron(string _ref, int32_t _start, int32_t _end);
+    
     Intron(const Intron& other);
 
     

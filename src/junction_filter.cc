@@ -306,14 +306,13 @@ bool portcullis::eval::evalSetLeaf(Operator op, unordered_set<string>& set, stri
 
 
 portcullis::JunctionFilter::JunctionFilter( const path& _junctionFile, 
-                    const path& _outputDir, 
-                    const string& _outputPrefix) {
+                    const path& _output) {
     junctionFile = _junctionFile;
     modelFile = "";
     genuineFile = "";
-    outputDir = _outputDir;
-    outputPrefix = _outputPrefix;
+    output = _output;
     filterFile = "";
+    referenceFile = "";
     saveBad = false;
     threads = 1;
     maxLength = 0;
@@ -327,6 +326,13 @@ portcullis::JunctionFilter::JunctionFilter( const path& _junctionFile,
     
 void portcullis::JunctionFilter::filter() {
 
+    path outputDir = output.parent_path();
+    string outputPrefix = output.leaf().string();
+    
+    if (outputDir.empty()) {
+        outputDir = ".";
+    }
+    
     // Test if provided genome exists
     if (!exists(junctionFile)) {
         BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
@@ -343,6 +349,16 @@ void portcullis::JunctionFilter::filter() {
         BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
                     "Could not find filter configuration file at: ") + filterFile.string()));
     }
+    
+    if (!genuineFile.empty() && !exists(genuineFile)) {
+        BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                    "Could not find file containing marked junction labels at: ") + genuineFile.string()));
+    }
+    
+    if (!referenceFile.empty() && !exists(referenceFile)) {
+        BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                    "Could not find reference BED file at: ") + referenceFile.string()));
+    }
 
     if (!exists(outputDir)) {
         if (!bfs::create_directories(outputDir)) {
@@ -355,7 +371,6 @@ void portcullis::JunctionFilter::filter() {
                     "File exists with name of suggested output directory: ") + outputDir.string()));            
     }
     
-
     cout << "Loading junctions ...";
     cout.flush();
 
@@ -364,9 +379,29 @@ void portcullis::JunctionFilter::filter() {
 
     cout << " found " << originalJuncs.getJunctions().size() << " junctions." << endl << endl;
 
+    unordered_set<string> ref;
+    if (!referenceFile.empty()) {        
+        ifstream ifs(referenceFile.c_str());
+
+        string line;
+        // Loop through until end of file or we move onto the next ref seq
+        while ( std::getline(ifs, line) ) {
+            boost::trim(line);
+
+            vector<string> parts; // #2: Search for tokens
+            boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
+
+            // Ignore any non-entry lines
+            if (parts.size() == 12) {
+                int end = std::stoi(parts[7]) - 1;  // -1 to get from BED to portcullis coords for end pos
+                string key = parts[0] + "(" + parts[6] + "," + std::to_string(end) + ")" + parts[5];
+                ref.insert(key);
+            }
+        }
+    }
     
     vector<bool> genuine;
-    if (!genuineFile.empty() && exists(genuineFile)) {
+    if (!genuineFile.empty()) {
         
         cout << "Loading list of correct predictions of performance analysis ...";
         cout.flush();
@@ -398,6 +433,7 @@ void portcullis::JunctionFilter::filter() {
     
     // Manage a junction system of all discarded junctions
     JunctionSystem discardedJuncs;
+    JunctionSystem refKeptJuncs;
     
     // Do ML based filtering if requested
     if(!modelFile.empty() && exists(modelFile)){
@@ -406,12 +442,13 @@ void portcullis::JunctionFilter::filter() {
         
         JunctionList passJuncs;
         JunctionList failJuncs;
+        JunctionList refJuncs;
         
-        forestPredict(currentJuncs, passJuncs, failJuncs);
+        forestPredict(currentJuncs, passJuncs, failJuncs, refJuncs, ref);
         
         cout << " done." << endl << endl;
         
-        printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Random Forest filtering"));
+        printFilteringResults(currentJuncs, passJuncs, failJuncs, refJuncs, string("Random Forest filtering"));
         
         // Reset currentJuncs
         currentJuncs.clear();
@@ -422,6 +459,10 @@ void portcullis::JunctionFilter::filter() {
         for(auto& j : failJuncs) {
             discardedJuncs.addJunction(j);
         }
+        
+        for(auto& j : refJuncs) {
+            refKeptJuncs.addJunction(j);
+        }
     }
     
     
@@ -430,6 +471,7 @@ void portcullis::JunctionFilter::filter() {
         
         JunctionList passJuncs;
         JunctionList failJuncs;
+        JunctionList refJuncs;
                 
         cout << "Loading JSON rule-based filtering config file ...";
 
@@ -474,6 +516,10 @@ void portcullis::JunctionFilter::filter() {
             if (parse(expression, junc, numericFilters, stringFilters, &junctionResultMap)) {
                 passJuncs.push_back(junc);
             }
+            else if (!referenceFile.empty() && ref.count(junc->locationAsString()) > 0) {
+                passJuncs.push_back(junc);
+                refJuncs.push_back(junc);
+            }
             else {
                 failJuncs.push_back(junc);
                 discardedJuncs.addJunction(junc);
@@ -495,7 +541,7 @@ void portcullis::JunctionFilter::filter() {
         
         saveResults(originalJuncs, junctionResultMap);
         
-        printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Rule-based filtering"));
+        printFilteringResults(currentJuncs, passJuncs, failJuncs, refJuncs, string("Rule-based filtering"));
         
         // Reset currentJuncs
         currentJuncs.clear();
@@ -508,6 +554,7 @@ void portcullis::JunctionFilter::filter() {
         
         JunctionList passJuncs;
         JunctionList failJuncs;
+        JunctionList refJuncs;
         
         for(auto& j : currentJuncs) {
             
@@ -533,13 +580,17 @@ void portcullis::JunctionFilter::filter() {
             if (pass) {
                 passJuncs.push_back(j);
             }
+            else if (!referenceFile.empty() && ref.count(j->locationAsString()) > 0) {
+                passJuncs.push_back(j);
+                refJuncs.push_back(j);
+            }
             else {
                 failJuncs.push_back(j);
                 discardedJuncs.addJunction(j);
             }
         }
         
-        printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Post filtering (length and/or canonical)"));
+        printFilteringResults(currentJuncs, passJuncs, failJuncs, refJuncs, string("Post filtering (length and/or canonical)"));
         
         // Reset currentJuncs
         currentJuncs.clear();
@@ -567,7 +618,11 @@ void portcullis::JunctionFilter::filter() {
         cout << " done." << endl << endl;
     }
     
-    printFilteringResults(originalJuncs.getJunctions(), filteredJuncs.getJunctions(), discardedJuncs.getJunctions(), string("Overall results"));
+    printFilteringResults(  originalJuncs.getJunctions(), 
+                            filteredJuncs.getJunctions(), 
+                            discardedJuncs.getJunctions(), 
+                            refKeptJuncs.getJunctions(), 
+                            string("Overall results"));
 
     cout << "Saving junctions passing filter to disk:" << endl;
 
@@ -577,10 +632,16 @@ void portcullis::JunctionFilter::filter() {
         cout << "Saving junctions failing filter to disk:" << endl;
 
         discardedJuncs.saveAll(outputDir.string() + "/" + outputPrefix + ".fail", source + "_fail");
+        
+        if (!referenceFile.empty()) {
+            cout << "Saving junctions failing filters but present in reference:" << endl;
+
+            refKeptJuncs.saveAll(outputDir.string() + "/" + outputPrefix + ".ref", source + "_ref");
+        }
     }
 }
     
-void portcullis::JunctionFilter::printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, string prefix) {
+void portcullis::JunctionFilter::printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const JunctionList& ref, string prefix) {
     // Output stats
     size_t diff = in.size() - pass.size();
 
@@ -589,6 +650,10 @@ void portcullis::JunctionFilter::printFilteringResults(const JunctionList& in, c
          << "Input contained " << in.size() << " junctions." << endl
          << "Output contains " << pass.size() << " junctions." << endl
          << "Filtered out " << diff << " junctions." << endl;
+    
+    if (!referenceFile.empty()) {
+        cout << ref.size() << " junctions would have been discarded but are retained due to presence in reference" << endl;
+    }
     
     if (!genuineFile.empty() && exists(genuineFile)) {
         calcPerformance(pass, fail);
@@ -615,7 +680,7 @@ void portcullis::JunctionFilter::calcPerformance(const JunctionList& pass, const
 void portcullis::JunctionFilter::saveResults(const JunctionSystem& js, JuncResultMap& results) {
 
     // Print descriptive output to file
-    ofstream out(outputDir.string() + "/" + outputPrefix + ".rule_filtering.results");
+    ofstream out(output.string() + ".rule_filtering.results");
 
     out << Intron::locationOutputHeader() << "\tconsensus_strand\t" << "filter_results..." << endl;
 
@@ -718,7 +783,7 @@ void portcullis::JunctionFilter::executePythonMLFilter(const path& mlOutputFile)
 }
 
 
-void portcullis::JunctionFilter::forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail) {
+void portcullis::JunctionFilter::forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, JunctionList& refs, const unordered_set<string>& ref) {
     
     if (verbose) {
         cerr << endl << "Preparing junction metrics into matrix" << endl;
@@ -798,6 +863,10 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
         if (f->getPredictions()[i][0] == 1.0) {
             pass.push_back(all[i]);
         }
+        else if (!referenceFile.empty() && ref.count(all[i]->locationAsString()) > 0) {
+            pass.push_back(all[i]);
+            refs.push_back(all[i]);
+        }
         else {
             fail.push_back(all[i]);
         }
@@ -812,8 +881,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     path modelFile;
     path genuineFile;
     path filterFile;
-    path outputDir;
-    string outputPrefix;
+    path referenceFile;
+    path output;
     uint16_t threads;
     bool saveBad;
     bool no_ml;
@@ -830,16 +899,16 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     // Declare the supported options.
     po::options_description generic_options(helpMessage(), w.ws_col, w.ws_col/1.7);
     generic_options.add_options()
-            ("output_dir,o", po::value<path>(&outputDir)->default_value(DEFAULT_FILTER_OUTPUT_DIR), 
-                "Output directory for files generated by this program.")
-            ("output_prefix,p", po::value<string>(&outputPrefix)->default_value(DEFAULT_FILTER_OUTPUT_PREFIX), 
-                "File name prefix for files generated by this program.")
+            ("output,o", po::value<path>(&output)->default_value(DEFAULT_FILTER_OUTPUT), 
+                "Output prefix for files generated by this program.")
             ("filter_file,f", po::value<path>(&filterFile), 
                 "If you wish to custom rule-based filter the junctions file, use this option to provide a list of the rules you wish to use.  By default we don't filter using a rule-based method, we instead filter via a random forest model.  See manual for more details.")
             ("model_file,m", po::value<path>(&modelFile)->default_value(defaultModelFile), 
                 "If you wish to use a custom random forest model to filter the junctions file, use this option to. See manual for more details.")
             ("genuine,g", po::value<path>(&genuineFile),
-                "If you have a list of line seperated boolean values in a file, indiciating whether each junction in your input is genuine or not, then we can use that information here to gauge the accuracy of the predictions.")
+                "If you have a list of line separated boolean values in a file, indicating whether each junction in your input is genuine or not, then we can use that information here to gauge the accuracy of the predictions.")
+            ("reference,r", po::value<path>(&referenceFile),
+                "Reference annotation of junctions in BED format.  Any junctions found by the junction analysis tool will be preserved if found in this reference file regardless of any other filtering criteria.  If you need to convert a reference annotation from GTF or GFF to BED format portcullis contains scripts for this.")
             ("save_bad,b", po::bool_switch(&saveBad)->default_value(false),
                 "Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)")
             ("source", po::value<string>(&source)->default_value(DEFAULT_FILTER_SOURCE),
@@ -892,7 +961,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
          << "------------------------------------------" << endl << endl;
 
     // Create the prepare class
-    JunctionFilter filter(junctionFile, outputDir, outputPrefix);
+    JunctionFilter filter(junctionFile, output);
     filter.setSaveBad(saveBad);
     filter.setSource(source);
     filter.setVerbose(verbose);
@@ -907,6 +976,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     if (!no_ml) {
         filter.setModelFile(modelFile);
     }
+    filter.setReferenceFile(referenceFile);
     
     filter.filter();
 

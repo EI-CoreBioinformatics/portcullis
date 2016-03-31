@@ -787,6 +787,10 @@ public:
     void setGenuine(bool genuine) {
         this->genuine = genuine;
     }
+    
+    string locationAsString() const {
+        return this->intron->toString() + strandToChar(this->consensusStrand);
+    }
 
     
     

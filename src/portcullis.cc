@@ -136,6 +136,7 @@ int mainFull(int argc, char *argv[]) {
     path outputDir;
     path modelFile;
     path filterFile;
+    path referenceFile;
     string strandSpecific;
     uint16_t threads;
     bool copy;
@@ -170,6 +171,8 @@ int mainFull(int argc, char *argv[]) {
                 "If you wish to use a custom random forest model to filter the junctions file, use this option to. See manual for more details.")
             ("filter_file,f", po::value<path>(&filterFile)->default_value(JunctionFilter::defaultFilterFile), 
                 "The rule-based filter configuration file to use.")
+            ("reference,r", po::value<path>(&referenceFile),
+                "Reference annotation of junctions in BED format.  Any junctions found by the junction analysis tool will be preserved if found in this reference file regardless of any other filtering criteria.  If you need to convert a reference annotation from GTF or GFF to BED format portcullis contains scripts for this.")
             ("max_length", po::value<uint32_t>(&max_length)->default_value(0),
                 "Filter junctions longer than this value.  Default (0) is to not filter based on length.")
             ("canonical,c", po::value<string>(&canonical)->default_value("OFF"),
@@ -283,16 +286,17 @@ int mainFull(int argc, char *argv[]) {
     cout << "Filtering junctions" << endl
          << "-------------------" << endl << endl;
     
-    path filtDir = outputDir.string() + "/3-filt";
+    path filtOut = outputDir.string() + "/3-filt/portcullis_filtered";
     path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
     
-    JunctionFilter filter(juncTab, filtDir, "portcullis_filtered");
+    JunctionFilter filter(juncTab, filtOut);
     filter.setVerbose(verbose);
     filter.setSource(source);
     filter.setMaxLength(max_length);
     filter.setCanonical(canonical);
     filter.setFilterFile(filterFile);
     filter.setModelFile(modelFile);
+    filter.setReferenceFile(referenceFile);
     filter.setThreads(threads);
     filter.filter();
 
@@ -302,7 +306,7 @@ int mainFull(int argc, char *argv[]) {
         cout << "Filtering BAMs" << endl
              << "--------------" << endl << endl;
 
-        path filtJuncTab = path(filtDir.string() + "/portcullis_filtered.pass.junctions.tab");
+        path filtJuncTab = path(filtOut.string() + ".pass.junctions.tab");
         path bamFile = path(prepDir.string() + "/portcullis.sorted.alignments.bam");
         path filteredBam = path(outputDir.string() + "/portcullis.filtered.bam");
 

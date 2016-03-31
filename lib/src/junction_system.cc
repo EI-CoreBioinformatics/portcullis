@@ -19,12 +19,14 @@
 #include <iostream>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 using std::cout;
 using std::endl;
 using std::ifstream;
 using std::ofstream;
 using std::shared_ptr;
+using std::unordered_set;
 
 #include <boost/lexical_cast.hpp>
 #include <boost/exception/all.hpp>

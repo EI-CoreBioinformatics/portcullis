@@ -71,8 +71,7 @@ typedef boost::error_info<struct JuncFilterError,string> JuncFilterErrorInfo;
 struct JuncFilterException: virtual boost::exception, virtual std::exception { };
 
 
-const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
-const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
+const string DEFAULT_FILTER_OUTPUT = "portcullis_filter_out/portcullis";
 const string DEFAULT_FILTER_SOURCE = "portcullis";
 const string DEFAULT_FILTER_RULE_FILE = "default_filter.json";
 const string DEFAULT_FILTER_MODEL_FILE = "default_model.forest";
@@ -237,8 +236,8 @@ private:
     path modelFile;
     path filterFile;
     path genuineFile;
-    path outputDir;
-    string outputPrefix;
+    path referenceFile;
+    path output;
     uint16_t threads;
     bool saveBad;
     int32_t maxLength;
@@ -256,8 +255,7 @@ public:
     static path scriptsDir;
     
     JunctionFilter( const path& _junctionFile, 
-                    const path& _outputDir, 
-                    const string& _outputPrefix);
+                    const path& _output);
     
     virtual ~JunctionFilter() {
     }
@@ -282,20 +280,12 @@ public:
         this->junctionFile = junctionFile;
     }
 
-    path getOutputDir() const {
-        return outputDir;
+    path getOutput() const {
+        return output;
     }
 
-    void setOutputDir(path outputDir) {
-        this->outputDir = outputDir;
-    }
-
-    string getOutputPrefix() const {
-        return outputPrefix;
-    }
-
-    void setOutputPrefix(string outputPrefix) {
-        this->outputPrefix = outputPrefix;
+    void setOutput(path output) {
+        this->output = output;
     }
     
     path getGenuineFile() const {
@@ -312,6 +302,14 @@ public:
 
     void setModelFile(path modelFile) {
         this->modelFile = modelFile;
+    }
+
+    path getReferenceFile() const {
+        return referenceFile;
+    }
+
+    void setReferenceFile(path referenceFile) {
+        this->referenceFile = referenceFile;
     }
 
 
@@ -421,11 +419,11 @@ protected:
     
     void executePythonMLFilter(const path& mlOutputFile);
     
-    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail);
+    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, JunctionList& refs, const unordered_set<string>& ref);
     
     void calcPerformance(const JunctionList& pass, const JunctionList& fail);
     
-    void printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, string prefix);
+    void printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const JunctionList& ref, string prefix);
     
 public:
   
