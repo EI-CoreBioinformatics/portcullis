@@ -175,7 +175,7 @@ public:
     static void loadGenuine(path& genuineFile, vector<bool>& results) {
     
         // Load reference data    
-        ifstream refs(genuineFile.string());
+        std::ifstream refs(genuineFile.string());
         string line;
         uint32_t lineNb = 0;
         while (std::getline(refs, line)) {
