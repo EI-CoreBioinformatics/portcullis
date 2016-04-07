@@ -10,7 +10,7 @@ MKDIR_P	      = mkdir -p
 INSTALL	      = /usr/bin/install -c -m 644
 
 # Set autoconf variables
-prefix	      = /tgac/software/testing/portcullis/0.11.0/x86_64
+prefix	      = /usr/local
 PACKAGE_TARNAME = portcullis
 top_srcdir    = ..
 srcdir	      = .

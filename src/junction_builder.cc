@@ -41,8 +41,6 @@ using namespace boost::filesystem;
 using boost::filesystem::path;
 namespace po = boost::program_options;
 
-#include "htslib/sam.h"
-
 #include <portcullis/bam/bam_master.hpp>
 #include <portcullis/bam/bam_reader.hpp>
 #include <portcullis/bam/bam_writer.hpp>
@@ -57,8 +55,6 @@ using namespace portcullis::bam;
 using portcullis::Intron;
 using portcullis::Junction;
 using portcullis::JunctionSystem;
-
-#include "prepare.hpp"
 
 #include "junction_builder.hpp"
 using portcullis::JBThreadPool;

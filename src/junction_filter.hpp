@@ -238,6 +238,7 @@ private:
     path genuineFile;
     path referenceFile;
     path output;
+    bool train;
     uint16_t threads;
     bool saveBad;
     int32_t maxLength;
@@ -312,6 +313,13 @@ public:
         this->referenceFile = referenceFile;
     }
 
+    bool isTrain() const {
+        return train;
+    }
+
+    void setTrain(bool train) {
+        this->train = train;
+    }
 
     bool isSaveBad() const {
         return saveBad;

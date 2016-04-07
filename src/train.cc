@@ -26,6 +26,7 @@ using std::vector;
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::unique_ptr;
 using std::make_shared;
 
 #include <boost/program_options.hpp>
@@ -43,6 +44,7 @@ namespace po = boost::program_options;
 #include <ranger/DataDouble.h>
 #include <ranger/Forest.h>
 #include <ranger/ForestClassification.h>
+#include <ranger/ForestRegression.h>
 
 #include <portcullis/junction_system.hpp>
 #include <portcullis/performance.hpp>
@@ -62,13 +64,19 @@ portcullis::Train::Train(const path& _junctionFile, const path& _refFile){
     trees = DEFAULT_TRAIN_TREES;
     threads = DEFAULT_TRAIN_THREADS;
     fraction = DEFAULT_TRAIN_FRACTION;
+    regressionMode = false;
     verbose = false;    
 }
     
-shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x) {
+Data* portcullis::Train::juncs2FeatureVectors(const JunctionList& x) {
+    
+    vector<string> headers;
+    headers.reserve( VAR_NAMES.size() + JO_NAMES.size() );
+    headers.insert( headers.end(), VAR_NAMES.begin(), VAR_NAMES.end() );
+    headers.insert( headers.end(), JO_NAMES.begin(), JO_NAMES.end() );
     
     // Convert junction list info to double*
-    double* d = new double[x.size() * variableNames.size()];
+    double* d = new double[x.size() * headers.size()];
     
     uint32_t row = 0;
     for (const auto& j : x) {        
@@ -84,13 +92,37 @@ shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x) {
         d[8 * x.size() + row] = j->getHammingDistance5p();
         d[9 * x.size() + row] = j->getHammingDistance3p();
         d[10 * x.size() + row] = j->isGenuine();
+        // Junction overhang values at each position are first converted into deviation from expected distributions       
+        double half_read_length = (double)j->getMeanQueryLength() / 2.0;    
+        for(size_t i = 0; i < JO_NAMES.size(); i++) {
+            double Ni = j->getJunctionOverhangs(i);                 // Actual count at this position
+            if (Ni == 0.0) Ni = 0.000000000001;                     // Ensure some value > 0 here otherwise we get -infinity later.
+            double Pi = 1.0 - ((double)i / half_read_length);       // Likely scale at this position
+            double Ei = (double)j->getNbJunctionAlignments() * Pi;  // Expected count at this position
+            double Xi = abs(log2(Ni / Ei));                         // Log deviation
+            
+            d[(i + 11) * x.size() + row] = Xi;
+        }
         
         row++;
     }
     
-    Data* trainingData = new DataDouble(d, variableNames, x.size(), variableNames.size());
+    Data* data = new DataDouble(d, headers, x.size(), headers.size());
+    data->setExternalData(false);      // This causes 'd' to be deleted when 'data' is deleted
+    return data;
+}
+
+shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x, string outputPrefix, uint16_t trees, uint16_t threads, bool regressionMode) {
     
-    shared_ptr<Forest> f = make_shared<ForestClassification>();
+    Data* trainingData = juncs2FeatureVectors(x);
+    
+    shared_ptr<Forest> f = nullptr;
+    if (regressionMode) {
+        f = make_shared<ForestRegression>();
+    }
+    else {
+        f = make_shared<ForestClassification>();
+    }
     
     vector<string> catVars;
     
@@ -99,12 +131,12 @@ shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x) {
         MEM_DOUBLE,                 // Memory mode
         trainingData,               // Data object
         0,                          // M Try (0 == use default)
-        outputPrefix.string(),      // Output prefix 
+        outputPrefix,               // Output prefix 
         trees,                      // Number of trees
-        0,                          // Seed (0 == no random seed)
+        DEFAULT_SEED,               // Use fixed seed to avoid non-deterministic behaviour
         threads,                    // Number of threads
         IMP_GINI,                   // Importance measure 
-        DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
+        regressionMode ? DEFAULT_MIN_NODE_SIZE_REGRESSION : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
         "",                         // Status var name 
         false,                      // Prediction mode
         true,                       // Replace 
@@ -118,39 +150,19 @@ shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x) {
     f->setVerboseOut(&cerr);
     f->run(false);
     
-    delete d;
-    
     return f;
 }
 
 void portcullis::Train::testInstance(shared_ptr<Forest> f, const JunctionList& x) {
     
-    // Convert junction list info to double*
-    double* d = new double[x.size() * variableNames.size()];
-    
-    uint32_t row = 0;
-    for (const auto& j : x) {        
-        d[0 * x.size() + row] = j->getNbJunctionAlignments();
-        d[1 * x.size() + row] = j->getNbDistinctAlignments();
-        d[2 * x.size() + row] = j->getNbReliableAlignments();
-        d[3 * x.size() + row] = j->getMaxMinAnchor();
-        d[4 * x.size() + row] = j->getDiffAnchor();
-        d[5 * x.size() + row] = j->getNbDistinctAnchors();
-        d[6 * x.size() + row] = j->getEntropy();
-        d[7 * x.size() + row] = j->getMaxMMES();
-        d[8 * x.size() + row] = j->getHammingDistance5p();
-        d[9 * x.size() + row] = j->getHammingDistance3p();
-        d[10 * x.size() + row] = j->isGenuine();
-        
-        row++;
-    }
-    
-    Data* testingData = new DataDouble(d, variableNames, x.size(), variableNames.size());
+    // Convert testing set junctions into feature vector
+    Data* testingData = juncs2FeatureVectors(x);
     
     f->setPredictionMode(true);
     f->setData(testingData);
     f->run(false);
-        
+    
+    delete testingData;
 }
 
 void portcullis::Train::train() {
@@ -226,7 +238,7 @@ void portcullis::Train::train() {
         cout << "Training on full dataset ...";
         cout.flush();
 
-        shared_ptr<Forest> f = trainInstance(junctions);
+        shared_ptr<Forest> f = trainInstance(junctions, outputPrefix.string(), trees, threads, false);
         
         cout << " done." << endl;
         
@@ -242,29 +254,22 @@ void portcullis::Train::train() {
         KFold<JunctionList::const_iterator> kf(folds, junctions.begin(), junctions.end());
 
         JunctionList test, train;
-        vector<double> f1s;
-        vector<double> recalls;
-        vector<double> precisions;
-
+        vector<unique_ptr<Performance>> perfs;
+        
         cout << endl << "Starting " << folds << "-fold cross validation" << endl;
-        cout << std::fixed << std::setprecision(2);
+        
+        cout << "Fold\t" << Performance::longHeader() << endl;
 
         for (uint16_t i = 1; i <= folds; i++) {
 
-            cout << "Fold " << i << " ... ";
+            cout << i << "\t";
             cout.flush();
 
             // Populate train and test for this step
             kf.getFold(i, back_inserter(train), back_inserter(test));
             
-            if (verbose) {
-                cout << endl;
-                cout << "Training size: " << train.size() << endl;
-                cout << "Testing size: " << test.size() << endl;
-            }
-
             // Train on this particular set
-            shared_ptr<Forest> f = trainInstance(train);
+            shared_ptr<Forest> f = trainInstance(train, outputPrefix.string(), trees, threads, false);
             
             // Test model instance
             testInstance(f, test);
@@ -286,27 +291,52 @@ void portcullis::Train::train() {
                 }
             }
             
-            Performance p(tp, tn, fp, fn);
+            unique_ptr<Performance> p( new Performance(tp, tn, fp, fn) );
             
             
-            cout << p.toString() << endl;
+            cout << p->toLongString() << endl;
 
-            f1s.push_back(p.getF1Score());
-            recalls.push_back(p.getRecall());
-            precisions.push_back(p.getPrecision());
-
+            perfs.push_back(std::move(p));
+            
             // Clear the train and test vectors in preparation for the next step
             train.clear();
-            test.clear();
+            test.clear();            
         }
 
         cout << "Cross validation completed" << endl << endl;
     
-        outputMeanScore(recalls, "recall");
-        outputMeanScore(precisions, "precisions");
-        outputMeanScore(f1s, "F1");
+        outputMeanPerformance(perfs);        
     }
     
+}
+
+void portcullis::Train::outputMeanPerformance(const vector<unique_ptr<Performance>>& scores) {
+    
+    vector<double> recs;
+    vector<double> prcs;
+    vector<double> spcs;
+    vector<double> f1s;
+    vector<double> infs;
+    vector<double> mrks;
+    vector<double> accs;
+        
+    for(auto& p : scores) {
+        recs.push_back(p->getRecall());
+        prcs.push_back(p->getPrecision());
+        spcs.push_back(p->getSpecificity());
+        f1s.push_back(p->getF1Score());
+        infs.push_back(p->getInformedness());
+        mrks.push_back(p->getMarkedness());
+        accs.push_back(p->getAccuracy());        
+    }
+    
+    outputMeanScore(recs, "recall");
+    outputMeanScore(prcs, "precision");
+    outputMeanScore(spcs, "specificity");
+    outputMeanScore(f1s, "F1");
+    outputMeanScore(infs, "informedness");
+    outputMeanScore(mrks, "markededness");
+    outputMeanScore(accs, "accuracy");
 }
 
 void portcullis::Train::outputMeanScore(const vector<double>& scores, const string& score_type) {

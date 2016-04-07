@@ -54,8 +54,30 @@ const uint16_t MAP_QUALITY_THRESHOLD = 30;
 typedef boost::error_info<struct JunctionError,string> JunctionErrorInfo;
 struct JunctionException: virtual boost::exception, virtual std::exception { };
 
-const size_t NB_METRICS = 27;
-const string METRIC_NAMES[NB_METRICS] = {
+const vector<string> JO_NAMES = {
+        "JO01",
+        "JO02",
+        "JO03",
+        "JO04",
+        "JO05",
+        "JO06",
+        "JO07",
+        "JO08",
+        "JO09",
+        "JO10",
+        "JO11",
+        "JO12",
+        "JO13",
+        "JO14",
+        "JO15",
+        "JO16",
+        "JO17",
+        "JO18",
+        "JO19",
+        "JO20"
+};
+
+const vector<string> METRIC_NAMES = {
         "M1-canonical_ss",
         "M2-nb_reads",
         "M3-nb_dist_aln",
@@ -82,10 +104,10 @@ const string METRIC_NAMES[NB_METRICS] = {
         "M24-down_aln",
         "M25-dist_2_up_junc",
         "M26-dist_2_down_junc",
-        "M27-dist_nearest_junc"         
+        "M27-dist_nearest_junc"
     };
 
-const string STRAND_NAMES[3] = {
+const vector<string> STRAND_NAMES = {
         "read-strand",
         "ss-strand",
         "consensus-strand"
@@ -166,7 +188,7 @@ struct AlignmentInfo {
     uint32_t minMatch;  // Distance to first mismatch (minimum of either upstream or downstream)
     uint32_t maxMatch;  // Distance to first mismatch (maximum of either upstream or downstream)
     uint32_t nbMismatches; // Total number of mismatches in this junction window
-    uint32_t mmes; // Minimal Match on Either Side of exon junction
+    uint32_t mmes; // Minimal Match on Either Side of exon junction    
     
     AlignmentInfo(BamAlignmentPtr _ba) {
         
@@ -211,6 +233,9 @@ private:
     vector<size_t> alignmentCodes;
     vector<uint32_t> trimmedCoverage;
     vector<double> trimmedLogDevCov;
+    uint32_t meanQueryLength;
+    bool suspicious;
+    bool pfp;
     
     // **** Junction metrics ****
     CanonicalSS canonicalSpliceSites;           // Metric 1
@@ -240,8 +265,7 @@ private:
     int32_t distanceToNextUpstreamJunction;     // Metric 25
     int32_t distanceToNextDownstreamJunction;   // Metric 26
     int32_t distanceToNearestJunction;          // Metric 27
-    double trimmedOverhangScore;                // Metric 28
-    
+    vector<uint32_t> junctionOverhangs;         // Metric 28-37
     
     // **** Predictions ****
     
@@ -307,6 +331,14 @@ public:
 
     void setLocation(shared_ptr<Intron> location) {
         this->intron = location;
+    }
+
+    uint32_t getMeanQueryLength() const {
+        return meanQueryLength;
+    }
+
+    void setMeanQueryLength(uint32_t meanQueryLength) {
+        this->meanQueryLength = meanQueryLength;
     }
 
     
@@ -418,17 +450,11 @@ public:
                             const string& rightIntron, const string& rightAnchor);
     
     /**
-     * Calculates metric 12.  MaxMMES.
+     * Calculates MaxMMES, mismatches, and junction overhangs.
      * Requires alignment information to be populated
      */
-    void calcMaxMMES();
-    
-    /**
-     * Calculate metric 19.  Mean mismatches.
-     * Requires alignment information to be populated
-     */
-    void calcMeanMismatches();
-    
+    void calcMismatchStats();
+        
     /**
      * Calculates metric 18.  Multiple mapping score
      */
@@ -464,6 +490,22 @@ public:
     
     size_t getNbJunctionAlignmentFromVector() const {
         return this->alignments.size();
+    }
+    
+    bool isSuspicious() const {
+        return this->suspicious;
+    }
+    
+    void setSuspicious(bool suspicious) {
+        this->suspicious = suspicious;
+    }
+    
+    bool isPotentialFalsePositive() const {
+        return this->pfp;
+    }
+    
+    void setPotentialFalsePositive(bool pfp) {
+        this->pfp = pfp;
     }
     
     // **** Metric getters ****
@@ -779,6 +821,15 @@ public:
     void setTrimmedLogDevCov(vector<double> trimmedLogDevCov) {
         this->trimmedLogDevCov = trimmedLogDevCov;
     }
+    
+    uint32_t getJunctionOverhangs(size_t index) const {
+        return junctionOverhangs[index];
+    }
+    
+    void setJunctionOverhangs(size_t index, uint32_t val) {
+        junctionOverhangs[index] = val;
+    }
+
 
     bool isGenuine() const {
         return genuine;
@@ -843,7 +894,7 @@ public:
      * @return 
      */
     friend ostream& operator<<(ostream &strm, Junction& j) {
-        return strm << *(j.intron) << "\t"
+        strm << *(j.intron) << "\t"
                     << j.leftAncStart << "\t"
                     << j.rightAncEnd << "\t"
                     << j.da1 << "\t"
@@ -877,8 +928,16 @@ public:
                     << j.nbDownstreamFlankingAlignments << "\t"
                     << j.distanceToNextUpstreamJunction << "\t"
                     << j.distanceToNextDownstreamJunction << "\t"
-                    << j.distanceToNearestJunction;
-                    
+                    << j.distanceToNearestJunction << "\t"
+                    << j.meanQueryLength << "\t"
+                    << j.suspicious << "\t"
+                    << j.pfp;
+        
+        for(size_t i = 0; i < JO_NAMES.size(); i++) {            
+            strm << "\t" << j.junctionOverhangs[i];
+        }
+
+        return strm;
     }
     
         

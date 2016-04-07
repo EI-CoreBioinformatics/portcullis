@@ -110,6 +110,10 @@ public:
       return 3;
     }
   }
+  
+  void setExternalData(bool external) {
+      this->externalData = external;
+  }
 
 protected:
   std::vector<std::string> variable_names;
