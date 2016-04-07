@@ -40,7 +40,7 @@ public:
     }
     
     static string longHeader() {
-        return "TP\tTN\tFP\tFN\tSEN\tSPC\tPPV\tNPV\tF1\tACC\tINF\tMRK";
+        return "TP\tTN\tFP\tFN\tPREV\tBIAS\tSENS\tSPEC\tPPV\tNPV\tF1\tACC\tINFO\tMARK\tMCC";
     }
     
     static string to_2dp_string(const double v) {
@@ -68,6 +68,8 @@ public:
         parts.push_back(std::to_string(tn)); 
         parts.push_back(std::to_string(fp));
         parts.push_back(std::to_string(fn));
+        parts.push_back(to_2dp_string(getPrevalence()));        
+        parts.push_back(to_2dp_string(getBias()));
         parts.push_back(to_2dp_string(getSensitivity()));
         parts.push_back(to_2dp_string(getSpecificity()));
         parts.push_back(to_2dp_string(getPrecision()));
@@ -76,6 +78,7 @@ public:
         parts.push_back(to_2dp_string(getAccuracy()));
         parts.push_back(to_2dp_string(getInformedness()));
         parts.push_back(to_2dp_string(getMarkedness()));
+        parts.push_back(to_2dp_string(getMCC()));        
         return boost::algorithm::join(parts, "\t");
     }
     
@@ -95,7 +98,15 @@ public:
     inline uint32_t getAllFalse() const {
         return fn + fp;
     }
-        
+    
+    inline uint32_t getRealPositive() const {
+        return tp + fn;
+    }
+    
+    inline uint32_t getRealNegative() const {
+        return fp + tn;
+    }
+            
     inline uint32_t getAll() const {
         return tp + tn + fp + fn;
     }
@@ -135,6 +146,14 @@ public:
     
     inline double getAccuracy() const {
         return 100.0 * (double)getAllTrue() / (double)getAll();
+    }
+    
+    inline double getPrevalence() const {
+        return 100.0 * (double)getRealPositive() / (double)getAll();
+    }
+    
+    inline double getBias() const {
+        return 100.0 * (double)getAllPositive() / (double)getAll();
     }
     
     inline double getF1Score() const {

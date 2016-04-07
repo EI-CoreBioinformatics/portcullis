@@ -312,6 +312,8 @@ void portcullis::Train::train() {
 
 void portcullis::Train::outputMeanPerformance(const vector<unique_ptr<Performance>>& scores) {
     
+    vector<double> prevs;
+    vector<double> biases;
     vector<double> recs;
     vector<double> prcs;
     vector<double> spcs;
@@ -319,24 +321,31 @@ void portcullis::Train::outputMeanPerformance(const vector<unique_ptr<Performanc
     vector<double> infs;
     vector<double> mrks;
     vector<double> accs;
+    vector<double> mccs;
         
     for(auto& p : scores) {
+        prevs.push_back(p->getPrevalence());
+        biases.push_back(p->getBias());
         recs.push_back(p->getRecall());
         prcs.push_back(p->getPrecision());
         spcs.push_back(p->getSpecificity());
         f1s.push_back(p->getF1Score());
         infs.push_back(p->getInformedness());
         mrks.push_back(p->getMarkedness());
-        accs.push_back(p->getAccuracy());        
+        accs.push_back(p->getAccuracy());
+        mccs.push_back(p->getMCC());
     }
     
+    outputMeanScore(prevs, "prevalence");
+    outputMeanScore(biases, "bias");
     outputMeanScore(recs, "recall");
     outputMeanScore(prcs, "precision");
-    outputMeanScore(spcs, "specificity");
     outputMeanScore(f1s, "F1");
+    outputMeanScore(spcs, "specificity");
+    outputMeanScore(accs, "accuracy");
     outputMeanScore(infs, "informedness");
     outputMeanScore(mrks, "markededness");
-    outputMeanScore(accs, "accuracy");
+    outputMeanScore(mccs, "MCC");
 }
 
 void portcullis::Train::outputMeanScore(const vector<double>& scores, const string& score_type) {
@@ -345,7 +354,7 @@ void portcullis::Train::outputMeanScore(const vector<double>& scores, const stri
     double sq_sum = std::inner_product(scores.begin(), scores.end(), scores.begin(), 0.0);
     double stdev = std::sqrt(sq_sum / scores.size() - mean * mean);
 
-    cout << "Mean " << score_type << ": " << mean << "% (+/- " << stdev << "%)" << endl;
+    cout << "Mean " << std::left << std::setw(13) << score_type << ": " << std::fixed << std::setprecision(2) << mean << "% (+/- " << stdev << "%)" << endl;
 }
 
 void portcullis::Train::getRandomSubset(const JunctionList& in, JunctionList& out) {
