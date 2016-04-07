@@ -18,7 +18,6 @@
 #include <math.h>
 #include <string>
 #include <memory>
-
 using std::min;
 using std::string;
 using std::shared_ptr;

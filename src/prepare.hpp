@@ -173,10 +173,11 @@ protected:
 
     /**
      * Sorts the unsorted bam file if required or forced
-     * @param inputBam
+     * @param input Path to input BAM to sort
+     * @param output Sorted BAM file
      * @return 
      */
-    bool bamSort();
+    bool bamSort(const path& input, const path& output);
     
     bool bamIndex(const bool copied);
     

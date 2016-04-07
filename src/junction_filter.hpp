@@ -71,8 +71,7 @@ typedef boost::error_info<struct JuncFilterError,string> JuncFilterErrorInfo;
 struct JuncFilterException: virtual boost::exception, virtual std::exception { };
 
 
-const string DEFAULT_FILTER_OUTPUT_DIR = "portcullis_filter_out";
-const string DEFAULT_FILTER_OUTPUT_PREFIX = "portcullis";
+const string DEFAULT_FILTER_OUTPUT = "portcullis_filter_out/portcullis";
 const string DEFAULT_FILTER_SOURCE = "portcullis";
 const string DEFAULT_FILTER_RULE_FILE = "default_filter.json";
 const string DEFAULT_FILTER_MODEL_FILE = "default_model.forest";
@@ -237,12 +236,15 @@ private:
     path modelFile;
     path filterFile;
     path genuineFile;
-    path outputDir;
-    string outputPrefix;
+    path referenceFile;
+    path output;
+    bool train;
     uint16_t threads;
     bool saveBad;
     int32_t maxLength;
-    bool canonical;
+    bool filterCanonical;
+    bool filterSemi;
+    bool filterNovel;    
     string source;
     bool verbose;    
     
@@ -254,8 +256,7 @@ public:
     static path scriptsDir;
     
     JunctionFilter( const path& _junctionFile, 
-                    const path& _outputDir, 
-                    const string& _outputPrefix);
+                    const path& _output);
     
     virtual ~JunctionFilter() {
     }
@@ -280,20 +281,12 @@ public:
         this->junctionFile = junctionFile;
     }
 
-    path getOutputDir() const {
-        return outputDir;
+    path getOutput() const {
+        return output;
     }
 
-    void setOutputDir(path outputDir) {
-        this->outputDir = outputDir;
-    }
-
-    string getOutputPrefix() const {
-        return outputPrefix;
-    }
-
-    void setOutputPrefix(string outputPrefix) {
-        this->outputPrefix = outputPrefix;
+    void setOutput(path output) {
+        this->output = output;
     }
     
     path getGenuineFile() const {
@@ -312,6 +305,21 @@ public:
         this->modelFile = modelFile;
     }
 
+    path getReferenceFile() const {
+        return referenceFile;
+    }
+
+    void setReferenceFile(path referenceFile) {
+        this->referenceFile = referenceFile;
+    }
+
+    bool isTrain() const {
+        return train;
+    }
+
+    void setTrain(bool train) {
+        this->train = train;
+    }
 
     bool isSaveBad() const {
         return saveBad;
@@ -345,12 +353,47 @@ public:
         this->threads = threads;
     }
     
-    bool isCanonical() const {
-        return canonical;
+    void setCanonical(const string& canonical) {
+        vector<string> modes;
+        boost::split( modes, canonical, boost::is_any_of(","), boost::token_compress_on );
+
+        if (modes.size() > 3) {
+            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                    "Canonical filter mode contains too many modes.  Max is 2.")));
+        }
+        
+        if (modes.empty()) {
+            this->filterCanonical = false;
+            this->filterSemi = false;
+            this->filterNovel = false;            
+        }
+        else {
+            this->filterCanonical = true;
+            this->filterSemi = true;
+            this->filterNovel = true;
+
+            for(auto& m : modes) {
+                string n = boost::to_upper_copy(m);
+                if (n == "OFF") {
+                    this->filterCanonical = false;
+                    this->filterSemi = false;
+                    this->filterNovel = false;
+                }
+                else if (n == "C") {
+                    this->filterCanonical = false;                    
+                }
+                else if (n == "S") {
+                    this->filterSemi = false;
+                }
+                else if (n == "N") {
+                    this->filterNovel = false;    
+                }
+            }
+        }
     }
 
-    void setCanonical(bool canonical) {
-        this->canonical = canonical;
+    bool doCanonicalFiltering() const {        
+        return this->filterCanonical || this->filterSemi || this->filterNovel;
     }
 
     int32_t isMaxLength() const {
@@ -384,11 +427,11 @@ protected:
     
     void executePythonMLFilter(const path& mlOutputFile);
     
-    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail);
+    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, JunctionList& refs, const unordered_set<string>& ref);
     
     void calcPerformance(const JunctionList& pass, const JunctionList& fail);
     
-    void printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, string prefix);
+    void printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const JunctionList& ref, string prefix);
     
 public:
   

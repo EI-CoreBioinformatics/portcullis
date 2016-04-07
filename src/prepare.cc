@@ -113,12 +113,10 @@ portcullis::Prepare::Prepare(const path& _outputPrefix, Strandedness _strandSpec
     }
 
     if (force) {
-        if (verbose) {
-            cout << "Cleaning output dir " << _outputPrefix << " ... ";
-            cout.flush();
-        }
+        cout << "Cleaning output dir " << _outputPrefix << " ... ";
+        cout.flush();
         output->clean();
-        if (verbose) cout << "done." << endl << endl;
+        cout << "done." << endl << endl;
     }
 }
     
@@ -127,23 +125,22 @@ bool portcullis::Prepare::copy(const path& from, const path& to, const string& m
     
     // Check if output file already exists (if so don't do anything)
     if (bfs::exists(to) || bfs::symbolic_link_exists(to)) {
-        if (verbose) cout << "Prepped " << msg << " file detected: " << to << endl;            
+        cout << "Prepped " << msg << " file detected: " << to << endl;            
     }
     // Check if input file is required to exist (if so either symlink or copy)
     else if (requireInputFileExists || bfs::exists(from) || bfs::symbolic_link_exists(from)) {
 
         if (useLinks) {
             bfs::create_symlink(bfs::canonical(from), to);
-            if (verbose) cout << "Created symlink from " << from << " to " << to << endl;
+            cout << "Created symlink from " << from << " to " << to << endl;
         }
         else {
         
             auto_cpu_timer timer(1, string(" - Copy ") + msg + " - Wall time taken: %ws\n\n");
             
-            if (verbose) {
-                cout << "Copying from " << from << " to " << to << " ... ";
-                cout.flush();
-            }
+            cout << "Copying from " << from << " to " << to << " ... ";
+            cout.flush();
+            
             std::ifstream  src(from.string(), std::ios::binary);
             std::ofstream  dst(to.string(),   std::ios::binary);
 
@@ -152,14 +149,12 @@ bool portcullis::Prepare::copy(const path& from, const path& to, const string& m
             src.close();
             dst.close();
 
-            if (verbose) cout << "done." << endl;
+            cout << "done." << endl;
         }
     }
     // If both input file and output file do not exist and it's not required to exists
     else if (!requireInputFileExists) {
-        if (verbose) {
-            cout << "Existing " << msg << " not found.  Will create later." << endl;
-        }
+        cout << "Existing " << msg << " not found.  Will create later." << endl;        
     }
     
     return bfs::exists(to) || bfs::symbolic_link_exists(to);
@@ -173,24 +168,20 @@ bool portcullis::Prepare::genomeIndex() {
     bool indexExists = bfs::exists(indexFile);
 
     if (indexExists) {
-        if (verbose) cout << "Pre-indexed genome detected: " << indexFile << endl;            
+        cout << "Pre-indexed genome detected: " << indexFile << endl;            
     }
     else {
 
         auto_cpu_timer timer(1, " - Genome Index - Wall time taken: %ws\n\n");
 
-        if (verbose) {
-            cout << "Indexing genome " << genomeFile << " ... ";
-            cout.flush();
-        }
+        cout << "Indexing genome " << genomeFile << " ... ";
+        cout.flush();
 
         // Create the index
         GenomeMapper(genomeFile).buildFastaIndex();
 
-        if (verbose) {
-            cout << "done." << endl
-                 << "Genome index file created at: " << output->getGenomeIndexFilePath() << endl;                
-        }
+        cout << "done." << endl
+             << "Genome index file created at: " << output->getGenomeIndexFilePath() << endl;                
     }
 
     return bfs::exists(indexFile);
@@ -206,27 +197,39 @@ bool portcullis::Prepare::genomeIndex() {
 bool portcullis::Prepare::bamMerge(vector<path> bamFiles) {
 
     
-    path mergedBam = output->getUnsortedBamFilePath();        
+    path mergedBam = output->getSortedBamFilePath();        
 
     bool mergedBamExists = bfs::exists(mergedBam) || bfs::symbolic_link_exists(mergedBam);
 
     if (mergedBamExists) {
-        if (verbose) cout << "Pre-merged BAM detected: " << mergedBam << endl;
+        cout << "Pre-merged BAM detected: " << mergedBam << endl;
     }
     else {
 
         auto_cpu_timer timer(1, " - BAM Merge - Wall time taken: %ws\n\n");
 
-        if (verbose) {
-            cout << "Found " << bamFiles.size() << " BAM files." << endl;
+        cout << "Found " << bamFiles.size() << " BAM files." << endl;
+        
+        vector<path> mergeIn;
+        
+        // Sort the individual inputs if necessary
+        uint16_t inCount = 1;
+        for(auto& f : bamFiles) {
+            path tempSorted = path(output->getPrepDir());
+            tempSorted /= "temp" + lexical_cast<string>(inCount++) + ".bam";
+            // Sort the data (if required, will auto-detect if necessary)
+            if (!bamSort(f, tempSorted)) {
+                BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "Could not sort: ") + output->getUnsortedBamFilePath().string()));
+            }
+            mergeIn.push_back(tempSorted);            
         }
 
-        string mergeCmd = BamHelper::createMergeBamCmd(bamFiles, mergedBam, threads);
+        
+        string mergeCmd = BamHelper::createMergeBamCmd(mergeIn, mergedBam, threads);
 
-        if (verbose) {
-            cout << "Merging BAM using command \"" << mergeCmd << "\" ... ";
-            cout.flush();
-        }
+        cout << "Merging BAM using command \"" << mergeCmd << "\" ... ";
+        cout.flush();
 
         int exitCode = system(mergeCmd.c_str());
 
@@ -235,10 +238,15 @@ bool portcullis::Prepare::bamMerge(vector<path> bamFiles) {
                     "Failed to successfully merge: ") + mergedBam.string()));
         }
 
-        if (verbose) {
         cout << "done." << endl
              << "Merged BAM file created at: " << mergedBam << endl;
+        
+        cout << "Deleteing temporary unmerged files ...";
+        cout.flush();
+        for(auto& f : mergeIn) {
+            bfs::remove(f);
         }
+        cout << "done." << endl;
     }
 
     // Return true if the merged BAM exists now, which is should do
@@ -250,23 +258,23 @@ bool portcullis::Prepare::bamMerge(vector<path> bamFiles) {
  * @param inputBam
  * @return 
  */
-bool portcullis::Prepare::bamSort() {
+bool portcullis::Prepare::bamSort(const path& input, const path& output) {
 
-    const path unsortedBam = output->getUnsortedBamFilePath();
-    const path sortedBam = output->getSortedBamFilePath();
+    const path unsortedBam = input;
+    const path sortedBam = output;
 
     bool sortedBamExists = bfs::exists(sortedBam) || bfs::symbolic_link_exists(sortedBam);
 
     if (sortedBamExists) {            
-        if (verbose) cout << "Prepped sorted BAM detected: " << sortedBam << endl;
+        cout << "Prepped sorted BAM detected: " << sortedBam << endl;
     }
     else {
 
-        if (BamHelper::isCoordSortedBam(unsortedBam.string())  && !force) {
+        if (BamHelper::isCoordSortedBam(unsortedBam.string()) && !force) {
 
-            if (verbose) cout << "Provided BAM appears to be sorted already, just creating symlink instead." << endl;
+            cout << "Provided BAM appears to be sorted already, just creating symlink instead." << endl;
             bfs::create_symlink(bfs::canonical(unsortedBam), sortedBam);            
-            if (verbose) cout << "Created symlink from " << bfs::canonical(unsortedBam) << " to " << sortedBam << endl;
+            cout << "Created symlink from " << bfs::canonical(unsortedBam) << " to " << sortedBam << endl;
         }
         else {
 
@@ -275,10 +283,8 @@ bool portcullis::Prepare::bamSort() {
             // Sort the BAM file by coordinate
             string sortCmd = BamHelper::createSortBamCmd(unsortedBam, sortedBam, false, threads, "1G");
 
-            if (verbose) {
-                cout << "Sorting BAM using command \"" << sortCmd << "\" ... ";
-                cout.flush();
-            }
+            cout << "Sorting BAM using command \"" << sortCmd << "\" ... ";
+            cout.flush();
 
             int exitCode = system(sortCmd.c_str());
 
@@ -293,12 +299,9 @@ bool portcullis::Prepare::bamSort() {
                         "Failed to successfully sort: ") + unsortedBam.string()));
             }
 
-            if (verbose) {
             cout << "done." << endl
-                 << "Sorted BAM file created at: " << sortedBam << endl;
-            }
+                 << "Sorted BAM file created at: " << sortedBam << endl;            
         }
-
     }
 
     // Return true if the sorted BAM exists now, which is should do
@@ -322,11 +325,9 @@ bool portcullis::Prepare::bamIndex(const bool copied) {
         // Create BAM index
         string indexCmd = BamHelper::createIndexBamCmd(sortedBam, useCsi);                
 
-        if (verbose) {
-            cout << "Indexing BAM using command \"" << indexCmd << "\" ... ";
-            cout.flush();
-        }
-
+        cout << "Indexing BAM using command \"" << indexCmd << "\" ... ";
+        cout.flush();
+        
         int exitCode = system(indexCmd.c_str());                    
 
         if (exitCode != 0 || !exists(output->getBamIndexFilePath(useCsi))) {
@@ -334,10 +335,8 @@ bool portcullis::Prepare::bamIndex(const bool copied) {
                         "Failed to successfully index: ") + sortedBam.string()));
         }
 
-        if (verbose) {
-            cout << "done." << endl
-                 << "BAM index created at: " << output->getBamIndexFilePath(useCsi) << endl;
-        }
+        cout << "done." << endl
+             << "BAM index created at: " << output->getBamIndexFilePath(useCsi) << endl;
     }
 
     return bfs::exists(indexedFile) || bfs::symbolic_link_exists(indexedFile);
@@ -376,7 +375,7 @@ void portcullis::Prepare::prepare(vector<path> bamFiles, const path& originalGen
     path mergedBamFile = doMerge ? output->getUnsortedBamFilePath() : bamFiles[0];
 
     bool indexCopied = false;
-    // Merge the bams to output unsorted bam file if required, otherwise just
+    // Merge the bams to output a sorted bam file if required, otherwise just
     // copy / symlink the file provided
     if (doMerge) {
         if (!bamMerge(bamFiles)) {
@@ -394,12 +393,17 @@ void portcullis::Prepare::prepare(vector<path> bamFiles, const path& originalGen
         
         // Copy / Symlink the index file to the output dir if it exists... otherwise we'll create it later
         indexCopied = copy(bamFiles[0].string() + (useCsi ? CSI_EXTENSION : BAI_EXTENSION), output->getBamIndexFilePath(useCsi), "BAM index", false);
-    }
-
-    // Sort the file (if required)
-    if (!bamSort()) {
-        BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
-                "Could not sort: ") + output->getUnsortedBamFilePath().string()));
+        
+        // Sort the data (if required, will auto-detect if necessary)
+        if (!bamSort(output->getUnsortedBamFilePath(), output->getSortedBamFilePath())) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                    "Could not sort: ") + output->getUnsortedBamFilePath().string()));
+        }
+        
+        // Save disk space by deleting the unsorted BAM if present
+        if (!bfs::symbolic_link_exists(output->getUnsortedBamFilePath()) && bfs::exists(output->getUnsortedBamFilePath())) {
+            bfs::remove(output->getUnsortedBamFilePath());
+        }
     }
     
     // Index the sorted file (if required)
@@ -407,7 +411,6 @@ void portcullis::Prepare::prepare(vector<path> bamFiles, const path& originalGen
         BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
                 "Failed to index: ") + output->getSortedBamFilePath().string()));
     }
-
 }
 
 vector<path> portcullis::Prepare::globFiles(vector<path> input) {
@@ -462,7 +465,7 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
     path outputDir;
     bool force;
     string strandSpecific;
-    bool useLinks;
+    bool copy;
     bool useCsi;
     uint16_t threads;
     bool verbose;
@@ -480,8 +483,8 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
             ("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads).  By default we assume the user does not know the strand specific protocol used for this BAM file.  This has the affect that strand information is derived from splice site information alone, assuming junctions are either canonical or semi-canonical in form.  Default: \"unknown\"")
-            ("use_links,l", po::bool_switch(&useLinks)->default_value(false), 
-                "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
+            ("copy", po::bool_switch(&copy)->default_value(false), 
+                "Whether to copy files from input data to prepared data where possible, otherwise will use symlinks.  Will require more time and disk space to prepare input but is potentially more robust.")
             ("use_csi,c", po::bool_switch(&useCsi)->default_value(false), 
                 "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_PREP_THREADS),
@@ -549,7 +552,7 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
          << "----------------------------------" << endl << endl;
 
     // Create the prepare class
-    Prepare prep(outputDir, strandednessFromString(strandSpecific), force, useLinks, useCsi, threads, verbose);
+    Prepare prep(outputDir, strandednessFromString(strandSpecific), force, !copy, useCsi, threads, verbose);
     
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information

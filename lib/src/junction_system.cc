@@ -19,12 +19,14 @@
 #include <iostream>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 using std::cout;
 using std::endl;
 using std::ifstream;
 using std::ofstream;
 using std::shared_ptr;
+using std::unordered_set;
 
 #include <boost/lexical_cast.hpp>
 #include <boost/exception/all.hpp>
@@ -303,7 +305,7 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
             }
             junc->setUniqueJunction(uniqueJunction);
         }
-        junctionGroup[maxIndex]->setPrimaryJunction(true);
+        junctionGroup[maxIndex]->setPrimaryJunction(true);        
     }
     
     size_t i = 0;
@@ -358,6 +360,16 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
         int32_t up = junc->getDistanceToNextUpstreamJunction();
         
         junc->setDistanceToNearestJunction(down == -1 || up == -1 ? max(down, up) : min(down, up));
+        
+        junc->setMeanQueryLength(this->meanQueryLength);
+        
+        // Now we know the mean query length, confirm if this junction really is suspicious
+        if (junc->isSuspicious()) {
+            double prob = 1.0 - std::pow((junc->getMaxMMES() / (this->meanQueryLength / 2.0)), junc->getNbJunctionAlignments());
+            if (prob > 0.99) {
+                junc->setPotentialFalsePositive(true);
+            }
+        }
     }
 }
 

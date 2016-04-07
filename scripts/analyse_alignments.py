@@ -10,33 +10,8 @@ from rpy2.robjects.packages import importr
 import itertools
 import argparse
 import bed12
+import performance
 
-
-class PEntry:
-
-    input = ""
-    aligner = ""
-    junctions_in_ref = 0
-    junctions_out_ref = 0
-    junctions_missing = 0
-    junctions_in_ref_perc = 0
-    junctions_missing_perc = 0
-
-    def __init__(self):
-        self.data = []
-
-    def __str__(self):
-        return self.input + "\t" + self.aligner + "\t" + str(self.junctions_in_ref)+ "\t" + format(self.junctions_in_ref_perc, '.2f') \
-               + "\t" + str(self.junctions_missing) + "\t" + format(self.junctions_missing_perc, '.2f') + "\t" + str(self.junctions_out_ref)
-
-
-    def calc_percs(self, nb_in_ref):
-        self.junctions_in_ref_perc = (float(self.junctions_in_ref) / float(nb_in_ref)) * 100.0
-        self.junctions_missing_perc = (float(self.junctions_missing) / float(nb_in_ref)) * 100.0
-
-    @staticmethod
-    def header():
-        return "Dataset\tAligner\tInRef\tInRef%\tMissing\tMissing%\tOutRef"
 
 def main():
     
@@ -73,19 +48,18 @@ def main():
     tab = list()
     for a in aligners:
         for r in reads:
-            p = PEntry()
+            p = performance.PEntry()
             p.aligner = a
             p.input = r
-            p.junctions_in_ref = len(ref_bed & bed_data[a + "-" + r])
-            p.junctions_out_ref = len(bed_data[a + "-" + r] - ref_bed)
-            p.junctions_missing = len(ref_bed - bed_data[a + "-" + r])
-            p.calc_percs(len(ref_bed))
+            p.tp = len(ref_bed & bed_data[a + "-" + r])
+            p.fp = len(bed_data[a + "-" + r] - ref_bed)
+            p.fn = len(ref_bed - bed_data[a + "-" + r])
 
-            tab.append(p)
+            tab.append(r + "\t" + a + "\t" + p.__str__())
 
     # Output table to disk
     with open(args.output + "-align_reads.tab", "w") as tab_out:
-        print(PEntry.header(), file=tab_out)
+        print("Dataset\tAligner\t" + performance.PEntry.header(), file=tab_out)
         for p in tab:
             print(p, file=tab_out)
 
@@ -111,7 +85,7 @@ def main():
         nums = dict()
         nums["area1"] = len(ref_bed)
         i=2
-        for a in aligners:
+        for a in sorted(aligners):
             s = bed_data[a + "-" + r]
             sets.append(s)
             categories.append(a)
@@ -138,7 +112,7 @@ def main():
                                                                       "darkgreen",
                                                                       "darkorange",
                                                                       "darkred"]),
-                             cex=1,
+                             cex=2,
                              main="Comparison on junctions found by alignment tools",
                              main_col="black",
                              main_cex=8,

@@ -20,6 +20,7 @@
 #include <iostream>
 using std::stringstream;
 
+#include <boost/algorithm/string.hpp>
 #include <boost/filesystem/path.hpp>
 using boost::filesystem::path;
 
@@ -33,86 +34,142 @@ private:
     uint32_t fn;    
 public:
     Performance(uint32_t tp, uint32_t tn, uint32_t fp, uint32_t fn) : tp(tp), tn(tn), fp(fp), fn(fn) {}
-        
-    string toString() {
-        stringstream ss;
-        ss << std::fixed << std::setprecision(2);
-        ss << "TP:" << tp << " TN:" << tn << " FP:" << fp << " FN:" << fn 
-           << " REC:" << getRecall() << " PRC:" << getPrecision() << " F1:" << getF1Score();
-        return ss.str();
+    
+    static string shortHeader() {
+        return "TP\tTN\tFP\tFN\tREC\tPRC\tF1";
     }
     
-    inline uint32_t getAllPositive() {
+    static string longHeader() {
+        return "TP\tTN\tFP\tFN\tPREV\tBIAS\tSENS\tSPEC\tPPV\tNPV\tF1\tACC\tINFO\tMARK\tMCC";
+    }
+    
+    static string to_2dp_string(const double v) {
+        std::ostringstream out;
+        out << std::fixed << std::setprecision(2) << v;
+        return out.str();
+    }
+    
+    
+    string toShortString() const {
+        vector<string> parts;
+        parts.push_back(std::to_string(tp));
+        parts.push_back(std::to_string(tn)); 
+        parts.push_back(std::to_string(fp));
+        parts.push_back(std::to_string(fn));
+        parts.push_back(to_2dp_string(getRecall()));
+        parts.push_back(to_2dp_string(getPrecision()));
+        parts.push_back(to_2dp_string(getF1Score()));
+        return boost::algorithm::join(parts, "\t");
+    }
+    
+    string toLongString() const {
+        vector<string> parts;
+        parts.push_back(std::to_string(tp));
+        parts.push_back(std::to_string(tn)); 
+        parts.push_back(std::to_string(fp));
+        parts.push_back(std::to_string(fn));
+        parts.push_back(to_2dp_string(getPrevalence()));        
+        parts.push_back(to_2dp_string(getBias()));
+        parts.push_back(to_2dp_string(getSensitivity()));
+        parts.push_back(to_2dp_string(getSpecificity()));
+        parts.push_back(to_2dp_string(getPrecision()));
+        parts.push_back(to_2dp_string(getNPV()));
+        parts.push_back(to_2dp_string(getF1Score()));
+        parts.push_back(to_2dp_string(getAccuracy()));
+        parts.push_back(to_2dp_string(getInformedness()));
+        parts.push_back(to_2dp_string(getMarkedness()));
+        parts.push_back(to_2dp_string(getMCC()));        
+        return boost::algorithm::join(parts, "\t");
+    }
+    
+    
+    inline uint32_t getAllPositive() const {
         return tp + fp;
     }
 
-    inline uint32_t getAllNegative() {
+    inline uint32_t getAllNegative() const {
         return tn + fn;
     }
     
-    inline uint32_t getAllTrue() {
+    inline uint32_t getAllTrue() const {
         return tn + tp;
     }
     
-    inline uint32_t getAllFalse() {
+    inline uint32_t getAllFalse() const {
         return fn + fp;
     }
-        
-    inline uint32_t getAll() {
+    
+    inline uint32_t getRealPositive() const {
+        return tp + fn;
+    }
+    
+    inline uint32_t getRealNegative() const {
+        return fp + tn;
+    }
+            
+    inline uint32_t getAll() const {
         return tp + tn + fp + fn;
     }
         
-    inline double getPrecision() {
+    inline double getPrecision() const {
         return 100.0 * (double)tp / (double)(tp + fp);
     }
     
-    inline double getRecall() {
+    inline double getRecall() const {
         return 100.0 * (double)tp / (double)(tp + fn);
     }
     
     // Same as recall
-    inline double getSensitivity() {
+    inline double getSensitivity() const {
         return 100.0 * (double)tp / (double)(tp + fn);
     }
     
-    inline double getSpecificity() {
+    inline double getSpecificity() const {
         return 100.0 * (double)tn / (double)(fp + tn);
     }
     
-    inline double getNPV() {
+    inline double getNPV() const {
         return 100.0 * (double)tn / (double)(tn + fn);
     }
     
-    inline double getFallOut() {
+    inline double getFallOut() const {
         return 100.0 * (double)fp / (double)(fp + tn);
     }
     
-    inline double getFDR() {
+    inline double getFDR() const {
         return 100.0 * (double)fp / (double)(fp + tp);
     }
     
-    inline double getFNR() {
+    inline double getFNR() const {
         return 100.0 * (double)fn / (double)(fn + tp);
     }
     
-    inline double getAccuracy() {
+    inline double getAccuracy() const {
         return 100.0 * (double)getAllTrue() / (double)getAll();
     }
     
-    inline double getF1Score() {
+    inline double getPrevalence() const {
+        return 100.0 * (double)getRealPositive() / (double)getAll();
+    }
+    
+    inline double getBias() const {
+        return 100.0 * (double)getAllPositive() / (double)getAll();
+    }
+    
+    inline double getF1Score() const {
         return 100.0 * (double)(2.0 * tp) / (double)(2.0 * tp + fp + fn);
     }
 
-    inline double getMCC() {
+    inline double getMCC() const {
         return 100.0 * (double)(tp * tn - fp * fn) / (std::sqrt((double)(tp + fp)*(tp+fn)*(tn+fp)*(tn+fn)));
     }
     
-    inline double getInformedness() {
-        return getSensitivity() + getSpecificity() - 1.0;
+    inline double getInformedness() const {
+        return getSensitivity() + getSpecificity() - 100.0;
     }
     
-    inline double getMarkedness() {
-        return getPrecision() + getNPV() - 1.0;
+    inline double getMarkedness() const {
+        return getPrecision() + getNPV() - 100.0;
     }
     
     static void loadGenuine(path& genuineFile, vector<bool>& results) {

@@ -193,6 +193,9 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
     intron(_location) {
     leftAncStart = _leftAncStart;
     rightAncEnd = _rightAncEnd;
+    meanQueryLength = 0;
+    suspicious = false;
+    pfp = false;
     canonicalSpliceSites = NO;
     maxMinAnchor = intron->minAnchorLength(_leftAncStart, _rightAncEnd);
     diffAnchor = 0;
@@ -218,6 +221,11 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
     distanceToNextDownstreamJunction = 0;
     distanceToNearestJunction = 0;
     
+    junctionOverhangs.clear();
+    for(size_t i = 0; i < JO_NAMES.size(); i++) {
+        junctionOverhangs.push_back(0);
+    }
+    
     readStrand = Strand::UNKNOWN;
     ssStrand = Strand::UNKNOWN;
     consensusStrand = Strand::UNKNOWN;
@@ -240,6 +248,9 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
     intron = make_shared<Intron>(*(j.intron));        
     leftAncStart = j.leftAncStart;
     rightAncEnd = j.rightAncEnd;
+    meanQueryLength = j.meanQueryLength;
+    suspicious = j.suspicious;
+    pfp = j.pfp;
     canonicalSpliceSites = j.canonicalSpliceSites;
     maxMinAnchor = j.maxMinAnchor;
     diffAnchor = j.diffAnchor;
@@ -288,11 +299,17 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
     for (auto& x : j.trimmedLogDevCov) {
         trimmedLogDevCov.push_back(x);
     }
+    
+    junctionOverhangs.clear();
+    for(size_t i = 0; i < JO_NAMES.size(); i++) {
+        junctionOverhangs.push_back(j.getJunctionOverhangs(i));
+    }
 }
     
 // **** Destructor ****
 portcullis::Junction::~Junction() {
-    alignments.clear();   
+    alignments.clear();
+    junctionOverhangs.clear();
 }
     
 void portcullis::Junction::clearAlignments() {
@@ -316,8 +333,6 @@ void portcullis::Junction::addJunctionAlignment(const BamAlignment& al) {
     
     
 portcullis::CanonicalSS portcullis::Junction::setDonorAndAcceptorMotif(string seq1, string seq2) {
-    this->da1 = seq1;
-    this->da2 = seq2;
     this->canonicalSpliceSites = hasCanonicalSpliceSites(seq1, seq2);
     this->ssStrand = predictedStrandFromSpliceSites(seq1, seq2);
     // Also set consensusStrand here as readStrand should already be calculated
@@ -326,6 +341,10 @@ portcullis::CanonicalSS portcullis::Junction::setDonorAndAcceptorMotif(string se
                 this->readStrand == Strand::UNKNOWN ? this->ssStrand :
                     this->ssStrand == Strand::UNKNOWN ? this->readStrand :
                         Strand::UNKNOWN;
+    
+    this->da1 = this->consensusStrand == Strand::NEGATIVE ? SeqUtils::reverseComplement(seq1) : seq1;
+    this->da2 = this->consensusStrand == Strand::NEGATIVE ? SeqUtils::reverseComplement(seq2) : seq2;
+    
     return this->canonicalSpliceSites;
 }
     
@@ -493,13 +512,7 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
     }
     
     // MaxMMES can now use info in alignments
-    this->calcMaxMMES();
-    
-    // Calculate mean mismatches (using info in alignments)
-    this->calcMeanMismatches();  
-    
-    // ???
-    //this->calcTrimmedCoverageVector();
+    this->calcMismatchStats();    
 }
     
 void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength) {
@@ -779,26 +792,50 @@ void portcullis::Junction::calcHammingScores(   const string& leftAnchor, const 
 }
     
 /**
- * Calculates metric 12.  MaxMMES.
+ * Calculates MaxMMES, mismatches, and junction overhangs.
  */
-void portcullis::Junction::calcMaxMMES() {
+void portcullis::Junction::calcMismatchStats() {
 
-    for(const auto& a : alignments) {
-        maxMMES = max(maxMMES, a->mmes);
-    }
-}
-
-/**
- * Calculate metric 19.  Mean mismatches
- */
-void portcullis::Junction::calcMeanMismatches() {
-    
     uint32_t nbMismatches = 0;
+    uint32_t firstMismatch = 100000000;
     for(const auto& a : alignments) {
+        
+        // Update maxMMES for this alignment
+        maxMMES = max(maxMMES, a->mmes);
+        
+        // Update total number of mismatches in this junction
         nbMismatches += a->nbMismatches;
+        
+        // Keep a record of the first mismatch detected
+        if (a->minMatch > 0) {
+            firstMismatch = min(firstMismatch, a->minMatch);
+        }
+        
+        // Update junction overhang vector
+        for(uint16_t i = 0; i < JO_NAMES.size() && i < a->minMatch; i++) {
+            junctionOverhangs[i]++;
+        }
     }
     
+    // Set mean mismatches across junction
     meanMismatches = (double)nbMismatches / (double)alignments.size();
+    
+    // Assuming we have some mismatches determine if this junction has no overhangs
+    // extending beyond first mismatch.  If so determine if that distance is small
+    // enough to consider the junction as suspicious
+    if (nbMismatches > 0) {
+        bool found = false;
+        for(const auto& a : alignments) {
+            if (a->mmes > firstMismatch) {
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) {
+            suspicious = true;
+        }
+    }
 }
 
     
@@ -817,70 +854,6 @@ void portcullis::Junction::calcMultipleMappingScore(SplicedAlignmentMap& map) {
     this->multipleMappingScore = (double)N / (double)M;
 }
     
-void portcullis::Junction::calcTrimmedCoverageVector() {
-    
-    // Sets vector to right size with all values set to 0
-    trimmedCoverage.assign(TRIMMED_COVERAGE_LENGTH, 0);
-    trimmedLogDevCov.assign(TRIMMED_COVERAGE_LENGTH, 0.0);
-    
-    const uint32_t armLength = TRIMMED_COVERAGE_LENGTH / 2;
-    for(const auto& a : alignments) {
-        
-        uint32_t start = a->upstreamMatches > armLength ? 0 : armLength - a->upstreamMatches;
-        uint32_t end = a->downstreamMatches >= armLength ? TRIMMED_COVERAGE_LENGTH - 1 : armLength + a->downstreamMatches;
-        
-        for(uint32_t i = start; i <= end; i++) {
-            trimmedCoverage[i]++;
-        }
-    }
-    
-    double sum = std::accumulate(trimmedCoverage.begin(), trimmedCoverage.end(), 0.0);
-    double mean = sum / trimmedCoverage.size();
-
-    double sq_sum = std::inner_product(trimmedCoverage.begin(), trimmedCoverage.end(), trimmedCoverage.begin(), 0.0);
-    double stdev = std::sqrt(sq_sum / trimmedCoverage.size() - mean * mean);
-    
-    // Calculate the expected coverage value (assuming normal distribution)
-    
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::normal_distribution<> nd(mean, stdev);
-    
-    uint32_t expectedDistribution[TRIMMED_COVERAGE_LENGTH];
-    for(size_t i = 0; i < sum; i++) {
-        
-        //pos = std::round(nd(gen));
-        //expectedDistribution[i] = ;
-    }
-    
-    // Calculate the log deviation from the expected uniform coverage value
-    double logDevSum = 0.0;
-    for(size_t i = 0; i < trimmedCoverage.size(); i++) {
-        double logDev = log2((double)trimmedCoverage[i] / nd(gen));   
-        logDev = std::isinf(logDev) || std::isnan(logDev) ? 0.0 : logDev;
-        logDevSum += abs(logDev);
-        trimmedLogDevCov[i] = logDev;
-    }
-    /*
-    cout << logDevSum << endl;
-    
-    
-    stringstream ss;
-    ss << std::setprecision(2);
-        
-    for(size_t i = 0; i < trimmedCoverage.size(); i++) {
-        ss << trimmedCoverage[i] << "\t";
-    }
-    ss << endl;
-    for(size_t i = 0; i < trimmedCoverage.size(); i++) {
-        ss << trimmedLogDevCov[i] << "\t";
-    }
-    ss << endl;
-    
-    string s = ss.str();
-    cout << s;
-    int i = 0;*/
-}
     
 double portcullis::Junction::calcCoverage(int32_t a, int32_t b, const vector<uint32_t>& coverageLevels) {
 
@@ -1013,7 +986,8 @@ void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string
          << "M24-NbDownstreamNonSplicedAlignments=" << nbDownstreamFlankingAlignments << delimiter
          << "M25-DistanceToNextUpstreamJunction=" << distanceToNextUpstreamJunction << delimiter
          << "M26-DistanceToNextDownstreamJunction=" << distanceToNextDownstreamJunction << delimiter
-         << "M27-DistanceToNearestJunction=" << distanceToNearestJunction;         
+         << "M27-DistanceToNearestJunction=" << distanceToNearestJunction << delimiter
+         << "PFP=" << boolalpha << pfp;         
 }
 
     
@@ -1040,11 +1014,12 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id, cons
          << nbJunctionAlignments << "\t"           // No score for the moment
          << strand << "\t"          // strand
          << "." << "\t"             // Just put "." for the phase
-         << "Note=cov:" << nbJunctionAlignments 
+         // Removing this as it causes issues with PASA downstream
+         /**<< "Note=cov:" << nbJunctionAlignments 
                         << "|rel:" << this->nbReliableAlignments 
                         << "|ent:" << std::setprecision(4) << this->entropy << std::setprecision(9) 
                         << "|maxmmes:" << this->maxMMES
-                        << "|ham:" << min(this->hammingDistance3p, this->hammingDistance5p) << ";"  // Number of times it was seen
+                        << "|ham:" << min(this->hammingDistance3p, this->hammingDistance5p) << ";"  // Number of times it was seen**/
          << "mult=" << nbJunctionAlignments << ";"  // Coverage for augustus
          << "grp=" << juncId << ";"  // ID for augustus
          << "src=E";                // Source for augustus
@@ -1091,7 +1066,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id, co
     
     // Output left exonic region
     strm << intron->ref.name << "\t"
-         << "portcullis" << "\t"
+         << source << "\t"
          << "match_part" << "\t"
          << leftAncStart + 1 << "\t"
          << (intron->start) << "\t"
@@ -1103,7 +1078,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id, co
 
     // Output right exonic region
     strm << intron->ref.name << "\t"
-         << "portcullis" << "\t"
+         << source << "\t"
          << "match_part" << "\t"
          << (intron->end + 2) << "\t"
          << rightAncEnd + 1 << "\t"
@@ -1159,7 +1134,9 @@ void portcullis::Junction::outputBED(std::ostream &strm, const string& prefix, u
 string portcullis::Junction::junctionOutputHeader() {
     return string(Intron::locationOutputHeader()) + "\tleft\tright\tss1\tss2\t" + 
             boost::algorithm::join(STRAND_NAMES, "\t") + "\t" +
-            boost::algorithm::join(METRIC_NAMES, "\t");
+            boost::algorithm::join(METRIC_NAMES, "\t") + "\t" + 
+            "MQL\tSuspect\tPFP\t" +
+            boost::algorithm::join(JO_NAMES, "\t");
 }
 
 shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line) {
@@ -1167,9 +1144,13 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     vector<string> parts; // #2: Search for tokens
     boost::split( parts, line, boost::is_any_of("\t"), boost::token_compress_on );
 
-    if (parts.size() != 40) {
+    uint32_t expected_cols = 13 + STRAND_NAMES.size() + METRIC_NAMES.size() + JO_NAMES.size();
+    
+    if (parts.size() != expected_cols) {
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-            "Could not parse line due to incorrect number of columns.  Check file and portcullis versions.  Expected 40 columns: ") + line));
+            "Could not parse line due to incorrect number of columns.  This is probably a version mismatch.  Check file and portcullis versions.  Expected ") 
+                + std::to_string(expected_cols) + " columns.  Found " 
+                + std::to_string(parts.size()) + ".  Line: " + line));
     }
 
     // Create intron
@@ -1227,6 +1208,14 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     j->setDistanceToNextUpstreamJunction(lexical_cast<uint32_t>(parts[37]));
     j->setDistanceToNextDownstreamJunction(lexical_cast<uint32_t>(parts[38]));
     j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[39]));
+    
+    // Read Junction overhangs
+    j->setMeanQueryLength(lexical_cast<uint32_t>(parts[40]));
+    j->setSuspicious(lexical_cast<bool>(parts[41]));
+    j->setPotentialFalsePositive(lexical_cast<bool>(parts[42]));
+    for(size_t i = 0; i < JO_NAMES.size(); i++) {
+        j->setJunctionOverhangs(i, lexical_cast<uint32_t>(parts[43 + i]));
+    }
     
     return j;
 }

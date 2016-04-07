@@ -136,15 +136,16 @@ int mainFull(int argc, char *argv[]) {
     path outputDir;
     path modelFile;
     path filterFile;
+    path referenceFile;
     string strandSpecific;
     uint16_t threads;
-    bool useLinks;
+    bool copy;
     bool force;
     bool useCsi;
     bool bamFilter;
     string source;
     uint32_t max_length;
-    bool canonical;
+    string canonical;
     bool verbose;
     bool help;
     
@@ -160,8 +161,8 @@ int mainFull(int argc, char *argv[]) {
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
             ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unknown\"")
-            ("use_links", po::bool_switch(&useLinks)->default_value(false), 
-                "Whether to use symbolic links from input data to prepared data where possible.  Saves time and disk space but is less robust.")
+            ("copy", po::bool_switch(&copy)->default_value(false), 
+                "Whether to copy files from input data to prepared data where possible, otherwise will use symlinks.  Will require more time and disk space to prepare input but is potentially more robust.")
             ("use_csi", po::bool_switch(&useCsi)->default_value(false), 
                 "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(1),
@@ -170,10 +171,12 @@ int mainFull(int argc, char *argv[]) {
                 "If you wish to use a custom random forest model to filter the junctions file, use this option to. See manual for more details.")
             ("filter_file,f", po::value<path>(&filterFile)->default_value(JunctionFilter::defaultFilterFile), 
                 "The rule-based filter configuration file to use.")
+            ("reference,r", po::value<path>(&referenceFile),
+                "Reference annotation of junctions in BED format.  Any junctions found by the junction analysis tool will be preserved if found in this reference file regardless of any other filtering criteria.  If you need to convert a reference annotation from GTF or GFF to BED format portcullis contains scripts for this.")
             ("max_length", po::value<uint32_t>(&max_length)->default_value(0),
                 "Filter junctions longer than this value.  Default (0) is to not filter based on length.")
-            ("canonical", po::bool_switch(&canonical)->default_value(false),
-                "Filter out non-canonical junctions.  If set then only canonical and semi-canonical junctions are kept.  Default is to not filter based on the junction's canonical label.")
+            ("canonical,c", po::value<string>(&canonical)->default_value("OFF"),
+                "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GU-AG), S = Semi-canonical junctions (AT-AC, or  GT-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")
             ("bam_filter,b", po::bool_switch(&bamFilter)->default_value(false), 
                 "Filter out alignments corresponding with false junctions")
             ("source", po::value<string>(&source)->default_value("portcullis"),
@@ -251,7 +254,7 @@ int mainFull(int argc, char *argv[]) {
     path prepDir = path(outputDir.string() + "/1-prep");
 
     // Create the prepare class
-    Prepare prep(prepDir, strandednessFromString(strandSpecific), force, useLinks, useCsi, threads, verbose);
+    Prepare prep(prepDir, strandednessFromString(strandSpecific), force, !copy, useCsi, threads, verbose);
     
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information
@@ -283,16 +286,17 @@ int mainFull(int argc, char *argv[]) {
     cout << "Filtering junctions" << endl
          << "-------------------" << endl << endl;
     
-    path filtDir = outputDir.string() + "/3-filt";
+    path filtOut = outputDir.string() + "/3-filt/portcullis_filtered";
     path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
     
-    JunctionFilter filter(juncTab, filtDir, "portcullis_filtered");
+    JunctionFilter filter(juncTab, filtOut);
     filter.setVerbose(verbose);
     filter.setSource(source);
     filter.setMaxLength(max_length);
     filter.setCanonical(canonical);
     filter.setFilterFile(filterFile);
     filter.setModelFile(modelFile);
+    filter.setReferenceFile(referenceFile);
     filter.setThreads(threads);
     filter.filter();
 
@@ -302,7 +306,7 @@ int mainFull(int argc, char *argv[]) {
         cout << "Filtering BAMs" << endl
              << "--------------" << endl << endl;
 
-        path filtJuncTab = path(filtDir.string() + "/portcullis_filtered.pass.junctions.tab");
+        path filtJuncTab = path(filtOut.string() + ".pass.junctions.tab");
         path bamFile = path(prepDir.string() + "/portcullis.sorted.alignments.bam");
         path filteredBam = path(outputDir.string() + "/portcullis.filtered.bam");
 
