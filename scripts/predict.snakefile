@@ -57,7 +57,7 @@ SIM_INPUT_SET = [x for x in INPUT_SETS if x.startswith("sim")]
 REAL_INPUT_SET = [x for x in INPUT_SETS if x.startswith("real")]
 ALIGNMENT_METHODS = config["align_methods"]
 ASSEMBLY_METHODS = config["asm_methods"]
-ASSEMBLY_MODES = ["permissive","default","strict"]
+ASSEMBLY_MODES = config["asm_modes"]
 JUNC_METHODS = config["junc_methods"]
 
 #Shortcuts
@@ -79,11 +79,8 @@ CWD = os.getcwd()
 HISAT_STRAND = "--rna-strandness=RF" if STRANDEDNESS == "fr-firststrand" else "--rna-strandness=FR" if STRANDEDNESS == "fr-secondstrand" else ""
 PORTCULLIS_STRAND = "firststrand" if STRANDEDNESS == "fr-firststrand" else "secondstrand" if STRANDEDNESS == "fr-secondstrand" else "unstranded"
 
-# Min isoform fraction
-PERMISSIVE = 0.01
-DEFAULT = 0.1
-STRICT = 0.5
 
+ISOFORM_FRACTION = {"permissive": 0.01, "semipermissive": 0.03, "default": 0.1, "semistrict": 0.2, "strict": 0.5}
 
 #########################
 Rules
@@ -443,7 +440,7 @@ rule asm_cufflinks:
 	threads: int(THREADS)
 	message: "Using cufflinks to assemble {input.bam}"
 	run:
-		mode = PERMISSIVE if wildcards.asm_mode == "permissive" else STRICT if wildcards.asm_mode == "strict" else DEFAULT
+		mode = ISOFORM_FRACTION[wildcards.asm_mode]
 		shell("{params.load} && cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} -F {mode} --no-update-check {input.bam} > {log} 2>&1 && ln -sf {params.link_src} {output.gtf} && touch -h {output.gtf}")
 
 
@@ -462,7 +459,7 @@ rule asm_stringtie:
 	threads: int(THREADS)
 	message: "Using stringtie to assemble: {input.bam}"
 	run:
-		mode = PERMISSIVE if wildcards.asm_mode == "permissive" else STRICT if wildcards.asm_mode == "strict" else DEFAULT
+		mode = ISOFORM_FRACTION[wildcards.asm_mode]
 		shell("{params.load} && {RUN_TIME} stringtie {input.bam} -l {params.name} -f {mode} -m 200 -o {params.gtf} -p {threads} > {log} 2>&1 && ln -sf {params.link_src} {output.link} && touch -h {output.link}")
 
 
@@ -482,7 +479,7 @@ rule asm_class:
 	threads: int(THREADS)
 	message: "Using class to assemble: {input.bam}"
 	run:
-		mode = PERMISSIVE if wildcards.asm_mode == "permissive" else STRICT if wildcards.asm_mode == "strict" else DEFAULT
+		mode = ISOFORM_FRACTION[wildcards.asm_mode]
 		shell("{params.load} && class_run.py -c '-F {mode}' -p {threads} {input.bam} > {output.gtf} 2> {log} && ln -sf {params.link_src} {output.link} && touch -h {output.link}")
 
 
@@ -493,11 +490,12 @@ rule gtf_2_bed:
 		bed=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.bed"
 	params:
 		load_gt=LOAD_GT,
+		load_cuff=LOAD_CUFFLINKS,
 		load_p=LOAD_PORTCULLIS,
 		gff=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.gff3",
 		gffi=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.introns.gff3"
 	message: "Converting GTF to BED for: {input.gtf}"
-	shell: "{params.load_gt} && gt gtf_to_gff3 -tidy -force -o {params.gff} {input.gtf} 2> /dev/null && gt gff3 -sort -tidy -addintrons -force -o {params.gffi} {params.gff} && {params.load_p} && gff2bed.py {params.gffi} > {output.bed} && rm {params.gff} {params.gffi}"
+	shell: "{params.load_gt} && {params.load_cuff} && gffread -E {input.gtf} -o- > {params.gff} && gt gff3 -sort -tidy -addintrons -force -o {params.gffi} {params.gff} && {params.load_p} && gff2bed.py {params.gffi} > {output.bed} && rm {params.gff} {params.gffi}"
 
 rule gtf_stats:
 	input:
