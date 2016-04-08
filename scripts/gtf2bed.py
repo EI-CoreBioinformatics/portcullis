@@ -22,7 +22,6 @@ class Junction:
 
 
 with open(sys.argv[1]) as f:
-
 	junctions = [];
 	junction_set = {}
 
@@ -46,7 +45,6 @@ with open(sys.argv[1]) as f:
 			end = int(words[4])
 
 			dif = end - start
-
 
 			if words[2] == "transcript":
 
@@ -80,7 +78,6 @@ with open(sys.argv[1]) as f:
 				last_exon_start = start
 				last_exon_end = end
 				last_exon_strand = words[6]
-
 
 # Sort by
 junctions.sort(key=lambda x: x.end)

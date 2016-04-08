@@ -31,8 +31,10 @@ dist_bin_SCRIPTS =  scripts/analyse_alignments.py \
 		    scripts/fs2bed.py \
 		    scripts/fs2gff.py \
 		    scripts/gff2bed.py \
+		    scripts/gtf2bed.py \
 		    scripts/hpc.json \
 		    scripts/ml.py \
+		    scripts/pca.py \
 		    scripts/performance.py \
 		    scripts/predict.snakefile \
 		    scripts/read_gen.snakefile \
