@@ -470,10 +470,10 @@ void portcullis::JunctionFilter::filter() {
         cout << " done." << endl
              << "Found " << pos << " initial positive junctions and " << neg << " negative junctions, which will be used for training." << endl;
 
-        shared_ptr<Forest> forest = Train::trainInstance(initialSet, output.string() + ".selftrain", 100, threads, true);
+        shared_ptr<Forest> forest = Train::trainInstance(initialSet, output.string() + ".selftrain", 100, threads, true, true);
         
         forest->saveToFile();
-        forest->writeOutput();
+        forest->writeOutput(&cout);
         
         modelFile = output.string() + ".selftrain.forest";
     }

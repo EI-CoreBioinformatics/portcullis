@@ -56,7 +56,7 @@ typedef boost::error_info<struct PrepareError,string> PrepareErrorInfo;
 struct PrepareException: virtual boost::exception, virtual std::exception { };
 
 
-const string DEFAULT_PREP_OUTPUT_DIR = "portcullis_prep_data";
+const string DEFAULT_PREP_OUTPUT_DIR = "portcullis_prep";
 const uint16_t DEFAULT_PREP_THREADS = 1;
 
 const string PORTCULLIS = "portcullis";

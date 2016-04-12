@@ -151,7 +151,7 @@ public:
         const double recall = getRecall();
         const double precision = getPrecision();
         const double beta2 = beta * beta;
-        return 100.0 * (double)(1.0 + beta2) * ((precision * recall) / (beta2 * precision) + recall);
+        return (double)(1.0 + beta2) * (precision * recall) / ((beta2 * precision) + recall);
     }
     
     /**

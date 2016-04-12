@@ -266,10 +266,10 @@ int mainFull(int argc, char *argv[]) {
     cout << "Identifying junctions and calculating metrics" << endl
          << "---------------------------------------------" << endl << endl;
     
-    path juncDir = outputDir.string() + "/2-junc";
+    path juncOut = outputDir.string() + "/2-junc/portcullis_all";
     
     // Identify junctions and calculate metrics
-    JunctionBuilder jb(prepDir.string(), juncDir.string(), "portcullis_all");
+    JunctionBuilder jb(prepDir.string(), juncOut);
     jb.setThreads(threads);
     jb.setExtra(false);     // Run in fast mode
     jb.setSeparate(false);  // Run in fast mode
@@ -287,7 +287,7 @@ int mainFull(int argc, char *argv[]) {
          << "-------------------" << endl << endl;
     
     path filtOut = outputDir.string() + "/3-filt/portcullis_filtered";
-    path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
+    path juncTab = juncOut.string() + "/portcullis_all.junctions.tab";
     
     JunctionFilter filter(juncTab, filtOut);
     filter.setVerbose(verbose);

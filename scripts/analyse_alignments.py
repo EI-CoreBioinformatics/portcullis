@@ -10,7 +10,7 @@ from rpy2.robjects.packages import importr
 import itertools
 import argparse
 import bed12
-import performance
+from performance import Performance
 
 
 def main():
@@ -47,7 +47,7 @@ def main():
 	tab = list()
 	for a in aligners:
 		for r in reads:
-			p = performance.PEntry()
+			p = Performance()
 			p.aligner = a
 			p.input = r
 			p.tp = len(ref_bed & bed_data[a + "-" + r])
@@ -58,7 +58,7 @@ def main():
 
 	# Output table to disk
 	with open(args.output + "-align_reads.tab", "w") as tab_out:
-		print("Dataset\tAligner\t" + performance.PEntry.header(), file=tab_out)
+		print("Dataset\tAligner\t" + Performance.shortHeader(), file=tab_out)
 		for p in tab:
 			print(p, file=tab_out)
 

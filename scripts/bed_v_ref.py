@@ -3,7 +3,7 @@
 import itertools
 import argparse
 import bed12
-import performance
+from performance import Performance
 from matplotlib_venn import venn2
 from pylab import figure
 
@@ -24,13 +24,13 @@ def main():
 
 	# Build table
 	tab = list()
-	p = performance.PEntry()
+	p = Performance()
 	p.tp = len(ref_bed & bed_data)
 	p.fp = len(bed_data - ref_bed)
 	p.fn = len(ref_bed - bed_data)
 
 	print("Results:")
-	print(performance.PEntry.header())
+	print(Performance.shortHeader())
 	print(p)
 
 	if not args.output == None:

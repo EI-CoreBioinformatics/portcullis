@@ -71,7 +71,7 @@ typedef boost::error_info<struct JuncFilterError,string> JuncFilterErrorInfo;
 struct JuncFilterException: virtual boost::exception, virtual std::exception { };
 
 
-const string DEFAULT_FILTER_OUTPUT = "portcullis_filter_out/portcullis";
+const string DEFAULT_FILTER_OUTPUT = "portcullis_filter/portcullis";
 const string DEFAULT_FILTER_SOURCE = "portcullis";
 const string DEFAULT_FILTER_RULE_FILE = "default_filter.json";
 const string DEFAULT_FILTER_MODEL_FILE = "default_model.forest";
