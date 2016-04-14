@@ -95,6 +95,12 @@ portcullis::JunctionSystem::JunctionSystem(path junctionFile) : JunctionSystem()
     load(junctionFile);
 }
 
+portcullis::JunctionSystem::JunctionSystem(JunctionList& jl) : JunctionSystem() {
+    for(auto& j : jl) {
+        this->addJunction(j);
+    }
+}
+
 portcullis::JunctionSystem::~JunctionSystem() {
     distinctJunctions.clear();     
     junctionList.clear();

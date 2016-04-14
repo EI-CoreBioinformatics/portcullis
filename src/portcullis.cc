@@ -134,8 +134,6 @@ int mainFull(int argc, char *argv[]) {
     std::vector<path> bamFiles;
     path genomeFile;
     path outputDir;
-    path modelFile;
-    path filterFile;
     path referenceFile;
     string strandSpecific;
     uint16_t threads;
@@ -167,10 +165,6 @@ int mainFull(int argc, char *argv[]) {
                 "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(1),
                 "The number of threads to use.  Default: 1")
-            ("model_file,m", po::value<path>(&modelFile)->default_value(JunctionFilter::defaultModelFile), 
-                "If you wish to use a custom random forest model to filter the junctions file, use this option to. See manual for more details.")
-            ("filter_file,f", po::value<path>(&filterFile)->default_value(JunctionFilter::defaultFilterFile), 
-                "The rule-based filter configuration file to use.")
             ("reference,r", po::value<path>(&referenceFile),
                 "Reference annotation of junctions in BED format.  Any junctions found by the junction analysis tool will be preserved if found in this reference file regardless of any other filtering criteria.  If you need to convert a reference annotation from GTF or GFF to BED format portcullis contains scripts for this.")
             ("max_length", po::value<uint32_t>(&max_length)->default_value(0),
@@ -294,9 +288,7 @@ int mainFull(int argc, char *argv[]) {
     filter.setSource(source);
     filter.setMaxLength(max_length);
     filter.setCanonical(canonical);
-    filter.setFilterFile(filterFile);
-    filter.setModelFile(modelFile);
-    filter.setReferenceFile(referenceFile);
+    filter.setTrain(true);
     filter.setThreads(threads);
     filter.filter();
 
@@ -412,9 +404,8 @@ int main(int argc, char *argv[]) {
         char** modeArgV = argv+1;
         
         // Set static variables in downstream subtools so they know where to get their resources from
-        JunctionFilter::defaultFilterFile = path(portcullis::pfs.getDataDir().string() + "/default_filter.json");
-        JunctionFilter::defaultModelFile = path(portcullis::pfs.getDataDir().string() + "/default_model.forest");
         JunctionFilter::scriptsDir = portcullis::pfs.getScriptsDir();
+        JunctionFilter::dataDir = portcullis::pfs.getDataDir();
         JunctionSystem::version = portcullis::pfs.getVersion();
         
         if (mode == PREP) {

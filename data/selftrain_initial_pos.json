@@ -1,0 +1,33 @@
+{
+	"parameters": {
+		"M1-canonical_ss": {
+			"operator": "in",
+			"value": ["C"]
+		},
+		"M4-nb_rel_aln": {
+                        "operator": "gt",
+                        "value": 5
+                },
+                "M12-maxmmes": {
+                        "operator": "gt",
+                        "value": 18
+                },
+		"M11-entropy": {
+			"operator": "gt",
+			"value": 2.5
+		},
+                "M13-hamming5p": {
+                        "operator": "gte",
+                        "value": 8
+                },
+                "M14-hamming3p": {
+                        "operator": "gte",
+                        "value": 8
+                },
+		"M19-mean_mismatches": {
+			"operator": "lte",
+			"value": 1.0
+		}
+	},
+	"expression": "M1-canonical_ss & M4-nb_rel_aln & M11-entropy & M12-maxmmes & M13-hamming5p & M14-hamming3p & M19-mean_mismatches"  
+}

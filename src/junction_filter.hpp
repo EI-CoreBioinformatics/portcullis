@@ -75,6 +75,8 @@ const string DEFAULT_FILTER_OUTPUT = "portcullis_filter/portcullis";
 const string DEFAULT_FILTER_SOURCE = "portcullis";
 const string DEFAULT_FILTER_RULE_FILE = "default_filter.json";
 const string DEFAULT_FILTER_MODEL_FILE = "default_model.forest";
+const string ST_IPOS_RULES_FILE = "selftrain_initial_pos.json";
+const string ST_INEG_RULES_FILE = "selftrain_initial_neg.json";
 const uint16_t DEFAULT_FILTER_THREADS = 1;
 
 
@@ -251,9 +253,8 @@ private:
     
 public:
     
-    static path defaultModelFile;
-    static path defaultFilterFile;
     static path scriptsDir;
+    static path dataDir;
     
     JunctionFilter( const path& _junctionFile, 
                     const path& _output);
@@ -403,6 +404,14 @@ public:
     void setMaxLength(int32_t maxLength) {
         this->maxLength = maxLength;
     }
+    
+    path getIntitalPosRulesFile() const {
+        return path(dataDir.string() + "/" + ST_IPOS_RULES_FILE);
+    }
+
+    path getIntitalNegRulesFile() const {
+        return path(dataDir.string() + "/" + ST_INEG_RULES_FILE);
+    }
 
     
     
@@ -427,11 +436,13 @@ protected:
     
     void executePythonMLFilter(const path& mlOutputFile);
     
-    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, JunctionList& refs, const unordered_set<string>& ref);
+    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail);
     
     void calcPerformance(const JunctionList& pass, const JunctionList& fail);
     
-    void printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const JunctionList& ref, string prefix);
+    void printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const string& prefix);
+    
+    void doRuleBasedFiltering(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap);
     
 public:
   

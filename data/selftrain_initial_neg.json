@@ -1,0 +1,21 @@
+{
+	"parameters": {
+		"M3-nb_dist_aln": {
+			"operator": "eq",
+			"value": 1
+		},
+		"M4-nb_rel_aln": {
+                        "operator": "eq",
+                        "value": 0
+                },
+                "M12-maxmmes": {
+                        "operator": "lte",
+                        "value": 8
+                },
+		"Suspect": {
+			"operator": "eq",
+			"value": 1
+		}
+	},
+	"expression": "M4-nb_rel_aln | ( M3-nb_dist_aln & ( M12-maxmmes | Suspect ) )"  
+}
