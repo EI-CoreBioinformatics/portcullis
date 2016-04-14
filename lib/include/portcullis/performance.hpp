@@ -64,7 +64,10 @@ public:
     }
         
     inline double getPrecision() const {
-        return 100.0 * (double)tp / (double)(getAllPositive());
+        if (getAllPositive() == 0) 
+            return 0.0;
+        else
+            return 100.0 * (double)tp / (double)(getAllPositive());
     }
     
     inline double getPositivePredictiveValue() const {
@@ -72,7 +75,10 @@ public:
     }
     
     inline double getRecall() const {
-        return 100.0 * (double)tp / (double)(getRealPositive());
+        if (getRealPositive() == 0)
+            return 0.0;
+        else
+            return 100.0 * (double)tp / (double)(getRealPositive());
     }
     
     inline double getSensitivity() const {
@@ -84,7 +90,10 @@ public:
     }
     
     inline double getSpecificity() const {
-        return 100.0 * (double)tn / (double)(getRealNegative());
+        if (getRealNegative() == 0)
+            return 0.0;
+        else
+            return 100.0 * (double)tn / (double)(getRealNegative());
     }
     
     inline double getTrueNegativeRate() const {
@@ -92,7 +101,10 @@ public:
     }
     
     inline double getNPV() const {
-        return 100.0 * (double)tn / (double)(getAllNegative());
+        if (getAllNegative() == 0)
+            return 0.0;
+        else
+            return 100.0 * (double)tn / (double)(getAllNegative());
     }
     
     inline double getFallOut() const {
@@ -117,7 +129,10 @@ public:
      * means half do and 0% means none do.  This value is not effected by the predictor.
      */
     inline double getPrevalence() const {
-        return 100.0 * (double)getRealPositive() / (double)getAll();
+        if (getAll() == 0)
+            return 0.0;
+        else
+            return 100.0 * (double)getRealPositive() / (double)getAll();
     }
     
     /**
@@ -126,7 +141,10 @@ public:
      * therefore be modified by adjusting the model.
      */
     inline double getBias() const {
-        return 100.0 * (double)getAllPositive() / (double)getAll();
+        if (getAll() == 0)
+            return 0.0;
+        else
+            return 100.0 * (double)getAllPositive() / (double)getAll();
     }
     
     /**
@@ -135,7 +153,10 @@ public:
      * properly cater for prevalence of positives conditions and bias of the model.
      */
     inline double getAccuracy() const {
-        return 100.0 * (double)getAllTrue() / (double)getAll();
+        if (getAll() == 0)
+            return 0.0;
+        else
+            return 100.0 * (double)getAllTrue() / (double)getAll();
     }
     
     /**

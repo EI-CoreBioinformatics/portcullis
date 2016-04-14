@@ -76,10 +76,14 @@ AC_SEARCH_LIBS([sin], [m],
     [M_LIB="-lm"],
     [AC_MSG_ERROR([libm not found.  Please ensure that maths lib is properly built and configured.])])
 
-# Required for Boost
-AC_SEARCH_LIBS([clock_gettime], [rt],
-    [RT_LIB="-lrt"],
-    [AC_MSG_ERROR([rt lib not found.  Please ensure that rt is properly built and configured.])])
+# Required for Boost.  Doesn't exist on Mac
+if test x"${UNAME_S}" != x"Darwin"; then
+    AC_SEARCH_LIBS([clock_gettime], [rt],
+        [RT_LIB="-lrt"],
+        [AC_MSG_ERROR([rt lib not found.  Please ensure that rt is properly built and configured.])])
+else
+    RT_LIB=""
+fi
 
 # Check pthreads, zlib exist and are available
 AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])

@@ -60,9 +60,11 @@ namespace phx   = boost::phoenix;
 #include <portcullis/intron.hpp>
 #include <portcullis/portcullis_fs.hpp>
 #include <portcullis/junction_system.hpp>
+#include <portcullis/performance.hpp>
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
+using portcullis::Performance;
 
 
 namespace portcullis {
@@ -437,8 +439,11 @@ protected:
     void executePythonMLFilter(const path& mlOutputFile);
     
     void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail);
-    
-    void calcPerformance(const JunctionList& pass, const JunctionList& fail);
+
+    shared_ptr<Performance> calcPerformance(const JunctionList& pass, const JunctionList& fail) {
+        return calcPerformance(pass, fail, false);
+    }
+    shared_ptr<Performance> calcPerformance(const JunctionList& pass, const JunctionList& fail, bool invert);
     
     void printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const string& prefix);
     

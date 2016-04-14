@@ -460,8 +460,15 @@ void portcullis::JunctionFilter::filter() {
         pos = passJuncs.size();
         
         for(auto& j : passJuncs) {
-            initialSet.push_back(j);
+            initialSet.push_back(j);            
         }
+        if (!genuineFile.empty()) {
+            shared_ptr<Performance> p = calcPerformance(passJuncs, failJuncs);
+            cout << "Performance of initial positive set (High PPV is important):" << endl;
+            cout << Performance::longHeader() << endl;
+            cout << p->toLongString() << endl << endl;
+        }
+    
         
         passJuncs.clear();
         failJuncs.clear();
@@ -475,17 +482,26 @@ void portcullis::JunctionFilter::filter() {
         neg = passJuncs.size();
         
         for(auto& j : passJuncs) {
-            initialSet.push_back(j);
+            initialSet.push_back(j);            
         }
         
+        if (!genuineFile.empty()) {
+            shared_ptr<Performance> p = calcPerformance(passJuncs, failJuncs, true);            
+            cout << "Performance of initial negative set (High NPV is important):" << endl;
+            cout << Performance::longHeader() << endl;
+            cout << p->toLongString() << endl << endl;
+        }
+            
         cout << "Initial training set consists of " << pos << " positive and " << neg << " negative junctions." << endl << endl;
         
+        cout << "Training a random forest model using the initial positive and negative datasets" << endl;
         shared_ptr<Forest> forest = Train::trainInstance(initialSet, output.string() + ".selftrain", DEFAULT_TRAIN_TREES, threads, true, true);
         
         forest->saveToFile();
         forest->writeOutput(&cout);
         
         modelFile = output.string() + ".selftrain.forest";
+        cout << endl;
     }
     
     
@@ -495,8 +511,7 @@ void portcullis::JunctionFilter::filter() {
     
     // Do ML based filtering if requested
     if(!modelFile.empty() && exists(modelFile)){
-        cout << "Predicting valid junctions using random forest model ...";
-        cout.flush();
+        cout << "Predicting valid junctions using random forest model" << endl;
         
         JunctionList passJuncs;
         JunctionList failJuncs;
@@ -654,25 +669,36 @@ void portcullis::JunctionFilter::printFilteringResults(const JunctionList& in, c
          << "Filtered out " << diff << " junctions." << endl;
     
     if (!genuineFile.empty() && exists(genuineFile)) {
-        calcPerformance(pass, fail);
+        shared_ptr<Performance> p = calcPerformance(pass, fail);
+        cout << Performance::longHeader() << endl;
+        cout << p->toLongString() << endl << endl;
     }
 }
 
-void portcullis::JunctionFilter::calcPerformance(const JunctionList& pass, const JunctionList& fail) {
+shared_ptr<Performance> portcullis::JunctionFilter::calcPerformance(const JunctionList& pass, const JunctionList& fail, bool invert) {
     
     uint32_t tp = 0, tn = 0, fp = 0, fn = 0;
 
-    for(auto& j : pass) {
-        if (j->isGenuine()) tp++; else fp++;
+    if (invert) {
+        for(auto& j : pass) {
+            if (!j->isGenuine()) tn++; else fn++;
+        }
+
+        for(auto& j : fail) {
+            if (j->isGenuine()) tp++; else fp++;
+        }        
+    }
+    else {
+        for(auto& j : pass) {
+            if (j->isGenuine()) tp++; else fp++;
+        }
+
+        for(auto& j : fail) {
+            if (!j->isGenuine()) tn++; else fn++;
+        }
     }
     
-    for(auto& j : fail) {
-        if (!j->isGenuine()) tn++; else fn++;
-    }
-    
-    Performance p(tp, tn, fp, fn);
-    cout << Performance::longHeader() << endl;
-    cout << p.toLongString() << endl << endl;
+    return make_shared<Performance>(tp, tn, fp, fn);
 }
 
 void portcullis::JunctionFilter::saveResults(const JunctionSystem& js, JuncResultMap& results) {

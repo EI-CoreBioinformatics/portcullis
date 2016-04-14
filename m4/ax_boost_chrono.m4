@@ -124,7 +124,7 @@ AC_DEFUN([AX_BOOST_CHRONO],
             else
                 for ax_lib in $ax_boost_user_chrono_lib boost_chrono-$ax_boost_user_chrono_lib; do
                     AC_CHECK_LIB($ax_lib, exit,
-                        [BOOST_CHRONO_LIB="-lrt -l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
+                        [BOOST_CHRONO_LIB="-l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
                         [link_chrono="no"])
                 done
 
