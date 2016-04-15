@@ -5,12 +5,12 @@
 			"value": ["C"]
 		},
 		"M4-nb_rel_aln": {
-                        "operator": "gt",
+                        "operator": "gte",
                         "value": 5
                 },
                 "M12-maxmmes": {
-                        "operator": "gt",
-                        "value": 18
+                        "operator": "gte",
+                        "value": 20
                 },
 		"M11-entropy": {
 			"operator": "gt",
