@@ -154,7 +154,7 @@ int mainFull(int argc, char *argv[]) {
     po::options_description generic_options(fullHelp(), w.ws_col, (unsigned)((double)w.ws_col/1.7));
     generic_options.add_options()
             ("output,o", po::value<path>(&outputDir)->default_value("portcullis_out"), 
-                "Output directory for prepared files. Default: portcullis_out")
+                "Output directory. Default: portcullis_out")
             ("force", po::bool_switch(&force)->default_value(false), 
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
             ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
