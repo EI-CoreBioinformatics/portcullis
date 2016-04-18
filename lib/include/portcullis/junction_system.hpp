@@ -71,6 +71,8 @@ public:
     
     JunctionSystem(path junctionFile);
     
+    JunctionSystem(JunctionList& jl);
+    
     virtual ~JunctionSystem();
     
     const JunctionList& getJunctions() const;

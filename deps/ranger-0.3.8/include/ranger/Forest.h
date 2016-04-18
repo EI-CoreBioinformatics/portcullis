@@ -74,7 +74,7 @@ public:
   void run(bool verbose);
 
   // Write results to output files
-  void writeOutput();
+  void writeOutput(std::ostream* out);
   virtual void writeOutputInternal() = 0;
   virtual void writeConfusionFile() = 0;
   virtual void writePredictionFile() = 0;
@@ -163,7 +163,7 @@ void loadFromFile(std::string filename);
   
     
 protected:
-  void grow();
+  void grow(bool verbose);
   virtual void growInternal() = 0;
 
   // Predict using existing tree from file and data as prediction data

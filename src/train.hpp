@@ -43,8 +43,9 @@ namespace portcullis {
 typedef boost::error_info<struct TrainError,string> TrainErrorInfo;
 struct TrainException: virtual boost::exception, virtual std::exception { };
 
-const uint16_t DEFAULT_TRAIN_FOLDS = 2;
-const uint16_t DEFAULT_TRAIN_TREES = 10;
+const string DEFAULT_TRAIN_OUTPUT = "portcullis_train/portcullis";
+const uint16_t DEFAULT_TRAIN_FOLDS = 5;
+const uint16_t DEFAULT_TRAIN_TREES = 100;
 const uint16_t DEFAULT_TRAIN_THREADS = 1;
 const double DEFAULT_TRAIN_FRACTION = 1.0;
 const int DEFAULT_SEED = 1234567;       // To avoid non-deterministic behaviour
@@ -213,7 +214,7 @@ public:
                       "by the junction filtering tool.  The current implementation uses \"ranger\"\n" +
                       "for creating the decision trees and random forests.  We also provide k-fold\n" +
                       "cross validation support to help reduce overfitting.\n\n" +
-                      "Usage: portcullis train [options] --reference=<bed_file> <junction_file>\n\n" +
+                      "Usage: portcullis train [options] --reference=<labels_file> <junction_file>\n\n" +
                       "Allowed options";
     }
 
@@ -221,7 +222,8 @@ public:
     
     static Data* juncs2FeatureVectors(const JunctionList& x);
     
-    static shared_ptr<Forest> trainInstance(const JunctionList& x, string outputPrefix, uint16_t trees, uint16_t threads, bool regressionMode);
+    static shared_ptr<Forest> trainInstance(const JunctionList& x, string outputPrefix, 
+            uint16_t trees, uint16_t threads, bool regressionMode, bool verbose);
     
 protected:
     
@@ -230,9 +232,9 @@ protected:
     
     void getRandomSubset(const JunctionList& in, JunctionList& out);
     
-    void outputMeanPerformance(const vector<unique_ptr<Performance>>& scores);
+    void outputMeanPerformance(const vector<unique_ptr<Performance>>& scores, std::ofstream& resout);
     
-    void outputMeanScore(const vector<double>& scores, const string& score_type);
+    void outputMeanScore(const vector<double>& scores, const string& score_type, std::ofstream& resout);
 };
 }
 

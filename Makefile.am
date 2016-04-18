@@ -31,8 +31,10 @@ dist_bin_SCRIPTS =  scripts/analyse_alignments.py \
 		    scripts/fs2bed.py \
 		    scripts/fs2gff.py \
 		    scripts/gff2bed.py \
+		    scripts/gtf2bed.py \
 		    scripts/hpc.json \
 		    scripts/ml.py \
+		    scripts/pca.py \
 		    scripts/performance.py \
 		    scripts/predict.snakefile \
 		    scripts/read_gen.snakefile \
@@ -53,7 +55,8 @@ dist_bin_SCRIPTS =  scripts/analyse_alignments.py \
 configdir = $(datadir)/portcullis
 dist_config_DATA = \
 		    data/default_filter.json \
-		    data/default_model.forest
+		    data/selftrain_initial_neg.json \
+		    data/selftrain_initial_pos.json
 
 # SRC DIRS
 make_dirs=deps/htslib-1.3 deps/ranger-0.3.8 lib src tests

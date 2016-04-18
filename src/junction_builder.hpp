@@ -62,8 +62,7 @@ using portcullis::PreparedFiles;
 
 namespace portcullis {
 
-const string DEFAULT_JUNC_OUTPUT_DIR = "portcullis_junc_out";
-const string DEFAULT_JUNC_OUTPUT_PREFIX = "portcullis";
+const string DEFAULT_JUNC_OUTPUT = "portcullis_junc/portcullis";
 const string DEFAULT_JUNC_SOURCE = "portcullis";
 const uint16_t DEFAULT_JUNC_THREADS = 1;
 
@@ -137,7 +136,7 @@ protected:
 public:
 
     
-    JunctionBuilder(const path& _prepDir, const path& _outputDir, string _outputPrefix);
+    JunctionBuilder(const path& _prepDir, const path& _output);
     
     virtual ~JunctionBuilder();
     

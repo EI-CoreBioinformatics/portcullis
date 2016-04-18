@@ -6,16 +6,14 @@ import sys
 import os
 
 with open(sys.argv[1]) as f:
+	# Skip header
+	f.readline()
+	print("transcript_id\tcov")
 
-    # Skip header
-    f.readline()
-    print ("transcript_id\tcov")
+	for line in f:
+		words = line.split("\t")
 
-    for line in f:
+		id = words[0]
+		cov = int(float(words[8]))
 
-        words = line.split("\t")
-
-        id = words[0]
-        cov = int(float(words[8]))
-
-        print (id + "\t" + str(cov))
+		print(id + "\t" + str(cov))

@@ -11,6 +11,7 @@ from sklearn.metrics import classification_report
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 class TabEntry:
 	chrom = ""
 	start = 0
@@ -18,13 +19,13 @@ class TabEntry:
 	left = 0
 	right = 0
 	strand = "?"
-	#M1 = "N"
+	# M1 = "N"
 	M2 = 0
 	M3 = 0
 	M4 = 0
-	#M5 = 0
-	#M6 = 0
-	#M7 = 0
+	# M5 = 0
+	# M6 = 0
+	# M7 = 0
 	M8 = 0
 	M9 = 0
 	M10 = 0
@@ -32,25 +33,26 @@ class TabEntry:
 	M12 = 0
 	M13 = 0
 	M14 = 0
-	#M15 = 0.0
+
+	# M15 = 0.0
 
 	def __init__(self):
 		self.data = []
 
 	def __str__(self):
-
-		line = [ self.chrom, self.start, self.end, self.left, self.right, self.strand,
-			 self.M2, self.M3, self.M4, self.M8, self.M9, self.M10, self.M11, self.M12, self.M13, self.M14
-			 ]
+		line = [self.chrom, self.start, self.end, self.left, self.right, self.strand,
+				self.M2, self.M3, self.M4, self.M8, self.M9, self.M10, self.M11, self.M12, self.M13, self.M14
+				]
 		return "\t".join([str(_) for _ in line])
 
 	def makeMatrixRow(self):
-		return [ self.M2, self.M3, self.M4, self.M8, self.M9, self.M10, self.M11, self.M12, self.M13, self.M14 ]
+		return [self.M2, self.M3, self.M4, self.M8, self.M9, self.M10, self.M11, self.M12, self.M13, self.M14]
 
 	@staticmethod
 	def features():
-		return [ "M2-nb-reads", "M3-nb_dist_aln", "M4-nb_rel_aln", "M8-max_min_anc", "M9-dif_anc", "M10-dist_anc",
-				 "M11-entropy", "M12-maxmmes", "M13-hammping5p", "M14-hamming3p"]
+		return ["M2-nb-reads", "M3-nb_dist_aln", "M4-nb_rel_aln", "M8-max_min_anc", "M9-dif_anc", "M10-dist_anc",
+				"M11-entropy", "M12-maxmmes", "M13-hammping5p", "M14-hamming3p"]
+
 	@staticmethod
 	def featureAt(index):
 		return TabEntry.features()[index]
@@ -58,7 +60,7 @@ class TabEntry:
 	@staticmethod
 	def sortedFeatures(indicies):
 		f = TabEntry.features()
-		s=[]
+		s = []
 		for i in indicies:
 			s.append(f[i])
 		return s
@@ -69,7 +71,6 @@ class TabEntry:
 
 	@staticmethod
 	def create_from_tabline(line):
-
 		b = TabEntry()
 
 		parts = line.split("\t")
@@ -95,11 +96,9 @@ class TabEntry:
 		return b
 
 
-
 def loadtab(tabfile):
-
-	bed=list()
-	tab=list()
+	bed = list()
+	tab = list()
 	with open(tabfile) as f:
 		# Skip header
 		f.readline()
@@ -110,13 +109,10 @@ def loadtab(tabfile):
 				bed.append(bed12.BedEntry.create_from_tabline(line, False, False))
 				tab.append(TabEntry.create_from_tabline(line))
 
-
 	return bed, tab
 
 
-
 def main():
-
 	parser = argparse.ArgumentParser("Script to build a random forest decision tree")
 	parser.add_argument("input", nargs="+", help="The tab file produce by portcullis")
 	parser.add_argument("-r", "--reference", required=True, help="The reference BED file to compare against")
@@ -129,24 +125,23 @@ def main():
 	# y should contain the labels (0 not a valid junction, 1 a valid junction).  Confirmed with the reference.
 
 	# Load tab file and produce matrix
-	bed=[]
-	tab=[]
+	bed = []
+	tab = []
 	for i in args.input:
 		b, t = tab.loadtab(i)
 		bed.extend(b)
 		tab.extend(t)
-		print ("Loaded " + str(len(b)) + " entries from: " + i)
-	print ("# tab entries: " + str(len(tab)) + " from " + str(len(args.input)) + " input files")
-
+		print("Loaded " + str(len(b)) + " entries from: " + i)
+	print("# tab entries: " + str(len(tab)) + " from " + str(len(args.input)) + " input files")
 
 	# Load reference and add labels
 	ref = bed12.loadbed(args.reference, False, False)
-	print ("# ref entries: " + str(len(ref)))
+	print("# ref entries: " + str(len(ref)))
 
 	in_juncs = 0
 	out_juncs = 0
-	X=np.zeros( (len(tab), TabEntry.nbMetrics()) )
-	y=list()
+	X = np.zeros((len(tab), TabEntry.nbMetrics()))
+	y = list()
 	for i in range(0, len(bed)):
 		b = bed[i]
 		X[i] = tab[i].makeMatrixRow()
@@ -157,13 +152,13 @@ def main():
 			out_juncs += 1
 			y.append(0)
 
-	print ("In:" + str(in_juncs))
-	print ("Out:" + str(out_juncs))
+	print("In:" + str(in_juncs))
+	print("Out:" + str(out_juncs))
 
 	# Load test data
 	test_b, test_t = loadtab(args.test)
-	test_X=np.zeros( (len(test_t), TabEntry.nbMetrics()) )
-	test_y=[]
+	test_X = np.zeros((len(test_t), TabEntry.nbMetrics()))
+	test_y = []
 	for i in range(0, len(test_t)):
 		b = test_b[i]
 		test_X[i] = test_t[i].makeMatrixRow()
@@ -171,7 +166,6 @@ def main():
 			test_y.append(1)
 		else:
 			test_y.append(0)
-
 
 	print("Training Random Forest classifier")
 
@@ -182,22 +176,18 @@ def main():
 	clf1_y_pred = clf1.predict(test_X)
 	print(classification_report(test_y, clf1_y_pred, target_names=["Invalid", "Valid"]))
 
-
-	#print("Training SVM (with RBF) classifier")
-	#clf2 = SVC()
-	#scores = cross_val_score(clf2, X, y, n_jobs=args.threads, scoring="f1")
-	#print("SVM Mean score: " + str(scores.mean()))
-	#clf2.fit(X, y)
-	#clf2_y_pred = clf2.predict(test_X)
-	#print(classification_report(test_y, clf2_y_pred, target_names=["0", "1"]))
+	# print("Training SVM (with RBF) classifier")
+	# clf2 = SVC()
+	# scores = cross_val_score(clf2, X, y, n_jobs=args.threads, scoring="f1")
+	# print("SVM Mean score: " + str(scores.mean()))
+	# clf2.fit(X, y)
+	# clf2_y_pred = clf2.predict(test_X)
+	# print(classification_report(test_y, clf2_y_pred, target_names=["0", "1"]))
 
 
 	importances = clf1.feature_importances_
 	std = np.std([tree.feature_importances_ for tree in clf1.estimators_], axis=0)
 	indices = np.argsort(importances)[::-1]
-
-
-
 
 	# Print the feature ranking
 	print("Feature ranking:")
@@ -209,7 +199,7 @@ def main():
 	plt.figure()
 	plt.title("Feature importances")
 	plt.bar(range(X.shape[1]), importances[indices],
-		   color="r", yerr=std[indices], align="center")
+			color="r", yerr=std[indices], align="center")
 	plt.xticks(range(X.shape[1]), TabEntry.sortedFeatures(indices))
 	locs, labels = plt.xticks()
 	plt.setp(labels, rotation=90)
@@ -219,7 +209,7 @@ def main():
 	plt.savefig(args.output + ".png")
 
 
-	# Print
+# Print
 
-	
+
 main()

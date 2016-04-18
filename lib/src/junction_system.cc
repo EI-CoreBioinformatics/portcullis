@@ -47,44 +47,44 @@ using portcullis::JunctionPtr;
 using portcullis::SeqUtils;
 
 #include <portcullis/junction_system.hpp>
-    
+
 size_t portcullis::JunctionSystem::createJunctionGroup(size_t index, vector<JunctionPtr>& group) {
 
-    JunctionPtr junc = junctionList[index];        
+    JunctionPtr junc = junctionList[index];
     group.push_back(junc);
 
     bool foundMore = false;
-    for(size_t j = index + 1; j < junctionList.size(); j++) {
+    for (size_t j = index + 1; j < junctionList.size(); j++) {
 
         JunctionPtr next = junctionList[j];
 
         if (junc->sharesDonorOrAcceptor(next)) {
-            group.push_back(next);                    
-            junc = next;                    
-        }
-        else {
-            return j-1;                
+            group.push_back(next);
+            junc = next;
+        } else {
+            return j - 1;
         }
     }
 
-    return foundMore ? index : junctionList.size()-1;
+    return foundMore ? index : junctionList.size() - 1;
 }
 
 void portcullis::JunctionSystem::findJunctions(const int32_t refId, JunctionList& subset) {
 
     subset.clear();
-    for(JunctionPtr j : junctionList) {
+    for (JunctionPtr j : junctionList) {
         if (j->getIntron()->ref.index == refId) {
             subset.push_back(j);
-        }    
-    }        
+        }
+    }
 }
-
 
 portcullis::JunctionSystem::JunctionSystem() {
     minQueryLength = 0;
     meanQueryLength = 0.0;
-    maxQueryLength = 0;        
+    maxQueryLength = 0;
+    distinctJunctions.clear();
+    junctionList.clear();
 }
 
 portcullis::JunctionSystem::JunctionSystem(shared_ptr<vector<RefSeqPtr>> refs) : JunctionSystem() {
@@ -95,8 +95,14 @@ portcullis::JunctionSystem::JunctionSystem(path junctionFile) : JunctionSystem()
     load(junctionFile);
 }
 
+portcullis::JunctionSystem::JunctionSystem(JunctionList& jl) : JunctionSystem() {
+    for (auto& j : jl) {
+        this->addJunction(j);
+    }
+}
+
 portcullis::JunctionSystem::~JunctionSystem() {
-    distinctJunctions.clear();     
+    distinctJunctions.clear();
     junctionList.clear();
 }
 
@@ -111,20 +117,18 @@ size_t portcullis::JunctionSystem::size() {
     return distinctJunctions.size();
 }
 
-
 void portcullis::JunctionSystem::setQueryLengthStats(int32_t min, double mean, int32_t max) {
     this->minQueryLength = min;
     this->meanQueryLength = mean;
     this->maxQueryLength = max;
 }
 
-
 bool portcullis::JunctionSystem::addJunction(JunctionPtr j) {
 
     j->clearAlignments();
 
     distinctJunctions[*(j->getIntron())] = j;
-    junctionList.push_back(j);        
+    junctionList.push_back(j);
 }
 
 /**
@@ -134,11 +138,10 @@ bool portcullis::JunctionSystem::addJunction(JunctionPtr j) {
  */
 void portcullis::JunctionSystem::append(JunctionSystem& other) {
 
-    for(const auto& j : other.getJunctions()) {
+    for (const auto& j : other.getJunctions()) {
         this->addJunction(j);
     }
 }
-
 
 bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset) {
 
@@ -146,53 +149,53 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
 
     const size_t nbOps = al.getNbCigarOps();
     const int32_t refId = al.getReferenceId();
-        
-    int32_t lStart = offset;        
-    int32_t lEndExc = lStart;   // End of left anchor exclusive (i.e. +1)
-    int32_t rStart = lStart;
-    int32_t rEndExc = lStart;   // End of right anchor exclusive (i.e. +1)
 
-    for(size_t i = startOp; i < nbOps; i++) {
+    int32_t lStart = offset;
+    int32_t lEndExc = lStart; // End of left anchor exclusive (i.e. +1)
+    int32_t rStart = lStart;
+    int32_t rEndExc = lStart; // End of right anchor exclusive (i.e. +1)
+
+    for (size_t i = startOp; i < nbOps; i++) {
 
         CigarOp op = al.getCigarOpAt(i);
-        
+
         if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
             foundJunction = true;
-            
+
             const int32_t refLength = refs->at(refId)->length;
 
             rStart = lEndExc + op.length;
             rEndExc = rStart;
 
             // Establish end position of right anchor in genomic coordinates
-            size_t j = i+1;
-            while (j < nbOps 
-                    && rEndExc <= refLength 
+            size_t j = i + 1;
+            while (j < nbOps
+                    && rEndExc <= refLength
                     && al.getCigarOpAt(j).type != BAM_CIGAR_REFSKIP_CHAR) {
 
                 CigarOp rOp = al.getCigarOpAt(j++);
-                
+
                 if (CigarOp::opConsumesReference(rOp.type)) {
                     rEndExc += rOp.length;
                 }
             }
-            
+
             // Do some sanity checking... make sure there are not any strange N cigar ops that
             // drift over the edge of a reference sequence... seems like this can actually
             // happen in GSNAP!  I guess this is referring to reads that map over
             // target sequence boundaries
             if (rStart - 1 >= refLength) {
                 rStart = refLength - 1;
-            }            
+            }
             if (rEndExc - 1 >= refLength) {
                 rEndExc = refLength;
             }
-            
-            
+
+
             // Create the intron
             shared_ptr<Intron> location = make_shared<Intron>(
-                    RefSeq(refId, refs->at(refId)->name, refLength), 
-                    lEndExc, 
+                    RefSeq(refId, refs->at(refId)->name, refLength),
+                    lEndExc,
                     rStart - 1);
 
             // We should now have the complete junction location information
@@ -205,36 +208,33 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
                 JunctionPtr junction = make_shared<Junction>(location, lStart, rEndExc - 1);
                 junction->addJunctionAlignment(al);
                 distinctJunctions[*location] = junction;
-                junctionList.push_back(junction);                    
-            }
-            else {
+                junctionList.push_back(junction);
+            } else {
                 JunctionPtr junction = it->second;
                 junction->addJunctionAlignment(al);
                 junction->extendAnchors(lStart, rEndExc - 1);
             }
-            
+
             // Check if we have fully processed the cigar or not.  If not, then
             // that means that this cigar contains additional junctions, so 
             // process those using recursion
-            if (j < nbOps) {                    
-                addJunctions(al, i+1, rStart);
+            if (j < nbOps) {
+                addJunctions(al, i + 1, rStart);
                 break;
             }
-        }
-        else if (CigarOp::opConsumesReference(op.type)) {
+        } else if (CigarOp::opConsumesReference(op.type)) {
             lEndExc += op.length;
         }
-        
+
         // Ignore any other op types not already covered        
     }
 
-    return foundJunction;        
+    return foundJunction;
 }
-
 
 void portcullis::JunctionSystem::findFlankingAlignments(const path& alignmentsFile, bool verbose) {
 
-    auto_cpu_timer timer(1, " done. Wall time taken: %ws\n");    
+    auto_cpu_timer timer(1, " done. Wall time taken: %ws\n");
 
     // Maybe try to multi-thread this part        
     BamReader reader(alignmentsFile);
@@ -245,59 +245,57 @@ void portcullis::JunctionSystem::findFlankingAlignments(const path& alignmentsFi
     // Read the alignments around every junction and set appropriate metrics
     size_t count = 0;
     //cout << endl;
-    for(JunctionPtr j : junctionList) {            
+    for (JunctionPtr j : junctionList) {
         j->processJunctionVicinity(
-                reader, 
-                j->getIntron()->ref.length, 
-                meanQueryLength, 
+                reader,
+                j->getIntron()->ref.length,
+                meanQueryLength,
                 maxQueryLength);
 
         //cout << count++ << endl;
     }
-    
+
     reader.close();
 }
 
 void portcullis::JunctionSystem::calcCoverage(const path& alignmentsFile, Strandedness strandSpecific) {
 
-    auto_cpu_timer timer(1, " done. Wall time taken: %ws\n");    
+    auto_cpu_timer timer(1, " done. Wall time taken: %ws\n");
 
-    DepthParser dp(alignmentsFile, static_cast<uint8_t>(strandSpecific), false);
+    DepthParser dp(alignmentsFile, static_cast<uint8_t> (strandSpecific), false);
 
     vector<uint32_t> batch;
 
     size_t i = 0;
-    while(dp.loadNextBatch(batch)) {
+    while (dp.loadNextBatch(batch)) {
 
         JunctionList subset;
         findJunctions(dp.getCurrentRefIndex(), subset);
 
-        for(JunctionPtr j : subset) {
+        for (JunctionPtr j : subset) {
             j->calcCoverage(batch);
-        }            
+        }
     }
 }
 
-
 void portcullis::JunctionSystem::calcMultipleMappingStats(SplicedAlignmentMap& map, bool verbose) {
 
-    for(JunctionPtr j : junctionList) {
+    for (JunctionPtr j : junctionList) {
         j->calcMultipleMappingScore(map);
-    }        
+    }
 }
-
 
 void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
 
-    for(size_t i = 0; i < junctionList.size(); i++) {
+    for (size_t i = 0; i < junctionList.size(); i++) {
 
         vector<JunctionPtr > junctionGroup;
-        i = createJunctionGroup(i, junctionGroup);            
+        i = createJunctionGroup(i, junctionGroup);
 
         uint32_t maxReads = 0;
         size_t maxIndex = 0;
         bool uniqueJunction = junctionGroup.size() == 1;
-        for(size_t j = 0; j < junctionGroup.size(); j++) {                    
+        for (size_t j = 0; j < junctionGroup.size(); j++) {
             JunctionPtr junc = junctionGroup[j];
             if (maxReads < junc->getNbJunctionAlignments()) {
                 maxReads = junc->getNbJunctionAlignments();
@@ -305,64 +303,61 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
             }
             junc->setUniqueJunction(uniqueJunction);
         }
-        junctionGroup[maxIndex]->setPrimaryJunction(true);        
+        junctionGroup[maxIndex]->setPrimaryJunction(true);
     }
-    
+
     size_t i = 0;
     bool lastdiffseq = false;
-    while(i < junctionList.size() - 1) {
-        
+    while (i < junctionList.size() - 1) {
+
         JunctionPtr first = junctionList[i];
-        JunctionPtr second = junctionList[i+1];
-        
+        JunctionPtr second = junctionList[i + 1];
+
         int32_t diff = second->getIntron()->start - first->getIntron()->end;
-        
-        diff = diff < 0 ? 0 : diff;        
-        
+
+        diff = diff < 0 ? 0 : diff;
+
         if (first->getIntron()->ref.index != second->getIntron()->ref.index) {
             first->setDistanceToNextUpstreamJunction(-1);
             second->setDistanceToNextDownstreamJunction(-1);
-            
+
             if (i == 0 || lastdiffseq) {
                 first->setDistanceToNextDownstreamJunction(-1);
             }
-            
+
             if (i == junctionList.size() - 2) {
                 second->setDistanceToNextUpstreamJunction(-1);
             }
-            
+
             lastdiffseq = true;
-        }
-        else if (i == 0) {
+        } else if (i == 0) {
             first->setDistanceToNextDownstreamJunction(-1);
             first->setDistanceToNextUpstreamJunction(diff);
             second->setDistanceToNextDownstreamJunction(diff);
             lastdiffseq = false;
-        }
-        else if (i == junctionList.size() - 2) {
+        } else if (i == junctionList.size() - 2) {
             first->setDistanceToNextUpstreamJunction(diff);
             second->setDistanceToNextDownstreamJunction(diff);
             second->setDistanceToNextUpstreamJunction(-1);
             lastdiffseq = false;
-        }
-        else {
+        } else {
             first->setDistanceToNextUpstreamJunction(diff);
             second->setDistanceToNextDownstreamJunction(diff);
             lastdiffseq = false;
         }
-        
+
         i++;
     }
-    
-    for(auto& junc : junctionList) {
-        
+
+    for (auto& junc : junctionList) {
+
         int32_t down = junc->getDistanceToNextDownstreamJunction();
         int32_t up = junc->getDistanceToNextUpstreamJunction();
-        
+
         junc->setDistanceToNearestJunction(down == -1 || up == -1 ? max(down, up) : min(down, up));
-        
+
         junc->setMeanQueryLength(this->meanQueryLength);
-        
+
         // Now we know the mean query length, confirm if this junction really is suspicious
         if (junc->isSuspicious()) {
             double prob = 1.0 - std::pow((junc->getMaxMMES() / (this->meanQueryLength / 2.0)), junc->getNbJunctionAlignments());
@@ -383,18 +378,18 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
  * This metric similar to this is used in FineSplice.
  */
 void portcullis::JunctionSystem::calcTrimmedOverhangScore() {
-    
-    
+
+
 }
 
 void portcullis::JunctionSystem::sort() {
-    
+
     std::sort(junctionList.begin(), junctionList.end(), JunctionComparator());
 }
 
 void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string& source) {
 
-    auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n"); 
+    auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");
 
     string junctionReportPath = outputPrefix.string() + ".junctions.txt";
     string junctionFilePath = outputPrefix.string() + ".junctions.tab";
@@ -411,7 +406,7 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string&
     junctionReportStream.close();
 
     cout << "done." << endl
-         << " - Saving junction table to: " << junctionFilePath << " ... ";
+            << " - Saving junction table to: " << junctionFilePath << " ... ";
     cout.flush();
 
     // Print junction stats to file
@@ -420,7 +415,7 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string&
     junctionFileStream.close();
 
     cout << "done." << endl
-         << " - Saving junction GFF file to: " << junctionGFFPath << " ... ";
+            << " - Saving junction GFF file to: " << junctionGFFPath << " ... ";
     cout.flush();
 
     // Print junction stats to file
@@ -429,7 +424,7 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string&
     junctionGFFStream.close();
 
     cout << "done." << endl
-         << " - Saving intron GFF file to: " << intronGFFPath << " ... ";
+            << " - Saving intron GFF file to: " << intronGFFPath << " ... ";
     cout.flush();
 
     // Print junction stats to file
@@ -440,7 +435,7 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string&
     // Output BED files
 
     cout << "done." << endl
-         << " - Saving BED file with all junctions to: " << junctionBEDAllPath << " ... ";
+            << " - Saving BED file with all junctions to: " << junctionBEDAllPath << " ... ";
     cout.flush();
 
     // Print junctions in BED format to file
@@ -452,17 +447,17 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string&
 void portcullis::JunctionSystem::outputDescription(std::ostream &strm) {
 
     uint64_t i = 0;
-    for(JunctionPtr j : junctionList) {
+    for (JunctionPtr j : junctionList) {
         strm << "Junction " << i++ << ":" << endl;
         j->outputDescription(strm);
         strm << endl;
-    }        
+    }
 }
 
 void portcullis::JunctionSystem::outputJunctionGFF(std::ostream &strm, const string& source) {
 
     uint64_t i = 0;
-    for(JunctionPtr j : junctionList) {
+    for (JunctionPtr j : junctionList) {
         j->outputJunctionGFF(strm, i++, source);
     }
 }
@@ -470,11 +465,10 @@ void portcullis::JunctionSystem::outputJunctionGFF(std::ostream &strm, const str
 void portcullis::JunctionSystem::outputIntronGFF(std::ostream &strm, const string& source) {
 
     uint64_t i = 0;
-    for(JunctionPtr j : junctionList) {
+    for (JunctionPtr j : junctionList) {
         j->outputIntronGFF(strm, i++, source);
     }
 }
-
 
 void portcullis::JunctionSystem::outputBED(string& path, CanonicalSS type, const string& prefix) {
 
@@ -486,7 +480,7 @@ void portcullis::JunctionSystem::outputBED(string& path, CanonicalSS type, const
 void portcullis::JunctionSystem::outputBED(std::ostream &strm, CanonicalSS type, const string& prefix) {
     strm << "track name=\"junctions\" description=\"Portcullis V" << (version.empty() ? "X.X.X" : version) << " junctions\"" << endl;
     uint64_t i = 1;
-    for(JunctionPtr j : junctionList) {
+    for (JunctionPtr j : junctionList) {
         if (type == ALL || j->getSpliceSiteType() == type) {
             j->outputBED(strm, prefix, i++);
         }
@@ -496,16 +490,16 @@ void portcullis::JunctionSystem::outputBED(std::ostream &strm, CanonicalSS type,
 void portcullis::JunctionSystem::load(const path& junctionTabFile) {
     load(junctionTabFile, false);
 }
-    
+
 void portcullis::JunctionSystem::load(const path& junctionTabFile, const bool simple) {
 
     ifstream ifs(junctionTabFile.c_str());
 
     string line;
     // Loop through until end of file or we move onto the next ref seq
-    while ( std::getline(ifs, line) ) {
+    while (std::getline(ifs, line)) {
         boost::trim(line);
-        if ( !line.empty() && line.find("index") == std::string::npos ) {
+        if (!line.empty() && line.find("index") == std::string::npos) {
             shared_ptr<Junction> j = Junction::parse(line);
             junctionList.push_back(j);
             if (!simple) {
@@ -517,12 +511,10 @@ void portcullis::JunctionSystem::load(const path& junctionTabFile, const bool si
     ifs.close();
 }
 
-
 JunctionPtr portcullis::JunctionSystem::getJunction(Intron& intron) const {
     try {
         return this->distinctJunctions.at(intron);
-    }
-    catch (std::out_of_range ex) {
+    }    catch (std::out_of_range ex) {
         return nullptr;
     }
 }

@@ -185,9 +185,11 @@ void ForestSurvival::computePredictionErrorInternal() {
 }
 
 void ForestSurvival::writeOutputInternal() {
-  *verbose_out << "Tree type:                         " << "Survival" << std::endl;
-  *verbose_out << "Status variable name:              " << data->getVariableNames()[status_varID] << std::endl;
-  *verbose_out << "Status variable ID:                " << status_varID << std::endl;
+  if (verbose_out) {
+    *verbose_out << "Tree type:                         " << "Survival" << std::endl;
+    *verbose_out << "Status variable name:              " << data->getVariableNames()[status_varID] << std::endl;
+    *verbose_out << "Status variable ID:                " << status_varID << std::endl;
+  }
 }
 
 void ForestSurvival::writeConfusionFile() {
@@ -204,7 +206,7 @@ void ForestSurvival::writeConfusionFile() {
   outfile << "Overall OOB prediction error (1 - C): " << overall_prediction_error << std::endl;
 
   outfile.close();
-  *verbose_out << "Saved prediction error to file " << filename << "." << std::endl;
+  if (verbose_out) *verbose_out << "Saved prediction error to file " << filename << "." << std::endl;
 
 }
 
@@ -232,7 +234,7 @@ void ForestSurvival::writePredictionFile() {
     outfile << std::endl;
   }
 
-  *verbose_out << "Saved predictions to file " << filename << "." << std::endl;
+  if (verbose_out) *verbose_out << "Saved predictions to file " << filename << "." << std::endl;
 }
 
 void ForestSurvival::saveToFileInternal(std::ofstream& outfile) {

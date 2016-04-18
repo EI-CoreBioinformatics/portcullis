@@ -342,8 +342,8 @@ portcullis::CanonicalSS portcullis::Junction::setDonorAndAcceptorMotif(string se
                     this->ssStrand == Strand::UNKNOWN ? this->readStrand :
                         Strand::UNKNOWN;
     
-    this->da1 = this->consensusStrand == Strand::NEGATIVE ? SeqUtils::reverseComplement(seq1) : seq1;
-    this->da2 = this->consensusStrand == Strand::NEGATIVE ? SeqUtils::reverseComplement(seq2) : seq2;
+    this->da1 = this->consensusStrand == Strand::NEGATIVE ? SeqUtils::reverseComplement(seq2) : seq1;
+    this->da2 = this->consensusStrand == Strand::NEGATIVE ? SeqUtils::reverseComplement(seq1) : seq2;
     
     return this->canonicalSpliceSites;
 }

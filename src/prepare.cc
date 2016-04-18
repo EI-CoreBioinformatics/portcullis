@@ -328,7 +328,7 @@ bool portcullis::Prepare::bamIndex(const bool copied) {
         cout << "Indexing BAM using command \"" << indexCmd << "\" ... ";
         cout.flush();
         
-        int exitCode = system(indexCmd.c_str());                    
+        int exitCode = system(indexCmd.c_str());
 
         if (exitCode != 0 || !exists(output->getBamIndexFilePath(useCsi))) {
                 BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
@@ -478,7 +478,7 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
     po::options_description generic_options(helpMessage(), w.ws_col, (unsigned)((double)w.ws_col/1.7));
     generic_options.add_options()
             ("output,o", po::value<path>(&outputDir)->default_value(DEFAULT_PREP_OUTPUT_DIR), 
-                (string("Output directory for prepared files. Default: ") + DEFAULT_PREP_OUTPUT_DIR).c_str())
+                "Output directory for prepared files.")
             ("force", po::bool_switch(&force)->default_value(false), 
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
             ("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 

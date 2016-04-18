@@ -45,7 +45,7 @@ print("track name=\"junctions\"")
 
 index = 0;
 for j in junctions:
-	print(j.seq + "\t" + str(j.start - 2) + "\t" + str(j.end + 1) + "\tjunc_" + str(index) + "\t" + str(
-		j.cov) + "\t.\t" + str(j.start - 1) + "\t" + str(j.end) + "\t255,0,0\t2\t1,1\t0," + str(j.end - j.start))
+	print(j.seq + "\t" + str(j.start - 1) + "\t" + str(j.end + 1) + "\tjunc_" + str(index) + "\t" + str(
+		j.cov) + "\t.\t" + str(j.start) + "\t" + str(j.end) + "\t255,0,0\t2\t1,1\t0," + str(j.end - j.start))
 
 	index += 1
