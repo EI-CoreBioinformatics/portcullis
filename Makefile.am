@@ -39,6 +39,7 @@ dist_bin_SCRIPTS =  scripts/analyse_alignments.py \
 		    scripts/predict.snakefile \
 		    scripts/read_gen.snakefile \
 		    scripts/snakey.py \
+		    scripts/soapsplice2bed.py \
 		    scripts/spanki2bed.py \
 		    scripts/spanki_filter.py \
 		    scripts/split_error_classes.py \

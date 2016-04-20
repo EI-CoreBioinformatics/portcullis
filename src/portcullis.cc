@@ -260,7 +260,8 @@ int mainFull(int argc, char *argv[]) {
     cout << "Identifying junctions and calculating metrics" << endl
          << "---------------------------------------------" << endl << endl;
     
-    path juncOut = outputDir.string() + "/2-junc/portcullis_all";
+    path juncDir = outputDir.string() + "/2-junc";
+    path juncOut = juncDir.string() + "/portcullis_all";
     
     // Identify junctions and calculate metrics
     JunctionBuilder jb(prepDir.string(), juncOut);
@@ -281,7 +282,7 @@ int mainFull(int argc, char *argv[]) {
          << "-------------------" << endl << endl;
     
     path filtOut = outputDir.string() + "/3-filt/portcullis_filtered";
-    path juncTab = juncOut.string() + "/portcullis_all.junctions.tab";
+    path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
     
     JunctionFilter filter(juncTab, filtOut);
     filter.setVerbose(verbose);
