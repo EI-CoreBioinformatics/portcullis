@@ -51,9 +51,18 @@ const double DEFAULT_TRAIN_FRACTION = 1.0;
 const int DEFAULT_SEED = 1234567;       // To avoid non-deterministic behaviour
 
 // List of variable names
-const vector<string> VAR_NAMES = { "M2-nb-reads", "M3-nb_dist_aln", "M4-nb_rel_aln", 
-            "M8-max_min_anc", "M9-dif_anc", "M10-dist_anc", "M11-entropy", 
-            "M12-maxmmes", "M13-hammping5p", "M14-hamming3p",
+const vector<string> VAR_NAMES = { 
+            "M2-nb-reads", 
+            //"M3-nb_dist_aln", 
+            "M4-nb_rel_aln", 
+            //"M8-max_min_anc", 
+            //"M9-dif_anc", 
+            //"M10-dist_anc", 
+            "M11-entropy", 
+            "M12-maxmmes", 
+            "M13-hamming5p", 
+            "M14-hamming3p",
+            //"IntronScore",
             "Genuine" };
 
 // Derived from https://sureshamrita.wordpress.com/2011/08/24/c-implementation-of-k-fold-cross-validation/
@@ -220,15 +229,26 @@ public:
 
     static int main(int argc, char *argv[]);
     
-    static Data* juncs2FeatureVectors(const JunctionList& x);
+    static Data* juncs2FeatureVectors(const JunctionList& x) {
+        return juncs2FeatureVectors(x, 0);
+    }
+    static Data* juncs2FeatureVectors(const JunctionList& x, const uint32_t L95);
     
     static shared_ptr<Forest> trainInstance(const JunctionList& x, string outputPrefix, 
-            uint16_t trees, uint16_t threads, bool regressionMode, bool verbose);
+            uint16_t trees, uint16_t threads, bool regressionMode, bool verbose) {
+        return trainInstance(x, outputPrefix, trees, threads, regressionMode, verbose, 0);
+    }
+    static shared_ptr<Forest> trainInstance(const JunctionList& x, string outputPrefix, 
+            uint16_t trees, uint16_t threads, bool regressionMode, bool verbose, const uint32_t L95);
     
 protected:
     
     
-    void testInstance(shared_ptr<Forest> f, const JunctionList& y);  
+    void testInstance(shared_ptr<Forest> f, const JunctionList& y) {
+        return testInstance(f, y, 0);
+    }
+    
+    void testInstance(shared_ptr<Forest> f, const JunctionList& y, const uint32_t L95);
     
     void getRandomSubset(const JunctionList& in, JunctionList& out);
     

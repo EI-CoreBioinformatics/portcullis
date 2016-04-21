@@ -368,19 +368,6 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
     }
 }
 
-/**
- * Used of calculating metric 27.  Trimmed Overhang score.  This provide a probability
- * that this junction is genuine based on comparisons of expected distribution
- * of coverage to observed distribution of coverage, after reads have been trimmed
- * to the first mismatch up and downstream of the junction.  An L1 regularized 
- * logistic regression is then fitted to
- * 
- * This metric similar to this is used in FineSplice.
- */
-void portcullis::JunctionSystem::calcTrimmedOverhangScore() {
-
-
-}
 
 void portcullis::JunctionSystem::sort() {
 

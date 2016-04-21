@@ -24,6 +24,7 @@
 #include <memory>
 #include <unordered_map>
 using std::ostream;
+using std::cout;
 using std::endl;
 using std::min;
 using std::max;
@@ -97,14 +98,15 @@ const vector<string> METRIC_NAMES = {
         "M17-primary_junc",
         "M18-mm_score",
         "M19-mean_mismatches",
-        "M20-nb_msrs",
-        "M21-nb_up_juncs",
-        "M22-nb_down_juncs",
-        "M23-up_aln",
-        "M24-down_aln",
-        "M25-dist_2_up_junc",
-        "M26-dist_2_down_junc",
-        "M27-dist_nearest_junc"
+        "M20-nb_usrs",
+        "M21-nb_msrs",
+        "M22-nb_up_juncs",
+        "M23-nb_down_juncs",
+        "M24-up_aln",
+        "M25-down_aln",
+        "M26-dist_2_up_junc",
+        "M27-dist_2_down_junc",
+        "M28-dist_nearest_junc"
     };
 
 const vector<string> STRAND_NAMES = {
@@ -257,15 +259,16 @@ private:
     bool     primaryJunction;                   // Metric 17    
     double   multipleMappingScore;              // Metric 18
     double   meanMismatches;                    // Metric 19
-    uint32_t nbMultipleSplicedReads;            // Metric 20
-    uint16_t nbUpstreamJunctions;               // Metric 21
-    uint16_t nbDownstreamJunctions;             // Metric 22
-    uint32_t nbUpstreamFlankingAlignments;      // Metric 23
-    uint32_t nbDownstreamFlankingAlignments;    // Metric 24
-    int32_t distanceToNextUpstreamJunction;     // Metric 25
-    int32_t distanceToNextDownstreamJunction;   // Metric 26
-    int32_t distanceToNearestJunction;          // Metric 27
-    vector<uint32_t> junctionOverhangs;         // Metric 28-37
+    //uint32_t nbUniquelySplicedReads;            // Metric 20 (Use getter)
+    uint32_t nbMultipleSplicedReads;            // Metric 21
+    uint16_t nbUpstreamJunctions;               // Metric 22
+    uint16_t nbDownstreamJunctions;             // Metric 23
+    uint32_t nbUpstreamFlankingAlignments;      // Metric 24
+    uint32_t nbDownstreamFlankingAlignments;    // Metric 25
+    int32_t distanceToNextUpstreamJunction;     // Metric 26
+    int32_t distanceToNextDownstreamJunction;   // Metric 27
+    int32_t distanceToNearestJunction;          // Metric 28
+    vector<uint32_t> junctionOverhangs;         // Metric 29-38
     
     // **** Predictions ****
     
@@ -689,6 +692,11 @@ public:
         return nbMultipleSplicedReads;
     }
     
+    uint32_t getNbUniquelySplicedReads() const {
+        return nbJunctionAlignments - nbMultipleSplicedReads;
+    }
+
+    
     uint16_t getNbDownstreamJunctions() const {
         return nbDownstreamJunctions;
     }
@@ -813,7 +821,7 @@ public:
     void setMeanMismatches(double meanMismatches) {
         this->meanMismatches = meanMismatches;
     }
-    
+        
     void setNbMultipleSplicedReads(uint32_t nbMultipleSplicedReads) {
         this->nbMultipleSplicedReads = nbMultipleSplicedReads;
     }
@@ -841,6 +849,18 @@ public:
     
     string locationAsString() const {
         return this->intron->toString() + strandToChar(this->consensusStrand);
+    }
+    
+    /**
+     * Calculates a score for this intron size based on how this intron size fits
+     * into an expected distribution specified by the length at the 95th percentile
+     * (L95) provided by the user.  Introns of length < L95 have a score of 0. 
+     * Introns with length > L95 have score: -ln(size - L95)
+     * @param L95 Intron size at 95 percentile of a correct distribution
+     * @return A score for this intron size given the L95
+     */
+    double calcIntronScore(const uint32_t L95) const {
+        return this->intron->size() <= L95 ? 0.0 : -log(this->intron->size() - L95);
     }
 
     
@@ -921,6 +941,7 @@ public:
                     << j.primaryJunction << "\t"
                     << j.multipleMappingScore << "\t"
                     << j.meanMismatches << "\t"
+                    << j.getNbUniquelySplicedReads() << "\t"
                     << j.nbMultipleSplicedReads << "\t"
                     << j.nbDownstreamJunctions << "\t"
                     << j.nbUpstreamJunctions << "\t"

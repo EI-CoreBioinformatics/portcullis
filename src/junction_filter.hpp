@@ -261,7 +261,7 @@ public:
  
 protected:
     
-    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail);
+    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, const uint32_t L95);
 
     shared_ptr<Performance> calcPerformance(const JunctionList& pass, const JunctionList& fail) {
         return calcPerformance(pass, fail, false);
@@ -271,6 +271,8 @@ protected:
     void printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const string& prefix);
     
     void doRuleBasedFiltering(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap);
+    
+    uint32_t calcIntronThreshold(const JunctionList& pass);
     
 public:
   

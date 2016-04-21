@@ -196,6 +196,9 @@ void portcullis::JunctionFilter::filter() {
         currentJuncs.push_back(j);
     }
     
+    // To be overridden if we are training
+    uint32_t L95 = 0;
+    
     if (train) {
         
         JunctionList initialSet;
@@ -216,7 +219,9 @@ void portcullis::JunctionFilter::filter() {
         pos = passJuncs.size();
         
         for(auto& j : passJuncs) {
-            initialSet.push_back(j);            
+            JunctionPtr copy = make_shared<Junction>(*j);
+            copy->setGenuine(true);
+            initialSet.push_back(copy);            
         }
         if (!genuineFile.empty()) {
             shared_ptr<Performance> p = calcPerformance(passJuncs, failJuncs);
@@ -243,7 +248,11 @@ void portcullis::JunctionFilter::filter() {
             cout << "Saving missed positive junctions to disk:" << endl;
             missedPos.saveAll(output.string() + ".selftrain.initialset.missedpos", "portcullis_missed_isp");
         }
-    
+        
+        
+        // Analyse positive set to get L0.05 of intron size
+        L95 = this->calcIntronThreshold(passJuncs);        
+        cout << "Length of intron at 95th percentile of positive set: " << L95 << endl << endl;
         
         passJuncs.clear();
         failJuncs.clear();
@@ -257,7 +266,9 @@ void portcullis::JunctionFilter::filter() {
         neg = passJuncs.size();
         
         for(auto& j : passJuncs) {
-            initialSet.push_back(j);            
+            JunctionPtr copy = make_shared<Junction>(*j);
+            copy->setGenuine(false);
+            initialSet.push_back(copy);            
         }
         
         if (!genuineFile.empty()) {
@@ -286,11 +297,17 @@ void portcullis::JunctionFilter::filter() {
             cout << "Saving missed negative junctions to disk:" << endl;
             missedNeg.saveAll(output.string() + ".selftrain.initialset.missedneg", "portcullis_missed_isn");
         }
+        
+        const uint32_t L95_fail = this->calcIntronThreshold(passJuncs);
+        cout << "Length of intron at 95th percentile of negative set: " << L95_fail << endl << endl;
+        
             
         cout << "Initial training set consists of " << pos << " positive and " << neg << " negative junctions." << endl << endl;
         
+        
+        
         cout << "Training a random forest model using the initial positive and negative datasets" << endl;
-        shared_ptr<Forest> forest = Train::trainInstance(initialSet, output.string() + ".selftrain", DEFAULT_TRAIN_TREES, threads, true, true);
+        shared_ptr<Forest> forest = Train::trainInstance(initialSet, output.string() + ".selftrain", DEFAULT_TRAIN_TREES, threads, true, true, L95);
         
         forest->saveToFile();
         forest->writeOutput(&cout);
@@ -311,7 +328,7 @@ void portcullis::JunctionFilter::filter() {
         JunctionList passJuncs;
         JunctionList failJuncs;
         
-        forestPredict(currentJuncs, passJuncs, failJuncs);
+        forestPredict(currentJuncs, passJuncs, failJuncs, L95);
                 
         printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Random Forest filtering"));
         
@@ -451,6 +468,18 @@ void portcullis::JunctionFilter::filter() {
     }
 }
     
+uint32_t portcullis::JunctionFilter::calcIntronThreshold(const JunctionList& juncs) {
+    
+    vector<uint32_t> intron_sizes;
+    for(auto& j : juncs) {
+        intron_sizes.push_back(j->getIntronSize());
+    }
+    
+    std::sort(intron_sizes.begin(), intron_sizes.end());
+    
+    return intron_sizes[intron_sizes.size() * 0.95];
+}
+
 void portcullis::JunctionFilter::printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const string& prefix) {
     // Output stats
     size_t diff = in.size() - pass.size();
@@ -512,13 +541,13 @@ void portcullis::JunctionFilter::doRuleBasedFiltering(const path& ruleFile, cons
 
 }
     
-void portcullis::JunctionFilter::forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail) {
+void portcullis::JunctionFilter::forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, const uint32_t L95) {
     
     if (verbose) {
         cerr << endl << "Preparing junction metrics into matrix" << endl;
     }
     
-    Data* testingData = Train::juncs2FeatureVectors(all);
+    Data* testingData = Train::juncs2FeatureVectors(all, L95);
     
     // Load forest from disk
     
@@ -571,9 +600,15 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
     f->run(verbose);
     
     if (verbose) {
-        cerr << "Separating original junction data into pass and fail categories" << endl;
+        cerr << "Separating original junction data into pass and fail categories." << endl;
     }
+    
+    path scorepath = output.string() + ".scores";
+    ofstream scoreStream(scorepath.c_str());
+    
     for(size_t i = 0; i < all.size(); i++) {
+        
+        scoreStream << f->getPredictions()[i][0] << endl;
         if (f->getPredictions()[i][0] >= 0.5) {
             pass.push_back(all[i]);
         }
@@ -581,6 +616,11 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
             fail.push_back(all[i]);
         }
     }
+    
+    scoreStream.close();
+    
+    cout << "Saved junction scores to: " << scorepath << endl;
+    
     
     delete testingData;
 }
@@ -594,6 +634,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     path referenceFile;
     path output;
     uint16_t threads;
+    bool no_ml;
     bool saveBad;
     int32_t max_length;
     string canonical;
@@ -618,6 +659,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
                 "If you have a list of line separated boolean values in a file, indicating whether each junction in your input is genuine or not, then we can use that information here to gauge the accuracy of the predictions.")
             ("reference,r", po::value<path>(&referenceFile),
                 "Reference annotation of junctions in BED format.  Any junctions found by the junction analysis tool will be preserved if found in this reference file regardless of any other filtering criteria.  If you need to convert a reference annotation from GTF or GFF to BED format portcullis contains scripts for this.")
+            ("no_ml,n", po::bool_switch(&no_ml)->default_value(false),
+                "Disables machine learning filtering")
             ("save_bad,b", po::bool_switch(&saveBad)->default_value(false),
                 "Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)")
             ("source", po::value<string>(&source)->default_value(DEFAULT_FILTER_SOURCE),
@@ -679,12 +722,14 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     // Only set the filter rules if specified.
     filter.setFilterFile(filterFile);
     filter.setGenuineFile(genuineFile);
-    if (modelFile.empty()) {
+    if (modelFile.empty() && !no_ml) {
         filter.setTrain(true);    
     }
     else {
         filter.setTrain(false);
-        filter.setModelFile(modelFile);
+        if (!no_ml) {
+            filter.setModelFile(modelFile);
+        }
     }
     filter.setReferenceFile(referenceFile);
     

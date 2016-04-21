@@ -823,10 +823,10 @@ void portcullis::Junction::calcMismatchStats() {
     // Assuming we have some mismatches determine if this junction has no overhangs
     // extending beyond first mismatch.  If so determine if that distance is small
     // enough to consider the junction as suspicious
-    if (nbMismatches > 0) {
+    if (nbMismatches > 0 && firstMismatch < 20) {
         bool found = false;
         for(const auto& a : alignments) {
-            if (a->mmes > firstMismatch) {
+            if (a->minMatch > firstMismatch) {
                 found = true;
                 break;
             }
@@ -941,14 +941,15 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
          << "M17: Primary Junction: " << boolalpha << primaryJunction << delimiter
          << "M18: Multiple mapping score: " << multipleMappingScore << delimiter
          << "M19: Mean mismatches: " << meanMismatches << delimiter
-         << "M20: # Multiple Spliced Reads: " << nbMultipleSplicedReads << delimiter
-         << "M21: # Upstream Junctions: " << nbUpstreamJunctions << delimiter
-         << "M22: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
-         << "M23: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
-         << "M24: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
-         << "M25: Distance to next upstream junction: " << distanceToNextUpstreamJunction << delimiter
-         << "M26: Distance to next downstream junction: " << distanceToNextDownstreamJunction << delimiter
-         << "M27: Distance to nearest junction: " << distanceToNearestJunction;         
+         << "M20: # Uniquely Spliced Reads: " << getNbUniquelySplicedReads() << delimiter
+         << "M21: # Multiple Spliced Reads: " << nbMultipleSplicedReads << delimiter
+         << "M22: # Upstream Junctions: " << nbUpstreamJunctions << delimiter
+         << "M23: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
+         << "M24: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
+         << "M25: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
+         << "M26: Distance to next upstream junction: " << distanceToNextUpstreamJunction << delimiter
+         << "M27: Distance to next downstream junction: " << distanceToNextDownstreamJunction << delimiter
+         << "M28: Distance to nearest junction: " << distanceToNearestJunction;         
 }
     
 /**
@@ -979,14 +980,15 @@ void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string
          << "M17-PrimaryJunction=" << boolalpha << primaryJunction << delimiter
          << "M18-MultipleMappingScore=" << multipleMappingScore << delimiter
          << "M19-MeanMismatches=" << meanMismatches << delimiter
-         << "M20-NbMultipleSplicedReads=" << nbMultipleSplicedReads << delimiter
-         << "M21-NbUpstreamJunctions=" << nbUpstreamJunctions << delimiter
-         << "M22-NbDownstreamJunctions=" << nbDownstreamJunctions << delimiter
-         << "M23-NbUpstreamNonSplicedAlignments=" << nbUpstreamFlankingAlignments << delimiter
-         << "M24-NbDownstreamNonSplicedAlignments=" << nbDownstreamFlankingAlignments << delimiter
-         << "M25-DistanceToNextUpstreamJunction=" << distanceToNextUpstreamJunction << delimiter
-         << "M26-DistanceToNextDownstreamJunction=" << distanceToNextDownstreamJunction << delimiter
-         << "M27-DistanceToNearestJunction=" << distanceToNearestJunction << delimiter
+         << "M20-NbUniquelySplicedReads=" << getNbUniquelySplicedReads() << delimiter
+         << "M21-NbMultipleSplicedReads=" << nbMultipleSplicedReads << delimiter
+         << "M22-NbUpstreamJunctions=" << nbUpstreamJunctions << delimiter
+         << "M23-NbDownstreamJunctions=" << nbDownstreamJunctions << delimiter
+         << "M24-NbUpstreamNonSplicedAlignments=" << nbUpstreamFlankingAlignments << delimiter
+         << "M25-NbDownstreamNonSplicedAlignments=" << nbDownstreamFlankingAlignments << delimiter
+         << "M26-DistanceToNextUpstreamJunction=" << distanceToNextUpstreamJunction << delimiter
+         << "M27-DistanceToNextDownstreamJunction=" << distanceToNextDownstreamJunction << delimiter
+         << "M28-DistanceToNearestJunction=" << distanceToNearestJunction << delimiter
          << "PFP=" << boolalpha << pfp;         
 }
 
@@ -1200,21 +1202,22 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     j->setPrimaryJunction(lexical_cast<bool>(parts[29]));
     j->setMultipleMappingScore(lexical_cast<double>(parts[30]));
     j->setMeanMismatches(lexical_cast<double>(parts[31]));
-    j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[32]));
-    j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[33]));
-    j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[34]));
-    j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[35]));
-    j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[36]));
-    j->setDistanceToNextUpstreamJunction(lexical_cast<uint32_t>(parts[37]));
-    j->setDistanceToNextDownstreamJunction(lexical_cast<uint32_t>(parts[38]));
-    j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[39]));
+    //j->setNbUniquelySplicedReads(lexical_cast<uint32_t>(parts[32]));
+    j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[33]));
+    j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[34]));
+    j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[35]));
+    j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[36]));
+    j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[37]));
+    j->setDistanceToNextUpstreamJunction(lexical_cast<uint32_t>(parts[38]));
+    j->setDistanceToNextDownstreamJunction(lexical_cast<uint32_t>(parts[39]));
+    j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[40]));
     
     // Read Junction overhangs
-    j->setMeanQueryLength(lexical_cast<uint32_t>(parts[40]));
-    j->setSuspicious(lexical_cast<bool>(parts[41]));
-    j->setPotentialFalsePositive(lexical_cast<bool>(parts[42]));
+    j->setMeanQueryLength(lexical_cast<uint32_t>(parts[41]));
+    j->setSuspicious(lexical_cast<bool>(parts[42]));
+    j->setPotentialFalsePositive(lexical_cast<bool>(parts[43]));
     for(size_t i = 0; i < JO_NAMES.size(); i++) {
-        j->setJunctionOverhangs(i, lexical_cast<uint32_t>(parts[43 + i]));
+        j->setJunctionOverhangs(i, lexical_cast<uint32_t>(parts[44 + i]));
     }
     
     return j;
