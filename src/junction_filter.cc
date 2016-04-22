@@ -260,6 +260,25 @@ void portcullis::JunctionFilter::filter() {
         
         doRuleBasedFiltering(this->getIntitalNegRulesFile(), currentJuncs, passJuncs, failJuncs, "Creating initial negative set for training", resultMap);
         
+        const uint32_t longintronthreshold = L95 * 6;
+        cout << endl << "Adding junctions to negative set with MaxMMES < 10 and excessively long intron size of positive set (> L95 x 6 = " << longintronthreshold << ")...";
+        cout.flush();
+        
+        uint32_t nblongintrons = 0;
+        JunctionList fail2Juncs;
+        for(auto& j : failJuncs) {
+            if (j->getIntronSize() > longintronthreshold && j->getMaxMMES() < 10 ) {
+                passJuncs.push_back(j);
+                nblongintrons++;                
+            }
+            else {
+                fail2Juncs.push_back(j);
+            }
+        }
+        
+        cout << " done." << endl
+             << "Found an additional " << nblongintrons << " junctions with long introns." << endl << endl;
+        
         cout << "Saving initial negative set:" << endl;
         JunctionSystem isn(passJuncs);
         isn.saveAll(output.string() + ".selftrain.initialset.neg", "portcullis_isn");
@@ -272,7 +291,7 @@ void portcullis::JunctionFilter::filter() {
         }
         
         if (!genuineFile.empty()) {
-            shared_ptr<Performance> p = calcPerformance(passJuncs, failJuncs, true);            
+            shared_ptr<Performance> p = calcPerformance(passJuncs, fail2Juncs, true);            
             cout << "Performance of initial negative set (High NPV is important):" << endl;
             cout << Performance::longHeader() << endl;
             cout << p->toLongString() << endl << endl;
@@ -285,7 +304,7 @@ void portcullis::JunctionFilter::filter() {
                     invalidNeg.addJunction(j);
                 }
             }
-            for(auto& j : failJuncs) {
+            for(auto& j : fail2Juncs) {
                 if (!j->isGenuine()) {
                     missedNeg.addJunction(j);
                 }
@@ -298,13 +317,7 @@ void portcullis::JunctionFilter::filter() {
             missedNeg.saveAll(output.string() + ".selftrain.initialset.missedneg", "portcullis_missed_isn");
         }
         
-        const uint32_t L95_fail = this->calcIntronThreshold(passJuncs);
-        cout << "Length of intron at 95th percentile of negative set: " << L95_fail << endl << endl;
-        
-            
         cout << "Initial training set consists of " << pos << " positive and " << neg << " negative junctions." << endl << endl;
-        
-        
         
         cout << "Training a random forest model using the initial positive and negative datasets" << endl;
         shared_ptr<Forest> forest = Train::trainInstance(initialSet, output.string() + ".selftrain", DEFAULT_TRAIN_TREES, threads, true, true, L95);
@@ -609,7 +622,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
     for(size_t i = 0; i < all.size(); i++) {
         
         scoreStream << f->getPredictions()[i][0] << endl;
-        if (f->getPredictions()[i][0] >= 0.5) {
+        if (f->getPredictions()[i][0] >= 0.1) {
             pass.push_back(all[i]);
         }
         else {

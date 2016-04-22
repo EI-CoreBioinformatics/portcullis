@@ -982,13 +982,15 @@ void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string
          << "M19-MeanMismatches=" << meanMismatches << delimiter
          << "M20-NbUniquelySplicedReads=" << getNbUniquelySplicedReads() << delimiter
          << "M21-NbMultipleSplicedReads=" << nbMultipleSplicedReads << delimiter
-         << "M22-NbUpstreamJunctions=" << nbUpstreamJunctions << delimiter
-         << "M23-NbDownstreamJunctions=" << nbDownstreamJunctions << delimiter
-         << "M24-NbUpstreamNonSplicedAlignments=" << nbUpstreamFlankingAlignments << delimiter
-         << "M25-NbDownstreamNonSplicedAlignments=" << nbDownstreamFlankingAlignments << delimiter
-         << "M26-DistanceToNextUpstreamJunction=" << distanceToNextUpstreamJunction << delimiter
-         << "M27-DistanceToNextDownstreamJunction=" << distanceToNextDownstreamJunction << delimiter
-         << "M28-DistanceToNearestJunction=" << distanceToNearestJunction << delimiter
+         << "M22-Reliable2RawRatio=" << getReliable2RawRatio() << delimiter
+         << "M23-NbUpstreamJunctions=" << nbUpstreamJunctions << delimiter
+         << "M24-NbDownstreamJunctions=" << nbDownstreamJunctions << delimiter
+         << "M25-NbUpstreamNonSplicedAlignments=" << nbUpstreamFlankingAlignments << delimiter
+         << "M26-NbDownstreamNonSplicedAlignments=" << nbDownstreamFlankingAlignments << delimiter
+         << "M27-DistanceToNextUpstreamJunction=" << distanceToNextUpstreamJunction << delimiter
+         << "M28-DistanceToNextDownstreamJunction=" << distanceToNextDownstreamJunction << delimiter
+         << "M29-DistanceToNearestJunction=" << distanceToNearestJunction << delimiter
+         << "Suspect=" << boolalpha << suspicious << delimiter
          << "PFP=" << boolalpha << pfp;         
 }
 
@@ -1204,20 +1206,21 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     j->setMeanMismatches(lexical_cast<double>(parts[31]));
     //j->setNbUniquelySplicedReads(lexical_cast<uint32_t>(parts[32]));
     j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[33]));
-    j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[34]));
-    j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[35]));
-    j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[36]));
-    j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[37]));
-    j->setDistanceToNextUpstreamJunction(lexical_cast<uint32_t>(parts[38]));
-    j->setDistanceToNextDownstreamJunction(lexical_cast<uint32_t>(parts[39]));
-    j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[40]));
+    //j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[33]));
+    j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[35]));
+    j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[36]));
+    j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[37]));
+    j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[38]));
+    j->setDistanceToNextUpstreamJunction(lexical_cast<uint32_t>(parts[39]));
+    j->setDistanceToNextDownstreamJunction(lexical_cast<uint32_t>(parts[40]));
+    j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[41]));
     
     // Read Junction overhangs
-    j->setMeanQueryLength(lexical_cast<uint32_t>(parts[41]));
-    j->setSuspicious(lexical_cast<bool>(parts[42]));
-    j->setPotentialFalsePositive(lexical_cast<bool>(parts[43]));
+    j->setMeanQueryLength(lexical_cast<uint32_t>(parts[42]));
+    j->setSuspicious(lexical_cast<bool>(parts[43]));
+    j->setPotentialFalsePositive(lexical_cast<bool>(parts[44]));
     for(size_t i = 0; i < JO_NAMES.size(); i++) {
-        j->setJunctionOverhangs(i, lexical_cast<uint32_t>(parts[44 + i]));
+        j->setJunctionOverhangs(i, lexical_cast<uint32_t>(parts[45 + i]));
     }
     
     return j;

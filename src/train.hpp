@@ -52,17 +52,19 @@ const int DEFAULT_SEED = 1234567;       // To avoid non-deterministic behaviour
 
 // List of variable names
 const vector<string> VAR_NAMES = { 
-            "M2-nb-reads", 
+            //"M2-nb-reads", 
             //"M3-nb_dist_aln", 
-            "M4-nb_rel_aln", 
+            "nb_rel_aln", 
             //"M8-max_min_anc", 
             //"M9-dif_anc", 
             //"M10-dist_anc", 
-            "M11-entropy", 
-            "M12-maxmmes", 
-            "M13-hamming5p", 
-            "M14-hamming3p",
-            //"IntronScore",
+            "entropy", 
+            "maxmmes", 
+            "min_hamming_score", 
+            //"M14-hamming3p",
+            "rel2raw_ratio",
+            //"mean_mismatches",
+            "IntronScore",
             "Genuine" };
 
 // Derived from https://sureshamrita.wordpress.com/2011/08/24/c-implementation-of-k-fold-cross-validation/

@@ -223,14 +223,15 @@ double portcullis::eval::getNumericFromJunc(const var& fullname) const {
         case 20:
             return junc->getNbMultipleSplicedReads();
         case 21:
-            return junc->getNbUpstreamJunctions();
+            return junc->getReliable2RawRatio();
         case 22:
-            return junc->getNbDownstreamJunctions();
+            return junc->getNbUpstreamJunctions();
         case 23:
-            return junc->getNbUpstreamFlankingAlignments();
+            return junc->getNbDownstreamJunctions();
         case 24:
+            return junc->getNbUpstreamFlankingAlignments();
+        case 25:
             return junc->getNbDownstreamFlankingAlignments();
-
     }
     
     if (boost::iequals(name, "Suspect")) {
