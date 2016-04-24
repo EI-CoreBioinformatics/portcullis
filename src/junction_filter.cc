@@ -52,17 +52,21 @@ namespace po = boost::program_options;
 #include <ranger/ForestRegression.h>
 #include <ranger/DataDouble.h>
 
+#include <portcullis/bam/genome_mapper.hpp>
 #include <portcullis/intron.hpp>
 #include <portcullis/junction.hpp>
 #include <portcullis/junction_system.hpp>
 #include <portcullis/portcullis_fs.hpp>
 #include <portcullis/performance.hpp>
 #include <portcullis/rule_parser.hpp>
+#include <portcullis/markov_model.hpp>
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
 using portcullis::Performance;
 using portcullis::eval;
+using portcullis::bam::GenomeMapper;
+using portcullis::MarkovModel;
 
 #include "train.hpp"
 using portcullis::Train;
@@ -72,6 +76,7 @@ using portcullis::Train;
 portcullis::JunctionFilter::JunctionFilter( const path& _junctionFile, 
                     const path& _output) {
     junctionFile = _junctionFile;
+    genomeFile = "";
     modelFile = "";
     genuineFile = "";
     output = _output;
@@ -198,12 +203,20 @@ void portcullis::JunctionFilter::filter() {
     
     // To be overridden if we are training
     uint32_t L95 = 0;
+    MarkovModel exon_model(5);
+    MarkovModel intron_model(5);
+    
+    // Create the genome mapper
+    GenomeMapper gmap(this->genomeFile);
+
+    // Load the fasta index
+    gmap.loadFastaIndex();
+
     
     if (train) {
         
-        JunctionList initialSet;
-        uint32_t pos = 0;
-        uint32_t neg = 0;        
+        // The initial positive and negative sets
+        JunctionList pos, neg;
          
         cout << "Self training mode activated.  Collecting initial positive and negative sets from input." << endl;
         
@@ -216,12 +229,11 @@ void portcullis::JunctionFilter::filter() {
         cout << "Saving initial positive set:" << endl;
         JunctionSystem isp(passJuncs);
         isp.saveAll(output.string() + ".selftrain.initialset.pos", "portcullis_isp");
-        pos = passJuncs.size();
         
         for(auto& j : passJuncs) {
             JunctionPtr copy = make_shared<Junction>(*j);
             copy->setGenuine(true);
-            initialSet.push_back(copy);            
+            pos.push_back(copy);            
         }
         if (!genuineFile.empty()) {
             shared_ptr<Performance> p = calcPerformance(passJuncs, failJuncs);
@@ -254,6 +266,13 @@ void portcullis::JunctionFilter::filter() {
         L95 = this->calcIntronThreshold(passJuncs);        
         cout << "Length of intron at 95th percentile of positive set: " << L95 << endl << endl;
         
+        cout << "Training coding potential markov models on positive set ...";
+        cout.flush();
+        trainMMs(pos, exon_model, intron_model, gmap);
+        cout << " done." << endl;
+        cout << "Exon model contains " << exon_model.size() << " 5-mers." << endl;
+        cout << "Intron model contains " << intron_model.size() << " 5-mers." << endl;
+                
         passJuncs.clear();
         failJuncs.clear();
         resultMap.clear();
@@ -282,12 +301,11 @@ void portcullis::JunctionFilter::filter() {
         cout << "Saving initial negative set:" << endl;
         JunctionSystem isn(passJuncs);
         isn.saveAll(output.string() + ".selftrain.initialset.neg", "portcullis_isn");
-        neg = passJuncs.size();
         
         for(auto& j : passJuncs) {
             JunctionPtr copy = make_shared<Junction>(*j);
             copy->setGenuine(false);
-            initialSet.push_back(copy);            
+            neg.push_back(copy);            
         }
         
         if (!genuineFile.empty()) {
@@ -317,10 +335,17 @@ void portcullis::JunctionFilter::filter() {
             missedNeg.saveAll(output.string() + ".selftrain.initialset.missedneg", "portcullis_missed_isn");
         }
         
-        cout << "Initial training set consists of " << pos << " positive and " << neg << " negative junctions." << endl << endl;
+        cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
+        
+        // Build the training set by combining the positive and negative sets
+        JunctionList training;
+        training.reserve(pos.size() + neg.size());
+        training.insert(training.end(), pos.begin(), pos.end());
+        training.insert(training.end(), neg.begin(), neg.end());
+        
         
         cout << "Training a random forest model using the initial positive and negative datasets" << endl;
-        shared_ptr<Forest> forest = Train::trainInstance(initialSet, output.string() + ".selftrain", DEFAULT_TRAIN_TREES, threads, true, true, L95);
+        shared_ptr<Forest> forest = Train::trainInstance(training, output.string() + ".selftrain", DEFAULT_TRAIN_TREES, threads, true, true, L95, exon_model, intron_model, gmap);
         
         forest->saveToFile();
         forest->writeOutput(&cout);
@@ -341,7 +366,7 @@ void portcullis::JunctionFilter::filter() {
         JunctionList passJuncs;
         JunctionList failJuncs;
         
-        forestPredict(currentJuncs, passJuncs, failJuncs, L95);
+        forestPredict(currentJuncs, passJuncs, failJuncs, L95, exon_model, intron_model, gmap);
                 
         printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Random Forest filtering"));
         
@@ -480,6 +505,44 @@ void portcullis::JunctionFilter::filter() {
         }
     }
 }
+
+void portcullis::JunctionFilter::trainMMs(const JunctionList& in, MarkovModel& exon_model, MarkovModel& intron_model, GenomeMapper& gmap) {
+    
+    vector<string> exons;
+    vector<string> introns;
+    for(auto& j : in) {
+        
+        int len = 0;
+        
+        string left_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 80, j->getIntron()->start, &len);
+        if (j->getConsensusStrand() == Strand::NEGATIVE) {
+            left_exon = SeqUtils::reverseComplement(left_exon);
+        }        
+        exons.push_back(left_exon);
+        
+        string left_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->start+81, &len);
+        if (j->getConsensusStrand() == Strand::NEGATIVE) {
+            left_intron = SeqUtils::reverseComplement(left_intron);
+        }        
+        introns.push_back(left_intron);
+        
+        string right_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end-80, j->getIntron()->end+1, &len);
+        if (j->getConsensusStrand() == Strand::NEGATIVE) {
+            right_intron = SeqUtils::reverseComplement(right_intron);
+        }        
+        introns.push_back(right_intron);
+        
+        
+        string right_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end + 1, j->getIntron()->end + 80, &len);
+        if (j->getConsensusStrand() == Strand::NEGATIVE) {
+            right_exon = SeqUtils::reverseComplement(right_exon);
+        }        
+        exons.push_back(right_exon);
+    }
+    
+    exon_model.train(exons);
+    intron_model.train(introns);
+}
     
 uint32_t portcullis::JunctionFilter::calcIntronThreshold(const JunctionList& juncs) {
     
@@ -554,13 +617,13 @@ void portcullis::JunctionFilter::doRuleBasedFiltering(const path& ruleFile, cons
 
 }
     
-void portcullis::JunctionFilter::forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, const uint32_t L95) {
+void portcullis::JunctionFilter::forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, const uint32_t L95, MarkovModel& exon, MarkovModel& intron, GenomeMapper& gmap) {
     
     if (verbose) {
         cerr << endl << "Preparing junction metrics into matrix" << endl;
     }
     
-    Data* testingData = Train::juncs2FeatureVectors(all, L95);
+    Data* testingData = Train::juncs2FeatureVectors(all, L95, exon, intron, gmap);
     
     // Load forest from disk
     
@@ -641,6 +704,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 
     path junctionFile;
+    path genomeFile;
     path modelFile;
     path genuineFile;
     path filterFile;
@@ -693,11 +757,13 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     // in config file, but will not be shown to the user.
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
-            ("junction-file", po::value<path>(&junctionFile), "Path to the junction file to process.")
+        ("genome-file", po::value<path>(&genomeFile), "Path to the genome file to process.")        
+        ("junction-file", po::value<path>(&junctionFile), "Path to the junction file to process.")
             ;
 
     // Positional option for the input bam file
     po::positional_options_description p;
+    p.add("genome-file", 1);
     p.add("junction-file", 1);
 
 
@@ -745,6 +811,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
         }
     }
     filter.setReferenceFile(referenceFile);
+    filter.setGenomeFile(genomeFile);
     
     filter.filter();
 

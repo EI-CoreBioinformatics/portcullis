@@ -45,6 +45,7 @@ using namespace portcullis::bam;
 
 #include "intron.hpp"
 #include "seq_utils.hpp"
+#include "markov_model.hpp"
 using portcullis::Intron;
 
 
@@ -867,7 +868,9 @@ public:
     double calcIntronScore(const uint32_t threshold) const {
         return this->intron->size() <= threshold ? 0.0 : log(this->intron->size() - threshold);
     }
-
+    
+    
+    double calcCodingPotential(GenomeMapper& gmap, MarkovModel& exon, MarkovModel& intron) const;
     
     
     // **** Output methods ****

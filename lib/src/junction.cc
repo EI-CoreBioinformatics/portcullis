@@ -47,7 +47,9 @@ using portcullis::bam::Strand;
 
 #include <portcullis/intron.hpp>
 #include <portcullis/seq_utils.hpp>
+#include <portcullis/markov_model.hpp>
 using portcullis::Intron;
+using portcullis::MarkovModel;
 
 #include <portcullis/junction.hpp>
 
@@ -1224,4 +1226,40 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     }
     
     return j;
+}
+
+double portcullis::Junction::calcCodingPotential(GenomeMapper& gmap, MarkovModel& exon, MarkovModel& intron) const {
+     
+    int len = 0;
+
+    const char* ref = this->intron->ref.name.c_str();
+
+    string left_exon = gmap.fetchBases(ref, this->intron->start - 80, this->intron->start, &len);
+    if (this->getConsensusStrand() == Strand::NEGATIVE) {
+        left_exon = SeqUtils::reverseComplement(left_exon);
+    }        
+
+    string left_intron = gmap.fetchBases(ref, this->intron->start, this->intron->start+81, &len);
+    if (this->getConsensusStrand() == Strand::NEGATIVE) {
+        left_intron = SeqUtils::reverseComplement(left_intron);
+    }        
+
+    string right_intron = gmap.fetchBases(ref, this->intron->end-80, this->intron->end+1, &len);
+    if (this->getConsensusStrand() == Strand::NEGATIVE) {
+        right_intron = SeqUtils::reverseComplement(right_intron);
+    }        
+
+    string right_exon = gmap.fetchBases(ref, this->intron->end + 1, this->intron->end + 80, &len);
+    if (this->getConsensusStrand() == Strand::NEGATIVE) {
+        right_exon = SeqUtils::reverseComplement(right_exon);
+    }        
+
+    double score =  exon.getScore(left_intron) + intron.getScore(left_exon)
+                - ( intron.getScore(left_intron) + exon.getScore(left_exon) )
+                + ( intron.getScore(right_exon) + exon.getScore(right_intron) )
+                - ( exon.getScore(right_exon) + intron.getScore(right_intron) );
+    
+    //cout << score << endl;
+    
+    return score;
 }

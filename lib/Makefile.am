@@ -15,6 +15,7 @@ libportcullis_la_SOURCES =	\
 	src/bam_writer.cc \
 	src/depth_parser.cc \
 	src/genome_mapper.cc \
+	src/markov_model.cc \
 	src/python_exe.cc \
 	src/intron.cc \
 	src/junction.cc \
@@ -30,6 +31,8 @@ library_include_HEADERS = \
 	$(PI)/bam/bam_writer.hpp \
 	$(PI)/bam/depth_parser.hpp \
 	$(PI)/bam/genome_mapper.hpp \
+	$(PI)/kmer.hpp \
+	$(PI)/markov_model.hpp \
 	$(PI)/python_exe.hpp \
 	$(PI)/intron.hpp \
 	$(PI)/junction.hpp \

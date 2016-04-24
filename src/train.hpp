@@ -36,6 +36,8 @@ using boost::filesystem::path;
 
 #include <ranger/Forest.h>
 #include <portcullis/performance.hpp>
+#include <portcullis/bam/genome_mapper.hpp>
+using portcullis::bam::GenomeMapper;
 
 
 namespace portcullis {
@@ -65,6 +67,7 @@ const vector<string> VAR_NAMES = {
             "rel2raw_ratio",
             //"mean_mismatches",
             "IntronScore",
+            "CodingPotential",
             "Genuine" };
 
 // Derived from https://sureshamrita.wordpress.com/2011/08/24/c-implementation-of-k-fold-cross-validation/
@@ -232,25 +235,28 @@ public:
     static int main(int argc, char *argv[]);
     
     static Data* juncs2FeatureVectors(const JunctionList& x) {
-        return juncs2FeatureVectors(x, 0);
+        GenomeMapper gmap;
+        MarkovModel m(1);
+        return juncs2FeatureVectors(x, 0, m, m, gmap);
     }
-    static Data* juncs2FeatureVectors(const JunctionList& x, const uint32_t L95);
+    static Data* juncs2FeatureVectors(const JunctionList& x, const uint32_t L95, MarkovModel& exon, MarkovModel& intron, GenomeMapper& gmap);
     
     static shared_ptr<Forest> trainInstance(const JunctionList& x, string outputPrefix, 
             uint16_t trees, uint16_t threads, bool regressionMode, bool verbose) {
-        return trainInstance(x, outputPrefix, trees, threads, regressionMode, verbose, 0);
+        GenomeMapper gmap;
+        MarkovModel m(1);
+        return trainInstance(x, outputPrefix, trees, threads, regressionMode, verbose,
+                0, m, m, gmap);
     }
+    
     static shared_ptr<Forest> trainInstance(const JunctionList& x, string outputPrefix, 
-            uint16_t trees, uint16_t threads, bool regressionMode, bool verbose, const uint32_t L95);
+            uint16_t trees, uint16_t threads, bool regressionMode, bool verbose, 
+            const uint32_t L95, MarkovModel& exon, MarkovModel& intron, GenomeMapper& gmap);
     
 protected:
     
     
-    void testInstance(shared_ptr<Forest> f, const JunctionList& y) {
-        return testInstance(f, y, 0);
-    }
-    
-    void testInstance(shared_ptr<Forest> f, const JunctionList& y, const uint32_t L95);
+    void testInstance(shared_ptr<Forest> f, const JunctionList& y);
     
     void getRandomSubset(const JunctionList& in, JunctionList& out);
     
