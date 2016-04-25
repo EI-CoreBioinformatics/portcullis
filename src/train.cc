@@ -68,58 +68,12 @@ portcullis::Train::Train(const path& _junctionFile, const path& _refFile){
     verbose = false;    
 }
     
-Data* portcullis::Train::juncs2FeatureVectors(const JunctionList& x, ModelFeatures& mf) {
-    
-    vector<string> headers;
-    headers.reserve( VAR_NAMES.size() + JO_NAMES.size() );
-    headers.insert( headers.end(), VAR_NAMES.begin(), VAR_NAMES.end() );
-    headers.insert( headers.end(), JO_NAMES.begin()+14, JO_NAMES.end() );
-    
-    // Convert junction list info to double*
-    double* d = new double[x.size() * headers.size()];
-    
-    uint32_t row = 0;
-    for (const auto& j : x) {        
-        
-        //d[0 * x.size() + row] = j->getNbJunctionAlignments();
-        //d[0 * x.size() + row] = j->getNbDistinctAlignments();
-        d[0 * x.size() + row] = j->getNbReliableAlignments();
-        //d[3 * x.size() + row] = j->getMaxMinAnchor();
-        //d[4 * x.size() + row] = j->getDiffAnchor();
-        //d[5 * x.size() + row] = j->getNbDistinctAnchors();
-        d[1 * x.size() + row] = j->getEntropy();
-        d[2 * x.size() + row] = j->getMaxMMES();
-        d[3 * x.size() + row] = std::min(j->getHammingDistance5p(), j->getHammingDistance3p());
-        //d[3 * x.size() + row] = ;
-        d[4 * x.size() + row] = j->getReliable2RawRatio();
-        //d[5 * x.size() + row] = j->getMeanMismatches();
-        d[5 * x.size() + row] = mf.L95 == 0 ? 0.0 : j->calcIntronScore(mf.L95);     // Intron score
-        d[6 * x.size() + row] = mf.isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(mf.gmap, mf.exonModel, mf.intronModel);     // Coding potential score
-        d[7 * x.size() + row] = j->isGenuine();
-        // Junction overhang values at each position are first converted into deviation from expected distributions       
-        double half_read_length = (double)j->getMeanQueryLength() / 2.0;    
-        for(size_t i = 14; i < JO_NAMES.size(); i++) {
-            double Ni = j->getJunctionOverhangs(i);                 // Actual count at this position
-            if (Ni == 0.0) Ni = 0.000000000001;                     // Ensure some value > 0 here otherwise we get -infinity later.
-            double Pi = 1.0 - ((double)i / half_read_length);       // Likely scale at this position
-            double Ei = (double)j->getNbJunctionAlignments() * Pi;  // Expected count at this position
-            double Xi = abs(log2(Ni / Ei));                         // Log deviation
-            
-            d[(i-14 + 8) * x.size() + row] = Xi;
-        }
-        
-        row++;
-    }
-    
-    Data* data = new DataDouble(d, headers, x.size(), headers.size());
-    data->setExternalData(false);      // This causes 'd' to be deleted when 'data' is deleted
-    return data;
-}
+
 
 shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x, string outputPrefix, uint16_t trees, uint16_t threads, bool regressionMode, bool verbose, ModelFeatures& mf) {
     
     cout << "Creating feature vector" << endl;
-    Data* trainingData = juncs2FeatureVectors(x, mf);
+    Data* trainingData = mf.juncs2FeatureVectors(x);
     
     cout << "Initialising random forest" << endl;
     shared_ptr<Forest> f = nullptr;
@@ -162,7 +116,8 @@ shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x, strin
 void portcullis::Train::testInstance(shared_ptr<Forest> f, const JunctionList& x) {
     
     // Convert testing set junctions into feature vector
-    Data* testingData = juncs2FeatureVectors(x);
+    ModelFeatures mf;
+    Data* testingData = mf.juncs2FeatureVectors(x);
     
     f->setPredictionMode(true);
     f->setData(testingData);

@@ -46,6 +46,7 @@ library_include_HEADERS = \
 
 libportcullis_la_CPPFLAGS = \
 	-isystem $(top_srcdir)/deps/htslib-1.3 \
+	-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
 	-isystem $(top_srcdir)/lib/include \
 	-DDATADIR=\"$(datadir)\" \
 	@AM_CPPFLAGS@ \

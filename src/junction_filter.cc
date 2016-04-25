@@ -570,7 +570,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
         cerr << endl << "Preparing junction metrics into matrix" << endl;
     }
     
-    Data* testingData = Train::juncs2FeatureVectors(all, mf);
+    Data* testingData = mf.juncs2FeatureVectors(all);
     
     // Load forest from disk
     

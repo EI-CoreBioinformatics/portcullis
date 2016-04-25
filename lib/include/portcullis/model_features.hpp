@@ -20,12 +20,35 @@
 #include <boost/filesystem/path.hpp>
 using boost::filesystem::path;
 
+#include <ranger/Data.h>
+
 #include <portcullis/bam/genome_mapper.hpp>
 #include <portcullis/markov_model.hpp>
+#include <portcullis/junction.hpp>
 using portcullis::bam::GenomeMapper;
 using portcullis::MarkovModel;
+using portcullis::JunctionList;
 
 namespace portcullis {
+
+// List of variable names
+const vector<string> VAR_NAMES = { 
+            //"M2-nb-reads", 
+            //"M3-nb_dist_aln", 
+            "nb_rel_aln", 
+            //"M8-max_min_anc", 
+            //"M9-dif_anc", 
+            //"M10-dist_anc", 
+            "entropy", 
+            "maxmmes", 
+            "min_hamming_score", 
+            //"M14-hamming3p",
+            "rel2raw_ratio",
+            //"mean_mismatches",
+            "IntronScore",
+            "CodingPotential",
+            "Genuine" };
+    
     
 class ModelFeatures {
 public:
@@ -46,5 +69,7 @@ public:
     uint32_t calcIntronThreshold(const JunctionList& juncs);
     
     void trainCodingPotentialModel(const JunctionList& in);
+    
+    Data* juncs2FeatureVectors(const JunctionList& x);
 };
 }
