@@ -57,6 +57,8 @@ private:
     
 public:
     
+    MarkovModel() : MarkovModel(1) {}
+    
     MarkovModel(const uint32_t _order) {
         order = _order;
     }
@@ -66,7 +68,11 @@ public:
         train(input);
     }
     
-    void train(const vector<string>& input);
+    void train(const vector<string>& input) {
+        train(input, order);
+    }
+    
+    void train(const vector<string>& input, const uint32_t order);
     
     uint16_t getOrder() const {
         return order;

@@ -16,6 +16,7 @@ libportcullis_la_SOURCES =	\
 	src/depth_parser.cc \
 	src/genome_mapper.cc \
 	src/markov_model.cc \
+	src/model_features.cc \
 	src/python_exe.cc \
 	src/intron.cc \
 	src/junction.cc \
@@ -33,6 +34,7 @@ library_include_HEADERS = \
 	$(PI)/bam/genome_mapper.hpp \
 	$(PI)/kmer.hpp \
 	$(PI)/markov_model.hpp \
+	$(PI)/model_features.hpp \
 	$(PI)/python_exe.hpp \
 	$(PI)/intron.hpp \
 	$(PI)/junction.hpp \

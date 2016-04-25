@@ -53,6 +53,7 @@ using boost::filesystem::symbolic_link_exists;
 #include <portcullis/performance.hpp>
 #include <portcullis/rule_parser.hpp>
 #include <portcullis/markov_model.hpp>
+#include <portcullis/model_features.hpp>
 using portcullis::bam::GenomeMapper;
 using portcullis::PortcullisFS;
 using portcullis::Intron;
@@ -60,6 +61,7 @@ using portcullis::IntronHasher;
 using portcullis::Performance;
 using portcullis::JuncResultMap;
 using portcullis::MarkovModel;
+using portcullis::ModelFeatures;
 
 
 namespace portcullis {
@@ -275,7 +277,7 @@ public:
  
 protected:
     
-    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, const uint32_t L95, MarkovModel& exon, MarkovModel& intron, GenomeMapper& gmap);
+    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, ModelFeatures& mf);
 
     shared_ptr<Performance> calcPerformance(const JunctionList& pass, const JunctionList& fail) {
         return calcPerformance(pass, fail, false);
@@ -285,11 +287,7 @@ protected:
     void printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const string& prefix);
     
     void doRuleBasedFiltering(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap);
-    
-    uint32_t calcIntronThreshold(const JunctionList& pass);
-    
-    void trainMMs(const JunctionList& in, MarkovModel& exon, MarkovModel& intron, GenomeMapper& gmap);
-    
+        
 public:
   
     static string helpMessage() {

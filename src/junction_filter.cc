@@ -202,16 +202,9 @@ void portcullis::JunctionFilter::filter() {
     }
     
     // To be overridden if we are training
-    uint32_t L95 = 0;
-    MarkovModel exon_model(5);
-    MarkovModel intron_model(5);
+    ModelFeatures mf;
+    mf.initGenomeMapper(this->genomeFile);
     
-    // Create the genome mapper
-    GenomeMapper gmap(this->genomeFile);
-
-    // Load the fasta index
-    gmap.loadFastaIndex();
-
     
     if (train) {
         
@@ -263,15 +256,14 @@ void portcullis::JunctionFilter::filter() {
         
         
         // Analyse positive set to get L0.05 of intron size
-        L95 = this->calcIntronThreshold(passJuncs);        
-        cout << "Length of intron at 95th percentile of positive set: " << L95 << endl << endl;
+        cout << "Length of intron at 95th percentile of positive set: " << mf.calcIntronThreshold(passJuncs) << endl << endl;
         
         cout << "Training coding potential markov models on positive set ...";
         cout.flush();
-        trainMMs(pos, exon_model, intron_model, gmap);
+        mf.trainCodingPotentialModel(pos);
         cout << " done." << endl;
-        cout << "Exon model contains " << exon_model.size() << " 5-mers." << endl;
-        cout << "Intron model contains " << intron_model.size() << " 5-mers." << endl;
+        cout << "Exon model contains " << mf.exonModel.size() << " 5-mers." << endl;
+        cout << "Intron model contains " << mf.intronModel.size() << " 5-mers." << endl;
                 
         passJuncs.clear();
         failJuncs.clear();
@@ -279,7 +271,7 @@ void portcullis::JunctionFilter::filter() {
         
         doRuleBasedFiltering(this->getIntitalNegRulesFile(), currentJuncs, passJuncs, failJuncs, "Creating initial negative set for training", resultMap);
         
-        const uint32_t longintronthreshold = L95 * 6;
+        const uint32_t longintronthreshold = mf.L95 * 6;
         cout << endl << "Adding junctions to negative set with MaxMMES < 10 and excessively long intron size of positive set (> L95 x 6 = " << longintronthreshold << ")...";
         cout.flush();
         
@@ -343,9 +335,8 @@ void portcullis::JunctionFilter::filter() {
         training.insert(training.end(), pos.begin(), pos.end());
         training.insert(training.end(), neg.begin(), neg.end());
         
-        
         cout << "Training a random forest model using the initial positive and negative datasets" << endl;
-        shared_ptr<Forest> forest = Train::trainInstance(training, output.string() + ".selftrain", DEFAULT_TRAIN_TREES, threads, true, true, L95, exon_model, intron_model, gmap);
+        shared_ptr<Forest> forest = Train::trainInstance(training, output.string() + ".selftrain", DEFAULT_TRAIN_TREES, threads, true, true, mf);
         
         forest->saveToFile();
         forest->writeOutput(&cout);
@@ -366,9 +357,9 @@ void portcullis::JunctionFilter::filter() {
         JunctionList passJuncs;
         JunctionList failJuncs;
         
-        forestPredict(currentJuncs, passJuncs, failJuncs, L95, exon_model, intron_model, gmap);
+        forestPredict(currentJuncs, passJuncs, failJuncs, mf);
                 
-        printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Random Forest filtering"));
+        printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Random Forest filtering results"));
         
         // Reset currentJuncs
         currentJuncs.clear();
@@ -442,7 +433,7 @@ void portcullis::JunctionFilter::filter() {
             }
         }
         
-        printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Post filtering (length and/or canonical)"));
+        printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Post filtering (length and/or canonical) results"));
         
         // Reset currentJuncs
         currentJuncs.clear();
@@ -450,6 +441,8 @@ void portcullis::JunctionFilter::filter() {
             currentJuncs.push_back(j);
         }
     }
+    
+    cout << endl;
     
     JunctionSystem filteredJuncs;
     JunctionSystem refKeptJuncs;
@@ -459,7 +452,7 @@ void portcullis::JunctionFilter::filter() {
     }
     else {
     
-        cout  << "Recalculating junction grouping and distance stats based on new junction list that passed filters ...";
+        cout << "Recalculating junction grouping and distance stats based on new junction list that passed filters ...";
         cout.flush();
 
         for(auto& j : currentJuncs) {
@@ -489,7 +482,7 @@ void portcullis::JunctionFilter::filter() {
                             discardedJuncs.getJunctions(), 
                             string("Overall results"));
 
-    cout << "Saving junctions passing filter to disk:" << endl;
+    cout << endl << "Saving junctions passing filter to disk:" << endl;
 
     filteredJuncs.saveAll(outputDir.string() + "/" + outputPrefix + ".pass", source + "_pass");
     
@@ -506,61 +499,15 @@ void portcullis::JunctionFilter::filter() {
     }
 }
 
-void portcullis::JunctionFilter::trainMMs(const JunctionList& in, MarkovModel& exon_model, MarkovModel& intron_model, GenomeMapper& gmap) {
+
     
-    vector<string> exons;
-    vector<string> introns;
-    for(auto& j : in) {
-        
-        int len = 0;
-        
-        string left_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 80, j->getIntron()->start, &len);
-        if (j->getConsensusStrand() == Strand::NEGATIVE) {
-            left_exon = SeqUtils::reverseComplement(left_exon);
-        }        
-        exons.push_back(left_exon);
-        
-        string left_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->start+81, &len);
-        if (j->getConsensusStrand() == Strand::NEGATIVE) {
-            left_intron = SeqUtils::reverseComplement(left_intron);
-        }        
-        introns.push_back(left_intron);
-        
-        string right_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end-80, j->getIntron()->end+1, &len);
-        if (j->getConsensusStrand() == Strand::NEGATIVE) {
-            right_intron = SeqUtils::reverseComplement(right_intron);
-        }        
-        introns.push_back(right_intron);
-        
-        
-        string right_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end + 1, j->getIntron()->end + 80, &len);
-        if (j->getConsensusStrand() == Strand::NEGATIVE) {
-            right_exon = SeqUtils::reverseComplement(right_exon);
-        }        
-        exons.push_back(right_exon);
-    }
-    
-    exon_model.train(exons);
-    intron_model.train(introns);
-}
-    
-uint32_t portcullis::JunctionFilter::calcIntronThreshold(const JunctionList& juncs) {
-    
-    vector<uint32_t> intron_sizes;
-    for(auto& j : juncs) {
-        intron_sizes.push_back(j->getIntronSize());
-    }
-    
-    std::sort(intron_sizes.begin(), intron_sizes.end());
-    
-    return intron_sizes[intron_sizes.size() * 0.95];
-}
+
 
 void portcullis::JunctionFilter::printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const string& prefix) {
     // Output stats
     size_t diff = in.size() - pass.size();
 
-    cout << prefix << endl
+    cout << endl << prefix << endl
          << "-------------------------" << endl
          << "Input contained " << in.size() << " junctions." << endl
          << "Output contains " << pass.size() << " junctions." << endl
@@ -617,13 +564,13 @@ void portcullis::JunctionFilter::doRuleBasedFiltering(const path& ruleFile, cons
 
 }
     
-void portcullis::JunctionFilter::forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, const uint32_t L95, MarkovModel& exon, MarkovModel& intron, GenomeMapper& gmap) {
+void portcullis::JunctionFilter::forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, ModelFeatures& mf) {
     
     if (verbose) {
         cerr << endl << "Preparing junction metrics into matrix" << endl;
     }
     
-    Data* testingData = Train::juncs2FeatureVectors(all, L95, exon, intron, gmap);
+    Data* testingData = Train::juncs2FeatureVectors(all, mf);
     
     // Load forest from disk
     

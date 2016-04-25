@@ -24,7 +24,8 @@ using std::endl;
 
 #include <portcullis/markov_model.hpp>
 
-void portcullis::MarkovModel::train(const vector<string>& input) {
+void portcullis::MarkovModel::train(const vector<string>& input, const uint32_t _order) {
+    order = _order;
     MMU temp;
     for(auto& seq : input) {
         string sequp = boost::to_upper_copy(seq);
@@ -32,6 +33,7 @@ void portcullis::MarkovModel::train(const vector<string>& input) {
             temp[sequp.substr(i-order, order)][sequp.substr(i, 1)]++;
         }
     }
+    model.clear();
     for(auto& i : temp) {
         double sum = 0;
         for(auto& j : i.second) {

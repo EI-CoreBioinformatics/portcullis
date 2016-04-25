@@ -68,7 +68,7 @@ portcullis::Train::Train(const path& _junctionFile, const path& _refFile){
     verbose = false;    
 }
     
-Data* portcullis::Train::juncs2FeatureVectors(const JunctionList& x, const uint32_t L95, MarkovModel& exon, MarkovModel& intron, GenomeMapper& gmap) {
+Data* portcullis::Train::juncs2FeatureVectors(const JunctionList& x, ModelFeatures& mf) {
     
     vector<string> headers;
     headers.reserve( VAR_NAMES.size() + JO_NAMES.size() );
@@ -93,8 +93,8 @@ Data* portcullis::Train::juncs2FeatureVectors(const JunctionList& x, const uint3
         //d[3 * x.size() + row] = ;
         d[4 * x.size() + row] = j->getReliable2RawRatio();
         //d[5 * x.size() + row] = j->getMeanMismatches();
-        d[5 * x.size() + row] = L95 == 0 ? 0.0 : j->calcIntronScore(L95);     // Intron score
-        d[6 * x.size() + row] = exon.size() > 0 && intron.size() > 0 ? j->calcCodingPotential(gmap, exon, intron) : 0.0;     // Coding potential score
+        d[5 * x.size() + row] = mf.L95 == 0 ? 0.0 : j->calcIntronScore(mf.L95);     // Intron score
+        d[6 * x.size() + row] = mf.isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(mf.gmap, mf.exonModel, mf.intronModel);     // Coding potential score
         d[7 * x.size() + row] = j->isGenuine();
         // Junction overhang values at each position are first converted into deviation from expected distributions       
         double half_read_length = (double)j->getMeanQueryLength() / 2.0;    
@@ -116,10 +116,10 @@ Data* portcullis::Train::juncs2FeatureVectors(const JunctionList& x, const uint3
     return data;
 }
 
-shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x, string outputPrefix, uint16_t trees, uint16_t threads, bool regressionMode, bool verbose, const uint32_t L95, MarkovModel& exon, MarkovModel& intron, GenomeMapper& gmap) {
+shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x, string outputPrefix, uint16_t trees, uint16_t threads, bool regressionMode, bool verbose, ModelFeatures& mf) {
     
     cout << "Creating feature vector" << endl;
-    Data* trainingData = juncs2FeatureVectors(x, L95, exon, intron, gmap);
+    Data* trainingData = juncs2FeatureVectors(x, mf);
     
     cout << "Initialising random forest" << endl;
     shared_ptr<Forest> f = nullptr;

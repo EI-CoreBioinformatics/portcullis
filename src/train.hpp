@@ -37,8 +37,9 @@ using boost::filesystem::path;
 #include <ranger/Forest.h>
 #include <portcullis/performance.hpp>
 #include <portcullis/bam/genome_mapper.hpp>
+#include <portcullis/model_features.hpp>
 using portcullis::bam::GenomeMapper;
-
+using portcullis::ModelFeatures;
 
 namespace portcullis {
     
@@ -235,23 +236,21 @@ public:
     static int main(int argc, char *argv[]);
     
     static Data* juncs2FeatureVectors(const JunctionList& x) {
-        GenomeMapper gmap;
-        MarkovModel m(1);
-        return juncs2FeatureVectors(x, 0, m, m, gmap);
+        ModelFeatures mf;
+        return juncs2FeatureVectors(x, mf);
     }
-    static Data* juncs2FeatureVectors(const JunctionList& x, const uint32_t L95, MarkovModel& exon, MarkovModel& intron, GenomeMapper& gmap);
+    static Data* juncs2FeatureVectors(const JunctionList& x, ModelFeatures& modelFeatures);
     
     static shared_ptr<Forest> trainInstance(const JunctionList& x, string outputPrefix, 
             uint16_t trees, uint16_t threads, bool regressionMode, bool verbose) {
-        GenomeMapper gmap;
-        MarkovModel m(1);
+        ModelFeatures mf;
         return trainInstance(x, outputPrefix, trees, threads, regressionMode, verbose,
-                0, m, m, gmap);
+                mf);
     }
     
     static shared_ptr<Forest> trainInstance(const JunctionList& x, string outputPrefix, 
             uint16_t trees, uint16_t threads, bool regressionMode, bool verbose, 
-            const uint32_t L95, MarkovModel& exon, MarkovModel& intron, GenomeMapper& gmap);
+            ModelFeatures& modelFeatures);
     
 protected:
     
