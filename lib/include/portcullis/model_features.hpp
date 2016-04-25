@@ -17,10 +17,14 @@
 
 #pragma once
 
+#include <memory>
+using std::shared_ptr;
+
 #include <boost/filesystem/path.hpp>
 using boost::filesystem::path;
 
 #include <ranger/Data.h>
+#include <ranger/Forest.h>
 
 #include <portcullis/bam/genome_mapper.hpp>
 #include <portcullis/markov_model.hpp>
@@ -30,6 +34,8 @@ using portcullis::MarkovModel;
 using portcullis::JunctionList;
 
 namespace portcullis {
+    
+typedef shared_ptr<Forest> ForestPtr;
 
 // List of variable names
 const vector<string> VAR_NAMES = { 
@@ -71,5 +77,8 @@ public:
     void trainCodingPotentialModel(const JunctionList& in);
     
     Data* juncs2FeatureVectors(const JunctionList& x);
+    
+    ForestPtr trainInstance(const JunctionList& x, string outputPrefix, 
+            uint16_t trees, uint16_t threads, bool regressionMode, bool verbose);
 };
 }

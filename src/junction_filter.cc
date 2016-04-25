@@ -68,9 +68,6 @@ using portcullis::eval;
 using portcullis::bam::GenomeMapper;
 using portcullis::MarkovModel;
 
-#include "train.hpp"
-using portcullis::Train;
-
 #include "junction_filter.hpp"
 
 portcullis::JunctionFilter::JunctionFilter( const path& _junctionFile, 
@@ -336,7 +333,7 @@ void portcullis::JunctionFilter::filter() {
         training.insert(training.end(), neg.begin(), neg.end());
         
         cout << "Training a random forest model using the initial positive and negative datasets" << endl;
-        shared_ptr<Forest> forest = Train::trainInstance(training, output.string() + ".selftrain", DEFAULT_TRAIN_TREES, threads, true, true, mf);
+        shared_ptr<Forest> forest = mf.trainInstance(training, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
         
         forest->saveToFile();
         forest->writeOutput(&cout);
@@ -594,8 +591,8 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
         testingData,                // Data object
         0,                          // M Try (0 == use default)
         "",                         // Output prefix 
-        DEFAULT_TRAIN_TREES,        // Number of trees (will be overwritten when loading the model)
-        DEFAULT_SEED,               
+        DEFAULT_SELFTRAIN_TREES,                        // Number of trees (will be overwritten when loading the model)
+        1234567890,                 // Seed for random generator               
         threads,                    // Number of threads
         IMP_GINI,                   // Importance measure 
         train ? DEFAULT_MIN_NODE_SIZE_REGRESSION : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size

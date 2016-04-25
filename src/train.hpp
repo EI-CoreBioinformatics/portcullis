@@ -219,16 +219,6 @@ public:
 
     static int main(int argc, char *argv[]);
     
-    static shared_ptr<Forest> trainInstance(const JunctionList& x, string outputPrefix, 
-            uint16_t trees, uint16_t threads, bool regressionMode, bool verbose) {
-        ModelFeatures mf;
-        return trainInstance(x, outputPrefix, trees, threads, regressionMode, verbose,
-                mf);
-    }
-    
-    static shared_ptr<Forest> trainInstance(const JunctionList& x, string outputPrefix, 
-            uint16_t trees, uint16_t threads, bool regressionMode, bool verbose, 
-            ModelFeatures& modelFeatures);
     
 protected:
     

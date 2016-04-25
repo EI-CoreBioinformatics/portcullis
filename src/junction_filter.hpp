@@ -77,6 +77,7 @@ const string DEFAULT_FILTER_MODEL_FILE = "default_model.forest";
 const string ST_IPOS_RULES_FILE = "selftrain_initial_pos.json";
 const string ST_INEG_RULES_FILE = "selftrain_initial_neg.json";
 const uint16_t DEFAULT_FILTER_THREADS = 1;
+const uint16_t DEFAULT_SELFTRAIN_TREES = 100;
 
 
 class JunctionFilter {

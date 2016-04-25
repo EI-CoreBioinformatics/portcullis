@@ -70,48 +70,6 @@ portcullis::Train::Train(const path& _junctionFile, const path& _refFile){
     
 
 
-shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x, string outputPrefix, uint16_t trees, uint16_t threads, bool regressionMode, bool verbose, ModelFeatures& mf) {
-    
-    cout << "Creating feature vector" << endl;
-    Data* trainingData = mf.juncs2FeatureVectors(x);
-    
-    cout << "Initialising random forest" << endl;
-    shared_ptr<Forest> f = nullptr;
-    if (regressionMode) {
-        f = make_shared<ForestRegression>();
-    }
-    else {
-        f = make_shared<ForestClassification>();
-    }
-    
-    vector<string> catVars;
-    
-    f->init(
-        "Genuine",                  // Dependant variable name
-        MEM_DOUBLE,                 // Memory mode
-        trainingData,               // Data object
-        0,                          // M Try (0 == use default)
-        outputPrefix,               // Output prefix 
-        trees,                      // Number of trees
-        DEFAULT_SEED,               // Use fixed seed to avoid non-deterministic behaviour
-        threads,                    // Number of threads
-        IMP_GINI,                   // Importance measure 
-        regressionMode ? DEFAULT_MIN_NODE_SIZE_REGRESSION : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
-        "",                         // Status var name 
-        false,                      // Prediction mode
-        true,                       // Replace 
-        catVars,                    // Unordered categorical variable names (vector<string>)
-        false,                      // Memory saving
-        DEFAULT_SPLITRULE,          // Split rule
-        false,                      // predall
-        1.0);                       // Sample fraction
-            
-    cout << "Training" << endl;
-    f->setVerboseOut(&cerr);
-    f->run(verbose);
-    
-    return f;
-}
 
 void portcullis::Train::testInstance(shared_ptr<Forest> f, const JunctionList& x) {
     
@@ -198,7 +156,7 @@ void portcullis::Train::train() {
      
         cout << "Training on full dataset" << endl;
 
-        shared_ptr<Forest> f = trainInstance(junctions, outputPrefix.string(), trees, threads, false, true);
+        ForestPtr f = ModelFeatures().trainInstance(junctions, outputPrefix.string(), trees, threads, false, true);
         
         f->saveToFile();
         f->writeOutput(&cout);        
@@ -233,7 +191,7 @@ void portcullis::Train::train() {
             kf.getFold(i, back_inserter(train), back_inserter(test));
             
             // Train on this particular set
-            shared_ptr<Forest> f = trainInstance(train, outputPrefix.string(), trees, threads, false, false);
+            ForestPtr f = ModelFeatures().trainInstance(train, outputPrefix.string(), trees, threads, false, false);
             
             // Test model instance
             testInstance(f, test);

@@ -16,10 +16,15 @@
 //  *******************************************************************
 
 #include <iostream>
+#include <memory>
 using std::cout;
+using std::cerr;
 using std::endl;
+using std::make_shared;
 
 #include <ranger/DataDouble.h>
+#include <ranger/ForestRegression.h>
+#include <ranger/ForestClassification.h>
 
 #include <portcullis/junction.hpp>
 using portcullis::Junction;
@@ -135,4 +140,50 @@ Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
     Data* data = new DataDouble(d, headers, x.size(), headers.size());
     data->setExternalData(false);      // This causes 'd' to be deleted when 'data' is deleted
     return data;
+}
+
+
+
+portcullis::ForestPtr portcullis::ModelFeatures::trainInstance(const JunctionList& x, 
+        string outputPrefix, uint16_t trees, uint16_t threads, bool regressionMode, bool verbose) {
+    
+    cout << "Creating feature vector" << endl;
+    Data* trainingData = juncs2FeatureVectors(x);
+    
+    cout << "Initialising random forest" << endl;
+    ForestPtr f = nullptr;
+    if (regressionMode) {
+        f = make_shared<ForestRegression>();
+    }
+    else {
+        f = make_shared<ForestClassification>();
+    }
+    
+    vector<string> catVars;
+    
+    f->init(
+        "Genuine",                  // Dependant variable name
+        MEM_DOUBLE,                 // Memory mode
+        trainingData,               // Data object
+        0,                          // M Try (0 == use default)
+        outputPrefix,               // Output prefix 
+        trees,                      // Number of trees
+        1236456789,                // Use fixed seed to avoid non-deterministic behaviour as much as possible
+        threads,                    // Number of threads
+        IMP_GINI,                   // Importance measure 
+        regressionMode ? DEFAULT_MIN_NODE_SIZE_REGRESSION : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
+        "",                         // Status var name 
+        false,                      // Prediction mode
+        true,                       // Replace 
+        catVars,                    // Unordered categorical variable names (vector<string>)
+        false,                      // Memory saving
+        DEFAULT_SPLITRULE,          // Split rule
+        false,                      // predall
+        1.0);                       // Sample fraction
+            
+    cout << "Training" << endl;
+    f->setVerboseOut(&cerr);
+    f->run(verbose);
+    
+    return f;
 }
