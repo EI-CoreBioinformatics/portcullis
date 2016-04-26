@@ -31,7 +31,10 @@ using boost::filesystem::path;
 #include <portcullis/junction.hpp>
 using portcullis::bam::GenomeMapper;
 using portcullis::MarkovModel;
+using portcullis::Junction;
+using portcullis::JunctionPtr;
 using portcullis::JunctionList;
+using portcullis::SplicingScores;
 
 namespace portcullis {
     
@@ -53,15 +56,19 @@ const vector<string> VAR_NAMES = {
         "mean_mismatches",
         "IntronScore",
         "CodingPotential",
-        "PWS"
+        "PWS",
+        "SS"
 };
-    
     
 class ModelFeatures {
 public:
     uint32_t L95;
     KmerMarkovModel exonModel;
     KmerMarkovModel intronModel;
+    KmerMarkovModel donorTModel;
+    KmerMarkovModel donorFModel;
+    KmerMarkovModel acceptorTModel;
+    KmerMarkovModel acceptorFModel;    
     PosMarkovModel donorPWModel;
     PosMarkovModel acceptorPWModel;
     GenomeMapper gmap;
@@ -83,7 +90,7 @@ public:
     
     void trainCodingPotentialModel(const JunctionList& in);
     
-    void trainPositionWeightModel(const JunctionList& in);
+    void trainSplicingModels(const JunctionList& pass, const JunctionList& fail);
     
     Data* juncs2FeatureVectors(const JunctionList& x);
     

@@ -180,7 +180,10 @@ static string cssToString(CanonicalSS css) {
     return string("No");
 }
 
-
+struct SplicingScores {
+    double positionWeighting = 0.0;
+    double splicingSignal = 0.0;
+};
 
 struct AlignmentInfo {
     BamAlignmentPtr ba;
@@ -882,7 +885,9 @@ public:
     
     double calcCodingPotential(GenomeMapper& gmap, KmerMarkovModel& exon, KmerMarkovModel& intron) const;
     
-    double calcPositionWeightScore(GenomeMapper& gmap, PosMarkovModel& donor, PosMarkovModel& acceptor) const;
+    SplicingScores calcSplicingScores(GenomeMapper& gmap, KmerMarkovModel& donorT, KmerMarkovModel& donorF,
+                            KmerMarkovModel& acceptorT, KmerMarkovModel& acceptorF,
+                            PosMarkovModel& donorP, PosMarkovModel& acceptorP) const;
     
     
     // **** Output methods ****

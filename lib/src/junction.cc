@@ -1254,15 +1254,18 @@ double portcullis::Junction::calcCodingPotential(GenomeMapper& gmap, KmerMarkovM
     cout << "Right intron: " << this->consensusStrand << " : " << right_intron << endl;
     cout << "Right exon  : " << this->consensusStrand << " : " << right_exon << endl;
     */
-    double score =( exon.getScore(left_intron) + intron.getScore(left_exon) )
-                - ( intron.getScore(left_intron) + exon.getScore(left_exon) )
-                + ( intron.getScore(right_exon) + exon.getScore(right_intron) )
-                - ( exon.getScore(right_exon) + intron.getScore(right_intron) );
+    double score =( exon.getScore(left_exon) - intron.getScore(left_exon) )
+                + ( intron.getScore(left_intron) - exon.getScore(left_intron) )
+                + ( intron.getScore(right_intron) - exon.getScore(right_intron) )
+                + ( exon.getScore(right_exon) + intron.getScore(right_exon) );
     
     return score;
 }
 
-double portcullis::Junction::calcPositionWeightScore(GenomeMapper& gmap, PosMarkovModel& donor, PosMarkovModel& acceptor) const {
+
+portcullis::SplicingScores portcullis::Junction::calcSplicingScores(GenomeMapper& gmap, KmerMarkovModel& donorT, KmerMarkovModel& donorF,
+                            KmerMarkovModel& acceptorT, KmerMarkovModel& acceptorF,
+                            PosMarkovModel& donorP, PosMarkovModel& acceptorP) const {
     
     int len = 0;
     const char* ref = this->intron->ref.name.c_str();
@@ -1273,7 +1276,7 @@ double portcullis::Junction::calcPositionWeightScore(GenomeMapper& gmap, PosMark
         left = SeqUtils::reverseComplement(left);
     }        
 
-    string right = gmap.fetchBases(ref, intron->start, intron->end, &len);
+    string right = gmap.fetchBases(ref, intron->end - 20, intron->end + 2, &len);
     if (neg) {
         right = SeqUtils::reverseComplement(right);
     }        
@@ -1281,5 +1284,9 @@ double portcullis::Junction::calcPositionWeightScore(GenomeMapper& gmap, PosMark
     string donorseq = neg ? right : left;
     string acceptorseq = neg ? left : right;
 
-    return donor.getScore(donorseq) + acceptor.getScore(acceptorseq);
+    SplicingScores ss;
+    ss.positionWeighting = donorP.getScore(donorseq) + acceptorP.getScore(acceptorseq);
+    ss.splicingSignal =     (donorT.getScore(donorseq) - donorF.getScore(donorseq)) 
+                        +   (acceptorT.getScore(acceptorseq) - acceptorF.getScore(acceptorseq));
+    return ss;
 }

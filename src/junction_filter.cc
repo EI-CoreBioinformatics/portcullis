@@ -266,18 +266,6 @@ void portcullis::JunctionFilter::filter() {
             missedPos.saveAll(output.string() + ".selftrain.initialset.missedpos", "portcullis_missed_isp");
         }
         
-        cout << "Training coding potential markov models on positive set ...";
-        cout.flush();
-        mf.trainCodingPotentialModel(pos);
-        cout << " done." << endl;
-        cout << "Exon model contains " << mf.exonModel.size() << " 5-mers." << endl;
-        cout << "Intron model contains " << mf.intronModel.size() << " 5-mers." << endl << endl;
-        
-        cout << "Training position weight markov models on positive set ...";
-        cout.flush();
-        mf.trainPositionWeightModel(pos);
-        cout << " done." << endl;
-                
         passJuncs.clear();
         failJuncs.clear();
         resultMap.clear();
@@ -342,6 +330,14 @@ void portcullis::JunctionFilter::filter() {
         
         cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
         
+        cout << "Training markov models ...";
+        cout.flush();
+        mf.trainCodingPotentialModel(pos);
+        mf.trainSplicingModels(pos, neg);
+        cout << " done." << endl << endl;
+        
+        
+        
         // Build the training set by combining the positive and negative sets
         JunctionList training;
         training.reserve(pos.size() + neg.size());
@@ -351,7 +347,8 @@ void portcullis::JunctionFilter::filter() {
         JunctionSystem trainingSystem(training);
         trainingSystem.sort();        
         
-        cout << "Training a random forest model using the initial positive and negative datasets" << endl;
+        cout << "Training a random forest model" << endl
+             << "------------------------------" << endl << endl;
         shared_ptr<Forest> forest = mf.trainInstance(trainingSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
         
         forest->saveToFile();
@@ -366,7 +363,8 @@ void portcullis::JunctionFilter::filter() {
     
     // Do ML based filtering if requested
     if(!modelFile.empty() && exists(modelFile)){
-        cout << "Predicting valid junctions using random forest model" << endl << endl;
+        cout << "Predicting valid junctions using random forest model" << endl 
+             << "----------------------------------------------------" << endl << endl;
         
         JunctionList passJuncs;
         JunctionList failJuncs;
@@ -577,17 +575,11 @@ void portcullis::JunctionFilter::doRuleBasedFiltering(const path& ruleFile, cons
     
 void portcullis::JunctionFilter::forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, ModelFeatures& mf) {
     
-    if (verbose) {
-        cerr << endl << "Preparing junction metrics into matrix" << endl;
-    }
+    cout << "Creating feature vector" << endl;
     
     Data* testingData = mf.juncs2FeatureVectors(all);
     
-    // Load forest from disk
-    
-    if (verbose) {
-        cerr << "Initialising random forest" << endl;
-    }
+    cout << "Initialising random forest" << endl;
     
     shared_ptr<Forest> f = nullptr;
     if (train) {
@@ -621,30 +613,23 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
     
     f->setVerboseOut(&cerr);
     
-    if (verbose) {
-        cerr << "Loading forest model from disk" << endl;
-    }
-    
     // Load trees from saved model
     f->loadFromFile(modelFile.string());
     
-    if (verbose) {
-        cerr << "Making predictions" << endl;
-    }
+    cout << "Making predictions" << endl;
     f->run(verbose);
-    
-    if (verbose) {
-        cerr << "Separating original junction data into pass and fail categories." << endl;
-    }
     
     path scorepath = output.string() + ".scores";
     ofstream scoreStream(scorepath.c_str());
     
-    scoreStream << "Score\t" << Intron::locationOutputHeader() << "\t" << testingData->getHeader() << endl;
+    scoreStream << "Score\t" << Intron::locationOutputHeader() << "\tStrand\tSS\t" << testingData->getHeader() << endl;
     
     for(size_t i = 0; i < all.size(); i++) {
         
-        scoreStream << f->getPredictions()[i][0] << "\t" << *(all[i]->getIntron()) << "\t" << testingData->getRow(i) << endl;
+        scoreStream << f->getPredictions()[i][0] << "\t" << *(all[i]->getIntron()) 
+                    << "\t" << strandToChar(all[i]->getConsensusStrand())
+                    << "\t" << cssToChar(all[i]->getSpliceSiteType())
+                    << "\t" << testingData->getRow(i) << endl;
         if (f->getPredictions()[i][0] >= this->threshold) {
             pass.push_back(all[i]);
         }

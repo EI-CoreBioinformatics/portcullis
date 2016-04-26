@@ -102,11 +102,11 @@ void portcullis::ModelFeatures::trainCodingPotentialModel(const JunctionList& in
     intronModel.train(introns, 5);
 }
 
-void portcullis::ModelFeatures::trainPositionWeightModel(const JunctionList& in) {
+void portcullis::ModelFeatures::trainSplicingModels(const JunctionList& pass, const JunctionList& fail) {
 
     vector<string> donors;
     vector<string> acceptors;
-    for(auto& j : in) {
+    for(auto& j : pass) {
 
         int len = 0;
 
@@ -115,7 +115,7 @@ void portcullis::ModelFeatures::trainPositionWeightModel(const JunctionList& in)
             left = SeqUtils::reverseComplement(left);
         }        
    
-        string right = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->end, &len);
+        string right = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end - 20, j->getIntron()->end + 2, &len);
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             right = SeqUtils::reverseComplement(right);
         }        
@@ -133,6 +133,38 @@ void portcullis::ModelFeatures::trainPositionWeightModel(const JunctionList& in)
 
     donorPWModel.train(donors, 1);
     acceptorPWModel.train(acceptors, 1);
+    donorTModel.train(donors, 5);
+    acceptorTModel.train(acceptors, 5);
+    
+    donors.clear();
+    acceptors.clear();
+    
+    for(auto& j : fail) {
+
+        int len = 0;
+
+        string left = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 3, j->getIntron()->start + 20, &len);
+        if (j->getConsensusStrand() == Strand::NEGATIVE) {
+            left = SeqUtils::reverseComplement(left);
+        }        
+   
+        string right = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end - 20, j->getIntron()->end + 2, &len);
+        if (j->getConsensusStrand() == Strand::NEGATIVE) {
+            right = SeqUtils::reverseComplement(right);
+        }        
+        
+        if (j->getConsensusStrand() == Strand::NEGATIVE) {
+            donors.push_back(right);
+            acceptors.push_back(left);
+        }
+        else {
+            donors.push_back(left);
+            acceptors.push_back(right);
+        }
+    }
+
+    donorFModel.train(donors, 5);
+    acceptorFModel.train(acceptors, 5);
 }
 
 Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
@@ -148,6 +180,9 @@ Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
     
     uint32_t row = 0;
     for (const auto& j : x) {        
+        SplicingScores ss = j->calcSplicingScores(gmap, donorTModel, donorFModel, acceptorTModel, acceptorFModel, 
+                donorPWModel, acceptorPWModel);
+        
         d[0 * x.size() + row] = j->isGenuine();
         //
         //d[0 * x.size() + row] = j->getNbJunctionAlignments();
@@ -163,11 +198,13 @@ Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
         d[7 * x.size() + row] = j->getMeanMismatches();
         d[8 * x.size() + row] = L95 == 0 ? 0.0 : j->calcIntronScore(L95);     // Intron score
         d[9 * x.size() + row] = isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel);
-        d[10 * x.size() + row] = isPWModelEmpty() ? 0.0 : j->calcPositionWeightScore(gmap, donorPWModel, acceptorPWModel);
+        d[10 * x.size() + row] = isPWModelEmpty() ? 0.0 : ss.positionWeighting;
+        d[11 * x.size() + row] = isPWModelEmpty() ? 0.0 : ss.splicingSignal;
+        
         
         //Junction overhang values at each position are first converted into deviation from expected distributions       
         for(size_t i = JO_OFFSET; i <= JO_NAMES.size(); i++) {
-            d[(i-JO_OFFSET + 11) * x.size() + row] = j->getJunctionOverhangLogDeviation(i-1);
+            d[(i-JO_OFFSET + 12) * x.size() + row] = j->getJunctionOverhangLogDeviation(i-1);
         }
         
         row++;

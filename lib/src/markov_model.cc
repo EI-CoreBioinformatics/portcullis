@@ -32,8 +32,10 @@ void portcullis::KmerMarkovModel::train(const vector<string>& input, const uint3
     KMMU temp;
     for(auto& seq : input) {
         string s = SeqUtils::makeClean(seq);
-        for(uint16_t i = order; i < s.size(); i++) {
-            temp[s.substr(i-order, order)][s.substr(i, 1)]++;
+        if (s.size() > order+1) {
+            for(uint16_t i = order; i < s.size(); i++) {
+                temp[s.substr(i-order, order)][s.substr(i, 1)]++;
+            }
         }
     }
     model.clear();
