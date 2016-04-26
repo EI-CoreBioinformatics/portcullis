@@ -40,11 +40,23 @@ typedef boost::error_info<struct SeqUtilsError,string> SeqUtilsErrorInfo;
 struct SeqUtilsException: virtual boost::exception, virtual std::exception { };
 
 
-
-
 class SeqUtils {
     
 public:
+    
+    static bool dnaNt(const char c) {
+        return c == 'A' || c == 'T' || c == 'G' || c == 'C';
+    }
+    
+    static string makeClean(const string& s) {
+        string sequp = boost::to_upper_copy(s);
+        
+        for(size_t i = 0; i < sequp.size(); i++) {
+            sequp[i] = dnaNt(sequp[i]) ? sequp[i] : 'N';
+        }
+        
+        return sequp;
+    }
     
     static int16_t hammingDistance(const string& s1, const string& s2) {
 

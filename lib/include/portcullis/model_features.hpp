@@ -39,28 +39,32 @@ typedef shared_ptr<Forest> ForestPtr;
 
 // List of variable names
 const vector<string> VAR_NAMES = { 
-            //"M2-nb-reads", 
-            //"M3-nb_dist_aln", 
-            "nb_rel_aln", 
-            //"M8-max_min_anc", 
-            //"M9-dif_anc", 
-            //"M10-dist_anc", 
-            "entropy", 
-            "maxmmes", 
-            "min_hamming_score", 
-            //"M14-hamming3p",
-            "rel2raw_ratio",
-            //"mean_mismatches",
-            "IntronScore",
-            "CodingPotential",
-            "Genuine" };
+        "Genuine",
+        //"M2-nb-reads", 
+        //"M3-nb_dist_aln", 
+        "nb_rel_aln", 
+        //"M8-max_min_anc", 
+        //"M9-dif_anc", 
+        //"M10-dist_anc", 
+        "entropy", 
+        "maxmmes", 
+        "min_hamming_score", 
+        //"M14-hamming3p",
+        "rel2raw_ratio",
+        //"mean_mismatches",
+        "IntronScore",
+        //"CodingPotential"
+        "PWS"
+};
     
     
 class ModelFeatures {
 public:
     uint32_t L95;
-    MarkovModel exonModel;
-    MarkovModel intronModel;
+    KmerMarkovModel exonModel;
+    KmerMarkovModel intronModel;
+    PosMarkovModel donorPWModel;
+    PosMarkovModel acceptorPWModel;
     GenomeMapper gmap;
     
     ModelFeatures() : L95(0) {
@@ -70,11 +74,17 @@ public:
         return exonModel.size() == 0 || intronModel.size() == 0;
     }
     
+    bool isPWModelEmpty() {
+        return donorPWModel.size() == 0 || acceptorPWModel.size() == 0;
+    }
+    
     void initGenomeMapper(const path& genomeFile);
     
     uint32_t calcIntronThreshold(const JunctionList& juncs);
     
     void trainCodingPotentialModel(const JunctionList& in);
+    
+    void trainPositionWeightModel(const JunctionList& in);
     
     Data* juncs2FeatureVectors(const JunctionList& x);
     

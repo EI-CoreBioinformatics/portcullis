@@ -30,18 +30,12 @@ namespace portcullis {
 typedef boost::error_info<struct MMError,string> MMErrorInfo;
 struct MMException: virtual boost::exception, virtual std::exception {};
 
-
-
-/**
- * Intended to be used as a map containing the probability of seeing a given character
- */
-typedef unordered_map<string, double> NTP;
-
 /**
  * This datastructure consists of a map of kmers to a map of nucleotides with assoicated
  * probabilities.
  */
-typedef unordered_map<string, NTP> MMU;
+typedef unordered_map<string, unordered_map<string, double>> KMMU;
+typedef unordered_map<uint32_t, unordered_map<string, double>> PMMU;
 
 /**
  * Simple Markov chain implementation derived originally from Truesight.
@@ -51,10 +45,9 @@ typedef unordered_map<string, NTP> MMU;
  */
 class MarkovModel {
 
-private:
-    portcullis::MMU model;
+protected:
     uint16_t order;
-    
+       
 public:
     
     MarkovModel() : MarkovModel(1) {}
@@ -72,18 +65,45 @@ public:
         train(input, order);
     }
     
-    void train(const vector<string>& input, const uint32_t order);
+    virtual void train(const vector<string>& input, const uint32_t order) = 0;
     
     uint16_t getOrder() const {
         return order;
     }
     
+    virtual double getScore(const string& seq) = 0;
+};
+
+class KmerMarkovModel : public portcullis::MarkovModel {
+private:
+    portcullis::KMMU model;
+public:
+    KmerMarkovModel() : MarkovModel(1) {}
+    KmerMarkovModel(const uint32_t _order) : MarkovModel(_order) {};    
+    KmerMarkovModel(const vector<string>& input, const uint32_t _order) : MarkovModel(input, _order) {}
+    
+    void train(const vector<string>& input, const uint32_t order);
+    double getScore(const string& seq);
     size_t size() const {
         return model.size();
     }
-    
-    double getScore(const string& seq);
 };
+
+class PosMarkovModel : public portcullis::MarkovModel {
+private:
+    portcullis::PMMU model;
+public:
+    PosMarkovModel() : MarkovModel(1) {}
+    PosMarkovModel(const uint32_t _order) : MarkovModel(_order) {};    
+    PosMarkovModel(const vector<string>& input, const uint32_t _order) : MarkovModel(input, _order) {}
+    
+    void train(const vector<string>& input, const uint32_t order);
+    double getScore(const string& seq);
+    size_t size() const {
+        return model.size();
+    }
+};
+
 
 }
 

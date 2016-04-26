@@ -52,7 +52,6 @@ using boost::filesystem::symbolic_link_exists;
 #include <portcullis/junction_system.hpp>
 #include <portcullis/performance.hpp>
 #include <portcullis/rule_parser.hpp>
-#include <portcullis/markov_model.hpp>
 #include <portcullis/model_features.hpp>
 using portcullis::bam::GenomeMapper;
 using portcullis::PortcullisFS;
@@ -60,7 +59,6 @@ using portcullis::Intron;
 using portcullis::IntronHasher;
 using portcullis::Performance;
 using portcullis::JuncResultMap;
-using portcullis::MarkovModel;
 using portcullis::ModelFeatures;
 
 

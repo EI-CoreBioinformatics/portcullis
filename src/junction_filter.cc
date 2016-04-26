@@ -59,14 +59,12 @@ namespace po = boost::program_options;
 #include <portcullis/portcullis_fs.hpp>
 #include <portcullis/performance.hpp>
 #include <portcullis/rule_parser.hpp>
-#include <portcullis/markov_model.hpp>
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
 using portcullis::Performance;
 using portcullis::eval;
 using portcullis::bam::GenomeMapper;
-using portcullis::MarkovModel;
 
 #include "junction_filter.hpp"
 
@@ -220,19 +218,35 @@ void portcullis::JunctionFilter::filter() {
         JunctionSystem isp(passJuncs);
         isp.saveAll(output.string() + ".selftrain.initialset.pos", "portcullis_isp");
         
+        // Analyse positive set to get L0.05 of intron size
+        cout << "Length of intron at 95th percentile of positive set (L95): " << mf.calcIntronThreshold(passJuncs) << endl << endl;
+        
+        const uint32_t poslongintronthreshold = mf.L95 * 2;
+        JunctionList pass2juncs;
         for(auto& j : passJuncs) {
+            if (j->getIntronSize() <= poslongintronthreshold) {
+                pass2juncs.push_back(j);
+            }
+            else {
+                failJuncs.push_back(j);
+            }
+        }
+        cout << "Removed " << (passJuncs.size() - pass2juncs.size()) << " junctions from positive set with introns > L95 x 2 = " << poslongintronthreshold << endl << endl;        
+        
+        
+        for(auto& j : pass2juncs) {
             JunctionPtr copy = make_shared<Junction>(*j);
             copy->setGenuine(true);
             pos.push_back(copy);            
         }
         if (!genuineFile.empty()) {
-            shared_ptr<Performance> p = calcPerformance(passJuncs, failJuncs);
+            shared_ptr<Performance> p = calcPerformance(pass2juncs, failJuncs);
             cout << "Performance of initial positive set (High PPV is important):" << endl;
             cout << Performance::longHeader() << endl;
             cout << p->toLongString() << endl << endl;
             
             JunctionSystem invalidPos;
-            for(auto& j : passJuncs) {
+            for(auto& j : pass2juncs) {
                 if (!j->isGenuine()) {
                     invalidPos.addJunction(j);
                 }
@@ -251,16 +265,17 @@ void portcullis::JunctionFilter::filter() {
             missedPos.saveAll(output.string() + ".selftrain.initialset.missedpos", "portcullis_missed_isp");
         }
         
-        
-        // Analyse positive set to get L0.05 of intron size
-        cout << "Length of intron at 95th percentile of positive set: " << mf.calcIntronThreshold(passJuncs) << endl << endl;
-        
         cout << "Training coding potential markov models on positive set ...";
         cout.flush();
         mf.trainCodingPotentialModel(pos);
         cout << " done." << endl;
         cout << "Exon model contains " << mf.exonModel.size() << " 5-mers." << endl;
-        cout << "Intron model contains " << mf.intronModel.size() << " 5-mers." << endl;
+        cout << "Intron model contains " << mf.intronModel.size() << " 5-mers." << endl << endl;
+        
+        cout << "Training position weight markov models on positive set ...";
+        cout.flush();
+        mf.trainPositionWeightModel(pos);
+        cout << " done." << endl;
                 
         passJuncs.clear();
         failJuncs.clear();
@@ -268,14 +283,14 @@ void portcullis::JunctionFilter::filter() {
         
         doRuleBasedFiltering(this->getIntitalNegRulesFile(), currentJuncs, passJuncs, failJuncs, "Creating initial negative set for training", resultMap);
         
-        const uint32_t longintronthreshold = mf.L95 * 6;
-        cout << endl << "Adding junctions to negative set with MaxMMES < 10 and excessively long intron size of positive set (> L95 x 6 = " << longintronthreshold << ")...";
+        const uint32_t neglongintronthreshold = mf.L95 * 6;
+        cout << endl << "Adding junctions to negative set with MaxMMES < 10 and excessively long intron size of positive set (> L95 x 6 = " << neglongintronthreshold << ")...";
         cout.flush();
         
         uint32_t nblongintrons = 0;
         JunctionList fail2Juncs;
         for(auto& j : failJuncs) {
-            if (j->getIntronSize() > longintronthreshold && j->getMaxMMES() < 10 ) {
+            if (j->getIntronSize() > neglongintronthreshold && j->getMaxMMES() < 10 ) {
                 passJuncs.push_back(j);
                 nblongintrons++;                
             }
@@ -332,8 +347,11 @@ void portcullis::JunctionFilter::filter() {
         training.insert(training.end(), pos.begin(), pos.end());
         training.insert(training.end(), neg.begin(), neg.end());
         
+        JunctionSystem trainingSystem(training);
+        trainingSystem.sort();        
+        
         cout << "Training a random forest model using the initial positive and negative datasets" << endl;
-        shared_ptr<Forest> forest = mf.trainInstance(training, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
+        shared_ptr<Forest> forest = mf.trainInstance(trainingSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
         
         forest->saveToFile();
         forest->writeOutput(&cout);
@@ -341,9 +359,7 @@ void portcullis::JunctionFilter::filter() {
         modelFile = output.string() + ".selftrain.forest";
         cout << endl;
     }
-    
-    
-        
+       
     // Manage a junction system of all discarded junctions
     JunctionSystem discardedJuncs;
     
@@ -497,9 +513,6 @@ void portcullis::JunctionFilter::filter() {
 }
 
 
-    
-
-
 void portcullis::JunctionFilter::printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const string& prefix) {
     // Output stats
     size_t diff = in.size() - pass.size();
@@ -626,9 +639,11 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
     path scorepath = output.string() + ".scores";
     ofstream scoreStream(scorepath.c_str());
     
+    scoreStream << "Score\t" << Intron::locationOutputHeader() << "\t" << testingData->getHeader() << endl;
+    
     for(size_t i = 0; i < all.size(); i++) {
         
-        scoreStream << f->getPredictions()[i][0] << endl;
+        scoreStream << f->getPredictions()[i][0] << "\t" << *(all[i]->getIntron()) << "\t" << testingData->getRow(i) << endl;
         if (f->getPredictions()[i][0] >= 0.1) {
             pass.push_back(all[i]);
         }

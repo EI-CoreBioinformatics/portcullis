@@ -15,11 +15,13 @@
 //  along with Portcullis.  If not, see <http://www.gnu.org/licenses/>.
 //  *******************************************************************
 
+#include <fstream>
 #include <iostream>
 #include <memory>
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::ofstream;
 using std::make_shared;
 
 #include <ranger/DataDouble.h>
@@ -64,26 +66,32 @@ void portcullis::ModelFeatures::trainCodingPotentialModel(const JunctionList& in
 
         int len = 0;
 
-        string left_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 80, j->getIntron()->start, &len);
+        string left_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 202, j->getIntron()->start - 2, &len);
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             left_exon = SeqUtils::reverseComplement(left_exon);
         }        
         exons.push_back(left_exon);
 
-        string left_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->start+81, &len);
+        /*string left_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->start+80, &len);
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             left_intron = SeqUtils::reverseComplement(left_intron);
         }        
         introns.push_back(left_intron);
 
-        string right_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end-80, j->getIntron()->end+1, &len);
+        string right_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end-80, j->getIntron()->end, &len);
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             right_intron = SeqUtils::reverseComplement(right_intron);
         }        
-        introns.push_back(right_intron);
+        introns.push_back(right_intron);*/
+        
+        string intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->end, &len);
+        if (j->getConsensusStrand() == Strand::NEGATIVE) {
+            intron = SeqUtils::reverseComplement(intron);
+        }        
+        introns.push_back(intron);
 
 
-        string right_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end + 1, j->getIntron()->end + 80, &len);
+        string right_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end + 1, j->getIntron()->end + 201, &len);
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             right_exon = SeqUtils::reverseComplement(right_exon);
         }        
@@ -94,44 +102,73 @@ void portcullis::ModelFeatures::trainCodingPotentialModel(const JunctionList& in
     intronModel.train(introns, 5);
 }
 
+void portcullis::ModelFeatures::trainPositionWeightModel(const JunctionList& in) {
+
+    vector<string> donors;
+    vector<string> acceptors;
+    for(auto& j : in) {
+
+        int len = 0;
+
+        string left = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 3, j->getIntron()->start + 20, &len);
+        if (j->getConsensusStrand() == Strand::NEGATIVE) {
+            left = SeqUtils::reverseComplement(left);
+        }        
+   
+        string right = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->end, &len);
+        if (j->getConsensusStrand() == Strand::NEGATIVE) {
+            right = SeqUtils::reverseComplement(right);
+        }        
+        
+        if (j->getConsensusStrand() == Strand::NEGATIVE) {
+            donors.push_back(right);
+            acceptors.push_back(left);
+        }
+        else {
+            donors.push_back(left);
+            acceptors.push_back(right);            
+        }
+        
+    }
+
+    donorPWModel.train(donors, 1);
+    acceptorPWModel.train(acceptors, 1);
+}
+
 Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
     
+    const size_t JO_OFFSET = 10;
     vector<string> headers;
     headers.reserve( VAR_NAMES.size() + JO_NAMES.size() );
     headers.insert( headers.end(), VAR_NAMES.begin(), VAR_NAMES.end() );
-    headers.insert( headers.end(), JO_NAMES.begin()+14, JO_NAMES.end() );
+    headers.insert( headers.end(), JO_NAMES.begin()+JO_OFFSET-1, JO_NAMES.end() );
     
     // Convert junction list info to double*
     double* d = new double[x.size() * headers.size()];
     
     uint32_t row = 0;
     for (const auto& j : x) {        
-        
+        d[0 * x.size() + row] = j->isGenuine();
+        //
         //d[0 * x.size() + row] = j->getNbJunctionAlignments();
         //d[0 * x.size() + row] = j->getNbDistinctAlignments();
-        d[0 * x.size() + row] = j->getNbReliableAlignments();
+        d[1 * x.size() + row] = j->getNbReliableAlignments();
         //d[3 * x.size() + row] = j->getMaxMinAnchor();
         //d[4 * x.size() + row] = j->getDiffAnchor();
         //d[5 * x.size() + row] = j->getNbDistinctAnchors();
-        d[1 * x.size() + row] = j->getEntropy();
-        d[2 * x.size() + row] = j->getMaxMMES();
-        d[3 * x.size() + row] = std::min(j->getHammingDistance5p(), j->getHammingDistance3p());
+        d[2 * x.size() + row] = j->getEntropy();
+        d[3 * x.size() + row] = j->getMaxMMES();
+        d[4 * x.size() + row] = std::min(j->getHammingDistance5p(), j->getHammingDistance3p());
         //d[3 * x.size() + row] = ;
-        d[4 * x.size() + row] = j->getReliable2RawRatio();
+        d[5 * x.size() + row] = j->getReliable2RawRatio();
         //d[5 * x.size() + row] = j->getMeanMismatches();
-        d[5 * x.size() + row] = L95 == 0 ? 0.0 : j->calcIntronScore(L95);     // Intron score
-        d[6 * x.size() + row] = isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel);     // Coding potential score
-        d[7 * x.size() + row] = j->isGenuine();
-        // Junction overhang values at each position are first converted into deviation from expected distributions       
-        double half_read_length = (double)j->getMeanQueryLength() / 2.0;    
-        for(size_t i = 14; i < JO_NAMES.size(); i++) {
-            double Ni = j->getJunctionOverhangs(i);                 // Actual count at this position
-            if (Ni == 0.0) Ni = 0.000000000001;                     // Ensure some value > 0 here otherwise we get -infinity later.
-            double Pi = 1.0 - ((double)i / half_read_length);       // Likely scale at this position
-            double Ei = (double)j->getNbJunctionAlignments() * Pi;  // Expected count at this position
-            double Xi = abs(log2(Ni / Ei));                         // Log deviation
-            
-            d[(i-14 + 8) * x.size() + row] = Xi;
+        d[6 * x.size() + row] = L95 == 0 ? 0.0 : j->calcIntronScore(L95);     // Intron score
+        //d[7 * x.size() + row] = isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel);
+        d[7 * x.size() + row] = isPWModelEmpty() ? 0.0 : j->calcPositionWeightScore(gmap, donorPWModel, acceptorPWModel);
+        
+        //Junction overhang values at each position are first converted into deviation from expected distributions       
+        for(size_t i = JO_OFFSET; i <= JO_NAMES.size(); i++) {
+            d[(i-JO_OFFSET + 8) * x.size() + row] = j->getJunctionOverhangLogDeviation(i-1);
         }
         
         row++;
@@ -150,6 +187,18 @@ portcullis::ForestPtr portcullis::ModelFeatures::trainInstance(const JunctionLis
     cout << "Creating feature vector" << endl;
     Data* trainingData = juncs2FeatureVectors(x);
     
+    path feature_file = outputPrefix + ".features";
+    cout << "Saving feature vector to disk: " << feature_file << endl;
+    
+    ofstream fout(feature_file.c_str(), std::ofstream::out);
+    
+    fout << Intron::locationOutputHeader() << "\t" << trainingData->getHeader() << endl;
+    for(size_t i = 0; i < x.size(); i++) {        
+        fout << *(x[i]->getIntron()) << "\t" << trainingData->getRow(i) << endl;
+    }
+    
+    fout.close();
+     
     cout << "Initialising random forest" << endl;
     ForestPtr f = nullptr;
     if (regressionMode) {

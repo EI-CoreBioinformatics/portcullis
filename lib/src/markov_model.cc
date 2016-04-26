@@ -22,15 +22,18 @@ using std::endl;
 #include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
 
+#include <portcullis/seq_utils.hpp>
+using portcullis::SeqUtils;
+
 #include <portcullis/markov_model.hpp>
 
-void portcullis::MarkovModel::train(const vector<string>& input, const uint32_t _order) {
+void portcullis::KmerMarkovModel::train(const vector<string>& input, const uint32_t _order) {
     order = _order;
-    MMU temp;
+    KMMU temp;
     for(auto& seq : input) {
-        string sequp = boost::to_upper_copy(seq);
-        for(uint16_t i = order; i < sequp.size(); i++) {
-            temp[sequp.substr(i-order, order)][sequp.substr(i, 1)]++;
+        string s = SeqUtils::makeClean(seq);
+        for(uint16_t i = order; i < s.size(); i++) {
+            temp[s.substr(i-order, order)][s.substr(i, 1)]++;
         }
     }
     model.clear();
@@ -47,14 +50,50 @@ void portcullis::MarkovModel::train(const vector<string>& input, const uint32_t 
 }
     
     
-double portcullis::MarkovModel::getScore(const string& seq) {
-    string sequp = boost::to_upper_copy(seq); 
+double portcullis::KmerMarkovModel::getScore(const string& seq) {
+    string s = SeqUtils::makeClean(seq);
     double score = 1.0;
-    for(uint16_t i = order; i < sequp.size(); i++){
-        score *= model[sequp.substr(i-order, order)][sequp.substr(i, 1)];
+    for(uint16_t i = order; i < s.size(); i++){
+        score *= model[s.substr(i-order, order)][s.substr(i, 1)];
     }
     if(score == 0.0) {
         return -100.0;
     }
     return log(score);
 }
+
+void portcullis::PosMarkovModel::train(const vector<string>& input, const uint32_t _order) {
+    order = _order;
+    PMMU temp;
+    for(auto& seq : input) {
+        string s = SeqUtils::makeClean(seq);
+        for(uint16_t i = order; i < s.size(); i++) {
+            temp[i][s.substr(i, 1)]++;
+        }
+    }
+    model.clear();
+    for(auto& i : temp) {
+        double sum = 0;
+        for(auto& j : i.second) {
+            sum += j.second;
+        }
+        for(auto& j : i.second) {
+            //cout << i.first << " " << j.first << " " << j.second << endl;
+            model[i.first][j.first] = j.second / sum;
+        }
+    }
+}
+    
+    
+double portcullis::PosMarkovModel::getScore(const string& seq) {
+    string s = SeqUtils::makeClean(seq);
+    double score = 1.0;
+    for(uint16_t i = order; i < s.size(); i++){
+        score *= model[i][s.substr(i, 1)];
+    }
+    if(score == 0.0) {
+        return -300.0;
+    }
+    return log(score);
+}
+

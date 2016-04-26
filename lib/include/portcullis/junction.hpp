@@ -46,6 +46,8 @@ using namespace portcullis::bam;
 #include "intron.hpp"
 #include "seq_utils.hpp"
 #include "markov_model.hpp"
+using portcullis::KmerMarkovModel;
+using portcullis::PosMarkovModel;
 using portcullis::Intron;
 
 
@@ -843,7 +845,15 @@ public:
     void setJunctionOverhangs(size_t index, uint32_t val) {
         junctionOverhangs[index] = val;
     }
-
+    
+    double getJunctionOverhangLogDeviation(size_t i) const {
+        double Ni = junctionOverhangs[i];                 // Actual count at this position
+        if (Ni == 0.0) Ni = 0.000000000001;                     // Ensure some value > 0 here otherwise we get -infinity later.
+        double Pi = 1.0 - ((double)i / (double)(this->meanQueryLength / 2.0));       // Likely scale at this position
+        double Ei = (double)this->getNbJunctionAlignments() * Pi;  // Expected count at this position
+        double Xi = log2(Ni / Ei);
+        return Xi;
+    }
 
     bool isGenuine() const {
         return genuine;
@@ -870,7 +880,9 @@ public:
     }
     
     
-    double calcCodingPotential(GenomeMapper& gmap, MarkovModel& exon, MarkovModel& intron) const;
+    double calcCodingPotential(GenomeMapper& gmap, KmerMarkovModel& exon, KmerMarkovModel& intron) const;
+    
+    double calcPositionWeightScore(GenomeMapper& gmap, PosMarkovModel& donor, PosMarkovModel& acceptor) const;
     
     
     // **** Output methods ****
