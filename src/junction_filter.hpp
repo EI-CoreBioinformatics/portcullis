@@ -76,6 +76,7 @@ const string ST_IPOS_RULES_FILE = "selftrain_initial_pos.json";
 const string ST_INEG_RULES_FILE = "selftrain_initial_neg.json";
 const uint16_t DEFAULT_FILTER_THREADS = 1;
 const uint16_t DEFAULT_SELFTRAIN_TREES = 100;
+const double DEFAULT_FILTER_THRESHOLD = 0.1;
 
 
 class JunctionFilter {
@@ -97,6 +98,7 @@ private:
     bool filterSemi;
     bool filterNovel;    
     string source;
+    double threshold;
     bool verbose;    
     
     
@@ -137,6 +139,14 @@ public:
 
     void setGenomeFile(path genomeFile) {
         this->genomeFile = genomeFile;
+    }
+
+    double getThreshold() const {
+        return threshold;
+    }
+
+    void setThreshold(double threshold) {
+        this->threshold = threshold;
     }
 
 

@@ -41,7 +41,7 @@ typedef shared_ptr<Forest> ForestPtr;
 const vector<string> VAR_NAMES = { 
         "Genuine",
         //"M2-nb-reads", 
-        //"M3-nb_dist_aln", 
+        "M3-nb_dist_aln", 
         "nb_rel_aln", 
         //"M8-max_min_anc", 
         //"M9-dif_anc", 
@@ -49,11 +49,10 @@ const vector<string> VAR_NAMES = {
         "entropy", 
         "maxmmes", 
         "min_hamming_score", 
-        //"M14-hamming3p",
         "rel2raw_ratio",
-        //"mean_mismatches",
+        "mean_mismatches",
         "IntronScore",
-        //"CodingPotential"
+        "CodingPotential",
         "PWS"
 };
     

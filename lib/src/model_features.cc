@@ -151,24 +151,23 @@ Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
         d[0 * x.size() + row] = j->isGenuine();
         //
         //d[0 * x.size() + row] = j->getNbJunctionAlignments();
-        //d[0 * x.size() + row] = j->getNbDistinctAlignments();
-        d[1 * x.size() + row] = j->getNbReliableAlignments();
+        d[1 * x.size() + row] = j->getNbDistinctAlignments();
+        d[2 * x.size() + row] = j->getNbReliableAlignments();
         //d[3 * x.size() + row] = j->getMaxMinAnchor();
         //d[4 * x.size() + row] = j->getDiffAnchor();
         //d[5 * x.size() + row] = j->getNbDistinctAnchors();
-        d[2 * x.size() + row] = j->getEntropy();
-        d[3 * x.size() + row] = j->getMaxMMES();
-        d[4 * x.size() + row] = std::min(j->getHammingDistance5p(), j->getHammingDistance3p());
-        //d[3 * x.size() + row] = ;
-        d[5 * x.size() + row] = j->getReliable2RawRatio();
-        //d[5 * x.size() + row] = j->getMeanMismatches();
-        d[6 * x.size() + row] = L95 == 0 ? 0.0 : j->calcIntronScore(L95);     // Intron score
-        //d[7 * x.size() + row] = isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel);
-        d[7 * x.size() + row] = isPWModelEmpty() ? 0.0 : j->calcPositionWeightScore(gmap, donorPWModel, acceptorPWModel);
+        d[3 * x.size() + row] = j->getEntropy();
+        d[4 * x.size() + row] = j->getMaxMMES();
+        d[5 * x.size() + row] = std::min(j->getHammingDistance5p(), j->getHammingDistance3p());
+        d[6 * x.size() + row] = j->getReliable2RawRatio();
+        d[7 * x.size() + row] = j->getMeanMismatches();
+        d[8 * x.size() + row] = L95 == 0 ? 0.0 : j->calcIntronScore(L95);     // Intron score
+        d[9 * x.size() + row] = isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel);
+        d[10 * x.size() + row] = isPWModelEmpty() ? 0.0 : j->calcPositionWeightScore(gmap, donorPWModel, acceptorPWModel);
         
         //Junction overhang values at each position are first converted into deviation from expected distributions       
         for(size_t i = JO_OFFSET; i <= JO_NAMES.size(); i++) {
-            d[(i-JO_OFFSET + 8) * x.size() + row] = j->getJunctionOverhangLogDeviation(i-1);
+            d[(i-JO_OFFSET + 11) * x.size() + row] = j->getJunctionOverhangLogDeviation(i-1);
         }
         
         row++;

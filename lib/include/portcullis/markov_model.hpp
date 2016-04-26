@@ -101,7 +101,7 @@ public:
     double getScore(const string& seq);
     size_t size() const {
         return model.size();
-    }
+    }    
 };
 
 

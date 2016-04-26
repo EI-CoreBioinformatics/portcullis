@@ -85,6 +85,7 @@ portcullis::JunctionFilter::JunctionFilter( const path& _junctionFile,
     filterNovel = false;
     source = DEFAULT_FILTER_SOURCE;
     verbose = false;
+    threshold = DEFAULT_FILTER_THRESHOLD;
 }
     
     
@@ -644,7 +645,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
     for(size_t i = 0; i < all.size(); i++) {
         
         scoreStream << f->getPredictions()[i][0] << "\t" << *(all[i]->getIntron()) << "\t" << testingData->getRow(i) << endl;
-        if (f->getPredictions()[i][0] >= 0.1) {
+        if (f->getPredictions()[i][0] >= this->threshold) {
             pass.push_back(all[i]);
         }
         else {
@@ -675,6 +676,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     int32_t max_length;
     string canonical;
     string source;
+    double threshold;
     bool verbose;
     bool help;
     
@@ -718,6 +720,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     hidden_options.add_options()
         ("genome-file", po::value<path>(&genomeFile), "Path to the genome file to process.")        
         ("junction-file", po::value<path>(&junctionFile), "Path to the junction file to process.")
+        ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD), 
+                "The threshold score at which we determine a junction to be genuine or not.")            
             ;
 
     // Positional option for the input bam file
@@ -771,6 +775,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     }
     filter.setReferenceFile(referenceFile);
     filter.setGenomeFile(genomeFile);
+    filter.setThreshold(threshold);
     
     filter.filter();
 
