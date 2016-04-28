@@ -4,6 +4,10 @@
 			"operator": "in",
 			"value": ["C", "S"]
 		},
+                "M1-canonical_ss.2": {
+			"operator": "in",
+			"value": ["N"]
+		},
 		"M4-nb_rel_aln": {
                         "operator": "gte",
                         "value": 5
@@ -16,9 +20,17 @@
                         "operator": "gte",
                         "value": 20
                 },
+                "M12-maxmmes.2": {
+                        "operator": "gte",
+                        "value": 10
+                },
 		"M11-entropy": {
 			"operator": "gt",
 			"value": 5.0
+		},
+                "M11-entropy.2": {
+			"operator": "gt",
+			"value": 2.0
 		},
                 "M13-hamming5p": {
                         "operator": "gte",
@@ -42,7 +54,7 @@
 		},
                 "M19-mean_mismatches.2": {
 			"operator": "lt",
-			"value": 1.0
+			"value": 0.2
 		},
                 "M20-nb_usrs": {
                         "operator": "gte",
@@ -50,8 +62,8 @@
                 },
                 "M22-rel2raw": {
                         "operator": "gte",
-                        "value": 0.1
+                        "value": 0.5
                 }
 	},
-	"expression": "M4-nb_rel_aln & M13-hamming5p & M14-hamming3p & M22-rel2raw & ( ( M19-mean_mismatches & M20-nb_usrs ) | ( M12-maxmmes & M11-entropy & M19-mean_mismatches.2 ) )"  
+	"expression": "M4-nb_rel_aln & M13-hamming5p & M14-hamming3p & M22-rel2raw & M12-maxmmes.2"  
 }

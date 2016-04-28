@@ -24,13 +24,21 @@
 			"operator": "gt",
 			"value": 2.0
 		},
+                "M11-entropy.3": {
+			"operator": "eq",
+			"value": 0.0
+		},
                 "M12-maxmmes": {
                         "operator": "lt",
                         "value": 7
                 },
                 "M12-maxmmes.2": {
-                        "operator": "lte",
+                        "operator": "lt",
                         "value": 10
+                },
+                "M12-maxmmes.3": {
+                        "operator": "lt",
+                        "value": 20
                 },
                 "M8-max_min_anc": {
                         "operator": "lt",
@@ -71,7 +79,15 @@
                 "M21-nb_msrs": {
                         "operator": "gte",
                         "value": 1
+                },
+                "M22-rel2raw": {
+                        "operator": "lt",
+                        "value": 0.9
+                },
+                "M22-rel2raw.2": {
+                        "operator": "eq",
+                        "value": 0.0
                 }
 	},
-	"expression": "( M20-nb_usrs & M21-nb_msrs & M12-maxmmes.2 ) | ( M20-nb_usrs.2 & M1-canonical_ss & M12-maxmmes.2 ) | ( Suspect & M11-entropy.2 ) | M12-maxmmes | ( M1-canonical_ss & M4-nb_rel_aln )"  
+	"expression": "( PFP )"  
 }

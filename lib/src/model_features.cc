@@ -168,43 +168,72 @@ void portcullis::ModelFeatures::trainSplicingModels(const JunctionList& pass, co
 }
 
 Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
-    
-    const size_t JO_OFFSET = 10;
+        
     vector<string> headers;
-    headers.reserve( VAR_NAMES.size() + JO_NAMES.size() );
-    headers.insert( headers.end(), VAR_NAMES.begin(), VAR_NAMES.end() );
-    headers.insert( headers.end(), JO_NAMES.begin()+JO_OFFSET-1, JO_NAMES.end() );
+    for(auto& f : features) {
+        if (f.active) {
+            headers.push_back(f.name);
+        }
+    }
     
     // Convert junction list info to double*
     double* d = new double[x.size() * headers.size()];
     
     uint32_t row = 0;
-    for (const auto& j : x) {        
+    for (const auto& j : x) {
         SplicingScores ss = j->calcSplicingScores(gmap, donorTModel, donorFModel, acceptorTModel, acceptorFModel, 
                 donorPWModel, acceptorPWModel);
         
         d[0 * x.size() + row] = j->isGenuine();
-        //
-        //d[0 * x.size() + row] = j->getNbJunctionAlignments();
-        d[1 * x.size() + row] = j->getNbDistinctAlignments();
-        d[2 * x.size() + row] = j->getNbReliableAlignments();
-        //d[3 * x.size() + row] = j->getMaxMinAnchor();
-        //d[4 * x.size() + row] = j->getDiffAnchor();
-        //d[5 * x.size() + row] = j->getNbDistinctAnchors();
-        d[3 * x.size() + row] = j->getEntropy();
-        d[4 * x.size() + row] = j->getMaxMMES();
-        d[5 * x.size() + row] = std::min(j->getHammingDistance5p(), j->getHammingDistance3p());
-        d[6 * x.size() + row] = j->getReliable2RawRatio();
-        d[7 * x.size() + row] = j->getMeanMismatches();
-        d[8 * x.size() + row] = L95 == 0 ? 0.0 : j->calcIntronScore(L95);     // Intron score
-        d[9 * x.size() + row] = isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel);
-        d[10 * x.size() + row] = isPWModelEmpty() ? 0.0 : ss.positionWeighting;
-        d[11 * x.size() + row] = isPWModelEmpty() ? 0.0 : ss.splicingSignal;
         
+        uint16_t i = 1;
         
+        if (features[1].active) {
+            d[i++ * x.size() + row] = j->getNbUniquelySplicedReads();
+        }
+        if (features[2].active) {
+            d[i++ * x.size() + row] = j->getNbDistinctAlignments();
+        }
+        if (features[3].active) {
+            d[i++ * x.size() + row] = j->getNbReliableAlignments();
+        }
+        if (features[4].active) {
+            d[i++ * x.size() + row] = j->getEntropy();
+        }
+        if (features[5].active) {
+            d[i++ * x.size() + row] = j->getReliable2RawRatio();
+        }        
+        if (features[6].active) {
+            d[i++ * x.size() + row] = j->getMaxMinAnchor();
+        }        
+        if (features[7].active) {
+            d[i++ * x.size() + row] = j->getMaxMMES();
+        }
+        if (features[8].active) {
+            d[i++ * x.size() + row] = j->getMeanMismatches();
+        }
+        if (features[9].active) {
+            d[i++ * x.size() + row] = L95 == 0 ? 0.0 : j->calcIntronScore(L95);
+        }
+        if (features[10].active) {
+            d[i++ * x.size() + row] = std::min(j->getHammingDistance5p(), j->getHammingDistance3p());;
+        }
+        if (features[11].active) {
+            d[i++ * x.size() + row] = isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel);
+        }
+        if (features[12].active) {
+            d[i++ * x.size() + row] = isPWModelEmpty() ? 0.0 : ss.positionWeighting;
+        }
+        if (features[13].active) {
+            d[i++ * x.size() + row] = isPWModelEmpty() ? 0.0 : ss.splicingSignal;
+        }
+        
+                
         //Junction overhang values at each position are first converted into deviation from expected distributions       
-        for(size_t i = JO_OFFSET; i <= JO_NAMES.size(); i++) {
-            d[(i-JO_OFFSET + 12) * x.size() + row] = j->getJunctionOverhangLogDeviation(i-1);
+        for(size_t joi = 0; joi < JO_NAMES.size(); joi++) {
+            if (features[joi + 14].active) {
+                d[i++ * x.size() + row] = j->getJunctionOverhangLogDeviation(joi);
+            }
         }
         
         row++;

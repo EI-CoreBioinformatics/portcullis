@@ -43,24 +43,29 @@ typedef shared_ptr<Forest> ForestPtr;
 // List of variable names
 const vector<string> VAR_NAMES = { 
         "Genuine",
-        //"M2-nb-reads", 
-        "M3-nb_dist_aln", 
-        "nb_rel_aln", 
-        //"M8-max_min_anc", 
-        //"M9-dif_anc", 
-        //"M10-dist_anc", 
-        "entropy", 
-        "maxmmes", 
-        "min_hamming_score", 
-        "rel2raw_ratio",
-        "mean_mismatches",
-        "IntronScore",
-        "CodingPotential",
-        "PWS",
-        "SS"
+        "rna_usrs", 
+        "rna_dist", 
+        "rna_rel", 
+        "rna_entropy", 
+        "rna_rel2raw",
+        "rna_maxminanc", 
+        "rna_maxmmes", 
+        "rna_missmatch",
+        "rna_intron",
+        "dna_minhamm", 
+        "dna_coding",
+        "dna_pws",
+        "dna_ss"
+};
+
+struct Feature {
+    string name;
+    bool active;    
 };
     
 class ModelFeatures {
+private:
+    size_t fi;
 public:
     uint32_t L95;
     KmerMarkovModel exonModel;
@@ -72,10 +77,25 @@ public:
     PosMarkovModel donorPWModel;
     PosMarkovModel acceptorPWModel;
     GenomeMapper gmap;
+    vector<Feature> features;
     
     ModelFeatures() : L95(0) {
+        fi = 1;
+        features.clear();
+        for(size_t i = 0; i < VAR_NAMES.size(); i++) {
+            Feature f;
+            f.name = VAR_NAMES[i];
+            f.active = true;
+            features.push_back(f);
+        }
+        for(size_t i = 0; i < JO_NAMES.size(); i++) {
+            Feature f;
+            f.name = JO_NAMES[i];
+            f.active = true;
+            features.push_back(f);
+        }        
     }
-    
+        
     bool isCodingPotentialModelEmpty() {
         return exonModel.size() == 0 || intronModel.size() == 0;
     }
@@ -96,5 +116,19 @@ public:
     
     ForestPtr trainInstance(const JunctionList& x, string outputPrefix, 
             uint16_t trees, uint16_t threads, bool regressionMode, bool verbose);
+    
+    void resetActiveFeatureIndex() {
+        fi = 0;
+    }
+    int16_t getNextActiveFeatureIndex() {
+        for(int16_t i = fi+1; i < features.size(); i++) {
+            if (features[i].active) {
+                fi = i;
+                return i;
+            }
+        }
+        return -1;
+    }
+    
 };
 }

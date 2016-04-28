@@ -1257,7 +1257,7 @@ double portcullis::Junction::calcCodingPotential(GenomeMapper& gmap, KmerMarkovM
     double score =( exon.getScore(left_exon) - intron.getScore(left_exon) )
                 + ( intron.getScore(left_intron) - exon.getScore(left_intron) )
                 + ( intron.getScore(right_intron) - exon.getScore(right_intron) )
-                + ( exon.getScore(right_exon) + intron.getScore(right_exon) );
+                + ( exon.getScore(right_exon) - intron.getScore(right_exon) );
     
     return score;
 }
