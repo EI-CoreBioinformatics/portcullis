@@ -438,21 +438,30 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
     JuncResultMap resultMap;
          
     cout << "Creating initial positive set for training" << endl
-         << "------------------------------------------" << endl << endl;
+         << "------------------------------------------" << endl << endl
+         << "Applying a set of rule-based filters in " << dataDir.string() << " to create initial positive set." << endl << endl;
 
     if (!genuineFile.empty()) {
-        cout << "Performance of each positive filter layer (Low FPs is important):" << endl;
-        cout << "LAYER\t" << Performance::longHeader() << endl;
+        cout << "Performance of each positive filter layer (Low FPs is important):" << endl;        
     } 
+    cout << "LAYER\t";
+    if (!genuineFile.empty()) {
+        cout << Performance::longHeader();
+    }
+    
     JunctionList p1, p2, f1, f2;
+    
+    cout << endl << "1\t";
     RuleFilter::filter(this->getIntitalPosRulesFile(1), all, p1, f1, "Creating initial positive set for training", resultMap);
     if (!genuineFile.empty()) {
-        cout << "1\t" << calcPerformance(p1, f1, true)->toLongString() << endl;
+        cout << calcPerformance(p1, f1, true)->toLongString();
     }
+    cout << endl << "2\t";    
     RuleFilter::filter(this->getIntitalPosRulesFile(2), p1, p2, f2, "Creating initial positive set for training", resultMap);
     if (!genuineFile.empty()) {
-        cout << "2\t" << calcPerformance(p2, f2, true)->toLongString() << endl;
+        cout << calcPerformance(p2, f2, true)->toLongString();
     }
+    cout << endl;
 
     const uint32_t L95 = mf.calcIntronThreshold(p2);
     const uint32_t L95x2 = L95 * 2;
@@ -511,37 +520,50 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
     JuncResultMap resultMap;
         
     cout << "Creating initial negative set for training" << endl
-         << "------------------------------------------" << endl << endl;
+         << "------------------------------------------" << endl << endl
+         << "Applying a set of rule-based filters in " << dataDir.string() << " to create initial negative set." << endl << endl;
 
     if (!genuineFile.empty()) {
-       cout << "Performance of each negative filter layer (Low FNs is important):" << endl;
-       cout << "LAYER\t" << Performance::longHeader() << endl;
+       cout << "Performance of each negative filter layer (Low FNs is important):" << endl;       
     }
+    cout << "LAYER\t";
+    if (!genuineFile.empty()) {
+        cout << Performance::longHeader();
+    }
+    
     JunctionList p1, p2, p3, p4, p5, p6, p7, f1, f2, f3, f4, f5, f6, f7;
+    
+    cout << endl << "1\t";
     RuleFilter::filter(this->getIntitalNegRulesFile(1), all, p1, f1, "Creating initial negative set for training", resultMap);
     if (!genuineFile.empty()) {
-       cout << "1\t" << calcPerformance(p1, f1, true)->toLongString() << endl;
+       cout << calcPerformance(p1, f1, true)->toLongString();
     }
+    cout << endl << "2\t";    
     RuleFilter::filter(this->getIntitalNegRulesFile(2), f1, p2, f2, "Creating initial negative set for training", resultMap);
     if (!genuineFile.empty()) {
        cout << "2\t" << calcPerformance(p2, f2, true)->toLongString() << endl;
     }
+    cout << endl << "3\t";
     RuleFilter::filter(this->getIntitalNegRulesFile(3), f2, p3, f3, "Creating initial negative set for training", resultMap);
     if (!genuineFile.empty()) {
        cout << "3\t" << calcPerformance(p3, f3, true)->toLongString() << endl;
     }
+    cout << endl << "4\t";
     RuleFilter::filter(this->getIntitalNegRulesFile(4), f3, p4, f4, "Creating initial negative set for training", resultMap);
     if (!genuineFile.empty()) {
        cout << "4\t" << calcPerformance(p4, f4, true)->toLongString() << endl;
     }
+    cout << endl << "5\t";
     RuleFilter::filter(this->getIntitalNegRulesFile(5), f4, p5, f5, "Creating initial negative set for training", resultMap);
     if (!genuineFile.empty()) {
        cout << "5\t" << calcPerformance(p5, f5, true)->toLongString() << endl;
     }
+    cout << endl << "6\t";
     RuleFilter::filter(this->getIntitalNegRulesFile(6), f5, p6, f6, "Creating initial negative set for training", resultMap);
     if (!genuineFile.empty()) {
        cout << "6\t" << calcPerformance(p6, f6, true)->toLongString() << endl;
     }
+    cout << endl;
     
     JunctionList passJuncs, failJuncs;
     const uint32_t L95x5 = L95 * 5;
@@ -557,7 +579,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
        cout << "L95x5\t" << calcPerformance(p7, failJuncs, true)->toLongString() << endl;
     }
     
-    cout << endl << "Concatenating TNs from each layer to create negative set" << endl << endl;
+    cout << endl << "Concatenating negatives from each layer to create negative set" << endl << endl;
     
     passJuncs.insert(passJuncs.end(), p1.begin(), p1.end());
     passJuncs.insert(passJuncs.end(), p2.begin(), p2.end());

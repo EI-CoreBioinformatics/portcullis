@@ -216,7 +216,7 @@ Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
             d[i++ * x.size() + row] = L95 == 0 ? 0.0 : j->calcIntronScore(L95);
         }
         if (features[10].active) {
-            d[i++ * x.size() + row] = std::min(j->getHammingDistance5p(), j->getHammingDistance3p());;
+            d[i++ * x.size() + row] = std::min(j->getHammingDistance5p(), j->getHammingDistance3p());
         }
         if (features[11].active) {
             d[i++ * x.size() + row] = isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel);
