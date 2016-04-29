@@ -115,7 +115,7 @@ public:
     Data* juncs2FeatureVectors(const JunctionList& x);
     
     ForestPtr trainInstance(const JunctionList& x, string outputPrefix, 
-            uint16_t trees, uint16_t threads, bool regressionMode, bool verbose);
+            uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose);
     
     void resetActiveFeatureIndex() {
         fi = 0;

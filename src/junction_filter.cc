@@ -49,7 +49,7 @@ namespace po = boost::program_options;
 
 
 #include <ranger/ForestClassification.h>
-#include <ranger/ForestRegression.h>
+#include <ranger/ForestProbability.h>
 #include <ranger/DataDouble.h>
 
 #include <portcullis/bam/genome_mapper.hpp>
@@ -200,6 +200,38 @@ void portcullis::JunctionFilter::filter() {
     // To be overridden if we are training
     ModelFeatures mf;
     mf.initGenomeMapper(this->genomeFile);
+    
+    mf.features[1].active=false;        // NB USRS          (BAD)
+    mf.features[2].active=false;        // NB DISTRS        (BAD)
+    //mf.features[3].active=false;      // NB RELRS         (GOOD)
+    mf.features[4].active = false;      // ENTROPY          (BAD - JO LOGDEV ARE BETTER)
+    //mf.features[5].active = false;    // REL2RAW          (GOOD)
+    mf.features[6].active=false;        // MAXMINANC        (BAD - MAXMMES IS BETTER)
+    //mf.features[7].active=false;      // MAXMMES          (GOOD)
+    //mf.features[8].active=false;      // MEAN MISMATCH    (GOOD)
+    //mf.features[9].active=false;      // INTRON           (GOOD)
+    //mf.features[10].active=false;     // MIN_HAMM         (GOOD)
+    mf.features[11].active=false;       // CODING POTENTIAL (BAD)
+    //mf.features[12].active=false;     // POS WEIGHTS      (GOOD)
+    //mf.features[13].active=false;     // SPLICE SIGNAL    (GOOD)
+    /*mf.features[14].active=false;     // JO LOGDEV FEATURES BETTER THAN ENTROPY
+    mf.features[15].active=false;
+    mf.features[16].active=false;
+    mf.features[17].active=false;
+    mf.features[18].active=false;
+    mf.features[19].active=false;
+    mf.features[20].active=false;
+    mf.features[21].active=false;
+    mf.features[22].active=false;
+    mf.features[23].active=false;
+    mf.features[24].active=false;
+    mf.features[25].active=false;
+    mf.features[26].active=false;
+    mf.features[27].active=false;
+    mf.features[28].active=false;
+    mf.features[29].active=false;*/
+    
+    
     
     
     if (train) {
@@ -541,29 +573,29 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
     cout << endl << "2\t";    
     RuleFilter::filter(this->getIntitalNegRulesFile(2), f1, p2, f2, "Creating initial negative set for training", resultMap);
     if (!genuineFile.empty()) {
-       cout << "2\t" << calcPerformance(p2, f2, true)->toLongString() << endl;
+       cout << calcPerformance(p2, f2, true)->toLongString();
     }
     cout << endl << "3\t";
     RuleFilter::filter(this->getIntitalNegRulesFile(3), f2, p3, f3, "Creating initial negative set for training", resultMap);
     if (!genuineFile.empty()) {
-       cout << "3\t" << calcPerformance(p3, f3, true)->toLongString() << endl;
+       cout << calcPerformance(p3, f3, true)->toLongString();
     }
     cout << endl << "4\t";
     RuleFilter::filter(this->getIntitalNegRulesFile(4), f3, p4, f4, "Creating initial negative set for training", resultMap);
     if (!genuineFile.empty()) {
-       cout << "4\t" << calcPerformance(p4, f4, true)->toLongString() << endl;
+       cout << calcPerformance(p4, f4, true)->toLongString();
     }
     cout << endl << "5\t";
     RuleFilter::filter(this->getIntitalNegRulesFile(5), f4, p5, f5, "Creating initial negative set for training", resultMap);
     if (!genuineFile.empty()) {
-       cout << "5\t" << calcPerformance(p5, f5, true)->toLongString() << endl;
+       cout << calcPerformance(p5, f5, true)->toLongString();
     }
     cout << endl << "6\t";
     RuleFilter::filter(this->getIntitalNegRulesFile(6), f5, p6, f6, "Creating initial negative set for training", resultMap);
     if (!genuineFile.empty()) {
-       cout << "6\t" << calcPerformance(p6, f6, true)->toLongString() << endl;
+       cout << calcPerformance(p6, f6, true)->toLongString();
     }
-    cout << endl;
+    cout << endl << "L95x5\t";
     
     JunctionList passJuncs, failJuncs;
     const uint32_t L95x5 = L95 * 5;
@@ -576,10 +608,10 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
        }
     }
     if (!genuineFile.empty()) {
-       cout << "L95x5\t" << calcPerformance(p7, failJuncs, true)->toLongString() << endl;
+       cout << calcPerformance(p7, failJuncs, true)->toLongString();
     }
     
-    cout << endl << "Concatenating negatives from each layer to create negative set" << endl << endl;
+    cout << endl << endl << "Concatenating negatives from each layer to create negative set" << endl << endl;
     
     passJuncs.insert(passJuncs.end(), p1.begin(), p1.end());
     passJuncs.insert(passJuncs.end(), p2.begin(), p2.end());
@@ -699,7 +731,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
     
     shared_ptr<Forest> f = nullptr;
     if (train) {
-        f = make_shared<ForestRegression>();
+        f = make_shared<ForestProbability>();
     }
     else {
         f = make_shared<ForestClassification>();
@@ -713,11 +745,12 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
         testingData,                // Data object
         0,                          // M Try (0 == use default)
         "",                         // Output prefix 
-        DEFAULT_SELFTRAIN_TREES,                        // Number of trees (will be overwritten when loading the model)
+        250, //DEFAULT_SELFTRAIN_TREES,    // Number of trees (will be overwritten when loading the model)
         1234567890,                 // Seed for random generator               
         threads,                    // Number of threads
         IMP_GINI,                   // Importance measure 
-        train ? DEFAULT_MIN_NODE_SIZE_REGRESSION : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
+        train ? DEFAULT_MIN_NODE_SIZE_PROBABILITY : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
+        //DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,
         "",                         // Status var name 
         true,                       // Prediction mode
         true,                       // Replace 
@@ -753,7 +786,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
     
     if (!genuineFile.empty() && exists(genuineFile)) {
         vector<double> thresholds;
-        for(double i = 0.05; i <= 0.5; i += 0.01) {
+        for(double i = 0.0; i <= 1.0; i += 0.01) {
             thresholds.push_back(i);
         }
         double max_mcc = 0.0;
@@ -798,7 +831,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 void portcullis::JunctionFilter::categorise(shared_ptr<Forest> f, const JunctionList& all, JunctionList& pass, JunctionList& fail, double t) {
     
     for(size_t i = 0; i < all.size(); i++) {
-        if (f->getPredictions()[i][0] >= t) {
+        if (f->getPredictions()[i][0] <= t) {
             pass.push_back(all[i]);
         }
         else {

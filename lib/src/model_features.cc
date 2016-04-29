@@ -25,7 +25,7 @@ using std::ofstream;
 using std::make_shared;
 
 #include <ranger/DataDouble.h>
-#include <ranger/ForestRegression.h>
+#include <ranger/ForestProbability.h>
 #include <ranger/ForestClassification.h>
 
 #include <portcullis/junction.hpp>
@@ -247,7 +247,7 @@ Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
 
 
 portcullis::ForestPtr portcullis::ModelFeatures::trainInstance(const JunctionList& x, 
-        string outputPrefix, uint16_t trees, uint16_t threads, bool regressionMode, bool verbose) {
+        string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose) {
     
     cout << "Creating feature vector" << endl;
     Data* trainingData = juncs2FeatureVectors(x);
@@ -266,8 +266,8 @@ portcullis::ForestPtr portcullis::ModelFeatures::trainInstance(const JunctionLis
      
     cout << "Initialising random forest" << endl;
     ForestPtr f = nullptr;
-    if (regressionMode) {
-        f = make_shared<ForestRegression>();
+    if (probabilityMode) {
+        f = make_shared<ForestProbability>();
     }
     else {
         f = make_shared<ForestClassification>();
@@ -281,11 +281,11 @@ portcullis::ForestPtr portcullis::ModelFeatures::trainInstance(const JunctionLis
         trainingData,               // Data object
         0,                          // M Try (0 == use default)
         outputPrefix,               // Output prefix 
-        trees,                      // Number of trees
+        250, //trees,                      // Number of trees
         1236456789,                // Use fixed seed to avoid non-deterministic behaviour as much as possible
         threads,                    // Number of threads
         IMP_GINI,                   // Importance measure 
-        regressionMode ? DEFAULT_MIN_NODE_SIZE_REGRESSION : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
+        probabilityMode ? DEFAULT_MIN_NODE_SIZE_PROBABILITY : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
         "",                         // Status var name 
         false,                      // Prediction mode
         true,                       // Replace 

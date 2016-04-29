@@ -76,7 +76,7 @@ const string ST_IPOS_RULES_FILE = "selftrain_initial_pos";
 const string ST_INEG_RULES_FILE = "selftrain_initial_neg";
 const uint16_t DEFAULT_FILTER_THREADS = 1;
 const uint16_t DEFAULT_SELFTRAIN_TREES = 100;
-const double DEFAULT_FILTER_THRESHOLD = 0.25;
+const double DEFAULT_FILTER_THRESHOLD = 0.75;
 
 
 class JunctionFilter {
