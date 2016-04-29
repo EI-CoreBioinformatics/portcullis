@@ -10,7 +10,7 @@
                 },
                 "M12-maxmmes": {
                         "operator": "gte",
-                        "value": 20
+                        "value": 18
                 },
 		"M11-entropy": {
 			"operator": "gt",
@@ -18,16 +18,20 @@
 		},
                 "M13-hamming5p": {
                         "operator": "gte",
-                        "value": 8
+                        "value": 7
                 },
                 "M14-hamming3p": {
                         "operator": "gte",
-                        "value": 8
+                        "value": 7
                 },
 		"M19-mean_mismatches": {
-			"operator": "lte",
-			"value": 1.0
-		}
+			"operator": "eq",
+			"value": 0.0
+		},
+                "M20-nb_usrs": {
+                        "operator": "gte",
+                        "value": 5
+                }
 	},
-	"expression": "M1-canonical_ss & M4-nb_rel_aln & M11-entropy & M12-maxmmes & M13-hamming5p & M14-hamming3p & M19-mean_mismatches"  
+	"expression": "M1-canonical_ss & M4-nb_rel_aln & M11-entropy & M12-maxmmes & M13-hamming5p & M14-hamming3p & M19-mean_mismatches & M20-nb_usrs"  
 }

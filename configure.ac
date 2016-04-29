@@ -4,7 +4,7 @@
 
 # Autoconf setup
 AC_PREREQ([2.68])
-AC_INIT([portcullis],[0.15.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
+AC_INIT([portcullis],[0.16.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
 AC_CONFIG_SRCDIR([src/portcullis.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
@@ -142,6 +142,7 @@ AX_BOOST_FILESYSTEM
 AX_BOOST_CHRONO
 AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_TIMER
+
 
 # Combine BOOST variables
 BOOST_LIBS="${BOOST_TIMER_STATIC_LIB} ${BOOST_CHRONO_STATIC_LIB} ${BOOST_FILESYSTEM_STATIC_LIB} ${BOOST_PROGRAM_OPTIONS_STATIC_LIB} ${BOOST_SYSTEM_STATIC_LIB}"

@@ -219,23 +219,26 @@ double portcullis::eval::getNumericFromJunc(const var& fullname) const {
         case 18:
             return junc->getMeanMismatches();
         case 19:
-            return junc->getNbMultipleSplicedReads();
+            return junc->getNbUniquelySplicedReads();
         case 20:
-            return junc->getNbUpstreamJunctions();
+            return junc->getNbMultipleSplicedReads();
         case 21:
-            return junc->getNbDownstreamJunctions();
+            return junc->getReliable2RawRatio();
         case 22:
-            return junc->getNbUpstreamFlankingAlignments();
+            return junc->getNbUpstreamJunctions();
         case 23:
+            return junc->getNbDownstreamJunctions();
+        case 24:
+            return junc->getNbUpstreamFlankingAlignments();
+        case 25:
             return junc->getNbDownstreamFlankingAlignments();
-
     }
     
     if (boost::iequals(name, "Suspect")) {
         return junc->isSuspicious();
     } 
     else if (boost::iequals(name, "PFP")) {
-        return junc->getSpliceSiteType();
+        return junc->isPotentialFalsePositive();
     } 
 
 
@@ -257,7 +260,7 @@ string portcullis::eval::getStringFromJunc(const var& fullname) const {
     }    
 
     BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-                        "Unrecognised param: ") + name));        
+                        "Unrecognised param: ") + name));
 }
     
 bool portcullis::eval::evalNumberLeaf(Operator op, double threshold, double value) const {

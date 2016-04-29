@@ -36,7 +36,10 @@ using boost::filesystem::path;
 
 #include <ranger/Forest.h>
 #include <portcullis/performance.hpp>
-
+#include <portcullis/bam/genome_mapper.hpp>
+#include <portcullis/model_features.hpp>
+using portcullis::bam::GenomeMapper;
+using portcullis::ModelFeatures;
 
 namespace portcullis {
     
@@ -50,11 +53,7 @@ const uint16_t DEFAULT_TRAIN_THREADS = 1;
 const double DEFAULT_TRAIN_FRACTION = 1.0;
 const int DEFAULT_SEED = 1234567;       // To avoid non-deterministic behaviour
 
-// List of variable names
-const vector<string> VAR_NAMES = { "M2-nb-reads", "M3-nb_dist_aln", "M4-nb_rel_aln", 
-            "M8-max_min_anc", "M9-dif_anc", "M10-dist_anc", "M11-entropy", 
-            "M12-maxmmes", "M13-hammping5p", "M14-hamming3p",
-            "Genuine" };
+
 
 // Derived from https://sureshamrita.wordpress.com/2011/08/24/c-implementation-of-k-fold-cross-validation/
 template<class In>
@@ -220,15 +219,11 @@ public:
 
     static int main(int argc, char *argv[]);
     
-    static Data* juncs2FeatureVectors(const JunctionList& x);
-    
-    static shared_ptr<Forest> trainInstance(const JunctionList& x, string outputPrefix, 
-            uint16_t trees, uint16_t threads, bool regressionMode, bool verbose);
     
 protected:
     
     
-    void testInstance(shared_ptr<Forest> f, const JunctionList& y);  
+    void testInstance(shared_ptr<Forest> f, const JunctionList& y);
     
     void getRandomSubset(const JunctionList& in, JunctionList& out);
     

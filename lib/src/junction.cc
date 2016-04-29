@@ -45,10 +45,6 @@ using portcullis::bam::CigarOp;
 using portcullis::bam::GenomeMapper;
 using portcullis::bam::Strand;
 
-#include <portcullis/intron.hpp>
-#include <portcullis/seq_utils.hpp>
-using portcullis::Intron;
-
 #include <portcullis/junction.hpp>
 
 
@@ -823,10 +819,10 @@ void portcullis::Junction::calcMismatchStats() {
     // Assuming we have some mismatches determine if this junction has no overhangs
     // extending beyond first mismatch.  If so determine if that distance is small
     // enough to consider the junction as suspicious
-    if (nbMismatches > 0) {
+    if (nbMismatches > 0 && firstMismatch < 20) {
         bool found = false;
         for(const auto& a : alignments) {
-            if (a->mmes > firstMismatch) {
+            if (a->minMatch > firstMismatch) {
                 found = true;
                 break;
             }
@@ -941,14 +937,15 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
          << "M17: Primary Junction: " << boolalpha << primaryJunction << delimiter
          << "M18: Multiple mapping score: " << multipleMappingScore << delimiter
          << "M19: Mean mismatches: " << meanMismatches << delimiter
-         << "M20: # Multiple Spliced Reads: " << nbMultipleSplicedReads << delimiter
-         << "M21: # Upstream Junctions: " << nbUpstreamJunctions << delimiter
-         << "M22: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
-         << "M23: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
-         << "M24: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
-         << "M25: Distance to next upstream junction: " << distanceToNextUpstreamJunction << delimiter
-         << "M26: Distance to next downstream junction: " << distanceToNextDownstreamJunction << delimiter
-         << "M27: Distance to nearest junction: " << distanceToNearestJunction;         
+         << "M20: # Uniquely Spliced Reads: " << getNbUniquelySplicedReads() << delimiter
+         << "M21: # Multiple Spliced Reads: " << nbMultipleSplicedReads << delimiter
+         << "M22: # Upstream Junctions: " << nbUpstreamJunctions << delimiter
+         << "M23: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
+         << "M24: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
+         << "M25: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
+         << "M26: Distance to next upstream junction: " << distanceToNextUpstreamJunction << delimiter
+         << "M27: Distance to next downstream junction: " << distanceToNextDownstreamJunction << delimiter
+         << "M28: Distance to nearest junction: " << distanceToNearestJunction;         
 }
     
 /**
@@ -979,14 +976,17 @@ void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string
          << "M17-PrimaryJunction=" << boolalpha << primaryJunction << delimiter
          << "M18-MultipleMappingScore=" << multipleMappingScore << delimiter
          << "M19-MeanMismatches=" << meanMismatches << delimiter
-         << "M20-NbMultipleSplicedReads=" << nbMultipleSplicedReads << delimiter
-         << "M21-NbUpstreamJunctions=" << nbUpstreamJunctions << delimiter
-         << "M22-NbDownstreamJunctions=" << nbDownstreamJunctions << delimiter
-         << "M23-NbUpstreamNonSplicedAlignments=" << nbUpstreamFlankingAlignments << delimiter
-         << "M24-NbDownstreamNonSplicedAlignments=" << nbDownstreamFlankingAlignments << delimiter
-         << "M25-DistanceToNextUpstreamJunction=" << distanceToNextUpstreamJunction << delimiter
-         << "M26-DistanceToNextDownstreamJunction=" << distanceToNextDownstreamJunction << delimiter
-         << "M27-DistanceToNearestJunction=" << distanceToNearestJunction << delimiter
+         << "M20-NbUniquelySplicedReads=" << getNbUniquelySplicedReads() << delimiter
+         << "M21-NbMultipleSplicedReads=" << nbMultipleSplicedReads << delimiter
+         << "M22-Reliable2RawRatio=" << getReliable2RawRatio() << delimiter
+         << "M23-NbUpstreamJunctions=" << nbUpstreamJunctions << delimiter
+         << "M24-NbDownstreamJunctions=" << nbDownstreamJunctions << delimiter
+         << "M25-NbUpstreamNonSplicedAlignments=" << nbUpstreamFlankingAlignments << delimiter
+         << "M26-NbDownstreamNonSplicedAlignments=" << nbDownstreamFlankingAlignments << delimiter
+         << "M27-DistanceToNextUpstreamJunction=" << distanceToNextUpstreamJunction << delimiter
+         << "M28-DistanceToNextDownstreamJunction=" << distanceToNextDownstreamJunction << delimiter
+         << "M29-DistanceToNearestJunction=" << distanceToNearestJunction << delimiter
+         << "Suspect=" << boolalpha << suspicious << delimiter
          << "PFP=" << boolalpha << pfp;         
 }
 
@@ -1200,22 +1200,93 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     j->setPrimaryJunction(lexical_cast<bool>(parts[29]));
     j->setMultipleMappingScore(lexical_cast<double>(parts[30]));
     j->setMeanMismatches(lexical_cast<double>(parts[31]));
-    j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[32]));
-    j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[33]));
-    j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[34]));
-    j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[35]));
-    j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[36]));
-    j->setDistanceToNextUpstreamJunction(lexical_cast<uint32_t>(parts[37]));
-    j->setDistanceToNextDownstreamJunction(lexical_cast<uint32_t>(parts[38]));
-    j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[39]));
+    //j->setNbUniquelySplicedReads(lexical_cast<uint32_t>(parts[32]));
+    j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[33]));
+    //j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[33]));
+    j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[35]));
+    j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[36]));
+    j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[37]));
+    j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[38]));
+    j->setDistanceToNextUpstreamJunction(lexical_cast<uint32_t>(parts[39]));
+    j->setDistanceToNextDownstreamJunction(lexical_cast<uint32_t>(parts[40]));
+    j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[41]));
     
     // Read Junction overhangs
-    j->setMeanQueryLength(lexical_cast<uint32_t>(parts[40]));
-    j->setSuspicious(lexical_cast<bool>(parts[41]));
-    j->setPotentialFalsePositive(lexical_cast<bool>(parts[42]));
+    j->setMeanQueryLength(lexical_cast<uint32_t>(parts[42]));
+    j->setSuspicious(lexical_cast<bool>(parts[43]));
+    j->setPotentialFalsePositive(lexical_cast<bool>(parts[44]));
     for(size_t i = 0; i < JO_NAMES.size(); i++) {
-        j->setJunctionOverhangs(i, lexical_cast<uint32_t>(parts[43 + i]));
+        j->setJunctionOverhangs(i, lexical_cast<uint32_t>(parts[45 + i]));
     }
     
     return j;
+}
+
+double portcullis::Junction::calcCodingPotential(GenomeMapper& gmap, KmerMarkovModel& exon, KmerMarkovModel& intron) const {
+     
+    int len = 0;
+
+    const char* ref = this->intron->ref.name.c_str();
+    const bool neg = getConsensusStrand() == Strand::NEGATIVE;
+
+    string left_exon = gmap.fetchBases(ref, this->intron->start - 82, this->intron->start-2, &len);
+    if (neg) {
+        left_exon = SeqUtils::reverseComplement(left_exon);
+    }
+    
+    string left_intron = gmap.fetchBases(ref, this->intron->start, this->intron->start+80, &len);
+    if (neg) {
+        left_intron = SeqUtils::reverseComplement(left_intron);
+    }
+
+    string right_intron = gmap.fetchBases(ref, this->intron->end-80, this->intron->end, &len);
+    if (neg) {
+        right_intron = SeqUtils::reverseComplement(right_intron);
+    }        
+
+    string right_exon = gmap.fetchBases(ref, this->intron->end + 1, this->intron->end + 81, &len);
+    if (neg) {
+        right_exon = SeqUtils::reverseComplement(right_exon);
+    }
+    /*
+    cout << "Left exon   : " << this->consensusStrand << " : " << left_exon << endl;
+    cout << "Left intron : " << this->consensusStrand << " : " << left_intron << endl;
+    cout << "Right intron: " << this->consensusStrand << " : " << right_intron << endl;
+    cout << "Right exon  : " << this->consensusStrand << " : " << right_exon << endl;
+    */
+    double score =( exon.getScore(left_exon) - intron.getScore(left_exon) )
+                + ( intron.getScore(left_intron) - exon.getScore(left_intron) )
+                + ( intron.getScore(right_intron) - exon.getScore(right_intron) )
+                + ( exon.getScore(right_exon) - intron.getScore(right_exon) );
+    
+    return score;
+}
+
+
+portcullis::SplicingScores portcullis::Junction::calcSplicingScores(GenomeMapper& gmap, KmerMarkovModel& donorT, KmerMarkovModel& donorF,
+                            KmerMarkovModel& acceptorT, KmerMarkovModel& acceptorF,
+                            PosMarkovModel& donorP, PosMarkovModel& acceptorP) const {
+    
+    int len = 0;
+    const char* ref = this->intron->ref.name.c_str();
+    const bool neg = getConsensusStrand() == Strand::NEGATIVE;
+    
+    string left = gmap.fetchBases(ref, intron->start - 3, intron->start + 20, &len);
+    if (neg) {
+        left = SeqUtils::reverseComplement(left);
+    }        
+
+    string right = gmap.fetchBases(ref, intron->end - 20, intron->end + 2, &len);
+    if (neg) {
+        right = SeqUtils::reverseComplement(right);
+    }        
+
+    string donorseq = neg ? right : left;
+    string acceptorseq = neg ? left : right;
+
+    SplicingScores ss;
+    ss.positionWeighting = donorP.getScore(donorseq) + acceptorP.getScore(acceptorseq);
+    ss.splicingSignal =     (donorT.getScore(donorseq) - donorF.getScore(donorseq)) 
+                        +   (acceptorT.getScore(acceptorseq) - acceptorF.getScore(acceptorseq));
+    return ss;
 }

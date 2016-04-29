@@ -46,16 +46,20 @@ using boost::filesystem::create_symlink;
 using boost::filesystem::create_directory;
 using boost::filesystem::symbolic_link_exists;
 
+#include <portcullis/bam/genome_mapper.hpp>
 #include <portcullis/intron.hpp>
 #include <portcullis/portcullis_fs.hpp>
 #include <portcullis/junction_system.hpp>
 #include <portcullis/performance.hpp>
 #include <portcullis/rule_parser.hpp>
+#include <portcullis/model_features.hpp>
+using portcullis::bam::GenomeMapper;
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
 using portcullis::Performance;
 using portcullis::JuncResultMap;
+using portcullis::ModelFeatures;
 
 
 namespace portcullis {
@@ -68,9 +72,11 @@ const string DEFAULT_FILTER_OUTPUT = "portcullis_filter/portcullis";
 const string DEFAULT_FILTER_SOURCE = "portcullis";
 const string DEFAULT_FILTER_RULE_FILE = "default_filter.json";
 const string DEFAULT_FILTER_MODEL_FILE = "default_model.forest";
-const string ST_IPOS_RULES_FILE = "selftrain_initial_pos.json";
-const string ST_INEG_RULES_FILE = "selftrain_initial_neg.json";
+const string ST_IPOS_RULES_FILE = "selftrain_initial_pos";
+const string ST_INEG_RULES_FILE = "selftrain_initial_neg";
 const uint16_t DEFAULT_FILTER_THREADS = 1;
+const uint16_t DEFAULT_SELFTRAIN_TREES = 100;
+const double DEFAULT_FILTER_THRESHOLD = 0.625;
 
 
 class JunctionFilter {
@@ -78,6 +84,7 @@ class JunctionFilter {
 private:
     
     path junctionFile;
+    path genomeFile;
     path modelFile;
     path filterFile;
     path genuineFile;
@@ -91,6 +98,7 @@ private:
     bool filterSemi;
     bool filterNovel;    
     string source;
+    double threshold;
     bool verbose;    
     
     
@@ -124,6 +132,23 @@ public:
     void setJunctionFile(path junctionFile) {
         this->junctionFile = junctionFile;
     }
+    
+    path getGenomeFile() const {
+        return genomeFile;
+    }
+
+    void setGenomeFile(path genomeFile) {
+        this->genomeFile = genomeFile;
+    }
+
+    double getThreshold() const {
+        return threshold;
+    }
+
+    void setThreshold(double threshold) {
+        this->threshold = threshold;
+    }
+
 
     path getOutput() const {
         return output;
@@ -248,12 +273,12 @@ public:
         this->maxLength = maxLength;
     }
     
-    path getIntitalPosRulesFile() const {
-        return path(dataDir.string() + "/" + ST_IPOS_RULES_FILE);
+    path getIntitalPosRulesFile(uint16_t index) const {
+        return path(dataDir.string() + "/" + ST_IPOS_RULES_FILE + ".layer" + std::to_string(index) + ".json");
     }
 
-    path getIntitalNegRulesFile() const {
-        return path(dataDir.string() + "/" + ST_INEG_RULES_FILE);
+    path getIntitalNegRulesFile(uint16_t index) const {
+        return path(dataDir.string() + "/" + ST_INEG_RULES_FILE + ".layer" + std::to_string(index) + ".json");
     }
 
     void filter();
@@ -261,7 +286,7 @@ public:
  
 protected:
     
-    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail);
+    void forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, ModelFeatures& mf);
 
     shared_ptr<Performance> calcPerformance(const JunctionList& pass, const JunctionList& fail) {
         return calcPerformance(pass, fail, false);
@@ -271,6 +296,12 @@ protected:
     void printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const string& prefix);
     
     void doRuleBasedFiltering(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap);
+    
+    void categorise(shared_ptr<Forest> f, const JunctionList& all, JunctionList& pass, JunctionList& fail, double t);
+        
+    void createPositiveSet(const JunctionList& all, JunctionList& pos, JunctionList& unlabelled, ModelFeatures& mf);
+    
+    void createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg);
     
 public:
   

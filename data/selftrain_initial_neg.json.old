@@ -9,20 +9,24 @@
                         "value": 1
                 },                
 		"M3-nb_dist_aln": {
-			"operator": "eq",
-			"value": 1
+			"operator": "gte",
+			"value": 2
 		},
 		"M4-nb_rel_aln": {
                         "operator": "eq",
                         "value": 0
                 },
                 "M11-entropy": {
-			"operator": "eq",
-			"value": 0.0
+			"operator": "lt",
+			"value": 1.0
 		},
                 "M12-maxmmes": {
                         "operator": "lt",
-                        "value": 8
+                        "value": 9
+                },
+                "M12-maxmmes.2": {
+                        "operator": "lte",
+                        "value": 12
                 },
                 "M8-max_min_anc": {
                         "operator": "lt",
@@ -38,16 +42,16 @@
 		},
                 "M13-hamming5p": {
                         "operator": "lte",
-                        "value": 1
+                        "value": 2
                 },
                 "M14-hamming3p": {
                         "operator": "lte",
-                        "value": 1
+                        "value": 2
                 },
                 "M19-mean_mismatches": {
 			"operator": "gte",
 			"value": 5.0
 		}
 	},
-	"expression": "M2-nb_reads | M12-maxmmes | Suspect"  
+	"expression": "M19-mean_mismatches | ( M1-canonical_ss & M11-entropy ) | ( M4-nb_rel_aln & M11-entropy ) | ( M12-maxmmes & M11-entropy ) | ( M12-maxmmes.2 & M2-nb_reads ) | ( M13-hamming5p & M14-hamming3p ) | PFP | ( Suspect & M2-nb_reads )"  
 }

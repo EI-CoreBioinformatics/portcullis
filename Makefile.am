@@ -39,6 +39,7 @@ dist_bin_SCRIPTS =  scripts/analyse_alignments.py \
 		    scripts/predict.snakefile \
 		    scripts/read_gen.snakefile \
 		    scripts/snakey.py \
+		    scripts/soapsplice2bed.py \
 		    scripts/spanki2bed.py \
 		    scripts/spanki_filter.py \
 		    scripts/split_error_classes.py \
@@ -55,8 +56,16 @@ dist_bin_SCRIPTS =  scripts/analyse_alignments.py \
 configdir = $(datadir)/portcullis
 dist_config_DATA = \
 		    data/default_filter.json \
-		    data/selftrain_initial_neg.json \
-		    data/selftrain_initial_pos.json
+		    data/selftrain_initial_neg.layer1.json \
+		    data/selftrain_initial_neg.layer2.json \
+		    data/selftrain_initial_neg.layer3.json \
+		    data/selftrain_initial_neg.layer4.json \
+		    data/selftrain_initial_neg.layer5.json \
+		    data/selftrain_initial_neg.layer6.json \
+		    data/selftrain_initial_neg.layer7.json \
+		    data/selftrain_initial_pos.layer1.json \
+		    data/selftrain_initial_pos.layer2.json \
+		    data/selftrain_initial_pos.layer3.json
 
 # SRC DIRS
 make_dirs=deps/htslib-1.3 deps/ranger-0.3.8 lib src tests

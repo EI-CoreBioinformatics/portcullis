@@ -88,11 +88,13 @@ const unordered_set<string> numericParams = {
     "M17-primary_junc",
     "M18-mm_score",
     "M19-nb_mismatches",
-    "M20-nb_msrs",
-    "M21-nb_up_juncs",
-    "M22-nb_down_juncs",
-    "M23-up_aln",
-    "M24-down_aln"        
+    "M20-nb_usrs",
+    "M21-nb_msrs",
+    "M22-rel2raw",
+    "M23-nb_up_juncs",
+    "M24-nb_down_juncs",
+    "M25-up_aln",
+    "M26-down_aln"        
 };
 
 const unordered_set<string> stringParams = {

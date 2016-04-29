@@ -97,7 +97,7 @@ public:
     /**
      * @abstract    Fetch the sequence in a region.
      * @param  reg  Region in the format "chr2:20,000-30,000"
-     * @param  len  Length of the region
+     * @param  len  Length of the region returned
      * @return      The sequence as a string; empty string if no seq found
      */
     string fetchBases(const char* reg, int* len) const;
@@ -107,7 +107,7 @@ public:
      * @param  name Region name
      * @param  start    Start location on region (zero-based, inclusive)
      * @param  end  End position (zero-based, exclusive)
-     * @param  len  Length of the region
+     * @param  len  Length of the region returned
      * @return      The sequence as a string; empty string if no seq found
      */
     string fetchBases(const char* name, int start, int end, int* len) const;
