@@ -299,7 +299,7 @@ protected:
     
     void categorise(shared_ptr<Forest> f, const JunctionList& all, JunctionList& pass, JunctionList& fail, double t);
         
-    void createPositiveSet(const JunctionList& all, JunctionList& pos, ModelFeatures& mf);
+    void createPositiveSet(const JunctionList& all, JunctionList& pos, JunctionList& unlabelled, ModelFeatures& mf);
     
     void createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg);
     

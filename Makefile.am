@@ -62,8 +62,10 @@ dist_config_DATA = \
 		    data/selftrain_initial_neg.layer4.json \
 		    data/selftrain_initial_neg.layer5.json \
 		    data/selftrain_initial_neg.layer6.json \
+		    data/selftrain_initial_neg.layer7.json \
 		    data/selftrain_initial_pos.layer1.json \
-		    data/selftrain_initial_pos.layer2.json
+		    data/selftrain_initial_pos.layer2.json \
+		    data/selftrain_initial_pos.layer3.json
 
 # SRC DIRS
 make_dirs=deps/htslib-1.3 deps/ranger-0.3.8 lib src tests

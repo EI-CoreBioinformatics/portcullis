@@ -237,13 +237,13 @@ void portcullis::JunctionFilter::filter() {
     if (train) {
         
         // The initial positive and negative sets
-        JunctionList pos, neg;
+        JunctionList pos, unlabelled, neg;
          
         cout << "Self training mode activated." << endl << endl;
         
-        createPositiveSet(currentJuncs, pos, mf);
+        createPositiveSet(currentJuncs, pos, unlabelled, mf);
         
-        createNegativeSet(mf.L95, currentJuncs, neg);
+        createNegativeSet(mf.L95, unlabelled, neg);
         
         cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
         
@@ -466,7 +466,7 @@ void portcullis::JunctionFilter::filter() {
     }
 }
 
-void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, JunctionList& pos, ModelFeatures& mf) {
+void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, JunctionList& pos, JunctionList& unlabelled, ModelFeatures& mf) {
     JuncResultMap resultMap;
          
     cout << "Creating initial positive set for training" << endl
@@ -481,39 +481,47 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
         cout << Performance::longHeader();
     }
     
-    JunctionList p1, p2, f1, f2;
+    JunctionList p1, p2, p3;
     
     cout << endl << "1\t";
-    RuleFilter::filter(this->getIntitalPosRulesFile(1), all, p1, f1, "Creating initial positive set for training", resultMap);
+    RuleFilter::filter(this->getIntitalPosRulesFile(1), all, p1, unlabelled, "Creating initial positive set for training", resultMap);
     if (!genuineFile.empty()) {
-        cout << calcPerformance(p1, f1, true)->toLongString();
+        cout << calcPerformance(p1, unlabelled)->toLongString();
     }
     cout << endl << "2\t";    
-    RuleFilter::filter(this->getIntitalPosRulesFile(2), p1, p2, f2, "Creating initial positive set for training", resultMap);
+    RuleFilter::filter(this->getIntitalPosRulesFile(2), p1, p2, unlabelled, "Creating initial positive set for training", resultMap);
     if (!genuineFile.empty()) {
-        cout << calcPerformance(p2, f2, true)->toLongString();
+        cout << calcPerformance(p2, unlabelled)->toLongString();
     }
-    cout << endl;
+    cout << endl << "3\t";    
+    RuleFilter::filter(this->getIntitalPosRulesFile(3), p2, p3, unlabelled, "Creating initial positive set for training", resultMap);
+    if (!genuineFile.empty()) {
+        cout << calcPerformance(p3, unlabelled)->toLongString();
+    }
+    cout << endl << "L95x1.5\t";
 
     const uint32_t L95 = mf.calcIntronThreshold(p2);
-    const uint32_t L95x2 = L95 * 2;
+    const uint32_t pos_length_limit = L95 * 1.5;
     
-    JunctionList passJuncs, failJuncs;
-    for(auto& j : p2) {
-        if (j->getIntronSize() <= L95x2) {
+    JunctionList passJuncs;
+    for(auto& j : p3) {
+        if (j->getIntronSize() <= pos_length_limit) {
             passJuncs.push_back(j);
         }
         else {
-            failJuncs.push_back(j);
+            unlabelled.push_back(j);
         }
     }
     if (!genuineFile.empty()) {
-        cout << "L95x2\t" << calcPerformance(passJuncs, failJuncs, true)->toLongString() << endl;
+        cout << calcPerformance(passJuncs, unlabelled)->toLongString();
     }
-        
-    // Analyse positive set to get L0.05 of intron size
-    cout << endl << "Length of intron at 95th percentile of positive set (L95): " << mf.calcIntronThreshold(passJuncs) << endl << endl;
+      
+    cout << endl << endl << "Found " << passJuncs.size() << " junctions for the positive set" << endl << endl;
 
+    // Analyse positive set to get L0.05 of intron size
+    cout << "Length of intron at 95th percentile of positive set (L95): " << mf.calcIntronThreshold(passJuncs) << endl << endl;
+    
+    
     cout << "Saving initial positive set:" << endl;
     JunctionSystem isp(passJuncs);
     isp.saveAll(output.string() + ".selftrain.initialset.pos", "portcullis_isp");
@@ -533,7 +541,7 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
             }
         }
         JunctionSystem missedPos;
-        for(auto& j : failJuncs) {
+        for(auto& j : unlabelled) {
             if (j->isGenuine()) {
                 missedPos.addJunction(j);
             }
@@ -563,7 +571,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
         cout << Performance::longHeader();
     }
     
-    JunctionList p1, p2, p3, p4, p5, p6, p7, f1, f2, f3, f4, f5, f6, f7;
+    JunctionList p1, p2, p3, p4, p5, p6, p7, p8, f1, f2, f3, f4, f5, f6, f7, f8;
     
     cout << endl << "1\t";
     RuleFilter::filter(this->getIntitalNegRulesFile(1), all, p1, f1, "Creating initial negative set for training", resultMap);
@@ -595,11 +603,16 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
     if (!genuineFile.empty()) {
        cout << calcPerformance(p6, f6, true)->toLongString();
     }
+    cout << endl << "7\t";
+    RuleFilter::filter(this->getIntitalNegRulesFile(7), f6, p7, f7, "Creating initial negative set for training", resultMap);
+    if (!genuineFile.empty()) {
+       cout << calcPerformance(p7, f7, true)->toLongString();
+    }
     cout << endl << "L95x5\t";
     
     JunctionList passJuncs, failJuncs;
     const uint32_t L95x5 = L95 * 5;
-    for(auto& j : f6) {
+    for(auto& j : f7) {
        if (j->getIntronSize() > L95x5 && j->getMaxMMES() < 10 ) {
            p7.push_back(j);
        }
@@ -608,7 +621,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
        }
     }
     if (!genuineFile.empty()) {
-       cout << calcPerformance(p7, failJuncs, true)->toLongString();
+       cout << calcPerformance(p8, failJuncs, true)->toLongString();
     }
     
     cout << endl << endl << "Concatenating negatives from each layer to create negative set" << endl << endl;
@@ -620,16 +633,21 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
     passJuncs.insert(passJuncs.end(), p5.begin(), p5.end());
     passJuncs.insert(passJuncs.end(), p6.begin(), p6.end());
     passJuncs.insert(passJuncs.end(), p7.begin(), p7.end());
+    passJuncs.insert(passJuncs.end(), p8.begin(), p8.end());
 
-    if (!genuineFile.empty()) {
-       cout << "Final\t" << calcPerformance(passJuncs, failJuncs, true)->toLongString() << endl;
-    }
-    
-    cout << endl << "Saving initial negative set:" << endl;
+    // This will remove any duplicates
     JunctionSystem isn(passJuncs);
+        
+    if (!genuineFile.empty()) {
+       cout << "Final\t" << calcPerformance(isn.getJunctions(), failJuncs, true)->toLongString() << endl << endl;
+    }
+
+    cout << "Found " << isn.getJunctions().size() << " junctions for the negative set" << endl << endl;
+
+    cout << endl << "Saving initial negative set:" << endl;
     isn.saveAll(output.string() + ".selftrain.initialset.neg", "portcullis_isn");
 
-    for(auto& j : passJuncs) {
+    for(auto& j : isn.getJunctions()) {
        JunctionPtr copy = make_shared<Junction>(*j);
        copy->setGenuine(false);
        neg.push_back(copy);            
@@ -640,7 +658,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
        JunctionSystem invalidNeg;
        JunctionSystem missedNeg;
 
-       for(auto& j : passJuncs) {
+       for(auto& j : isn.getJunctions()) {
            if (j->isGenuine()) {
                invalidNeg.addJunction(j);
            }
@@ -815,8 +833,8 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
         
         cout << "The best F1 score of " << max_f1 << " is achieved with threshold set at " << best_t_f1 << endl;
         cout << "The best MCC score of " << max_mcc << " is achieved with threshold set at " << best_t_mcc << endl;
-        
-        categorise(f, all, pass, fail, best_t_mcc);
+        cout << "Actual threshold set at " << threshold << endl;
+        categorise(f, all, pass, fail, best_t_f1);
     }
     else {
         categorise(f, all, pass, fail, threshold);

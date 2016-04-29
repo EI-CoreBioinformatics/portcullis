@@ -1,69 +1,45 @@
 {
 	"parameters": {
-		"M1-canonical_ss": {
-			"operator": "in",
-			"value": ["C", "S"]
-		},
-                "M1-canonical_ss.2": {
-			"operator": "in",
-			"value": ["N"]
-		},
 		"M4-nb_rel_aln": {
                         "operator": "gte",
-                        "value": 5
+                        "value": 3
                 },
                 "M4-nb_rel_aln.2": {
                         "operator": "gte",
-                        "value": 1
+                        "value": 2
                 },
                 "M12-maxmmes": {
                         "operator": "gte",
-                        "value": 20
+                        "value": 25
                 },
                 "M12-maxmmes.2": {
-                        "operator": "gte",
-                        "value": 10
+                        "operator": "gt",
+                        "value": 12
                 },
-		"M11-entropy": {
-			"operator": "gt",
-			"value": 5.0
-		},
-                "M11-entropy.2": {
-			"operator": "gt",
-			"value": 2.0
-		},
                 "M13-hamming5p": {
                         "operator": "gte",
-                        "value": 5
+                        "value": 8
                 },
                 "M13-hamming5p.2": {
                         "operator": "gte",
-                        "value": 7
+                        "value": 10
                 },
                 "M14-hamming3p": {
                         "operator": "gte",
-                        "value": 5
+                        "value": 8
                 },
                 "M14-hamming3p.2": {
                         "operator": "gte",
-                        "value": 7
+                        "value": 10
                 },
-		"M19-mean_mismatches": {
-			"operator": "eq",
+                "M19-mean_mismatches": {
+			"operator": "lt",
 			"value": 0
 		},
                 "M19-mean_mismatches.2": {
 			"operator": "lt",
-			"value": 0.2
-		},
-                "M20-nb_usrs": {
-                        "operator": "gte",
-                        "value": 5
-                },
-                "M22-rel2raw": {
-                        "operator": "gte",
-                        "value": 0.5
-                }
+			"value": 0.5
+		}
 	},
-	"expression": "( ( M1-canonical_ss & M19-mean_mismatches & M20-nb_usrs ) | ( M1-canonical_ss & M12-maxmmes & M11-entropy & M19-mean_mismatches.2 ) | ( M1-canonical_ss.2 & M19-mean_mismatches & M12-maxmmes & M11-entropy ) )"  
+	"expression": "( M4-nb_rel_aln & M12-maxmmes ) | ( M4-nb_rel_aln.2 & M12-maxmmes.2 & M13-hamming5p & M14-hamming3p & M19-mean_mismatches.2 ) | ( M13-hamming5p.2 & M14-hamming3p.2 & M19-mean_mismatches )"  
 }
