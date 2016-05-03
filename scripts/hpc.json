@@ -1,52 +1,92 @@
 {
-  "__default__": {
-    "threads": "4",
-    "memory": "5000",
-    "queue": "Test"
-  },
-  "align_gsnap": {
-    "memory": "30000"
-  },
-  "align_star": {
-    "memory": "60000"
-  },
-  "align_hisat": {
-    "memory": "20000"
-  },
-  "bam_sort": {
-    "memory": "10000"
-  },
-  "asm_cufflinks": {
-    "memory": "30000"
-  },
-  "asm_stringtie": {
-    "memory": "25000"
-  },
-  "asm_class": {
-    "memory": "30000"
-  },
-  "portcullis_junc": {
-    "memory": "25000"
-  },
-  "truesight": {
-    "memory": "60000"
-  },
-  "finesplice": {
-    "memory": "20000"
-  },
-  "spanki": {
-    "memory": "20000"
-  },
-  "simgen_model": {
-    "memory": "30000"
-  },
-  "align_tophat_wref": {
-    "memory": "20000"
-  },
-  "simgen_bowtie_align": {
-    "memory": "20000"
-  },
-  "fastqc": {
-    "memory": "20000"
-  }
+	"__default__" :
+	{
+		"threads" : "4",
+		"memory" : "5000"
+	},
+	"align_gsnap_index" :
+	{
+		"memory" : "20000"
+	},
+	"align_gsnap" :
+	{
+		"memory" : "30000"
+	},
+	"align_star_index" :
+	{
+		"memory" : "60000"
+	},
+	"align_star" :
+	{
+		"memory" : "60000"
+	},
+	"align_hisat" :
+	{
+		"memory" : "20000"
+	},
+	"bam_sort" :
+	{
+		"memory" : "10000"
+	},
+	"asm_cufflinks" :
+	{
+		"memory" : "30000"
+	},
+	"asm_stringtie" :
+	{
+		"memory" : "25000"
+	},
+	"asm_class" :
+	{
+		"memory" : "30000"
+	},
+	"portcullis_prep" :
+	{
+		"memory" : "10000"
+	},
+	"portcullis_junc" :
+	{
+		"memory" : "25000"
+	},
+	"portcullis_junc2" :
+	{
+		"memory" : "25000"
+	},
+	"portcullis_prep2" :
+	{
+		"memory" : "10000"
+	},
+	"truesight" :
+	{
+		"memory": "60000"
+	},
+	"soapsplice" :
+	{
+		"memory": "60000"
+	},
+	"finesplice" :
+	{
+		"memory": "20000"
+	},
+	"spanki" :
+	{
+		"memory": "20000"
+	},
+	"simgen_model" :
+	{
+		"memory": "30000"
+	},
+	"align_tophat_wref" :
+	{
+		"memory": "20000"
+	},
+	"simgen_bowtie_align" :
+	{
+		"memory": "20000"
+	},
+	"fastqc" :
+	{
+		"memory": "20000"
+	}
+
 }
