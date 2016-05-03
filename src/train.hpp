@@ -36,24 +36,24 @@ using boost::filesystem::path;
 
 #include <ranger/Forest.h>
 #include <portcullis/performance.hpp>
-
+#include <portcullis/bam/genome_mapper.hpp>
+#include <portcullis/model_features.hpp>
+using portcullis::bam::GenomeMapper;
+using portcullis::ModelFeatures;
 
 namespace portcullis {
     
 typedef boost::error_info<struct TrainError,string> TrainErrorInfo;
 struct TrainException: virtual boost::exception, virtual std::exception { };
 
-const uint16_t DEFAULT_TRAIN_FOLDS = 2;
-const uint16_t DEFAULT_TRAIN_TREES = 10;
+const string DEFAULT_TRAIN_OUTPUT = "portcullis_train/portcullis";
+const uint16_t DEFAULT_TRAIN_FOLDS = 5;
+const uint16_t DEFAULT_TRAIN_TREES = 100;
 const uint16_t DEFAULT_TRAIN_THREADS = 1;
 const double DEFAULT_TRAIN_FRACTION = 1.0;
 const int DEFAULT_SEED = 1234567;       // To avoid non-deterministic behaviour
 
-// List of variable names
-const vector<string> VAR_NAMES = { "M2-nb-reads", "M3-nb_dist_aln", "M4-nb_rel_aln", 
-            "M8-max_min_anc", "M9-dif_anc", "M10-dist_anc", "M11-entropy", 
-            "M12-maxmmes", "M13-hammping5p", "M14-hamming3p",
-            "Genuine" };
+
 
 // Derived from https://sureshamrita.wordpress.com/2011/08/24/c-implementation-of-k-fold-cross-validation/
 template<class In>
@@ -213,26 +213,23 @@ public:
                       "by the junction filtering tool.  The current implementation uses \"ranger\"\n" +
                       "for creating the decision trees and random forests.  We also provide k-fold\n" +
                       "cross validation support to help reduce overfitting.\n\n" +
-                      "Usage: portcullis train [options] --reference=<bed_file> <junction_file>\n\n" +
+                      "Usage: portcullis train [options] --reference=<labels_file> <junction_file>\n\n" +
                       "Allowed options";
     }
 
     static int main(int argc, char *argv[]);
     
-    static Data* juncs2FeatureVectors(const JunctionList& x);
-    
-    static shared_ptr<Forest> trainInstance(const JunctionList& x, string outputPrefix, uint16_t trees, uint16_t threads, bool regressionMode);
     
 protected:
     
     
-    void testInstance(shared_ptr<Forest> f, const JunctionList& y);  
+    void testInstance(shared_ptr<Forest> f, const JunctionList& y);
     
     void getRandomSubset(const JunctionList& in, JunctionList& out);
     
-    void outputMeanPerformance(const vector<unique_ptr<Performance>>& scores);
+    void outputMeanPerformance(const vector<unique_ptr<Performance>>& scores, std::ofstream& resout);
     
-    void outputMeanScore(const vector<double>& scores, const string& score_type);
+    void outputMeanScore(const vector<double>& scores, const string& score_type, std::ofstream& resout);
 };
 }
 

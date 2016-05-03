@@ -8,10 +8,10 @@ import tab
 
 
 def main():
-	parser = argparse.ArgumentParser("Script to build a random forest decision tree")
+	parser = argparse.ArgumentParser("Script to produce a list labelling whether each entry in the portcullis tab input belong to the bed reference or not")
 	parser.add_argument("input", nargs="+", help="The tab file produce by portcullis")
 	parser.add_argument("-r", "--reference", required=True, help="The reference BED file to compare against")
-	parser.add_argument("-o", "--output", default="bedref_out", help="Output prefix for output files")
+	parser.add_argument("-o", "--output", default="bedref_out.labels", help="Output prefix for output files")
 	parser.add_argument("-f", "--filter", action='store_true', default=False, help="Whether to filter tab file")
 	args = parser.parse_args()
 
@@ -38,7 +38,7 @@ def main():
 	ref = bed12.loadbed(args.reference, False, False)
 	print("# ref entries: " + str(len(ref)), file=sys.stderr)
 
-	res = open(args.output + ".res", "w")
+	res = open(args.output, "w")
 
 	filtin = None
 	filtout = None

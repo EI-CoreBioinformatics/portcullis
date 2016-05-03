@@ -1,0 +1,21 @@
+{
+	"parameters": {
+                "M2-nb_reads": {
+                        "operator": "gt",
+                        "value": 100
+                },
+                "M22-rel2raw": {
+                        "operator": "eq",
+                        "value": 0.0
+                },
+                "M13-hamming5p": {
+                        "operator": "lte",
+                        "value": 4
+                },
+                "M14-hamming3p": {
+                        "operator": "lte",
+                        "value": 4
+                }
+	},
+	"expression": "( M2-nb_reads & M22-rel2raw & M13-hamming5p & M14-hamming3p )"  
+}

@@ -2,6 +2,7 @@
 
 import bed12
 
+
 class TabEntry:
 	chrom = ""
 	start = 0
@@ -9,13 +10,13 @@ class TabEntry:
 	left = 0
 	right = 0
 	strand = "?"
-	#M1 = "N"
+	# M1 = "N"
 	M2 = 0
 	M3 = 0
 	M4 = 0
-	#M5 = 0
-	#M6 = 0
-	#M7 = 0
+	# M5 = 0
+	# M6 = 0
+	# M7 = 0
 	M8 = 0
 	M9 = 0
 	M10 = 0
@@ -23,16 +24,16 @@ class TabEntry:
 	M12 = 0
 	M13 = 0
 	M14 = 0
-	#M15 = 0.0
+
+	# M15 = 0.0
 
 	def __init__(self):
 		self.data = []
 
 	def __str__(self):
-
-		line = [ self.chrom, self.start, self.end, self.left, self.right, self.strand,
-			 self.M2, self.M3, self.M4, self.M8, self.M9, self.M10, self.M11, self.M12, self.M13, self.M14
-			 ]
+		line = [self.chrom, self.start, self.end, self.left, self.right, self.strand,
+				self.M2, self.M3, self.M4, self.M8, self.M9, self.M10, self.M11, self.M12, self.M13, self.M14
+				]
 		return "\t".join([str(_) for _ in line])
 
 	def __key__(self):
@@ -43,15 +44,16 @@ class TabEntry:
 
 	@property
 	def key(self):
-		return (self.chrom, self.start, self.end)            
+		return (self.chrom, self.start, self.end)
 
 	def makeMatrixRow(self):
-		return [ self.M2, self.M3, self.M4, self.M8, self.M9, self.M10, self.M11, self.M12, self.M13, self.M14 ]
+		return [self.M2, self.M3, self.M4, self.M8, self.M9, self.M10, self.M11, self.M12, self.M13, self.M14]
 
 	@staticmethod
 	def features():
-		return [ "M2-nb-reads", "M3-nb_dist_aln", "M4-nb_rel_aln", "M8-max_min_anc", "M9-dif_anc", "M10-dist_anc",
-				 "M11-entropy", "M12-maxmmes", "M13-hammping5p", "M14-hamming3p"]
+		return ["M2-nb-reads", "M3-nb_dist_aln", "M4-nb_rel_aln", "M8-max_min_anc", "M9-dif_anc", "M10-dist_anc",
+				"M11-entropy", "M12-maxmmes", "M13-hammping5p", "M14-hamming3p"]
+
 	@staticmethod
 	def featureAt(index):
 		return TabEntry.features()[index]
@@ -59,18 +61,17 @@ class TabEntry:
 	@staticmethod
 	def sortedFeatures(indicies):
 		f = TabEntry.features()
-		s=[]
+		s = []
 		for i in indicies:
 			s.append(f[i])
 		return s
 
 	@staticmethod
 	def nbMetrics():
-		return 10
+		return len(TabEntry.features())
 
 	@staticmethod
 	def create_from_tabline(line):
-
 		b = TabEntry()
 
 		parts = line.split("\t")
@@ -96,11 +97,9 @@ class TabEntry:
 		return b
 
 
-
 def loadtab(tabfile):
-
-	bed=list()
-	tab=list()
+	bed = list()
+	tab = list()
 	with open(tabfile) as f:
 		# Skip header
 		f.readline()
@@ -111,12 +110,11 @@ def loadtab(tabfile):
 				bed.append(bed12.BedEntry.create_from_tabline(line, False, False))
 				tab.append(TabEntry.create_from_tabline(line))
 
-
 	return bed, tab
 
-def loadtabasset(tabfile):
 
-	tab=set()
+def loadtabasset(tabfile):
+	tab = set()
 	with open(tabfile) as f:
 		# Skip header
 		f.readline()
@@ -127,30 +125,27 @@ def loadtabasset(tabfile):
 				t = TabEntry.create_from_tabline(line)
 				tab.add(t.key)
 
-
 	return tab
 
 
+def filtertab(filepath, outfile, tab_set, mode):
+	o = open(outfile, 'w')
 
-def filtertab(filepath, outfile, tab_set, mode) :
+	index = 0;
+	with open(filepath) as f:
 
-    o = open(outfile, 'w')
+		o.write(f.readline())
 
-    index = 0;
-    with open(filepath) as f:
+		for line in f:
 
-        o.write(f.readline())
+			line = line.strip()
+			if line != "":
+				key = TabEntry.create_from_tabline(line).key
+				if mode == 0:
+					if key in tab_set:
+						o.write(line + "\n")
+				elif mode == 1:
+					if key not in tab_set:
+						o.write(line + "\n")
 
-        for line in f:
-
-            line = line.strip()
-            if line != "":
-                key = TabEntry.create_from_tabline(line).key
-                if mode == 0:
-                    if key in tab_set:
-                        o.write(line + "\n")
-                elif mode == 1:
-                    if key not in tab_set:
-                        o.write(line + "\n")
-
-    o.close()
+	o.close()

@@ -1,0 +1,93 @@
+{
+	"parameters": {
+                "M1-canonical_ss": {
+			"operator": "in",
+			"value": ["N", "S"]
+		},
+                "M2-nb_reads": {
+                        "operator": "lte",
+                        "value": 1
+                },                
+		"M3-nb_dist_aln": {
+			"operator": "gte",
+			"value": 2
+		},
+		"M4-nb_rel_aln": {
+                        "operator": "eq",
+                        "value": 0
+                },
+                "M11-entropy": {
+			"operator": "lt",
+			"value": 1.0
+		},
+                "M11-entropy.2": {
+			"operator": "gt",
+			"value": 2.0
+		},
+                "M11-entropy.3": {
+			"operator": "eq",
+			"value": 0.0
+		},
+                "M12-maxmmes": {
+                        "operator": "lt",
+                        "value": 7
+                },
+                "M12-maxmmes.2": {
+                        "operator": "lt",
+                        "value": 10
+                },
+                "M12-maxmmes.3": {
+                        "operator": "lt",
+                        "value": 20
+                },
+                "M8-max_min_anc": {
+                        "operator": "lt",
+                        "value": 16
+                },
+		"Suspect": {
+			"operator": "eq",
+			"value": 1
+		},
+                "PFP": {
+			"operator": "eq",
+			"value": 1
+		},
+                "M13-hamming5p": {
+                        "operator": "lte",
+                        "value": 2
+                },
+                "M14-hamming3p": {
+                        "operator": "lte",
+                        "value": 2
+                },
+                "M19-mean_mismatches": {
+			"operator": "gte",
+			"value": 5.0
+		},
+                "M19-mean_mismatches.2": {
+			"operator": "gte",
+			"value": 2.0
+		},
+                "M20-nb_usrs": {
+                        "operator": "eq",
+                        "value": 0
+                },
+                "M20-nb_usrs.2": {
+                        "operator": "eq",
+                        "value": 1
+                },
+                "M21-nb_msrs": {
+                        "operator": "gte",
+                        "value": 1
+                },
+                "M22-rel2raw": {
+                        "operator": "lt",
+                        "value": 0.9
+                },
+                "M22-rel2raw.2": {
+                        "operator": "eq",
+                        "value": 0.0
+                }
+	},
+	"expression": "( M20-nb_usrs & M21-nb_msrs & M12-maxmmes.2 & M22-rel2raw.2 )"  
+}

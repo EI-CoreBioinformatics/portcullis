@@ -71,6 +71,8 @@ public:
     
     JunctionSystem(path junctionFile);
     
+    JunctionSystem(JunctionList& jl);
+    
     virtual ~JunctionSystem();
     
     const JunctionList& getJunctions() const;
@@ -149,8 +151,6 @@ public:
     }
     
     void calcJunctionStats(bool verbose);
-    
-    void calcTrimmedOverhangScore();
     
     void sort();
     

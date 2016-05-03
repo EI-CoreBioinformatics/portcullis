@@ -24,6 +24,7 @@
 #include <memory>
 #include <unordered_map>
 using std::ostream;
+using std::cout;
 using std::endl;
 using std::min;
 using std::max;
@@ -44,6 +45,9 @@ using namespace portcullis::bam;
 
 #include "intron.hpp"
 #include "seq_utils.hpp"
+#include "markov_model.hpp"
+using portcullis::KmerMarkovModel;
+using portcullis::PosMarkovModel;
 using portcullis::Intron;
 
 
@@ -97,14 +101,16 @@ const vector<string> METRIC_NAMES = {
         "M17-primary_junc",
         "M18-mm_score",
         "M19-mean_mismatches",
-        "M20-nb_msrs",
-        "M21-nb_up_juncs",
-        "M22-nb_down_juncs",
-        "M23-up_aln",
-        "M24-down_aln",
-        "M25-dist_2_up_junc",
-        "M26-dist_2_down_junc",
-        "M27-dist_nearest_junc"
+        "M20-nb_usrs",
+        "M21-nb_msrs",
+        "M22-rel2raw",
+        "M23-nb_up_juncs",
+        "M24-nb_down_juncs",
+        "M25-up_aln",
+        "M26-down_aln",
+        "M27-dist_2_up_junc",
+        "M28-dist_2_down_junc",
+        "M29-dist_nearest_junc"
     };
 
 const vector<string> STRAND_NAMES = {
@@ -174,7 +180,10 @@ static string cssToString(CanonicalSS css) {
     return string("No");
 }
 
-
+struct SplicingScores {
+    double positionWeighting = 0.0;
+    double splicingSignal = 0.0;
+};
 
 struct AlignmentInfo {
     BamAlignmentPtr ba;
@@ -257,15 +266,17 @@ private:
     bool     primaryJunction;                   // Metric 17    
     double   multipleMappingScore;              // Metric 18
     double   meanMismatches;                    // Metric 19
-    uint32_t nbMultipleSplicedReads;            // Metric 20
-    uint16_t nbUpstreamJunctions;               // Metric 21
-    uint16_t nbDownstreamJunctions;             // Metric 22
-    uint32_t nbUpstreamFlankingAlignments;      // Metric 23
-    uint32_t nbDownstreamFlankingAlignments;    // Metric 24
-    int32_t distanceToNextUpstreamJunction;     // Metric 25
-    int32_t distanceToNextDownstreamJunction;   // Metric 26
-    int32_t distanceToNearestJunction;          // Metric 27
-    vector<uint32_t> junctionOverhangs;         // Metric 28-37
+    //uint32_t nbUniquelySplicedReads;          // Metric 20 (Use getter)
+    uint32_t nbMultipleSplicedReads;            // Metric 21
+    //double   reliableVsRawReadRatio;            // Metric 22 (Use getter)
+    uint16_t nbUpstreamJunctions;               // Metric 23
+    uint16_t nbDownstreamJunctions;             // Metric 24
+    uint32_t nbUpstreamFlankingAlignments;      // Metric 25
+    uint32_t nbDownstreamFlankingAlignments;    // Metric 26
+    int32_t distanceToNextUpstreamJunction;     // Metric 27
+    int32_t distanceToNextDownstreamJunction;   // Metric 28
+    int32_t distanceToNearestJunction;          // Metric 29
+    vector<uint32_t> junctionOverhangs;         // Metric 30-49
     
     // **** Predictions ****
     
@@ -689,6 +700,14 @@ public:
         return nbMultipleSplicedReads;
     }
     
+    uint32_t getNbUniquelySplicedReads() const {
+        return nbJunctionAlignments - nbMultipleSplicedReads;
+    }
+    
+    double getReliable2RawRatio() const {
+        return (double)nbReliableAlignments / (double)nbJunctionAlignments;
+    }
+    
     uint16_t getNbDownstreamJunctions() const {
         return nbDownstreamJunctions;
     }
@@ -813,7 +832,7 @@ public:
     void setMeanMismatches(double meanMismatches) {
         this->meanMismatches = meanMismatches;
     }
-    
+        
     void setNbMultipleSplicedReads(uint32_t nbMultipleSplicedReads) {
         this->nbMultipleSplicedReads = nbMultipleSplicedReads;
     }
@@ -829,7 +848,15 @@ public:
     void setJunctionOverhangs(size_t index, uint32_t val) {
         junctionOverhangs[index] = val;
     }
-
+    
+    double getJunctionOverhangLogDeviation(size_t i) const {
+        double Ni = junctionOverhangs[i];                 // Actual count at this position
+        if (Ni == 0.0) Ni = 0.000000000001;                     // Ensure some value > 0 here otherwise we get -infinity later.
+        double Pi = 1.0 - ((double)i / (double)(this->meanQueryLength / 2.0));       // Likely scale at this position
+        double Ei = (double)this->getNbJunctionAlignments() * Pi;  // Expected count at this position
+        double Xi = log2(Ni / Ei);
+        return Xi;
+    }
 
     bool isGenuine() const {
         return genuine;
@@ -842,7 +869,25 @@ public:
     string locationAsString() const {
         return this->intron->toString() + strandToChar(this->consensusStrand);
     }
-
+    
+    /**
+     * Calculates a score for this intron size based on how this intron size fits
+     * into an expected distribution specified by the length at the threhsold percentile
+     * (threshold) provided by the user.  Introns of length < threshold have a score of 0. 
+     * Introns with length > threshold have score: -ln(size - length_threshold)
+     * @param Length of threshold Intron size
+     * @return A score for this intron size given the threshold value
+     */
+    double calcIntronScore(const uint32_t threshold) const {
+        return this->intron->size() <= threshold ? 0.0 : log(this->intron->size() - threshold);
+    }
+    
+    
+    double calcCodingPotential(GenomeMapper& gmap, KmerMarkovModel& exon, KmerMarkovModel& intron) const;
+    
+    SplicingScores calcSplicingScores(GenomeMapper& gmap, KmerMarkovModel& donorT, KmerMarkovModel& donorF,
+                            KmerMarkovModel& acceptorT, KmerMarkovModel& acceptorF,
+                            PosMarkovModel& donorP, PosMarkovModel& acceptorP) const;
     
     
     // **** Output methods ****
@@ -921,7 +966,9 @@ public:
                     << j.primaryJunction << "\t"
                     << j.multipleMappingScore << "\t"
                     << j.meanMismatches << "\t"
+                    << j.getNbUniquelySplicedReads() << "\t"
                     << j.nbMultipleSplicedReads << "\t"
+                    << j.getReliable2RawRatio() << "\t"
                     << j.nbDownstreamJunctions << "\t"
                     << j.nbUpstreamJunctions << "\t"
                     << j.nbUpstreamFlankingAlignments << "\t"

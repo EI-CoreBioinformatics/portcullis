@@ -187,7 +187,7 @@ void ForestClassification::computePredictionErrorInternal() {
 }
 
 void ForestClassification::writeOutputInternal() {
-  *verbose_out << "Tree type:                         " << "Classification" << std::endl;
+  if (verbose_out) *verbose_out << "Tree type:                         " << "Classification" << std::endl;
 }
 
 void ForestClassification::writeConfusionFile() {
@@ -232,7 +232,7 @@ void ForestClassification::writeConfusionFile() {
   }
 
   outfile.close();
-  *verbose_out << "Saved confusion matrix to file " << filename << "." << std::endl;
+  if (verbose_out) *verbose_out << "Saved confusion matrix to file " << filename << "." << std::endl;
 }
 
 void ForestClassification::writePredictionFile() {
@@ -254,7 +254,7 @@ void ForestClassification::writePredictionFile() {
     outfile << std::endl;
   }
 
-  *verbose_out << "Saved predictions to file " << filename << "." << std::endl;
+  if (verbose_out) *verbose_out << "Saved predictions to file " << filename << "." << std::endl;
 }
 
 void ForestClassification::saveToFileInternal(std::ofstream& outfile) {

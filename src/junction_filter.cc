@@ -36,279 +36,42 @@ using std::vector;
 using std::cout;
 using std::cerr;
 
-#include <Python.h>
-
 #include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
+#include <boost/program_options.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/program_options.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/spirit/include/qi.hpp>
-#include <boost/spirit/include/phoenix.hpp>
-#include <boost/spirit/include/phoenix_operator.hpp>
-#include <boost/variant/recursive_wrapper.hpp>
 #include <boost/lexical_cast.hpp>
 using boost::timer::auto_cpu_timer;
 using boost::lexical_cast;
 namespace bfs = boost::filesystem;
 namespace po = boost::program_options;
-using boost::property_tree::ptree;
-namespace qi    = boost::spirit::qi;
-namespace phx   = boost::phoenix;
+
 
 #include <ranger/ForestClassification.h>
-#include <ranger/ForestRegression.h>
+#include <ranger/ForestProbability.h>
 #include <ranger/DataDouble.h>
 
+#include <portcullis/bam/genome_mapper.hpp>
 #include <portcullis/intron.hpp>
 #include <portcullis/junction.hpp>
 #include <portcullis/junction_system.hpp>
 #include <portcullis/portcullis_fs.hpp>
 #include <portcullis/performance.hpp>
+#include <portcullis/rule_parser.hpp>
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
 using portcullis::Performance;
-
-#include "train.hpp"
-using portcullis::Train;
+using portcullis::eval;
+using portcullis::bam::GenomeMapper;
 
 #include "junction_filter.hpp"
-
-
-portcullis::Operator portcullis::stringToOp(const string& str) {
-    if (boost::iequals(str, "EQ")) {
-        return EQ;
-    }
-    else if (boost::iequals(str, "GT")) {
-        return GT;
-    }
-    else if (boost::iequals(str, "LT")) {
-        return LT;
-    }
-    else if (boost::iequals(str, "GTE")) {
-        return GTE;
-    }
-    else if (boost::iequals(str, "LTE")) {
-        return LTE;
-    }
-    else if (boost::iequals(str, "IN")) {
-        return IN;
-    }
-    else if (boost::iequals(str, "NOT_IN")) {
-        return NOT_IN;
-    }
-    else {
-        BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                        "Unrecognised operation: ") + str));
-    }
-}
-
-string portcullis::opToString(const Operator op) {
-    switch (op) {
-        case EQ:
-            return "EQ";                
-        case GT:
-            return "GT";
-        case LT:
-            return "LT";
-        case GTE:
-            return "GTE";
-        case LTE:
-            return "LTE";
-        case IN:
-            return "IN";
-        case NOT_IN:
-            return "NOT_IN";
-        default:
-            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                    "Unrecognised operation")));        
-    }    
-}
-
-bool portcullis::isNumericOp(Operator op) {
-    return (op != IN && op != NOT_IN);
-}
-
-
-portcullis::eval::eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap, const JunctionPtr _junc, JuncResultMap* _juncMap) : 
-        boost::static_visitor<bool>() {
-    numericmap = _numericmap;
-    stringmap = _stringmap;
-    junc = _junc;
-    juncMap = _juncMap;
-}
-
-bool portcullis::eval::operator()(const var& v) const { 
-
-    if (v=="T" || v=="t" || v=="true" || v=="True")
-        return true;
-    else if (v=="F" || v=="f" || v=="false" || v=="False")
-        return false;
-    else {
-        // If it starts with an M then assume we are looking at a metric
-        if (numericmap.count(v) > 0) {
-            Operator op = numericmap.at(v).first;
-            double threshold = numericmap.at(v).second;
-            double value = getNumericFromJunc(v);
-            bool res = evalNumberLeaf(op, threshold, value);
-            if (!res) {
-                juncMap->at(*(junc->getIntron())).push_back(v + " " + opToString(op) + " " + lexical_cast<string>(threshold));
-            }
-            return res;
-        }
-        else if (stringmap.count(v) > 0) {
-            Operator op = stringmap.at(v).first;
-            unordered_set<string> set = stringmap.at(v).second;
-
-            string setstring = boost::algorithm::join(set, ", ");
-
-            string value = getStringFromJunc(v);
-            bool res = evalSetLeaf(op, set, value);
-            if (!res) {
-                juncMap->at(*(junc->getIntron())).push_back(v + " " + opToString(op) + " " + setstring);
-            }
-            return res;
-        }
-        else {
-            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                "Unrecognised param: ") + v));
-        }
-
-    }
-    return boost::lexical_cast<bool>(v); 
-}
-
-    
-double portcullis::eval::getNumericFromJunc(const var& fullname) const {
-
-    size_t pos = fullname.find(".");
-
-    string name = pos == string::npos ? fullname : fullname.substr(0, pos);
-
-    uint16_t metric_index = -1;
-    for(size_t i = 0; i < METRIC_NAMES.size(); i++) {
-        if (boost::iequals(name, METRIC_NAMES[i])) {
-            metric_index = i;
-        }
-    }
-
-    if (metric_index == -1) {
-        BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                "Unrecognised metric: ") + name));
-    }
-
-    switch(metric_index) {
-        case 0:
-            return 0.0;
-        case 1:
-            return (double)junc->getNbJunctionAlignments();
-        case 2:
-            return (double)junc->getNbDistinctAlignments();
-        case 3:
-            return (double)junc->getNbReliableAlignments();
-        case 4:
-            return (double)junc->getIntronSize();
-        case 5:
-            return (double)junc->getLeftAnchorSize();
-        case 6:
-            return (double)junc->getRightAnchorSize();
-        case 7:
-            return (double)junc->getMaxMinAnchor();
-        case 8:
-            return (double)junc->getDiffAnchor();
-        case 9:
-            return (double)junc->getNbDistinctAnchors();
-        case 10:
-            return junc->getEntropy();
-        case 11:
-            return (double)junc->getMaxMMES();
-        case 12:
-            return (double)junc->getHammingDistance5p();
-        case 13:
-            return (double)junc->getHammingDistance3p();
-        case 14:
-            return junc->getCoverage();
-        case 15:
-            return junc->isUniqueJunction() ? 1.0 : 0.0;
-        case 16:
-            return junc->isPrimaryJunction() ? 1.0 : 0.0;
-        case 17:
-            return junc->getMultipleMappingScore();
-        case 18:
-            return junc->getMeanMismatches();
-        case 19:
-            return junc->getNbMultipleSplicedReads();
-        case 20:
-            return junc->getNbUpstreamJunctions();
-        case 21:
-            return junc->getNbDownstreamJunctions();
-        case 22:
-            return junc->getNbUpstreamFlankingAlignments();
-        case 23:
-            return junc->getNbDownstreamFlankingAlignments();
-
-    }
-
-
-    BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                        "Unrecognised metric")));        
-}
-    
-string portcullis::eval::getStringFromJunc(const var& fullname) const {
-
-    size_t pos = fullname.find(".");
-
-    string name = pos == string::npos ? fullname : fullname.substr(0, pos);
-
-    if (boost::iequals(name, "refname")) {
-        return junc->getIntron()->ref.name;
-    }
-    else if (boost::iequals(name, "M1-canonical_ss")) {
-        return string() + cssToChar(junc->getSpliceSiteType());
-    }  
-
-    BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                        "Unrecognised param: ") + name));        
-}
-    
-bool portcullis::eval::evalNumberLeaf(Operator op, double threshold, double value) const {
-    switch (op) {
-        case EQ:
-            return value == threshold;                
-        case GT:
-            return value > threshold;
-        case LT:
-            return value < threshold;
-        case GTE:
-            return value >= threshold;
-        case LTE:
-            return value <= threshold;
-        default:
-            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                    "Unrecognised operation")));
-    }
-}
-    
-bool portcullis::eval::evalSetLeaf(Operator op, unordered_set<string>& set, string value) const {
-    switch (op) {
-        case IN:
-            return set.find(value) != set.end();
-        case NOT_IN:
-            return set.find(value) == set.end();
-        default:
-            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                    "Unrecognised operation")));
-    }
-}
-
-
 
 portcullis::JunctionFilter::JunctionFilter( const path& _junctionFile, 
                     const path& _output) {
     junctionFile = _junctionFile;
+    genomeFile = "";
     modelFile = "";
     genuineFile = "";
     output = _output;
@@ -322,6 +85,7 @@ portcullis::JunctionFilter::JunctionFilter( const path& _junctionFile,
     filterNovel = false;
     source = DEFAULT_FILTER_SOURCE;
     verbose = false;
+    threshold = DEFAULT_FILTER_THRESHOLD;
 }
     
     
@@ -433,72 +197,136 @@ void portcullis::JunctionFilter::filter() {
         currentJuncs.push_back(j);
     }
     
+    // To be overridden if we are training
+    ModelFeatures mf;
+    mf.initGenomeMapper(this->genomeFile);
+    
+    mf.features[1].active=false;        // NB USRS          (BAD)
+    mf.features[2].active=false;        // NB DISTRS        (BAD)
+    //mf.features[3].active=false;      // NB RELRS         (GOOD)
+    mf.features[4].active = false;      // ENTROPY          (BAD - JO LOGDEV ARE BETTER)
+    //mf.features[5].active = false;    // REL2RAW          (GOOD)
+    mf.features[6].active=false;        // MAXMINANC        (BAD - MAXMMES IS BETTER)
+    //mf.features[7].active=false;      // MAXMMES          (GOOD)
+    //mf.features[8].active=false;      // MEAN MISMATCH    (GOOD)
+    //mf.features[9].active=false;      // INTRON           (GOOD)
+    //mf.features[10].active=false;     // MIN_HAMM         (GOOD)
+    mf.features[11].active=false;       // CODING POTENTIAL (BAD)
+    //mf.features[12].active=false;     // POS WEIGHTS      (GOOD)
+    //mf.features[13].active=false;     // SPLICE SIGNAL    (GOOD)
+    /*mf.features[14].active=false;     // JO LOGDEV FEATURES BETTER THAN ENTROPY
+    mf.features[15].active=false;
+    mf.features[16].active=false;
+    mf.features[17].active=false;
+    mf.features[18].active=false;
+    mf.features[19].active=false;
+    mf.features[20].active=false;
+    mf.features[21].active=false;
+    mf.features[22].active=false;
+    mf.features[23].active=false;
+    mf.features[24].active=false;
+    mf.features[25].active=false;
+    mf.features[26].active=false;
+    mf.features[27].active=false;
+    mf.features[28].active=false;
+    mf.features[29].active=false;*/
+    
+    
+    
+    
     if (train) {
         
-        JunctionList initialSet;
-        uint32_t pos = 0;
-        uint32_t neg = 0;
-        
+        // The initial positive and negative sets
+        JunctionList pos, unlabelled, neg;
          
-        cout << "Collecting initial positive and negative sets from input ...";
-        cout.flush();
+        cout << "Self training mode activated." << endl << endl;
         
-        // Guess at some likely initial positive and negative junctions
-        for(auto& j : currentJuncs) {
-            if (    j->getMeanMismatches() < 1.0 &&
-                    j->getEntropy() > 3.0 &&
-                    j->getHammingDistance3p() > 8 &&
-                    j->getHammingDistance5p() > 8 &&
-                    j->getMaxMMES() > 20 &&
-                    j->getNbReliableAlignments() > 5) {
-                
-                JunctionPtr copy = make_shared<Junction>(*j);
-                copy->setGenuine(true);
-                initialSet.push_back(copy);
-                pos++;
+        createPositiveSet(currentJuncs, pos, unlabelled, mf);
+        
+        createNegativeSet(mf.L95, unlabelled, neg);
+        
+        cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
+        
+        cout << "Training markov models ...";
+        cout.flush();
+        mf.trainCodingPotentialModel(pos);
+        mf.trainSplicingModels(pos, neg);
+        cout << " done." << endl << endl;
+        
+        
+        
+        // Build the training set by combining the positive and negative sets
+        JunctionList training;
+        training.reserve(pos.size() + neg.size());
+        training.insert(training.end(), pos.begin(), pos.end());
+        training.insert(training.end(), neg.begin(), neg.end());
+        
+        JunctionSystem trainingSystem(training);
+        trainingSystem.sort();        
+        
+        cout << "Training Random Forest" << endl
+             << "----------------------" << endl << endl;
+        bool done = false;
+        shared_ptr<Forest> forest = nullptr;
+        while(!done) {
+        
+            forest = mf.trainInstance(trainingSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
+            const vector<double> importance = forest->getVariableImportance();
+            mf.resetActiveFeatureIndex();
+            uint16_t min_importance_idx = 10000;
+            double min_importance_val = 100000.0;
+            uint16_t min_feature_idx = 10000;
+            // This approach to feature selection (i.e. removing worst features by importance)
+            // doesn't appear to have much impact on final results and is computationally
+            // expensive.  Removing for now.
+            /*for(size_t i = 0; i < importance.size(); i++) {
+                double imp = importance[i];
+                int16_t j = mf.getNextActiveFeatureIndex();
+                if (imp < 0.1 && imp < min_importance_val) {
+                    min_importance_idx = i;
+                    min_importance_val = imp;
+                    min_feature_idx = j;
+                }
+            }*/
+            if (min_importance_idx != 10000) {
+                mf.features[min_feature_idx].active = false;
+                cout << "Deactivating feature: " << mf.features[min_feature_idx].name << " - " << min_importance_val << endl;                
             }
-            else if (   (j->getNbJunctionAlignments() == 1 &&
-                        j->getMaxMinAnchor() < 8) ||
-                        j->isPotentialFalsePositive()) {
-                JunctionPtr copy = make_shared<Junction>(*j);
-                copy->setGenuine(false);
-                initialSet.push_back(j);
-                neg++;
-            }            
+            else {
+                done = true;
+            }
         }
         
-        cout << " done." << endl
-             << "Found " << pos << " initial positive junctions and " << neg << " negative junctions, which will be used for training." << endl;
-
-        shared_ptr<Forest> forest = Train::trainInstance(initialSet, output.string() + ".selftrain", 100, threads, true);
+        const vector<double> importance = forest->getVariableImportance();
+        bool foundIrrelevant = false;
+        mf.resetActiveFeatureIndex();
+        cout << "Active features remaining:" << endl;
+        for(auto& i : importance) {
+            int16_t j = mf.getNextActiveFeatureIndex();
+            cout << mf.features[j].name << " - " << i << endl;
+        }
         
         forest->saveToFile();
-        forest->writeOutput();
+        forest->writeOutput(&cout);
         
         modelFile = output.string() + ".selftrain.forest";
+        cout << endl;
     }
-    
-    
-    
-    
+       
     // Manage a junction system of all discarded junctions
     JunctionSystem discardedJuncs;
-    JunctionSystem refKeptJuncs;
     
     // Do ML based filtering if requested
     if(!modelFile.empty() && exists(modelFile)){
-        cout << "Predicting valid junctions using random forest model ...";
-        cout.flush();
+        cout << "Predicting valid junctions using random forest model" << endl 
+             << "----------------------------------------------------" << endl << endl;
         
         JunctionList passJuncs;
         JunctionList failJuncs;
-        JunctionList refJuncs;
         
-        forestPredict(currentJuncs, passJuncs, failJuncs, refJuncs, ref);
-        
-        cout << " done." << endl << endl;
-        
-        printFilteringResults(currentJuncs, passJuncs, failJuncs, refJuncs, string("Random Forest filtering"));
+        forestPredict(currentJuncs, passJuncs, failJuncs, mf);
+                
+        printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Random Forest filtering results"));
         
         // Reset currentJuncs
         currentJuncs.clear();
@@ -508,11 +336,7 @@ void portcullis::JunctionFilter::filter() {
         
         for(auto& j : failJuncs) {
             discardedJuncs.addJunction(j);
-        }
-        
-        for(auto& j : refJuncs) {
-            refKeptJuncs.addJunction(j);
-        }
+        }        
     }
     
     
@@ -521,90 +345,30 @@ void portcullis::JunctionFilter::filter() {
         
         JunctionList passJuncs;
         JunctionList failJuncs;
-        JunctionList refJuncs;
-                
-        cout << "Loading JSON rule-based filtering config file ...";
-
-        ptree pt;
-        boost::property_tree::read_json(filterFile.string(), pt);
-
-        cout << " done." << endl << endl;
-
-        cout << "Filtering junctions ...";
-        cout.flush();
-
-        NumericFilterMap numericFilters;
-        SetFilterMap stringFilters;
-        JuncResultMap junctionResultMap;
-
-        for(ptree::value_type& v : pt.get_child("parameters")) {
-            string name = v.first;
-            Operator op = stringToOp(v.second.get_child("operator").data());
-            if (isNumericOp(op)) {
-                double threshold = lexical_cast<double>(v.second.get_child("value").data());     
-                numericFilters[name] = pair<Operator,double>(op, threshold);
-            }
-            else {
-
-                unordered_set<string> set;
-                for (auto& item : v.second.get_child("value")) {
-                    string val = item.second.get_value<string>();
-                    set.insert(val); 
-                }
-                stringFilters[name] = pair<Operator,unordered_set<string>>(op, set);
-            }
-        }
-
-        const string expression = pt.get_child("expression").data();
-
-        map<string,int> filterCounts;
-
-        for (JunctionPtr junc : originalJuncs.getJunctions()) {
-
-            junctionResultMap[*(junc->getIntron())] = vector<string>();
-
-            if (parse(expression, junc, numericFilters, stringFilters, &junctionResultMap)) {
-                passJuncs.push_back(junc);
-            }
-            else if (!referenceFile.empty() && ref.count(junc->locationAsString()) > 0) {
-                passJuncs.push_back(junc);
-                refJuncs.push_back(junc);
-            }
-            else {
-                failJuncs.push_back(junc);
-                discardedJuncs.addJunction(junc);
-
-                vector<string> failed = junctionResultMap[*(junc->getIntron())];
-
-                for(string s : failed) {
-                    filterCounts[s]++;
-                }
-            }
-        }        
-
-        cout << " done." << endl << endl
-             << "Number of junctions failing for each filter: " << endl;
-
-        for(map<string,int>::iterator iterator = filterCounts.begin(); iterator != filterCounts.end(); iterator++) {        
-            cout << iterator->first << ": " << iterator->second << endl;
-        }
+        JuncResultMap resultMap;
         
-        saveResults(originalJuncs, junctionResultMap);
+        doRuleBasedFiltering(filterFile, currentJuncs, passJuncs, failJuncs, "Rule-based filtering", resultMap);
         
-        printFilteringResults(currentJuncs, passJuncs, failJuncs, refJuncs, string("Rule-based filtering"));
+        RuleFilter::saveResults(path(output.string() + ".rule_filtering.results"), originalJuncs, resultMap);
+        
+        printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Rule-based filtering"));        
         
         // Reset currentJuncs
         currentJuncs.clear();
         for(auto& j : passJuncs) {
             currentJuncs.push_back(j);
         }
+        
+        // Add to discarded
+        for(auto& j : failJuncs) {
+            discardedJuncs.addJunction(j);
+        }        
     }
     
     if (maxLength > 0 || this->doCanonicalFiltering()) {
         
         JunctionList passJuncs;
         JunctionList failJuncs;
-        JunctionList refJuncs;
         
         for(auto& j : currentJuncs) {
             
@@ -630,17 +394,13 @@ void portcullis::JunctionFilter::filter() {
             if (pass) {
                 passJuncs.push_back(j);
             }
-            else if (!referenceFile.empty() && ref.count(j->locationAsString()) > 0) {
-                passJuncs.push_back(j);
-                refJuncs.push_back(j);
-            }
             else {
                 failJuncs.push_back(j);
                 discardedJuncs.addJunction(j);
             }
         }
         
-        printFilteringResults(currentJuncs, passJuncs, failJuncs, refJuncs, string("Post filtering (length and/or canonical)"));
+        printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Post filtering (length and/or canonical) results"));
         
         // Reset currentJuncs
         currentJuncs.clear();
@@ -649,32 +409,47 @@ void portcullis::JunctionFilter::filter() {
         }
     }
     
+    cout << endl;
+    
     JunctionSystem filteredJuncs;
+    JunctionSystem refKeptJuncs;
         
     if (currentJuncs.empty()) {
         cout << "WARNING: Filters discarded all junctions from input." << endl;
     }
     else {
     
-        cout  << "Recalculating junction grouping and distance stats based on new junction list that passed filters ...";
+        cout << "Recalculating junction grouping and distance stats based on new junction list that passed filters ...";
         cout.flush();
 
         for(auto& j : currentJuncs) {
             filteredJuncs.addJunction(j);
         }
+        
+        if (!referenceFile.empty()) {
+            for(auto& j : discardedJuncs.getJunctions()) {
+                if (ref.count(j->locationAsString()) > 0) {
+                    filteredJuncs.addJunction(j);
+                    refKeptJuncs.addJunction(j);
+                }
+            }
+        }
 
         filteredJuncs.calcJunctionStats();
 
         cout << " done." << endl << endl;
+        
+        if (!referenceFile.empty()) {
+            cout << "Brought back " << refKeptJuncs.size() << " junctions that were discarded by filters but were present in reference file." << endl << endl;
+        }
     }
     
     printFilteringResults(  originalJuncs.getJunctions(), 
                             filteredJuncs.getJunctions(), 
                             discardedJuncs.getJunctions(), 
-                            refKeptJuncs.getJunctions(), 
                             string("Overall results"));
 
-    cout << "Saving junctions passing filter to disk:" << endl;
+    cout << endl << "Saving junctions passing filter to disk:" << endl;
 
     filteredJuncs.saveAll(outputDir.string() + "/" + outputPrefix + ".pass", source + "_pass");
     
@@ -690,166 +465,291 @@ void portcullis::JunctionFilter::filter() {
         }
     }
 }
+
+void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, JunctionList& pos, JunctionList& unlabelled, ModelFeatures& mf) {
+    JuncResultMap resultMap;
+         
+    cout << "Creating initial positive set for training" << endl
+         << "------------------------------------------" << endl << endl
+         << "Applying a set of rule-based filters in " << dataDir.string() << " to create initial positive set." << endl << endl;
+
+    if (!genuineFile.empty()) {
+        cout << "Performance of each positive filter layer (Low FPs is important):" << endl;        
+    } 
+    cout << "LAYER\t";
+    if (!genuineFile.empty()) {
+        cout << Performance::longHeader();
+    }
     
-void portcullis::JunctionFilter::printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const JunctionList& ref, string prefix) {
+    JunctionList p1, p2, p3;
+    
+    cout << endl << "1\t";
+    RuleFilter::filter(this->getIntitalPosRulesFile(1), all, p1, unlabelled, "Creating initial positive set for training", resultMap);
+    if (!genuineFile.empty()) {
+        cout << calcPerformance(p1, unlabelled)->toLongString();
+    }
+    cout << endl << "2\t";    
+    RuleFilter::filter(this->getIntitalPosRulesFile(2), p1, p2, unlabelled, "Creating initial positive set for training", resultMap);
+    if (!genuineFile.empty()) {
+        cout << calcPerformance(p2, unlabelled)->toLongString();
+    }
+    cout << endl << "3\t";    
+    RuleFilter::filter(this->getIntitalPosRulesFile(3), p2, p3, unlabelled, "Creating initial positive set for training", resultMap);
+    if (!genuineFile.empty()) {
+        cout << calcPerformance(p3, unlabelled)->toLongString();
+    }
+    cout << endl << "L95x1.5\t";
+
+    const uint32_t L95 = mf.calcIntronThreshold(p2);
+    const uint32_t pos_length_limit = L95 * 1.5;
+    
+    JunctionList passJuncs;
+    for(auto& j : p3) {
+        if (j->getIntronSize() <= pos_length_limit) {
+            passJuncs.push_back(j);
+        }
+        else {
+            unlabelled.push_back(j);
+        }
+    }
+    if (!genuineFile.empty()) {
+        cout << calcPerformance(passJuncs, unlabelled)->toLongString();
+    }
+      
+    cout << endl << endl << "Found " << passJuncs.size() << " junctions for the positive set" << endl << endl;
+
+    // Analyse positive set to get L0.05 of intron size
+    cout << "Length of intron at 95th percentile of positive set (L95): " << mf.calcIntronThreshold(passJuncs) << endl << endl;
+    
+    
+    cout << "Saving initial positive set:" << endl;
+    JunctionSystem isp(passJuncs);
+    isp.saveAll(output.string() + ".selftrain.initialset.pos", "portcullis_isp");
+
+
+    for(auto& j : passJuncs) {
+        JunctionPtr copy = make_shared<Junction>(*j);
+        copy->setGenuine(true);
+        pos.push_back(copy);            
+    }
+    if (!genuineFile.empty()) {
+        
+        JunctionSystem invalidPos;
+        for(auto& j : passJuncs) {
+            if (!j->isGenuine()) {
+                invalidPos.addJunction(j);
+            }
+        }
+        JunctionSystem missedPos;
+        for(auto& j : unlabelled) {
+            if (j->isGenuine()) {
+                missedPos.addJunction(j);
+            }
+        }
+
+        cout << "Saving invalid junctions in initial positive set to disk:" << endl;
+        invalidPos.saveAll(output.string() + ".selftrain.initialset.invalidpos", "portcullis_invalid_isp");
+
+        cout << "Saving missed positive junctions to disk:" << endl;
+        missedPos.saveAll(output.string() + ".selftrain.initialset.missedpos", "portcullis_missed_isp");
+    }
+}
+
+void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg) {
+    
+    JuncResultMap resultMap;
+        
+    cout << "Creating initial negative set for training" << endl
+         << "------------------------------------------" << endl << endl
+         << "Applying a set of rule-based filters in " << dataDir.string() << " to create initial negative set." << endl << endl;
+
+    if (!genuineFile.empty()) {
+       cout << "Performance of each negative filter layer (Low FNs is important):" << endl;       
+    }
+    cout << "LAYER\t";
+    if (!genuineFile.empty()) {
+        cout << Performance::longHeader();
+    }
+    
+    JunctionList p1, p2, p3, p4, p5, p6, p7, p8, f1, f2, f3, f4, f5, f6, f7, f8;
+    
+    cout << endl << "1\t";
+    RuleFilter::filter(this->getIntitalNegRulesFile(1), all, p1, f1, "Creating initial negative set for training", resultMap);
+    if (!genuineFile.empty()) {
+       cout << calcPerformance(p1, f1, true)->toLongString();
+    }
+    cout << endl << "2\t";    
+    RuleFilter::filter(this->getIntitalNegRulesFile(2), f1, p2, f2, "Creating initial negative set for training", resultMap);
+    if (!genuineFile.empty()) {
+       cout << calcPerformance(p2, f2, true)->toLongString();
+    }
+    cout << endl << "3\t";
+    RuleFilter::filter(this->getIntitalNegRulesFile(3), f2, p3, f3, "Creating initial negative set for training", resultMap);
+    if (!genuineFile.empty()) {
+       cout << calcPerformance(p3, f3, true)->toLongString();
+    }
+    cout << endl << "4\t";
+    RuleFilter::filter(this->getIntitalNegRulesFile(4), f3, p4, f4, "Creating initial negative set for training", resultMap);
+    if (!genuineFile.empty()) {
+       cout << calcPerformance(p4, f4, true)->toLongString();
+    }
+    cout << endl << "5\t";
+    RuleFilter::filter(this->getIntitalNegRulesFile(5), f4, p5, f5, "Creating initial negative set for training", resultMap);
+    if (!genuineFile.empty()) {
+       cout << calcPerformance(p5, f5, true)->toLongString();
+    }
+    cout << endl << "6\t";
+    RuleFilter::filter(this->getIntitalNegRulesFile(6), f5, p6, f6, "Creating initial negative set for training", resultMap);
+    if (!genuineFile.empty()) {
+       cout << calcPerformance(p6, f6, true)->toLongString();
+    }
+    cout << endl << "7\t";
+    RuleFilter::filter(this->getIntitalNegRulesFile(7), f6, p7, f7, "Creating initial negative set for training", resultMap);
+    if (!genuineFile.empty()) {
+       cout << calcPerformance(p7, f7, true)->toLongString();
+    }
+    cout << endl << "L95x5\t";
+    
+    JunctionList passJuncs, failJuncs;
+    const uint32_t L95x5 = L95 * 5;
+    for(auto& j : f7) {
+       if (j->getIntronSize() > L95x5 && j->getMaxMMES() < 10 ) {
+           p7.push_back(j);
+       }
+       else {
+           failJuncs.push_back(j);
+       }
+    }
+    if (!genuineFile.empty()) {
+       cout << calcPerformance(p8, failJuncs, true)->toLongString();
+    }
+    
+    cout << endl << endl << "Concatenating negatives from each layer to create negative set" << endl << endl;
+    
+    passJuncs.insert(passJuncs.end(), p1.begin(), p1.end());
+    passJuncs.insert(passJuncs.end(), p2.begin(), p2.end());
+    passJuncs.insert(passJuncs.end(), p3.begin(), p3.end());
+    passJuncs.insert(passJuncs.end(), p4.begin(), p4.end());
+    passJuncs.insert(passJuncs.end(), p5.begin(), p5.end());
+    passJuncs.insert(passJuncs.end(), p6.begin(), p6.end());
+    passJuncs.insert(passJuncs.end(), p7.begin(), p7.end());
+    passJuncs.insert(passJuncs.end(), p8.begin(), p8.end());
+
+    // This will remove any duplicates
+    JunctionSystem isn(passJuncs);
+        
+    if (!genuineFile.empty()) {
+       cout << "Final\t" << calcPerformance(isn.getJunctions(), failJuncs, true)->toLongString() << endl << endl;
+    }
+
+    cout << "Found " << isn.getJunctions().size() << " junctions for the negative set" << endl << endl;
+
+    cout << endl << "Saving initial negative set:" << endl;
+    isn.saveAll(output.string() + ".selftrain.initialset.neg", "portcullis_isn");
+
+    for(auto& j : isn.getJunctions()) {
+       JunctionPtr copy = make_shared<Junction>(*j);
+       copy->setGenuine(false);
+       neg.push_back(copy);            
+    }
+
+    if (!genuineFile.empty()) {
+    
+       JunctionSystem invalidNeg;
+       JunctionSystem missedNeg;
+
+       for(auto& j : isn.getJunctions()) {
+           if (j->isGenuine()) {
+               invalidNeg.addJunction(j);
+           }
+       }
+       for(auto& j : failJuncs) {
+           if (!j->isGenuine()) {
+               missedNeg.addJunction(j);
+           }
+       }
+
+       cout << "Saving genuine valid junctions in initial negative set to disk:" << endl;
+       invalidNeg.saveAll(output.string() + ".selftrain.initialset.invalidneg", "portcullis_invalid_isn");
+
+       cout << "Saving missed negative junctions to disk:" << endl;
+       missedNeg.saveAll(output.string() + ".selftrain.initialset.missedneg", "portcullis_missed_isn");
+    }
+}
+
+
+void portcullis::JunctionFilter::printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const string& prefix) {
     // Output stats
     size_t diff = in.size() - pass.size();
 
-    cout << prefix << endl
+    cout << endl << prefix << endl
          << "-------------------------" << endl
          << "Input contained " << in.size() << " junctions." << endl
          << "Output contains " << pass.size() << " junctions." << endl
          << "Filtered out " << diff << " junctions." << endl;
     
-    if (!referenceFile.empty()) {
-        cout << ref.size() << " junctions would have been discarded but are retained due to presence in reference" << endl;
-    }
-    
     if (!genuineFile.empty() && exists(genuineFile)) {
-        calcPerformance(pass, fail);
-    }
+        shared_ptr<Performance> p = calcPerformance(pass, fail);
+        cout << Performance::longHeader() << endl;
+        cout << p->toLongString() << endl << endl;
+    }    
 }
 
-void portcullis::JunctionFilter::calcPerformance(const JunctionList& pass, const JunctionList& fail) {
+shared_ptr<Performance> portcullis::JunctionFilter::calcPerformance(const JunctionList& pass, const JunctionList& fail, bool invert) {
     
     uint32_t tp = 0, tn = 0, fp = 0, fn = 0;
 
-    for(auto& j : pass) {
-        if (j->isGenuine()) tp++; else fp++;
-    }
-    
-    for(auto& j : fail) {
-        if (!j->isGenuine()) tn++; else fn++;
-    }
-    
-    Performance p(tp, tn, fp, fn);
-    cout << Performance::longHeader() << endl;
-    cout << p.toLongString() << endl << endl;
-}
-
-void portcullis::JunctionFilter::saveResults(const JunctionSystem& js, JuncResultMap& results) {
-
-    // Print descriptive output to file
-    ofstream out(output.string() + ".rule_filtering.results");
-
-    out << Intron::locationOutputHeader() << "\tconsensus_strand\t" << "filter_results..." << endl;
-
-    for(auto& kv: results) {
-
-        Intron i = kv.first;
-
-        out << i << "\t";
-
-        out << strandToChar(js.getJunction(i)->getConsensusStrand()) << "\t";
-        
-        if (kv.second.empty()) {
-            out << "PASS";
+    if (invert) {
+        for(auto& j : pass) {
+            if (!j->isGenuine()) tn++; else fn++;
         }
-        else {
-            out << boost::algorithm::join(kv.second, "\t");
+
+        for(auto& j : fail) {
+            if (j->isGenuine()) tp++; else fp++;
+        }        
+    }
+    else {
+        for(auto& j : pass) {
+            if (j->isGenuine()) tp++; else fp++;
         }
-        out << endl;
+
+        for(auto& j : fail) {
+            if (!j->isGenuine()) tn++; else fn++;
+        }
     }
-
-    out.close();
-}
     
-    
-/**
- * This function evaluates the truth status of a row parameter given the configuration present in the JSON file.
- * @param op Operation to be considered
- * @param threshold Threshold
- * @param param Value
- * @return True if parameter passes operation and threshold, false otherwise
- */
-bool portcullis::JunctionFilter::parse(const string& expression, JunctionPtr junc, NumericFilterMap& numericFilters, SetFilterMap& stringFilters, JuncResultMap* results) {
-
-    typedef std::string::const_iterator it;
-    it f(expression.begin()), l(expression.end());
-    parser<it> p;
-
-    expr result;
-    bool ok = qi::phrase_parse(f,l,p,qi::space,result);
-
-    if (!ok) {
-        BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                    "Invalid expression: ") + expression));
-    }
-
-    // Evaluate results
-    return boost::apply_visitor(eval(numericFilters, stringFilters, junc, results), result);
-}
-    
-wchar_t* portcullis::JunctionFilter::convertCharToWideChar(const char* c) {
-    const size_t cSize = strlen(c)+1;
-    wchar_t* wc = new wchar_t[cSize];
-    mbstowcs (wc, c, cSize);    
-    return wc;
-}       
-
-void portcullis::JunctionFilter::executePythonMLFilter(const path& mlOutputFile) {
-    
-    const path script_name = "ml_filter.py";
-    const path scripts_dir = JunctionFilter::scriptsDir;
-    const path full_script_path = path(scripts_dir.string() + "/" + script_name.string());
-    
-    stringstream ss;
-    
-    // Create wide char alternatives
-    wchar_t* wsn = convertCharToWideChar(script_name.c_str());
-    wchar_t* wsp = convertCharToWideChar(full_script_path.c_str());    
-    wchar_t* wargv[10]; // Can't use variable length arrays!
-    wargv[0] = wsp;
-    ss << full_script_path.c_str();
-    string model = string("--model=") + modelFile.string();
-    wargv[1] = convertCharToWideChar(model.c_str());
-    ss << " " << model;
-    string mloFile = string("--output=") + mlOutputFile.string();
-    wargv[2] = convertCharToWideChar(mloFile.c_str());
-    ss << " " << mloFile;
-    wargv[3] = convertCharToWideChar(junctionFile.c_str());
-    ss << " " << junctionFile.string();
-        
-    if (verbose) {
-        cout << endl << "Effective command line: " << ss.str() << endl << endl;
-    }
-
-    std::ifstream script_in(full_script_path.c_str());
-    std::string contents((std::istreambuf_iterator<char>(script_in)), std::istreambuf_iterator<char>());
-
-    // Run python script
-    Py_Initialize();
-    Py_SetProgramName(wsp);
-    PySys_SetArgv(4, wargv);
-    PyRun_SimpleString(contents.c_str());
-    Py_Finalize();
-
-    // Cleanup
-    delete wsn;
-    // No need to free up "wsp" as it is element 0 in the array
-    for(int i = 0; i < 4; i++) {
-        delete wargv[i];
-    }
+    return make_shared<Performance>(tp, tn, fp, fn);
 }
 
 
-void portcullis::JunctionFilter::forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, JunctionList& refs, const unordered_set<string>& ref) {
-    
-    if (verbose) {
-        cerr << endl << "Preparing junction metrics into matrix" << endl;
+void portcullis::JunctionFilter::doRuleBasedFiltering(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap) {
+    cout << "Loading JSON rule-based filtering config file: " << ruleFile.string() << endl;
+
+    cout << "Filtering junctions ...";
+    cout.flush();
+
+    map<string,int> filterCounts = RuleFilter::filter(ruleFile, all, pass, fail, prefix, resultMap);
+
+    cout << " done." << endl << endl
+         << "Number of junctions failing for each filter: " << endl;
+
+    for(map<string,int>::iterator iterator = filterCounts.begin(); iterator != filterCounts.end(); iterator++) {        
+        cout << iterator->first << ": " << iterator->second << endl;
     }
+
+}
     
-    Data* testingData = Train::juncs2FeatureVectors(all);
+void portcullis::JunctionFilter::forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, ModelFeatures& mf) {
     
-    // Load forest from disk
+    cout << "Creating feature vector" << endl;
     
-    if (verbose) {
-        cerr << "Initialising random forest" << endl;
-    }
+    Data* testingData = mf.juncs2FeatureVectors(all);
+    
+    cout << "Initialising random forest" << endl;
     
     shared_ptr<Forest> f = nullptr;
     if (train) {
-        f = make_shared<ForestRegression>();
+        f = make_shared<ForestProbability>();
     }
     else {
         f = make_shared<ForestClassification>();
@@ -863,11 +763,12 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
         testingData,                // Data object
         0,                          // M Try (0 == use default)
         "",                         // Output prefix 
-        DEFAULT_TRAIN_TREES,        // Number of trees (will be overwritten when loading the model)
-        DEFAULT_SEED,               
+        250, //DEFAULT_SELFTRAIN_TREES,    // Number of trees (will be overwritten when loading the model)
+        1234567890,                 // Seed for random generator               
         threads,                    // Number of threads
         IMP_GINI,                   // Importance measure 
-        train ? DEFAULT_MIN_NODE_SIZE_REGRESSION : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
+        train ? DEFAULT_MIN_NODE_SIZE_PROBABILITY : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
+        //DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,
         "",                         // Status var name 
         true,                       // Prediction mode
         true,                       // Replace 
@@ -879,52 +780,100 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
     
     f->setVerboseOut(&cerr);
     
-    if (verbose) {
-        cerr << "Loading forest model from disk" << endl;
-    }
-    
     // Load trees from saved model
     f->loadFromFile(modelFile.string());
     
-    if (verbose) {
-        cerr << "Running predictions" << endl;
-    }
+    cout << "Making predictions" << endl;
     f->run(verbose);
     
-    if (verbose) {
-        cerr << "Separating original junction data into pass and fail categories" << endl;
-    }
+    path scorepath = output.string() + ".scores";
+    ofstream scoreStream(scorepath.c_str());
+    
+    scoreStream << "Score\t" << Intron::locationOutputHeader() << "\tStrand\tSS\t" << testingData->getHeader() << endl;
+    
     for(size_t i = 0; i < all.size(); i++) {
-        if (f->getPredictions()[i][0] >= 1.0) {
-            pass.push_back(all[i]);
+
+        scoreStream << f->getPredictions()[i][0] << "\t" << *(all[i]->getIntron()) 
+                    << "\t" << strandToChar(all[i]->getConsensusStrand())
+                    << "\t" << cssToChar(all[i]->getSpliceSiteType())
+                    << "\t" << testingData->getRow(i) << endl;
+    }
+    
+    scoreStream.close();
+    
+    
+    if (!genuineFile.empty() && exists(genuineFile)) {
+        vector<double> thresholds;
+        for(double i = 0.0; i <= 1.0; i += 0.01) {
+            thresholds.push_back(i);
         }
-        else if (!referenceFile.empty() && ref.count(all[i]->locationAsString()) > 0) {
+        double max_mcc = 0.0;
+        double max_f1 = 0.0;
+        double best_t_mcc = 0.0;
+        double best_t_f1 = 0.0;
+        
+        cout << "Threshold\t" << Performance::longHeader() << endl;
+        for(auto& t : thresholds) {
+            JunctionList pjl;
+            JunctionList fjl;
+            categorise(f, all, pjl, fjl, t);
+            shared_ptr<Performance> perf = calcPerformance(pjl, fjl);
+            double mcc = perf->getMCC();
+            double f1 = perf->getF1Score();
+            cout << t << "\t" << perf->toLongString() << endl;
+            if (mcc > max_mcc) {
+                max_mcc = mcc;
+                best_t_mcc = t;
+            }
+            if (f1 > max_f1) {
+                max_f1 = f1;
+                best_t_f1 = t;
+            }
+        }
+        
+        cout << "The best F1 score of " << max_f1 << " is achieved with threshold set at " << best_t_f1 << endl;
+        cout << "The best MCC score of " << max_mcc << " is achieved with threshold set at " << best_t_mcc << endl;
+        cout << "Actual threshold set at " << threshold << endl;
+        categorise(f, all, pass, fail, best_t_f1);
+    }
+    else {
+        categorise(f, all, pass, fail, threshold);
+    }
+    
+    cout << "Saved junction scores to: " << scorepath << endl;
+    
+    
+    delete testingData;
+}
+
+void portcullis::JunctionFilter::categorise(shared_ptr<Forest> f, const JunctionList& all, JunctionList& pass, JunctionList& fail, double t) {
+    
+    for(size_t i = 0; i < all.size(); i++) {
+        if (f->getPredictions()[i][0] <= t) {
             pass.push_back(all[i]);
-            refs.push_back(all[i]);
         }
         else {
             fail.push_back(all[i]);
         }
     }
-    
-    delete testingData;
 }
 
 int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 
     path junctionFile;
+    path genomeFile;
     path modelFile;
     path genuineFile;
     path filterFile;
     path referenceFile;
     path output;
     uint16_t threads;
-    bool saveBad;
-    bool train;
     bool no_ml;
+    bool saveBad;
     int32_t max_length;
     string canonical;
     string source;
+    double threshold;
     bool verbose;
     bool help;
     
@@ -938,21 +887,19 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             ("output,o", po::value<path>(&output)->default_value(DEFAULT_FILTER_OUTPUT), 
                 "Output prefix for files generated by this program.")
             ("filter_file,f", po::value<path>(&filterFile), 
-                "If you wish to custom rule-based filter the junctions file, use this option to provide a list of the rules you wish to use.  By default we don't filter using a rule-based method, we instead filter via a random forest model.  See manual for more details.")
-            ("model_file,m", po::value<path>(&modelFile)->default_value(defaultModelFile), 
-                "If you wish to use a custom random forest model to filter the junctions file, use this option to. See manual for more details.")
-            ("train", po::bool_switch(&train)->default_value(false),
-                "Trains a random forest model based on the input data provided, then filters based on the regression results from the model.")
+                "If you wish to custom rule-based filter the junctions file, use this option to provide a list of the rules you wish to use.  By default we don't filter using a rule-based method, we instead filter via a self-trained random forest model.  See manual for more details.")
+            ("model_file,m", po::value<path>(&modelFile), 
+                "If you wish to use a custom random forest model to filter the junctions file, rather than self-training on the input dataset use this option to. See manual for more details.")
             ("genuine,g", po::value<path>(&genuineFile),
                 "If you have a list of line separated boolean values in a file, indicating whether each junction in your input is genuine or not, then we can use that information here to gauge the accuracy of the predictions.")
             ("reference,r", po::value<path>(&referenceFile),
                 "Reference annotation of junctions in BED format.  Any junctions found by the junction analysis tool will be preserved if found in this reference file regardless of any other filtering criteria.  If you need to convert a reference annotation from GTF or GFF to BED format portcullis contains scripts for this.")
+            ("no_ml,n", po::bool_switch(&no_ml)->default_value(false),
+                "Disables machine learning filtering")
             ("save_bad,b", po::bool_switch(&saveBad)->default_value(false),
                 "Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)")
             ("source", po::value<string>(&source)->default_value(DEFAULT_FILTER_SOURCE),
                 "The value to enter into the \"source\" field in GFF files.")
-            ("no_ml,n", po::bool_switch(&no_ml)->default_value(false),
-                "Whether or not to disable random forest prediction")
             ("max_length,l", po::value<int32_t>(&max_length)->default_value(0),
                 "Filter junctions longer than this value.  Default (0) is to not filter based on length.")
             ("canonical,c", po::value<string>(&canonical)->default_value("OFF"),
@@ -968,11 +915,15 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     // in config file, but will not be shown to the user.
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
-            ("junction-file", po::value<path>(&junctionFile), "Path to the junction file to process.")
+        ("genome-file", po::value<path>(&genomeFile), "Path to the genome file to process.")        
+        ("junction-file", po::value<path>(&junctionFile), "Path to the junction file to process.")
+        ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD), 
+                "The threshold score at which we determine a junction to be genuine or not.")            
             ;
 
     // Positional option for the input bam file
     po::positional_options_description p;
+    p.add("genome-file", 1);
     p.add("junction-file", 1);
 
 
@@ -1007,22 +958,26 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     filter.setMaxLength(max_length);
     filter.setCanonical(canonical);
     
-        
     // Only set the filter rules if specified.
     filter.setFilterFile(filterFile);
     filter.setGenuineFile(genuineFile);
-    filter.setTrain(train);
-    if (!no_ml && !train) {
-        filter.setModelFile(modelFile);
+    if (modelFile.empty() && !no_ml) {
+        filter.setTrain(true);    
+    }
+    else {
+        filter.setTrain(false);
+        if (!no_ml) {
+            filter.setModelFile(modelFile);
+        }
     }
     filter.setReferenceFile(referenceFile);
+    filter.setGenomeFile(genomeFile);
+    filter.setThreshold(threshold);
     
     filter.filter();
 
     return 0;
 }
 
-path portcullis::JunctionFilter::scriptsDir = "";
-path portcullis::JunctionFilter::defaultModelFile = DEFAULT_FILTER_MODEL_FILE;
-path portcullis::JunctionFilter::defaultFilterFile = DEFAULT_FILTER_RULE_FILE;
-
+path portcullis::JunctionFilter::scriptsDir = ".";
+path portcullis::JunctionFilter::dataDir = ".";

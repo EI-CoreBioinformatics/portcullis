@@ -27,13 +27,186 @@ using boost::filesystem::path;
 namespace portcullis {  
     
 class Performance {
-private:
+protected:
     uint32_t tp;
     uint32_t tn;
     uint32_t fp;
     uint32_t fn;    
 public:
     Performance(uint32_t tp, uint32_t tn, uint32_t fp, uint32_t fn) : tp(tp), tn(tn), fp(fp), fn(fn) {}
+    
+    inline uint32_t getAllPositive() const {
+        return tp + fp;
+    }
+
+    inline uint32_t getAllNegative() const {
+        return tn + fn;
+    }
+    
+    inline uint32_t getAllTrue() const {
+        return tn + tp;
+    }
+    
+    inline uint32_t getAllFalse() const {
+        return fn + fp;
+    }
+    
+    inline uint32_t getRealPositive() const {
+        return tp + fn;
+    }
+    
+    inline uint32_t getRealNegative() const {
+        return fp + tn;
+    }
+            
+    inline uint32_t getAll() const {
+        return tp + tn + fp + fn;
+    }
+        
+    inline double getPrecision() const {
+        if (getAllPositive() == 0) 
+            return 0.0;
+        else
+            return 100.0 * (double)tp / (double)(getAllPositive());
+    }
+    
+    inline double getPositivePredictiveValue() const {
+        return getPrecision();
+    }
+    
+    inline double getRecall() const {
+        if (getRealPositive() == 0)
+            return 0.0;
+        else
+            return 100.0 * (double)tp / (double)(getRealPositive());
+    }
+    
+    inline double getSensitivity() const {
+        return getRecall();
+    }
+    
+    inline double getTruePositiveRate() const {
+        return getRecall();
+    }
+    
+    inline double getSpecificity() const {
+        if (getRealNegative() == 0)
+            return 0.0;
+        else
+            return 100.0 * (double)tn / (double)(getRealNegative());
+    }
+    
+    inline double getTrueNegativeRate() const {
+        return getSpecificity();
+    }
+    
+    inline double getNPV() const {
+        if (getAllNegative() == 0)
+            return 0.0;
+        else
+            return 100.0 * (double)tn / (double)(getAllNegative());
+    }
+    
+    inline double getFallOut() const {
+        return 100.0 - getSpecificity();
+    }
+    
+    inline double getFalsePositiveRate() const {
+        return getFallOut();
+    }
+    
+    inline double getFDR() const {
+        return 100.0 - getPrecision();
+    }
+    
+    inline double getFNR() const {
+        return 100.0 * getRecall();
+    }
+    
+    /**
+     * The proportion of the population that really have the positive condition
+     * (TP+FN).  100% means the whole population has the positive condition.  50% 
+     * means half do and 0% means none do.  This value is not effected by the predictor.
+     */
+    inline double getPrevalence() const {
+        if (getAll() == 0)
+            return 0.0;
+        else
+            return 100.0 * (double)getRealPositive() / (double)getAll();
+    }
+    
+    /**
+     * The bias between positive predictions (TP + FP) and the population.  This
+     * represents the bias of the system towards positive predictions and can 
+     * therefore be modified by adjusting the model.
+     */
+    inline double getBias() const {
+        if (getAll() == 0)
+            return 0.0;
+        else
+            return 100.0 * (double)getAllPositive() / (double)getAll();
+    }
+    
+    /**
+     * The overall accuracy of the system, representing the closeness to the true
+     * sample.  Note however that this is a biased metric in that it does not
+     * properly cater for prevalence of positives conditions and bias of the model.
+     */
+    inline double getAccuracy() const {
+        if (getAll() == 0)
+            return 0.0;
+        else
+            return 100.0 * (double)getAllTrue() / (double)getAll();
+    }
+    
+    /**
+     * Returns the F-score with provided beta parameter.  F-Scores are biased in
+     * favour of positive values: true negatives can vary without impacting the
+     * F-Score.
+     * @param beta A positive real number.  1.0 sets a balance between precision
+     * and recall.  < 1.0 biases in favour or precison.  > 1.0 biases in favour
+     * of recall.
+     */
+    inline double getFBScore(const double beta) const {
+        if (beta <= 0) return 0.0;        
+        const double recall = getRecall();
+        const double precision = getPrecision();
+        const double beta2 = beta * beta;
+        return (double)(1.0 + beta2) * (precision * recall) / ((beta2 * precision) + recall);
+    }
+    
+    /**
+     * Returns the balanced F-score, which is the harmonic mean of precision and
+     * recall.
+     */
+    inline double getF1Score() const {
+        return getFBScore(1.0);
+    }
+    
+    /**
+     * Matthew's Correlation Coefficient.  An unbiased measure generally considered 
+     * one of the best measures of overall system performance.
+     */
+    inline double getMCC() const {
+        return std::sqrt(getInformedness() * getMarkedness());
+    }
+    
+    /**
+     * Informedness is an unbiased measure that gives the probability that 
+     * you have made an informed decision (versus chance).
+     */
+    inline double getInformedness() const {
+        return getSensitivity() + getSpecificity() - 100.0;
+    }
+    
+    /**
+     * Markedness is an unbiased measure that gives the probability that a 
+     * condition is marked by the predictor (versus chance).
+     */
+    inline double getMarkedness() const {
+        return getPrecision() + getNPV() - 100.0;
+    }
+    
     
     static string shortHeader() {
         return "TP\tTN\tFP\tFN\tREC\tPRC\tF1";
@@ -83,99 +256,10 @@ public:
     }
     
     
-    inline uint32_t getAllPositive() const {
-        return tp + fp;
-    }
-
-    inline uint32_t getAllNegative() const {
-        return tn + fn;
-    }
-    
-    inline uint32_t getAllTrue() const {
-        return tn + tp;
-    }
-    
-    inline uint32_t getAllFalse() const {
-        return fn + fp;
-    }
-    
-    inline uint32_t getRealPositive() const {
-        return tp + fn;
-    }
-    
-    inline uint32_t getRealNegative() const {
-        return fp + tn;
-    }
-            
-    inline uint32_t getAll() const {
-        return tp + tn + fp + fn;
-    }
-        
-    inline double getPrecision() const {
-        return 100.0 * (double)tp / (double)(tp + fp);
-    }
-    
-    inline double getRecall() const {
-        return 100.0 * (double)tp / (double)(tp + fn);
-    }
-    
-    // Same as recall
-    inline double getSensitivity() const {
-        return 100.0 * (double)tp / (double)(tp + fn);
-    }
-    
-    inline double getSpecificity() const {
-        return 100.0 * (double)tn / (double)(fp + tn);
-    }
-    
-    inline double getNPV() const {
-        return 100.0 * (double)tn / (double)(tn + fn);
-    }
-    
-    inline double getFallOut() const {
-        return 100.0 * (double)fp / (double)(fp + tn);
-    }
-    
-    inline double getFDR() const {
-        return 100.0 * (double)fp / (double)(fp + tp);
-    }
-    
-    inline double getFNR() const {
-        return 100.0 * (double)fn / (double)(fn + tp);
-    }
-    
-    inline double getAccuracy() const {
-        return 100.0 * (double)getAllTrue() / (double)getAll();
-    }
-    
-    inline double getPrevalence() const {
-        return 100.0 * (double)getRealPositive() / (double)getAll();
-    }
-    
-    inline double getBias() const {
-        return 100.0 * (double)getAllPositive() / (double)getAll();
-    }
-    
-    inline double getF1Score() const {
-        return 100.0 * (double)(2.0 * tp) / (double)(2.0 * tp + fp + fn);
-    }
-
-    inline double getMCC() const {
-        return 100.0 * (double)(tp * tn - fp * fn) / (std::sqrt((double)(tp + fp)*(tp+fn)*(tn+fp)*(tn+fn)));
-    }
-    
-    inline double getInformedness() const {
-        return getSensitivity() + getSpecificity() - 100.0;
-    }
-    
-    inline double getMarkedness() const {
-        return getPrecision() + getNPV() - 100.0;
-    }
-    
     static void loadGenuine(path& genuineFile, vector<bool>& results) {
     
         // Load reference data    
-        ifstream refs(genuineFile.string());
+        std::ifstream refs(genuineFile.string());
         string line;
         uint32_t lineNb = 0;
         while (std::getline(refs, line)) {

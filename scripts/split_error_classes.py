@@ -8,21 +8,21 @@ import sys
 import argparse
 from bed12 import *
 
-parser=argparse.ArgumentParser("Script to analyse the results of portcullis when run on data from a model organism (i.e. it has a high quality annotated genome.")
+parser = argparse.ArgumentParser(
+	"Script to analyse the results of portcullis when run on data from a model organism (i.e. it has a high quality annotated genome.")
 parser.add_argument("-r", required=True,
-                    help="Reference BED file")
+					help="Reference BED file")
 parser.add_argument("-p", required=True,
-                    help="BED file containing junctions passing a filter")
+					help="BED file containing junctions passing a filter")
 parser.add_argument("-f", required=True,
-                    help="BED file containing junctions failing a filter")
+					help="BED file containing junctions failing a filter")
 parser.add_argument("-u", required=True,
-                    help="Unfiltered tab file")
+					help="Unfiltered tab file")
 parser.add_argument("-o", required=True,
-                    help="Output prefix for output files")
+					help="Output prefix for output files")
 parser.add_argument("-s", "--ignore_strand", action='store_true', default=False,
-                    help="Use strand information in bed files")
-args=parser.parse_args()
-
+					help="Use strand information in bed files")
+args = parser.parse_args()
 
 usesstrand = not args.ignore_strand
 
@@ -46,7 +46,6 @@ filterbed(args.p, bedRef, 1, usesstrand, False, fpfile)
 
 # Subtract reference from failed data - TN
 filterbed(args.f, bedRef, 1, usesstrand, False, tnfile)
-
 
 bedtp = loadbed(tpfile, usesstrand, False)
 bedfn = loadbed(fnfile, usesstrand, False)

@@ -68,95 +68,14 @@ portcullis::Train::Train(const path& _junctionFile, const path& _refFile){
     verbose = false;    
 }
     
-Data* portcullis::Train::juncs2FeatureVectors(const JunctionList& x) {
-    
-    vector<string> headers;
-    headers.reserve( VAR_NAMES.size() + JO_NAMES.size() );
-    headers.insert( headers.end(), VAR_NAMES.begin(), VAR_NAMES.end() );
-    headers.insert( headers.end(), JO_NAMES.begin(), JO_NAMES.end() );
-    
-    // Convert junction list info to double*
-    double* d = new double[x.size() * headers.size()];
-    
-    uint32_t row = 0;
-    for (const auto& j : x) {        
-        
-        d[0 * x.size() + row] = j->getNbJunctionAlignments();
-        d[1 * x.size() + row] = j->getNbDistinctAlignments();
-        d[2 * x.size() + row] = j->getNbReliableAlignments();
-        d[3 * x.size() + row] = j->getMaxMinAnchor();
-        d[4 * x.size() + row] = j->getDiffAnchor();
-        d[5 * x.size() + row] = j->getNbDistinctAnchors();
-        d[6 * x.size() + row] = j->getEntropy();
-        d[7 * x.size() + row] = j->getMaxMMES();
-        d[8 * x.size() + row] = j->getHammingDistance5p();
-        d[9 * x.size() + row] = j->getHammingDistance3p();
-        d[10 * x.size() + row] = j->isGenuine();
-        // Junction overhang values at each position are first converted into deviation from expected distributions       
-        double half_read_length = (double)j->getMeanQueryLength() / 2.0;    
-        for(size_t i = 0; i < JO_NAMES.size(); i++) {
-            double Ni = j->getJunctionOverhangs(i);                 // Actual count at this position
-            if (Ni == 0.0) Ni = 0.000000000001;                     // Ensure some value > 0 here otherwise we get -infinity later.
-            double Pi = 1.0 - ((double)i / half_read_length);       // Likely scale at this position
-            double Ei = (double)j->getNbJunctionAlignments() * Pi;  // Expected count at this position
-            double Xi = abs(log2(Ni / Ei));                         // Log deviation
-            
-            d[(i + 11) * x.size() + row] = Xi;
-        }
-        
-        row++;
-    }
-    
-    Data* data = new DataDouble(d, headers, x.size(), headers.size());
-    data->setExternalData(false);      // This causes 'd' to be deleted when 'data' is deleted
-    return data;
-}
 
-shared_ptr<Forest> portcullis::Train::trainInstance(const JunctionList& x, string outputPrefix, uint16_t trees, uint16_t threads, bool regressionMode) {
-    
-    Data* trainingData = juncs2FeatureVectors(x);
-    
-    shared_ptr<Forest> f = nullptr;
-    if (regressionMode) {
-        f = make_shared<ForestRegression>();
-    }
-    else {
-        f = make_shared<ForestClassification>();
-    }
-    
-    vector<string> catVars;
-    
-    f->init(
-        "Genuine",                  // Dependant variable name
-        MEM_DOUBLE,                 // Memory mode
-        trainingData,               // Data object
-        0,                          // M Try (0 == use default)
-        outputPrefix,               // Output prefix 
-        trees,                      // Number of trees
-        DEFAULT_SEED,               // Use fixed seed to avoid non-deterministic behaviour
-        threads,                    // Number of threads
-        IMP_GINI,                   // Importance measure 
-        regressionMode ? DEFAULT_MIN_NODE_SIZE_REGRESSION : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
-        "",                         // Status var name 
-        false,                      // Prediction mode
-        true,                       // Replace 
-        catVars,                    // Unordered categorical variable names (vector<string>)
-        false,                      // Memory saving
-        DEFAULT_SPLITRULE,          // Split rule
-        false,                      // predall
-        1.0);                       // Sample fraction
-            
-    
-    f->setVerboseOut(&cerr);
-    f->run(false);
-    
-    return f;
-}
+
 
 void portcullis::Train::testInstance(shared_ptr<Forest> f, const JunctionList& x) {
     
     // Convert testing set junctions into feature vector
-    Data* testingData = juncs2FeatureVectors(x);
+    ModelFeatures mf;
+    Data* testingData = mf.juncs2FeatureVectors(x);
     
     f->setPredictionMode(true);
     f->setData(testingData);
@@ -235,15 +154,12 @@ void portcullis::Train::train() {
     
     if (!outputPrefix.empty()) {
      
-        cout << "Training on full dataset ...";
-        cout.flush();
+        cout << "Training on full dataset" << endl;
 
-        shared_ptr<Forest> f = trainInstance(junctions, outputPrefix.string(), trees, threads, false);
-        
-        cout << " done." << endl;
+        ForestPtr f = ModelFeatures().trainInstance(junctions, outputPrefix.string(), trees, threads, false, true);
         
         f->saveToFile();
-        f->writeOutput();        
+        f->writeOutput(&cout);        
     }
     
     // Assess performance of the model if requested
@@ -258,18 +174,24 @@ void portcullis::Train::train() {
         
         cout << endl << "Starting " << folds << "-fold cross validation" << endl;
         
+        std::ofstream resout(outputPrefix.string() + ".cv_results");
+        
         cout << "Fold\t" << Performance::longHeader() << endl;
-
+        resout << "Fold\t" << Performance::longHeader() << endl;
+        
+        
         for (uint16_t i = 1; i <= folds; i++) {
 
             cout << i << "\t";
+            resout << i << "\t";
             cout.flush();
+            resout.flush();
 
             // Populate train and test for this step
             kf.getFold(i, back_inserter(train), back_inserter(test));
             
             // Train on this particular set
-            shared_ptr<Forest> f = trainInstance(train, outputPrefix.string(), trees, threads, false);
+            ForestPtr f = ModelFeatures().trainInstance(train, outputPrefix.string(), trees, threads, false, false);
             
             // Test model instance
             testInstance(f, test);
@@ -293,24 +215,29 @@ void portcullis::Train::train() {
             
             unique_ptr<Performance> p( new Performance(tp, tn, fp, fn) );
             
-            
             cout << p->toLongString() << endl;
+            resout << p->toLongString() << endl;
 
             perfs.push_back(std::move(p));
             
             // Clear the train and test vectors in preparation for the next step
             train.clear();
-            test.clear();            
+            test.clear();
         }
 
         cout << "Cross validation completed" << endl << endl;
     
-        outputMeanPerformance(perfs);        
+        outputMeanPerformance(perfs, resout);
+        resout.close();
+        
+        cout << endl << "Saved cross validation results to file " << outputPrefix.string() << ".cv_results" << endl;
     }
+    
+    
     
 }
 
-void portcullis::Train::outputMeanPerformance(const vector<unique_ptr<Performance>>& scores) {
+void portcullis::Train::outputMeanPerformance(const vector<unique_ptr<Performance>>& scores, std::ofstream& resout) {
     
     vector<double> prevs;
     vector<double> biases;
@@ -336,25 +263,29 @@ void portcullis::Train::outputMeanPerformance(const vector<unique_ptr<Performanc
         mccs.push_back(p->getMCC());
     }
     
-    outputMeanScore(prevs, "prevalence");
-    outputMeanScore(biases, "bias");
-    outputMeanScore(recs, "recall");
-    outputMeanScore(prcs, "precision");
-    outputMeanScore(f1s, "F1");
-    outputMeanScore(spcs, "specificity");
-    outputMeanScore(accs, "accuracy");
-    outputMeanScore(infs, "informedness");
-    outputMeanScore(mrks, "markededness");
-    outputMeanScore(mccs, "MCC");
+    outputMeanScore(prevs, "prevalence", resout);
+    outputMeanScore(biases, "bias", resout);
+    outputMeanScore(recs, "recall", resout);
+    outputMeanScore(prcs, "precision", resout);
+    outputMeanScore(f1s, "F1", resout);
+    outputMeanScore(spcs, "specificity", resout);
+    outputMeanScore(accs, "accuracy", resout);
+    outputMeanScore(infs, "informedness", resout);
+    outputMeanScore(mrks, "markededness", resout);
+    outputMeanScore(mccs, "MCC", resout);
 }
 
-void portcullis::Train::outputMeanScore(const vector<double>& scores, const string& score_type) {
+void portcullis::Train::outputMeanScore(const vector<double>& scores, const string& score_type, std::ofstream& resout) {
     double sum = std::accumulate(scores.begin(), scores.end(), 0.0);
     double mean = sum / scores.size();
     double sq_sum = std::inner_product(scores.begin(), scores.end(), scores.begin(), 0.0);
     double stdev = std::sqrt(sq_sum / scores.size() - mean * mean);
+    
+    stringstream msg;
+    msg << "Mean " << std::left << std::setw(13) << score_type << ": " << std::fixed << std::setprecision(2) << mean << "% (+/- " << stdev << "%)" << endl;
 
-    cout << "Mean " << std::left << std::setw(13) << score_type << ": " << std::fixed << std::setprecision(2) << mean << "% (+/- " << stdev << "%)" << endl;
+    cout << msg.str();
+    resout << msg.str();
 }
 
 void portcullis::Train::getRandomSubset(const JunctionList& in, JunctionList& out) {
@@ -377,7 +308,7 @@ int portcullis::Train::main(int argc, char *argv[]) {
         
     // Portcullis args
     path junctionFile;
-    string outputPrefix = "";
+    path output;
     path refFile;
     uint16_t folds;
     uint16_t trees;
@@ -392,12 +323,12 @@ int portcullis::Train::main(int argc, char *argv[]) {
     // Declare the supported options.
     po::options_description generic_options(helpMessage(), w.ws_col, (unsigned)((double)w.ws_col/1.7));
     generic_options.add_options()
-            ("output,o", po::value<string>(&outputPrefix), 
+            ("output,o", po::value<path>(&output)->default_value(DEFAULT_TRAIN_OUTPUT), 
                 "File name prefix for the random forest produced by this tool.")
             ("reference,r", po::value<path>(&refFile), 
                 "Either a reference bed file containing genuine junctions or file containing a line separated list of 1/0 corresponding to each entry in the input junction file indicating whether that entry is or isn't a genuine junction")
             ("folds,k", po::value<uint16_t>(&folds)->default_value(DEFAULT_TRAIN_FOLDS), 
-                "The level of cross validation to perform.  A value of 0 means do not do cross validation.  Normally a level of 5 is sufficient to get a reasonable feel for the accuracy of the model on portcullis datasets.")
+                "The level of cross validation to perform.  A value of 1 or less means do not do cross validation.  The default level of 5 is sufficient to get a reasonable feel for the accuracy of the model on portcullis datasets.")
             ("trees,n", po::value<uint16_t>(&trees)->default_value(DEFAULT_TRAIN_TREES), 
                 "The number of trees to build in the random forest.  More trees will produce better results but at computational expense.")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_TRAIN_THREADS), 
@@ -445,9 +376,7 @@ int portcullis::Train::main(int argc, char *argv[]) {
 
     // Create the prepare class
     Train trainer(junctionFile, refFile);
-    if (!outputPrefix.empty()) {
-        trainer.setOutputPrefix(outputPrefix);
-    }    
+    trainer.setOutputPrefix(output);
     trainer.setFolds(folds);
     trainer.setTrees(trees);
     trainer.setThreads(threads);

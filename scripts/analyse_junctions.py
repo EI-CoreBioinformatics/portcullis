@@ -3,7 +3,7 @@
 import os
 import argparse
 import bed12
-import performance
+from performance import Performance
 
 
 def main():
@@ -40,7 +40,7 @@ def main():
 	tab = []
 	for a in aligners:
 		for j in junc_analysers:
-			p = performance.PEntry()
+			p = Performance()
 			p.tp = len(bed_data[j + "-" + a] & ref_bed)
 			p.fp = len(bed_data[j + "-" + a] - ref_bed)
 			p.fn = len(ref_bed - bed_data[j + "-" + a])
@@ -48,7 +48,7 @@ def main():
 
 	# Output table to disk
 	with open(args.output + "-junc_analysis.tab", "w") as tab_out:
-		print("Aligner\tFilter\t" + performance.PEntry.header(), file=tab_out)
+		print("Aligner\tFilter\t" + Performance.shortHeader(), file=tab_out)
 		for p in tab:
 			print(p, file=tab_out)
 

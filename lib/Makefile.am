@@ -15,9 +15,13 @@ libportcullis_la_SOURCES =	\
 	src/bam_writer.cc \
 	src/depth_parser.cc \
 	src/genome_mapper.cc \
+	src/markov_model.cc \
+	src/model_features.cc \
+	src/python_exe.cc \
 	src/intron.cc \
 	src/junction.cc \
-	src/junction_system.cc
+	src/junction_system.cc \
+	src/rule_parser.cc	
 
 library_includedir=$(includedir)/portcullis-@PACKAGE_VERSION@/portcullis
 PI = include/portcullis
@@ -28,15 +32,21 @@ library_include_HEADERS = \
 	$(PI)/bam/bam_writer.hpp \
 	$(PI)/bam/depth_parser.hpp \
 	$(PI)/bam/genome_mapper.hpp \
+	$(PI)/kmer.hpp \
+	$(PI)/markov_model.hpp \
+	$(PI)/model_features.hpp \
+	$(PI)/python_exe.hpp \
 	$(PI)/intron.hpp \
 	$(PI)/junction.hpp \
 	$(PI)/junction_system.hpp \
 	$(PI)/portcullis_fs.hpp \
 	$(PI)/seq_utils.hpp \
+	$(PI)/rule_parser.hpp \
 	$(PI)/performance.hpp
 
 libportcullis_la_CPPFLAGS = \
 	-isystem $(top_srcdir)/deps/htslib-1.3 \
+	-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
 	-isystem $(top_srcdir)/lib/include \
 	-DDATADIR=\"$(datadir)\" \
 	@AM_CPPFLAGS@ \
