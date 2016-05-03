@@ -21,7 +21,8 @@ libportcullis_la_SOURCES =	\
 	src/intron.cc \
 	src/junction.cc \
 	src/junction_system.cc \
-	src/rule_parser.cc	
+	src/rule_parser.cc \
+	src/performance.cc
 
 library_includedir=$(includedir)/portcullis-@PACKAGE_VERSION@/portcullis
 PI = include/portcullis
@@ -42,7 +43,8 @@ library_include_HEADERS = \
 	$(PI)/portcullis_fs.hpp \
 	$(PI)/seq_utils.hpp \
 	$(PI)/rule_parser.hpp \
-	$(PI)/performance.hpp
+	$(PI)/performance.hpp \
+	$(PI)/k_fold.hpp
 
 libportcullis_la_CPPFLAGS = \
 	-isystem $(top_srcdir)/deps/htslib-1.3 \
