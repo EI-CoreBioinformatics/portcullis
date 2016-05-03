@@ -62,7 +62,7 @@ if SCHEDULER == "LSF":
     res_cmd = " -R rusage[mem={cluster.memory}]span[ptile={threads}] -n {threads} -q " + QUEUE + " -J {rule} -oo logs/" + now + "_{rule}_%j.out"
 elif SCHEDULER == "PBS":
     sub_cmd = "qsub"
-    res_cmd = " -lselect=1:mem={cluster.memory}MB:ncpus={threads} -q " + QUEUE + " -N {rule} -o logs/{rule}_%j.out -e logs/{rule}_%j.out"
+    res_cmd = " -lselect=1:mem={cluster.memory}MB:ncpus={threads} -q " + QUEUE + " -o logs/{rule}_%j.out -e logs/{rule}_%j.out"
 elif SCHEDULER == "SLURM":
     sub_cmd = "sbatch"
     cores = "-c {threads} "

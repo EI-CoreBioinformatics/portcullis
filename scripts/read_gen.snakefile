@@ -35,6 +35,7 @@ LOAD_SAMTOOLS = config["load_samtools"]
 LOAD_CUFFLINKS = config["load_cufflinks"]
 LOAD_STRINGTIE = config["load_stringtie"]
 LOAD_PORTCULLIS = config["load_portcullis"]
+LOAD_PORTCULLIS2 = config["load_portcullis2"]
 LOAD_PYTHON3 = config["load_python3"]
 
 INDEX_STAR_EXTRA = config["index_star_extra"]
@@ -261,11 +262,11 @@ rule sim_var_portcullis_prep:
 	output: PORT_DIR+"/prep/portcullis.sorted.alignments.bam.bai"
 	params:
 		outdir=PORT_DIR+"/prep",
-		load=LOAD_PORTCULLIS
+		load=LOAD_PORTCULLIS2
 	log: PORT_DIR+"/prep.log"
 	threads: int(THREADS)
 	message: "Using portcullis to prepare: {input}"
-	shell: "{params.load} && portcullis prep -o {params.outdir} -l --strandedness={PORTCULLIS_STRAND} -t {threads} {input.ref} {input.bam} > {log} 2>&1"
+	shell: "{params.load} && portcullis prep -o {params.outdir} --strandedness={PORTCULLIS_STRAND} -t {threads} {input.ref} {input.bam} > {log} 2>&1"
 
 
 rule sim_var_portcullis_junc:
@@ -275,10 +276,10 @@ rule sim_var_portcullis_junc:
 	params:
 		prepdir=PORT_DIR+"/prep",
 		outdir=PORT_DIR+"/junc",
-		load=LOAD_PORTCULLIS
+		load=LOAD_PORTCULLIS2
 	log: PORT_DIR+"/junc.log"
 	threads: int(THREADS)
 	message: "Using portcullis to analyse potential junctions: {input}"
-	shell: "{params.load} && portcullis junc -o {params.outdir} -p portcullis_sim_var -t {threads} {params.prepdir} > {log} 2>&1"
+	shell: "{params.load} && portcullis junc -o {params.outdir}/portcullis_sim_var -t {threads} {params.prepdir} > {log} 2>&1"
 
 

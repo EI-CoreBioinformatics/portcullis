@@ -2,12 +2,19 @@
 	"__default__" :
 	{
 		"threads" : "4",
-		"memory" : "5000",
-		"queue" : "Test"
+		"memory" : "5000"
+	},
+	"align_gsnap_index" :
+	{
+		"memory" : "20000"
 	},
 	"align_gsnap" :
 	{
 		"memory" : "30000"
+	},
+	"align_star_index" :
+	{
+		"memory" : "60000"
 	},
 	"align_star" :
 	{
@@ -33,11 +40,27 @@
 	{
 		"memory" : "30000"
 	},
+	"portcullis_prep" :
+	{
+		"memory" : "10000"
+	},
 	"portcullis_junc" :
 	{
 		"memory" : "25000"
 	},
+	"portcullis_junc2" :
+	{
+		"memory" : "25000"
+	},
+	"portcullis_prep2" :
+	{
+		"memory" : "10000"
+	},
 	"truesight" :
+	{
+		"memory": "60000"
+	},
+	"soapsplice" :
 	{
 		"memory": "60000"
 	},
