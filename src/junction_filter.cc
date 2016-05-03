@@ -33,6 +33,7 @@ using std::map;
 using std::unordered_map;
 using std::unordered_set;
 using std::vector;
+using std::to_string;
 using std::cout;
 using std::cerr;
 
@@ -59,12 +60,14 @@ namespace po = boost::program_options;
 #include <portcullis/portcullis_fs.hpp>
 #include <portcullis/performance.hpp>
 #include <portcullis/rule_parser.hpp>
+#include <portcullis/k_fold.hpp>
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
 using portcullis::Performance;
 using portcullis::eval;
 using portcullis::bam::GenomeMapper;
+using portcullis::KFold;
 
 #include "junction_filter.hpp"
 
@@ -267,40 +270,11 @@ void portcullis::JunctionFilter::filter() {
         cout << "Training Random Forest" << endl
              << "----------------------" << endl << endl;
         bool done = false;
-        shared_ptr<Forest> forest = nullptr;
-        while(!done) {
-        
-            forest = mf.trainInstance(trainingSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
-            const vector<double> importance = forest->getVariableImportance();
-            mf.resetActiveFeatureIndex();
-            uint16_t min_importance_idx = 10000;
-            double min_importance_val = 100000.0;
-            uint16_t min_feature_idx = 10000;
-            // This approach to feature selection (i.e. removing worst features by importance)
-            // doesn't appear to have much impact on final results and is computationally
-            // expensive.  Removing for now.
-            /*for(size_t i = 0; i < importance.size(); i++) {
-                double imp = importance[i];
-                int16_t j = mf.getNextActiveFeatureIndex();
-                if (imp < 0.1 && imp < min_importance_val) {
-                    min_importance_idx = i;
-                    min_importance_val = imp;
-                    min_feature_idx = j;
-                }
-            }*/
-            if (min_importance_idx != 10000) {
-                mf.features[min_feature_idx].active = false;
-                cout << "Deactivating feature: " << mf.features[min_feature_idx].name << " - " << min_importance_val << endl;                
-            }
-            else {
-                done = true;
-            }
-        }
+        shared_ptr<Forest> forest = mf.trainInstance(trainingSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
         
         const vector<double> importance = forest->getVariableImportance();
-        bool foundIrrelevant = false;
         mf.resetActiveFeatureIndex();
-        cout << "Active features remaining:" << endl;
+        cout << "Feature importance:" << endl;
         for(auto& i : importance) {
             int16_t j = mf.getNextActiveFeatureIndex();
             cout << mf.features[j].name << " - " << i << endl;
@@ -311,6 +285,96 @@ void portcullis::JunctionFilter::filter() {
         
         modelFile = output.string() + ".selftrain.forest";
         cout << endl;
+        
+        // Determine optimal threshold using 5-fold CV
+        const uint16_t FOLDS = 5;
+        KFold<JunctionList::const_iterator> kf(FOLDS, trainingSystem.getJunctions().begin(), trainingSystem.getJunctions().end());
+
+        JunctionList test, train;
+        PerformanceList perfs;
+        
+        cout << endl << "Starting " << FOLDS << "-fold cross validation" << endl;
+        
+        std::ofstream resout(this->output.string() + ".cv_results");
+        
+        cout << "Fold\t" << Performance::longHeader() << endl;
+        resout << "Fold\t" << Performance::longHeader() << endl;        
+        
+        for (uint16_t i = 1; i <= 5; i++) {
+
+            cout << i << "\t";
+            resout << i << "\t";
+            cout.flush();
+            resout.flush();
+
+            // Populate train and test for this step
+            kf.getFold(i, back_inserter(train), back_inserter(test));
+            
+            // Train on this particular set
+            ForestPtr f = ModelFeatures().trainInstance(train, output.string() + ".selftrain.cv-" + to_string(i), DEFAULT_SELFTRAIN_TREES, threads, true, false);
+            
+            // Convert testing set junctions into feature vector
+            Data* testingData = mf.juncs2FeatureVectors(test);
+
+            f->setPredictionMode(true);
+            f->setData(testingData);
+            f->run(false);
+
+            delete testingData;
+            
+            vector<double> thresholds;
+            for(double i = 0.0; i <= 1.0; i += 0.01) {
+                thresholds.push_back(i);
+            }
+            double max_mcc = 0.0;
+            double max_f1 = 0.0;
+            double best_t_mcc = 0.0;
+            double best_t_f1 = 0.0;
+            
+            cout << "Threshold\t" << Performance::longHeader() << endl;
+            for(auto& t : thresholds) {
+                JunctionList pjl;
+                JunctionList fjl;
+                categorise(f, test, pjl, fjl, t);
+                shared_ptr<Performance> perf = calcPerformance(pjl, fjl);
+                double mcc = perf->getMCC();
+                double f1 = perf->getF1Score();
+                //cout << t << "\t" << perf->toLongString() << endl;
+                if (mcc > max_mcc) {
+                    max_mcc = mcc;
+                    best_t_mcc = t;
+                }
+                if (f1 > max_f1) {
+                    max_f1 = f1;
+                    best_t_f1 = t;
+                }
+            }
+
+            //cout << "The best F1 score of " << max_f1 << " is achieved with threshold set at " << best_t_f1 << endl;
+            //cout << "The best MCC score of " << max_mcc << " is achieved with threshold set at " << best_t_mcc << endl;
+            //cout << "Actual threshold set at " << threshold << endl;
+            JunctionList pjl;
+            JunctionList fjl;
+            categorise(f, test, pjl, fjl, best_t_mcc);
+            shared_ptr<Performance> perf = calcPerformance(pjl, fjl);            
+            cout << perf->toLongString() << endl;
+            resout << perf->toLongString() << endl;
+
+            perfs.add(perf);
+            
+            // Clear the train and test vectors in preparation for the next step
+            train.clear();
+            test.clear();
+        }
+
+        cout << "Cross validation completed" << endl << endl;
+    
+        perfs.outputMeanPerformance(resout);
+        
+        cout << endl << "Saved cross validation results to file " << output.string() << ".cv_results" << endl;
+               
+        resout.close();        
+        
     }
        
     // Manage a junction system of all discarded junctions
