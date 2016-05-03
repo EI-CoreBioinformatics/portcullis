@@ -249,11 +249,11 @@ Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
 portcullis::ForestPtr portcullis::ModelFeatures::trainInstance(const JunctionList& x, 
         string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose) {
     
-    cout << "Creating feature vector" << endl;
+    if (verbose) cout << "Creating feature vector" << endl;
     Data* trainingData = juncs2FeatureVectors(x);
     
     path feature_file = outputPrefix + ".features";
-    cout << "Saving feature vector to disk: " << feature_file << endl;
+    if (verbose) cout << "Saving feature vector to disk: " << feature_file << endl;
     
     ofstream fout(feature_file.c_str(), std::ofstream::out);
     
@@ -264,7 +264,7 @@ portcullis::ForestPtr portcullis::ModelFeatures::trainInstance(const JunctionLis
     
     fout.close();
      
-    cout << "Initialising random forest" << endl;
+    if (verbose) cout << "Initialising random forest" << endl;
     ForestPtr f = nullptr;
     if (probabilityMode) {
         f = make_shared<ForestProbability>();
@@ -295,7 +295,7 @@ portcullis::ForestPtr portcullis::ModelFeatures::trainInstance(const JunctionLis
         false,                      // predall
         1.0);                       // Sample fraction
             
-    cout << "Training" << endl;
+    if (verbose) cout << "Training" << endl;
     f->setVerboseOut(&cerr);
     f->run(verbose);
     

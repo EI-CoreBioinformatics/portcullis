@@ -297,9 +297,9 @@ void portcullis::JunctionFilter::filter() {
         
         std::ofstream resout(this->output.string() + ".cv_results");
         
-        cout << "Fold\t" << Performance::longHeader() << endl;
-        resout << "Fold\t" << Performance::longHeader() << endl;        
-        
+        cout << "Fold\tT\t" << Performance::longHeader() << endl;
+        resout << "Fold\tT\t" << Performance::longHeader() << endl;        
+        vector<double> best_thresholds;
         for (uint16_t i = 1; i <= 5; i++) {
 
             cout << i << "\t";
@@ -311,7 +311,7 @@ void portcullis::JunctionFilter::filter() {
             kf.getFold(i, back_inserter(train), back_inserter(test));
             
             // Train on this particular set
-            ForestPtr f = ModelFeatures().trainInstance(train, output.string() + ".selftrain.cv-" + to_string(i), DEFAULT_SELFTRAIN_TREES, threads, true, false);
+            ForestPtr f = mf.trainInstance(train, output.string() + ".selftrain.cv-" + to_string(i), DEFAULT_SELFTRAIN_TREES, threads, true, false);
             
             // Convert testing set junctions into feature vector
             Data* testingData = mf.juncs2FeatureVectors(test);
@@ -331,7 +331,6 @@ void portcullis::JunctionFilter::filter() {
             double best_t_mcc = 0.0;
             double best_t_f1 = 0.0;
             
-            cout << "Threshold\t" << Performance::longHeader() << endl;
             for(auto& t : thresholds) {
                 JunctionList pjl;
                 JunctionList fjl;
@@ -356,9 +355,10 @@ void portcullis::JunctionFilter::filter() {
             JunctionList pjl;
             JunctionList fjl;
             categorise(f, test, pjl, fjl, best_t_mcc);
+            best_thresholds.push_back(best_t_mcc);
             shared_ptr<Performance> perf = calcPerformance(pjl, fjl);            
-            cout << perf->toLongString() << endl;
-            resout << perf->toLongString() << endl;
+            cout << best_t_mcc << "\t" << perf->toLongString() << endl;
+            resout << best_t_mcc << "\t" << perf->toLongString() << endl;
 
             perfs.add(perf);
             
@@ -370,6 +370,17 @@ void portcullis::JunctionFilter::filter() {
         cout << "Cross validation completed" << endl << endl;
     
         perfs.outputMeanPerformance(resout);
+        
+        double b_t = 0.0;
+        for(double t : best_thresholds) {
+            b_t += t;
+        }
+        
+        b_t /= best_thresholds.size();
+        
+        cout << "Optimal threshold: " << b_t << endl << endl;
+        
+        threshold = b_t;
         
         cout << endl << "Saved cross validation results to file " << output.string() << ".cv_results" << endl;
                
@@ -898,7 +909,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
         cout << "The best F1 score of " << max_f1 << " is achieved with threshold set at " << best_t_f1 << endl;
         cout << "The best MCC score of " << max_mcc << " is achieved with threshold set at " << best_t_mcc << endl;
         cout << "Actual threshold set at " << threshold << endl;
-        categorise(f, all, pass, fail, best_t_f1);
+        categorise(f, all, pass, fail, threshold);
     }
     else {
         categorise(f, all, pass, fail, threshold);
