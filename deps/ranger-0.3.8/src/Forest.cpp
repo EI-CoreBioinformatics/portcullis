@@ -349,9 +349,12 @@ void Forest::writeImportanceFile() {
 }
 
 void Forest::saveToFile() {
+    saveToFile(output_prefix + ".forest");
+}
+
+void Forest::saveToFile(std::string filename) {
 
   // Open file for writing
-  std::string filename = output_prefix + ".forest";
   std::ofstream outfile;
   outfile.open(filename, std::ios::binary);
   if (!outfile.good()) {

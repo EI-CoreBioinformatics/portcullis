@@ -35,7 +35,7 @@ using portcullis::Junction;
 
 
 
-void portcullis::ModelFeatures::initGenomeMapper(const path& genomeFile) {
+void portcullis::ml::ModelFeatures::initGenomeMapper(const path& genomeFile) {
 
     // Initialise
     gmap.setGenomeFile(genomeFile);
@@ -44,7 +44,7 @@ void portcullis::ModelFeatures::initGenomeMapper(const path& genomeFile) {
     gmap.loadFastaIndex();
 }
 
-uint32_t portcullis::ModelFeatures::calcIntronThreshold(const JunctionList& juncs) {
+uint32_t portcullis::ml::ModelFeatures::calcIntronThreshold(const JunctionList& juncs) {
 
     vector<uint32_t> intron_sizes;
     for(auto& j : juncs) {
@@ -58,7 +58,7 @@ uint32_t portcullis::ModelFeatures::calcIntronThreshold(const JunctionList& junc
     return L95;
 }
 
-void portcullis::ModelFeatures::trainCodingPotentialModel(const JunctionList& in) {
+void portcullis::ml::ModelFeatures::trainCodingPotentialModel(const JunctionList& in) {
 
     vector<string> exons;
     vector<string> introns;
@@ -102,7 +102,7 @@ void portcullis::ModelFeatures::trainCodingPotentialModel(const JunctionList& in
     intronModel.train(introns, 5);
 }
 
-void portcullis::ModelFeatures::trainSplicingModels(const JunctionList& pass, const JunctionList& fail) {
+void portcullis::ml::ModelFeatures::trainSplicingModels(const JunctionList& pass, const JunctionList& fail) {
 
     vector<string> donors;
     vector<string> acceptors;
@@ -167,7 +167,7 @@ void portcullis::ModelFeatures::trainSplicingModels(const JunctionList& pass, co
     acceptorFModel.train(acceptors, 5);
 }
 
-Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
+Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
         
     vector<string> headers;
     for(auto& f : features) {
@@ -246,7 +246,7 @@ Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
 
 
 
-portcullis::ForestPtr portcullis::ModelFeatures::trainInstance(const JunctionList& x, 
+portcullis::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const JunctionList& x, 
         string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose) {
     
     if (verbose) cout << "Creating feature vector" << endl;

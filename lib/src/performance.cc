@@ -23,7 +23,7 @@ using std::endl;
 #include <portcullis/performance.hpp>
 
 
-string portcullis::Performance::toShortString() const {
+string portcullis::ml::Performance::toShortString() const {
     vector<string> parts;
     parts.push_back(std::to_string(tp));
     parts.push_back(std::to_string(tn)); 
@@ -35,7 +35,7 @@ string portcullis::Performance::toShortString() const {
     return boost::algorithm::join(parts, "\t");
 }
 
-string portcullis::Performance::toLongString() const {
+string portcullis::ml::Performance::toLongString() const {
     vector<string> parts;
     parts.push_back(std::to_string(tp));
     parts.push_back(std::to_string(tn)); 
@@ -56,7 +56,7 @@ string portcullis::Performance::toLongString() const {
 }
 
     
-void portcullis::Performance::loadGenuine(path& genuineFile, vector<bool>& results) {
+void portcullis::ml::Performance::loadGenuine(path& genuineFile, vector<bool>& results) {
 
     // Load reference data    
     std::ifstream refs(genuineFile.string());
@@ -71,7 +71,7 @@ void portcullis::Performance::loadGenuine(path& genuineFile, vector<bool>& resul
     refs.close();
 }
 
-void portcullis::PerformanceList::outputMeanPerformance(std::ostream& resout) {
+void portcullis::ml::PerformanceList::outputMeanPerformance(std::ostream& resout) {
     
     vector<double> prevs;
     vector<double> biases;
@@ -109,7 +109,7 @@ void portcullis::PerformanceList::outputMeanPerformance(std::ostream& resout) {
     outputMeanScore(mccs, "MCC", resout);
 }
 
-void portcullis::PerformanceList::outputMeanScore(const vector<double>& scores, const string& score_type, std::ostream& resout) {
+void portcullis::ml::PerformanceList::outputMeanScore(const vector<double>& scores, const string& score_type, std::ostream& resout) {
     double sum = std::accumulate(scores.begin(), scores.end(), 0.0);
     double mean = sum / scores.size();
     double sq_sum = std::inner_product(scores.begin(), scores.end(), scores.begin(), 0.0);

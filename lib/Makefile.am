@@ -22,7 +22,8 @@ libportcullis_la_SOURCES =	\
 	src/junction.cc \
 	src/junction_system.cc \
 	src/rule_parser.cc \
-	src/performance.cc
+	src/performance.cc \
+	src/ss_forest.cc
 
 library_includedir=$(includedir)/portcullis-@PACKAGE_VERSION@/portcullis
 PI = include/portcullis
@@ -33,18 +34,20 @@ library_include_HEADERS = \
 	$(PI)/bam/bam_writer.hpp \
 	$(PI)/bam/depth_parser.hpp \
 	$(PI)/bam/genome_mapper.hpp \
+	$(PI)/ml/markov_model.hpp \
+	$(PI)/ml/model_features.hpp \
+	$(PI)/ml/performance.hpp \
+	$(PI)/ml/k_fold.hpp \
+	$(PI)/ml/ss_forest.hpp \
 	$(PI)/kmer.hpp \
-	$(PI)/markov_model.hpp \
-	$(PI)/model_features.hpp \
 	$(PI)/python_exe.hpp \
 	$(PI)/intron.hpp \
 	$(PI)/junction.hpp \
 	$(PI)/junction_system.hpp \
 	$(PI)/portcullis_fs.hpp \
 	$(PI)/seq_utils.hpp \
-	$(PI)/rule_parser.hpp \
-	$(PI)/performance.hpp \
-	$(PI)/k_fold.hpp
+	$(PI)/rule_parser.hpp
+	
 
 libportcullis_la_CPPFLAGS = \
 	-isystem $(top_srcdir)/deps/htslib-1.3 \

@@ -26,6 +26,7 @@ using std::vector;
 
 
 namespace portcullis {
+namespace ml {
 
 typedef boost::error_info<struct MMError,string> MMErrorInfo;
 struct MMException: virtual boost::exception, virtual std::exception {};
@@ -104,6 +105,6 @@ public:
     }    
 };
 
-
+}
 }
 

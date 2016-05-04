@@ -37,6 +37,7 @@ using portcullis::JunctionList;
 using portcullis::SplicingScores;
 
 namespace portcullis {
+namespace ml {
     
 typedef shared_ptr<Forest> ForestPtr;
 
@@ -131,4 +132,5 @@ public:
     }
     
 };
+}
 }

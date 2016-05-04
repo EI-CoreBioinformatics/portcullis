@@ -26,6 +26,7 @@ using std::random_shuffle;
 #include <boost/exception/all.hpp>
 
 namespace portcullis {
+namespace ml {
     
 typedef boost::error_info<struct KFoldError,string> KFoldErrorInfo;
 struct KFoldException: virtual boost::exception, virtual std::exception { };
@@ -75,4 +76,5 @@ private:
     vector<int> whichFoldToGo; 
 };
 
+}
 }

@@ -34,7 +34,8 @@ using std::vector;
 using boost::filesystem::path;
 
 namespace portcullis {  
-    
+namespace ml {
+     
 class Performance {
 protected:
     uint32_t tp;
@@ -262,4 +263,5 @@ protected:
 
 };
 
+}
 }
