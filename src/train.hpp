@@ -35,9 +35,10 @@ using std::unique_ptr;
 using boost::filesystem::path;
 
 #include <ranger/Forest.h>
-#include <portcullis/performance.hpp>
-#include <portcullis/model_features.hpp>
-using portcullis::ModelFeatures;
+
+#include <portcullis/ml/model_features.hpp>
+using portcullis::ml::ModelFeatures;
+using portcullis::ml::ForestPtr;
 
 namespace portcullis {
     
@@ -174,7 +175,7 @@ public:
 protected:
     
     
-    void testInstance(shared_ptr<Forest> f, const JunctionList& y);
+    void testInstance(ForestPtr f, const JunctionList& y);
     
     void getRandomSubset(const JunctionList& in, JunctionList& out);    
 };

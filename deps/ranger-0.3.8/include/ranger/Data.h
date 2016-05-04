@@ -42,7 +42,7 @@ public:
     virtual ~Data();
 
     virtual double get(size_t row, size_t col) const = 0;
-
+    
     size_t getVariableID(std::string variable_name);
 
     virtual void reserveMemory() = 0;

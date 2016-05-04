@@ -666,7 +666,7 @@ void Forest::growTreesInThread(uint thread_idx, std::vector<double>* variable_im
 }
 
 void Forest::predictTreesInThread(uint thread_idx, const Data* prediction_data, bool oob_prediction) {
-  if (thread_ranges.size() > thread_idx + 1) {
+    if (thread_ranges.size() > thread_idx + 1) {
     for (size_t i = thread_ranges[thread_idx]; i < thread_ranges[thread_idx + 1]; ++i) {
       trees[i]->predict(prediction_data, oob_prediction);
 

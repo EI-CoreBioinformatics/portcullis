@@ -17,17 +17,55 @@
 
 #include <iostream>
 using std::cout;
+using std::cerr;
 using std::endl;
+using std::ostream;
 
 #include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
+
+#include <ranger/ForestProbability.h>
 
 #include <portcullis/seq_utils.hpp>
 using portcullis::SeqUtils;
 
 #include <portcullis/ml/ss_forest.hpp>
 
-ForestPtr portcullis::ml::SSForest::train() {
+portcullis::ml::SemiSupervisedForest::SemiSupervisedForest(ModelFeatures& mf, 
+        const JunctionList& _labelled, const JunctionList& _unlabelled,
+        string _outputPrefix, uint16_t _trees, uint16_t _threads, bool _verbose) {
+    
+    verbose = _verbose;
+    
+    labelled = mf.juncs2FeatureVectors(_labelled);
+    if (verbose) cout << "Created labelled FV with " << labelled->getNumRows() << " entries." << endl;
+    
+    unlabelled = mf.juncs2FeatureVectors(_unlabelled);
+    if (verbose) cout << "Created unlabelled FV with " << unlabelled->getNumRows() << " entries." << endl;
+    
+    // Combine labelled and unlabelled
+    // This is inefficient but it makes life easier... hopefully it doesn't take too
+    // much memory
+    JunctionList _all;
+    _all.insert(_all.end(), _labelled.begin(), _labelled.end());
+    _all.insert(_all.end(), _unlabelled.begin(), _unlabelled.end());
+    all = mf.juncs2FeatureVectors(_all);
+    if (verbose) cout << "Created combined FV with " << all->getNumRows() << " entries." << endl;
+    
+    
+    outputPrefix = _outputPrefix;
+    threads = _threads;
+    trees = _trees;
+    
+}
+
+portcullis::ml::SemiSupervisedForest::~SemiSupervisedForest() {
+    delete labelled;
+    delete unlabelled;
+    delete all;
+}
+
+ForestPtr portcullis::ml::SemiSupervisedForest::train() {
     
     if (verbose) cout << "Initialising random forest" << endl;
     ForestPtr f = make_shared<ForestProbability>();
@@ -54,7 +92,7 @@ ForestPtr portcullis::ml::SSForest::train() {
         true,                       // predall
         1.0);                       // Sample fraction
     
-    f->setVerboseOut(&cerr);
+    f->setVerboseOut(&cout);
     
     if (verbose) cout << "Training on labelled data" << endl;
     f->run(verbose);
@@ -66,6 +104,8 @@ ForestPtr portcullis::ml::SSForest::train() {
     
     // Store out of box prediction error for first run on just labelled data
     oobe.push_back(f->getOverallPredictionError());
+    cout << "OOBE: " << f->getOverallPredictionError() << endl;
+        
     
     // Loop until no improvement using deterministic annealing
     bool improved = true;
@@ -83,16 +123,16 @@ ForestPtr portcullis::ml::SSForest::train() {
             
             // For the unlabelled set draw random labels using the actual probability 
             // distributions of each tree in the forest and reassign genuine flag
-            for(size_t i = 0; i < unlabelled.size(); i++) {
-                double score = f->getPrediction(i);
-                double genuine = f->generateNewPrediction(i);
-                
+            for(size_t i = 0; i < unlabelled->getNumRows(); i++) {
+                // Note we are assuming field 0 contains the label
+                // Override field 0 with the new label
+                bool error = false;
+                all->set(labelled->getNumRows() + i, 0, f->makePrediction(i), error);
             }
         }
         
-        
-        
         if (verbose) cout << "Re-training using labelled and unlabelled data" << endl;
+        f->setData(all);
         f->setPredictionMode(false);
         f->run(verbose);
         
@@ -108,7 +148,7 @@ ForestPtr portcullis::ml::SSForest::train() {
             oobe.push_back(f->getOverallPredictionError());
             improved = true;
             repeat = 1;
-            forest = fm;
+            forest = f;
             cout << "Improvement of " << error_delta << " to OOBE with this iteration" << endl;
             best_forest = outputPrefix+"/ssrf." + std::to_string(it++) + ".forest";
             f->saveToFile(best_forest);

@@ -27,11 +27,14 @@ using boost::filesystem::path;
 #include <ranger/Forest.h>
 
 #include <portcullis/ml/model_features.hpp>
+#include <portcullis/ml/markov_model.hpp>
 using portcullis::ml::ModelFeatures;
+using portcullis::ml::MarkovModel;
+using portcullis::ml::ForestPtr;
 
 #include <portcullis/junction.hpp>
 using portcullis::bam::GenomeMapper;
-using portcullis::MarkovModel;
+
 using portcullis::Junction;
 using portcullis::JunctionPtr;
 using portcullis::JunctionList;
@@ -46,18 +49,23 @@ class SemiSupervisedForest {
 private:
     uint16_t trees;
     Data* labelled;
-    Data* unlablled;
+    Data* unlabelled;
+    Data* all;
     ModelFeatures mf;
     ForestPtr forest;
+    bool verbose;
+    uint16_t threads;
+    string outputPrefix;
     
 public:
-    SemiSupervisedForest(const JunctionList& labelled, const JunctionList& unlabelled,
-            string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, 
-            bool verbose);
+    SemiSupervisedForest(ModelFeatures& _mf, const JunctionList& labelled, const JunctionList& unlabelled,
+            string outputPrefix, uint16_t trees, uint16_t threads, bool verbose);
     
-    void train();
+    virtual ~SemiSupervisedForest();
     
-    ForestPtr getForest();
+    ForestPtr train();
+    
+    ForestPtr getForest() { return forest; };
     
     static Data* juncs2FeatureVectors(const JunctionList& x);
     

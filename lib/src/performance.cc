@@ -20,7 +20,7 @@
 using std::cout;
 using std::endl;
 
-#include <portcullis/performance.hpp>
+#include <portcullis/ml/performance.hpp>
 
 
 string portcullis::ml::Performance::toShortString() const {
@@ -29,9 +29,9 @@ string portcullis::ml::Performance::toShortString() const {
     parts.push_back(std::to_string(tn)); 
     parts.push_back(std::to_string(fp));
     parts.push_back(std::to_string(fn));
-    parts.push_back(portcullis::Performance::to_2dp_string(getRecall()));
-    parts.push_back(portcullis::Performance::to_2dp_string(getPrecision()));
-    parts.push_back(portcullis::Performance::to_2dp_string(getF1Score()));
+    parts.push_back(Performance::to_2dp_string(getRecall()));
+    parts.push_back(Performance::to_2dp_string(getPrecision()));
+    parts.push_back(Performance::to_2dp_string(getF1Score()));
     return boost::algorithm::join(parts, "\t");
 }
 
@@ -41,17 +41,17 @@ string portcullis::ml::Performance::toLongString() const {
     parts.push_back(std::to_string(tn)); 
     parts.push_back(std::to_string(fp));
     parts.push_back(std::to_string(fn));
-    parts.push_back(portcullis::Performance::to_2dp_string(getPrevalence()));        
-    parts.push_back(portcullis::Performance::to_2dp_string(getBias()));
-    parts.push_back(portcullis::Performance::to_2dp_string(getSensitivity()));
-    parts.push_back(portcullis::Performance::to_2dp_string(getSpecificity()));
-    parts.push_back(portcullis::Performance::to_2dp_string(getPrecision()));
-    parts.push_back(portcullis::Performance::to_2dp_string(getNPV()));
-    parts.push_back(portcullis::Performance::to_2dp_string(getF1Score()));
-    parts.push_back(portcullis::Performance::to_2dp_string(getAccuracy()));
-    parts.push_back(portcullis::Performance::to_2dp_string(getInformedness()));
-    parts.push_back(portcullis::Performance::to_2dp_string(getMarkedness()));
-    parts.push_back(portcullis::Performance::to_2dp_string(getMCC()));        
+    parts.push_back(Performance::to_2dp_string(getPrevalence()));        
+    parts.push_back(Performance::to_2dp_string(getBias()));
+    parts.push_back(Performance::to_2dp_string(getSensitivity()));
+    parts.push_back(Performance::to_2dp_string(getSpecificity()));
+    parts.push_back(Performance::to_2dp_string(getPrecision()));
+    parts.push_back(Performance::to_2dp_string(getNPV()));
+    parts.push_back(Performance::to_2dp_string(getF1Score()));
+    parts.push_back(Performance::to_2dp_string(getAccuracy()));
+    parts.push_back(Performance::to_2dp_string(getInformedness()));
+    parts.push_back(Performance::to_2dp_string(getMarkedness()));
+    parts.push_back(Performance::to_2dp_string(getMCC()));        
     return boost::algorithm::join(parts, "\t");
 }
 

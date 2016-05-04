@@ -43,11 +43,12 @@ typedef std::unordered_map<size_t, uint16_t> SplicedAlignmentMap;
 #include "bam/genome_mapper.hpp"
 using namespace portcullis::bam;
 
+#include "ml/markov_model.hpp"
+using portcullis::ml::KmerMarkovModel;
+using portcullis::ml::PosMarkovModel;
+
 #include "intron.hpp"
 #include "seq_utils.hpp"
-#include "markov_model.hpp"
-using portcullis::KmerMarkovModel;
-using portcullis::PosMarkovModel;
 using portcullis::Intron;
 
 

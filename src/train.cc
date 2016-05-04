@@ -46,14 +46,15 @@ namespace po = boost::program_options;
 #include <ranger/ForestClassification.h>
 #include <ranger/ForestRegression.h>
 
+#include <portcullis/ml/performance.hpp>
+#include <portcullis/ml/k_fold.hpp>
+using portcullis::ml::Performance;
+using portcullis::ml::PerformanceList;
+using portcullis::ml::KFold;
+
 #include <portcullis/junction_system.hpp>
-#include <portcullis/performance.hpp>
-#include <portcullis/k_fold.hpp>
 using portcullis::JunctionSystem;
 using portcullis::JunctionList;
-using portcullis::Performance;
-using portcullis::PerformanceList;
-using portcullis::KFold;
 
 #include "train.hpp"
 using portcullis::Train;

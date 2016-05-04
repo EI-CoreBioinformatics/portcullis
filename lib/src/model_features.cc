@@ -31,7 +31,7 @@ using std::make_shared;
 #include <portcullis/junction.hpp>
 using portcullis::Junction;
 
-#include <portcullis/model_features.hpp>
+#include <portcullis/ml/model_features.hpp>
 
 
 
@@ -246,7 +246,7 @@ Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& x)
 
 
 
-portcullis::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const JunctionList& x, 
+portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const JunctionList& x, 
         string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose) {
     
     if (verbose) cout << "Creating feature vector" << endl;

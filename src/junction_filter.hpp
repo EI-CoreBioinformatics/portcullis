@@ -47,19 +47,21 @@ using boost::filesystem::create_directory;
 using boost::filesystem::symbolic_link_exists;
 
 #include <portcullis/bam/genome_mapper.hpp>
+using portcullis::bam::GenomeMapper;
+
+#include <portcullis/ml/performance.hpp>
+#include <portcullis/ml/model_features.hpp>
+using portcullis::ml::Performance;
+using portcullis::ml::ModelFeatures;
+
 #include <portcullis/intron.hpp>
 #include <portcullis/portcullis_fs.hpp>
 #include <portcullis/junction_system.hpp>
-#include <portcullis/performance.hpp>
 #include <portcullis/rule_parser.hpp>
-#include <portcullis/model_features.hpp>
-using portcullis::bam::GenomeMapper;
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
-using portcullis::Performance;
 using portcullis::JuncResultMap;
-using portcullis::ModelFeatures;
 
 
 namespace portcullis {
@@ -301,7 +303,7 @@ protected:
         
     void createPositiveSet(const JunctionList& all, JunctionList& pos, JunctionList& unlabelled, ModelFeatures& mf);
     
-    void createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg);
+    void createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg, JunctionList& failJuncs);
     
 public:
   

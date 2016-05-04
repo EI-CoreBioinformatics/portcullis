@@ -25,7 +25,8 @@ using std::endl;
 #include <portcullis/seq_utils.hpp>
 using portcullis::SeqUtils;
 
-#include <portcullis/markov_model.hpp>
+#include <portcullis/ml/markov_model.hpp>
+using portcullis::ml::KMMU;
 
 void portcullis::ml::KmerMarkovModel::train(const vector<string>& input, const uint32_t _order) {
     order = _order;

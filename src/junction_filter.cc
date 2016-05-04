@@ -53,21 +53,18 @@ namespace po = boost::program_options;
 #include <ranger/ForestProbability.h>
 #include <ranger/DataDouble.h>
 
-#include <portcullis/bam/genome_mapper.hpp>
+#include <portcullis/ml/ss_forest.hpp>
+using portcullis::ml::SemiSupervisedForest;
+
 #include <portcullis/intron.hpp>
 #include <portcullis/junction.hpp>
 #include <portcullis/junction_system.hpp>
 #include <portcullis/portcullis_fs.hpp>
-#include <portcullis/performance.hpp>
 #include <portcullis/rule_parser.hpp>
-#include <portcullis/k_fold.hpp>
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
-using portcullis::Performance;
 using portcullis::eval;
-using portcullis::bam::GenomeMapper;
-using portcullis::KFold;
 
 #include "junction_filter.hpp"
 
@@ -240,13 +237,13 @@ void portcullis::JunctionFilter::filter() {
     if (train) {
         
         // The initial positive and negative sets
-        JunctionList pos, unlabelled, neg;
+        JunctionList pos, unlabelled, neg, unlabelled2;
          
         cout << "Self training mode activated." << endl << endl;
         
         createPositiveSet(currentJuncs, pos, unlabelled, mf);
         
-        createNegativeSet(mf.L95, unlabelled, neg);
+        createNegativeSet(mf.L95, unlabelled, neg, unlabelled2);
         
         cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
         
@@ -270,7 +267,9 @@ void portcullis::JunctionFilter::filter() {
         cout << "Training Random Forest" << endl
              << "----------------------" << endl << endl;
         bool done = false;
-        shared_ptr<Forest> forest = mf.trainInstance(trainingSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
+        //shared_ptr<Forest> forest = mf.trainInstance(trainingSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
+        SemiSupervisedForest ssf(mf, trainingSystem.getJunctions(), unlabelled2, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true);
+        shared_ptr<Forest> forest = ssf.train();
         
         const vector<double> importance = forest->getVariableImportance();
         mf.resetActiveFeatureIndex();
@@ -284,108 +283,7 @@ void portcullis::JunctionFilter::filter() {
         forest->writeOutput(&cout);
         
         modelFile = output.string() + ".selftrain.forest";
-        cout << endl;
-        
-        // Determine optimal threshold using 5-fold CV
-        const uint16_t FOLDS = 5;
-        KFold<JunctionList::const_iterator> kf(FOLDS, trainingSystem.getJunctions().begin(), trainingSystem.getJunctions().end());
-
-        JunctionList test, train;
-        PerformanceList perfs;
-        
-        cout << endl << "Starting " << FOLDS << "-fold cross validation" << endl;
-        
-        std::ofstream resout(this->output.string() + ".cv_results");
-        
-        cout << "Fold\tT\t" << Performance::longHeader() << endl;
-        resout << "Fold\tT\t" << Performance::longHeader() << endl;        
-        vector<double> best_thresholds;
-        for (uint16_t i = 1; i <= 5; i++) {
-
-            cout << i << "\t";
-            resout << i << "\t";
-            cout.flush();
-            resout.flush();
-
-            // Populate train and test for this step
-            kf.getFold(i, back_inserter(train), back_inserter(test));
-            
-            // Train on this particular set
-            ForestPtr f = mf.trainInstance(train, output.string() + ".selftrain.cv-" + to_string(i), DEFAULT_SELFTRAIN_TREES, threads, true, false);
-            
-            // Convert testing set junctions into feature vector
-            Data* testingData = mf.juncs2FeatureVectors(test);
-
-            f->setPredictionMode(true);
-            f->setData(testingData);
-            f->run(false);
-
-            delete testingData;
-            
-            vector<double> thresholds;
-            for(double i = 0.0; i <= 1.0; i += 0.01) {
-                thresholds.push_back(i);
-            }
-            double max_mcc = 0.0;
-            double max_f1 = 0.0;
-            double best_t_mcc = 0.0;
-            double best_t_f1 = 0.0;
-            
-            for(auto& t : thresholds) {
-                JunctionList pjl;
-                JunctionList fjl;
-                categorise(f, test, pjl, fjl, t);
-                shared_ptr<Performance> perf = calcPerformance(pjl, fjl);
-                double mcc = perf->getMCC();
-                double f1 = perf->getF1Score();
-                //cout << t << "\t" << perf->toLongString() << endl;
-                if (mcc > max_mcc) {
-                    max_mcc = mcc;
-                    best_t_mcc = t;
-                }
-                if (f1 > max_f1) {
-                    max_f1 = f1;
-                    best_t_f1 = t;
-                }
-            }
-
-            //cout << "The best F1 score of " << max_f1 << " is achieved with threshold set at " << best_t_f1 << endl;
-            //cout << "The best MCC score of " << max_mcc << " is achieved with threshold set at " << best_t_mcc << endl;
-            //cout << "Actual threshold set at " << threshold << endl;
-            JunctionList pjl;
-            JunctionList fjl;
-            categorise(f, test, pjl, fjl, best_t_mcc);
-            best_thresholds.push_back(best_t_mcc);
-            shared_ptr<Performance> perf = calcPerformance(pjl, fjl);            
-            cout << best_t_mcc << "\t" << perf->toLongString() << endl;
-            resout << best_t_mcc << "\t" << perf->toLongString() << endl;
-
-            perfs.add(perf);
-            
-            // Clear the train and test vectors in preparation for the next step
-            train.clear();
-            test.clear();
-        }
-
-        cout << "Cross validation completed" << endl << endl;
-    
-        perfs.outputMeanPerformance(resout);
-        
-        double b_t = 0.0;
-        for(double t : best_thresholds) {
-            b_t += t;
-        }
-        
-        b_t /= best_thresholds.size();
-        
-        cout << "Optimal threshold: " << b_t << endl << endl;
-        
-        threshold = b_t;
-        
-        cout << endl << "Saved cross validation results to file " << output.string() << ".cv_results" << endl;
-               
-        resout.close();        
-        
+        cout << endl;        
     }
        
     // Manage a junction system of all discarded junctions
@@ -630,7 +528,7 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
     }
 }
 
-void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg) {
+void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg, JunctionList& failJuncs) {
     
     JuncResultMap resultMap;
         
@@ -685,7 +583,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
     }
     cout << endl << "L95x5\t";
     
-    JunctionList passJuncs, failJuncs;
+    JunctionList passJuncs;
     const uint32_t L95x5 = L95 * 5;
     for(auto& j : f7) {
        if (j->getIntronSize() > L95x5 && j->getMaxMMES() < 10 ) {
