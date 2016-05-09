@@ -42,6 +42,9 @@ using portcullis::SplicingScores;
 
 namespace portcullis {
 namespace ml {
+    
+typedef boost::error_info<struct SSRFError,string> SSRFErrorInfo;
+struct SSRFException: virtual boost::exception, virtual std::exception {};
 
 const uint16_t REPEAT_LIMIT = 3;
     

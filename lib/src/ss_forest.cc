@@ -103,11 +103,13 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
     vector<double> oobe;
     
     // Store out of box prediction error for first run on just labelled data
-    oobe.push_back(f->getOverallPredictionError());
+    //oobe.push_back(f->getOverallPredictionError());
+    oobe.push_back(1.0);
     cout << "OOBE: " << f->getOverallPredictionError() << endl;
         
     
     // Loop until no improvement using deterministic annealing
+    bool initOnly = true;
     bool improved = true;
     uint16_t repeat = 1;
     uint16_t it = 1;
@@ -120,20 +122,45 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
             f->setData(unlabelled);        
             f->setPredictionMode(true);
             f->run(verbose);
-            
-            // For the unlabelled set draw random labels using the actual probability 
-            // distributions of each tree in the forest and reassign genuine flag
-            for(size_t i = 0; i < unlabelled->getNumRows(); i++) {
-                // Note we are assuming field 0 contains the label
-                // Override field 0 with the new label
-                bool error = false;
-                all->set(labelled->getNumRows() + i, 0, f->makePrediction(i), error);
+            if (verbose) cout << "Made predictions.  Applying labels to initially unlabelled set using randomly using normal distribution acquired from scores from decision trees." << endl;
+        }    
+        
+        // For the unlabelled set draw random labels using the actual probability 
+        // distributions of each tree in the forest and reassign genuine flag
+        for(size_t i = 0; i < unlabelled->getNumRows(); i++) {
+            // Note we are assuming field 0 contains the label
+            // Override field 0 with the new label
+            bool error = false;
+            double pred = f->makePrediction(i);
+            //cout << pred << endl;
+            all->set(0, labelled->getNumRows() + i, pred, error);
+            if (error) {
+                BOOST_THROW_EXCEPTION(SSRFException() << SSRFErrorInfo(string(
+                    "Error setting label for initially unlabelled junction ") + std::to_string(i)));
             }
         }
         
-        if (verbose) cout << "Re-training using labelled and unlabelled data" << endl;
-        f->setData(all);
-        f->setPredictionMode(false);
+        if (verbose) cout << "Re-training using initially labelled and newly labelled data" << endl;
+        f = make_shared<ForestProbability>();
+        f->init(
+            "Genuine",                  // Dependant variable name
+            MEM_DOUBLE,                 // Memory mode
+            all,                   // Data object
+            0,                          // M Try (0 == use default)
+            outputPrefix,               // Output prefix 
+            trees,                      // Number of trees
+            1236456789,                 // Use fixed seed to avoid non-deterministic behaviour as much as possible
+            threads,                    // Number of threads
+            IMP_GINI,                   // Importance measure 
+            DEFAULT_MIN_NODE_SIZE_PROBABILITY,  // Min node size
+            "",                         // Status var name 
+            false,                      // Prediction mode
+            true,                       // Replace 
+            catVars,                    // Unordered categorical variable names (vector<string>)
+            false,                      // Memory saving
+            DEFAULT_SPLITRULE,          // Split rule
+            true,                       // predall
+            1.0);                       // Sample fraction
         f->run(verbose);
         
         cout << "OOBE: " << f->getOverallPredictionError() << endl;
@@ -147,15 +174,36 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
         else {
             oobe.push_back(f->getOverallPredictionError());
             improved = true;
+            initOnly = false;
             repeat = 1;
             forest = f;
             cout << "Improvement of " << error_delta << " to OOBE with this iteration" << endl;
-            best_forest = outputPrefix+"/ssrf." + std::to_string(it++) + ".forest";
+            best_forest = outputPrefix+".ssrf." + std::to_string(it++) + ".forest";
             f->saveToFile(best_forest);
         }
     }
     
     // Revert to the best forest
+    f = make_shared<ForestProbability>();
+    f->init(
+        "Genuine",                  // Dependant variable name
+        MEM_DOUBLE,                 // Memory mode
+        initOnly ? labelled : all,                   // Data object
+        0,                          // M Try (0 == use default)
+        outputPrefix,               // Output prefix 
+        trees,                      // Number of trees
+        1236456789,                 // Use fixed seed to avoid non-deterministic behaviour as much as possible
+        threads,                    // Number of threads
+        IMP_GINI,                   // Importance measure 
+        DEFAULT_MIN_NODE_SIZE_PROBABILITY,  // Min node size
+        "",                         // Status var name 
+        false,                      // Prediction mode
+        true,                       // Replace 
+        catVars,                    // Unordered categorical variable names (vector<string>)
+        false,                      // Memory saving
+        DEFAULT_SPLITRULE,          // Split rule
+        true,                       // predall
+        1.0);                       // Sample fraction
     f->loadFromFile(best_forest);
     
     return f;

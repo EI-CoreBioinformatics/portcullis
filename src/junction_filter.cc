@@ -276,17 +276,17 @@ void portcullis::JunctionFilter::filter() {
         //shared_ptr<Forest> forest = mf.trainInstance(trainingSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
         SemiSupervisedForest ssf(mf, trainingSystem.getJunctions(), unlabelled2, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true);
         shared_ptr<Forest> forest = ssf.train();
-        
+        /*
         const vector<double> importance = forest->getVariableImportance();
         mf.resetActiveFeatureIndex();
         cout << "Feature importance:" << endl;
         for(auto& i : importance) {
             int16_t j = mf.getNextActiveFeatureIndex();
             cout << mf.features[j].name << " - " << i << endl;
-        }
+        }*/
         
         forest->saveToFile();
-        forest->writeOutput(&cout);
+        //forest->writeOutput(&cout);
         
         modelFile = output.string() + ".selftrain.forest";
         cout << endl;        

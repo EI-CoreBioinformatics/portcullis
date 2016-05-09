@@ -130,23 +130,7 @@ public:
         return sum / predictions[i].size();
     }
     
-    double makePrediction(int i) const {
-        double sum = std::accumulate(predictions[i].begin(), predictions[i].end(), 0.0);
-        double mean = sum / predictions[i].size();
-
-        double sq_sum = std::inner_product(predictions[i].begin(), predictions[i].end(), predictions[i].begin(), 0.0);
-        double stdev = std::sqrt(sq_sum / predictions[i].size() - mean * mean);
-
-        std::random_device rd;
-        std::mt19937 gen(rd());        
-        
-        // values near the mean are the most likely
-        // standard deviation affects the dispersion of generated values from the mean
-        std::normal_distribution<double> ndist(mean,stdev);
-        
-        // Return the new prediction based on the distribution
-        return std::round(ndist(gen));
-    }
+    double makePrediction(int i) const;
 
     size_t getDependentVarId() const {
         return dependent_varID;

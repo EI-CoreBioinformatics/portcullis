@@ -438,11 +438,12 @@ void Forest::grow(bool verbose) {
 
   // Initailize importance per thread
   std::vector<std::vector<double>> variable_importance_threads(num_threads);
-
+  
   for (uint i = 0; i < num_threads; ++i) {
     if (importance_mode == IMP_GINI) {
       variable_importance_threads[i].resize(num_independent_variables, 0);
     }
+    
     threads.push_back(std::thread(&Forest::growTreesInThread, this, i, &(variable_importance_threads[i])));
   }
   if (verbose) showProgress("Growing trees..");
@@ -455,7 +456,7 @@ void Forest::grow(bool verbose) {
     throw std::runtime_error("User interrupt.");
   }
 #endif
-
+  
   // Sum thread importances
   if (importance_mode == IMP_GINI) {
     variable_importance.resize(num_independent_variables, 0);
@@ -515,6 +516,24 @@ void Forest::predict() {
 
   // Call special functions for subclasses
   predictInternal();
+}
+
+double Forest::makePrediction(int i) const {
+    double sum = std::accumulate(predictions[i].begin(), predictions[i].end(), 0.0);
+    double mean = sum / predictions[i].size();
+
+    double sq_sum = std::inner_product(predictions[i].begin(), predictions[i].end(), predictions[i].begin(), 0.0);
+    double stdev = std::sqrt(sq_sum / predictions[i].size() - mean * mean);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());        
+
+    // values near the mean are the most likely
+    // standard deviation affects the dispersion of generated values from the mean
+    std::normal_distribution<double> ndist(mean,stdev);
+
+    // Return the new prediction based on the distribution
+    return std::abs(std::round(ndist(gen)));
 }
 
 void Forest::computePredictionError() {
