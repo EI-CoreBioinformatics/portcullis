@@ -67,11 +67,12 @@ using portcullis::IntronHasher;
 using portcullis::eval;
 
 #include "junction_filter.hpp"
+#include "prepare.hpp"
 
-portcullis::JunctionFilter::JunctionFilter( const path& _junctionFile, 
+portcullis::JunctionFilter::JunctionFilter(const path& _prepDir, const path& _junctionFile, 
                     const path& _output) {
     junctionFile = _junctionFile;
-    genomeFile = "";
+    prepData = PreparedFiles(_prepDir);
     modelFile = "";
     genuineFile = "";
     output = _output;
@@ -102,6 +103,11 @@ void portcullis::JunctionFilter::filter() {
     if (!exists(junctionFile)) {
         BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
                     "Could not find junction file at: ") + junctionFile.string()));
+    }
+    
+    if (!bfs::exists(prepData.getGenomeFilePath())) {        
+        BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                "Could not find prepared genome file at: ") + prepData.getGenomeFilePath().string()));        
     }
 
     // Test if provided filter config file exists
@@ -199,7 +205,7 @@ void portcullis::JunctionFilter::filter() {
     
     // To be overridden if we are training
     ModelFeatures mf;
-    mf.initGenomeMapper(this->genomeFile);
+    mf.initGenomeMapper(prepData.getGenomeFilePath());
     
     mf.features[1].active=false;        // NB USRS          (BAD)
     mf.features[2].active=false;        // NB DISTRS        (BAD)
@@ -834,7 +840,7 @@ void portcullis::JunctionFilter::categorise(shared_ptr<Forest> f, const Junction
 int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 
     path junctionFile;
-    path genomeFile;
+    path prepDir;
     path modelFile;
     path genuineFile;
     path filterFile;
@@ -888,16 +894,16 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     // in config file, but will not be shown to the user.
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
-        ("genome-file", po::value<path>(&genomeFile), "Path to the genome file to process.")        
-        ("junction-file", po::value<path>(&junctionFile), "Path to the junction file to process.")
+        ("prep_data_dir,i", po::value<path>(&prepDir), "Path to directory containing prepared data.")
+        ("junction_file", po::value<path>(&junctionFile), "Path to the junction file to process.")
         ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD), 
                 "The threshold score at which we determine a junction to be genuine or not.")            
             ;
 
     // Positional option for the input bam file
     po::positional_options_description p;
-    p.add("genome-file", 1);
-    p.add("junction-file", 1);
+    p.add("prep_data_dir", 1);
+    p.add("junction_file", 1);
 
 
     // Combine non-positional options
@@ -923,7 +929,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
          << "------------------------------------------" << endl << endl;
 
     // Create the prepare class
-    JunctionFilter filter(junctionFile, output);
+    JunctionFilter filter(prepDir, junctionFile, output);
     filter.setSaveBad(saveBad);
     filter.setSource(source);
     filter.setVerbose(verbose);
@@ -944,7 +950,6 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
         }
     }
     filter.setReferenceFile(referenceFile);
-    filter.setGenomeFile(genomeFile);
     filter.setThreshold(threshold);
     
     filter.filter();

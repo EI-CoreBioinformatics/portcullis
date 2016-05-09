@@ -97,7 +97,7 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
     if (verbose) cout << "Training on labelled data" << endl;
     f->run(verbose);
     
-    string best_forest = outputPrefix+"/ssrf.0.forest";    
+    string best_forest = outputPrefix+".ssrf.0.forest";    
     f->saveToFile(best_forest);        
     
     vector<double> oobe;
