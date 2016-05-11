@@ -182,6 +182,15 @@ public:
 
     void grow(bool verbose);
     void predict();
+    
+    const std::vector<double>& getCaseWeights() const {
+        return case_weights;
+    }
+
+    void setCaseWeights(std::vector<double> case_weights) {
+        this->case_weights = case_weights;
+    }
+
 
 
 protected:

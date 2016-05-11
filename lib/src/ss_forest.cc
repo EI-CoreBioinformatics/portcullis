@@ -85,15 +85,17 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
         threads,                    // Number of threads
         IMP_GINI,                   // Importance measure 
         DEFAULT_MIN_NODE_SIZE_PROBABILITY,  // Min node size
-        "",                         // Status var name 
+        "",                         // Status var name (not required unless using survival)
         false,                      // Prediction mode
-        false,                       // Replace 
+        true,                      // Sample with replacement
         catVars,                    // Unordered categorical variable names (vector<string>)
         false,                      // Memory saving
         DEFAULT_SPLITRULE,          // Split rule
-        true,                       // predall
+        true,                       // Retain results for all trees (predict all)
         1.0);                       // Sample fraction
     
+    vector<double> case_weights = {0.7, 0.3};
+    //l->setCaseWeights(case_weights);
     l->setVerboseOut(&cout);
     
     if (verbose) cout << "Training on labelled data" << endl;
@@ -163,12 +165,13 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
             DEFAULT_MIN_NODE_SIZE_PROBABILITY,  // Min node size
             "",                         // Status var name 
             false,                      // Prediction mode
-            false,                       // Replace 
+            true,                       // Replace 
             catVars,                    // Unordered categorical variable names (vector<string>)
             false,                      // Memory saving
             DEFAULT_SPLITRULE,          // Split rule
             true,                       // predall
             1.0);                       // Sample fraction
+        //u->setCaseWeights(case_weights);
         u->run(verbose);
         
         cout << "OOBE: " << u->getOverallPredictionError() << endl;
@@ -203,6 +206,7 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
         }
     }
     
+    initOnly = false;
     
     // Revert to the best forest
     ForestPtr b = make_shared<ForestProbability>();
