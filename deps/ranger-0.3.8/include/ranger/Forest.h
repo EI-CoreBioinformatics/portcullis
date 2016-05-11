@@ -171,7 +171,7 @@ public:
     void setData(Data* data) {
         this->data = data;
         // Assume we want to reset predictions too
-        this->predictions.clear();
+        //this->predictions.clear();
     }
 
     void setVerboseOut(std::ostream* verbose_out) {

@@ -39,13 +39,19 @@
 class Data {
 public:
     Data();
+    Data(std::vector<std::string> variable_names, size_t num_rows, size_t num_cols);
     virtual ~Data();
 
     virtual double get(size_t row, size_t col) const = 0;
-    
+
     size_t getVariableID(std::string variable_name);
 
-    virtual void reserveMemory() = 0;
+    virtual void reserveMemoryInternal() = 0;
+
+    void reserveMemory() {
+        reserveMemoryInternal();
+    }
+
     virtual void set(size_t col, size_t row, double value, bool& error) = 0;
 
     void addSparseData(unsigned char* sparse_data, size_t num_cols_sparse);
@@ -115,12 +121,8 @@ public:
         }
     }
 
-    void setExternalData(bool external) {
-        this->externalData = external;
-    }
-
     void saveToTSV(const std::string& file);
-    
+
     std::string getRow(size_t row) const {
         std::stringstream ss;
         ss << this->get(row, 0);
@@ -129,7 +131,7 @@ public:
         }
         return ss.str();
     }
-    
+
     std::string getHeader() const {
         std::stringstream ss;
         ss << variable_names[0];
@@ -138,7 +140,7 @@ public:
         }
         return ss.str();
     }
-
+    
 protected:
     std::vector<std::string> variable_names;
     size_t num_rows;
@@ -147,8 +149,6 @@ protected:
 
     unsigned char* sparse_data;
     size_t num_cols_no_sparse;
-
-    bool externalData;
 
     size_t* index_data;
     std::vector<std::vector<double>> unique_data_values;

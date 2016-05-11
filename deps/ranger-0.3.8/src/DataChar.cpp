@@ -34,35 +34,28 @@ wright@imbs.uni-luebeck.de
 #include <ranger/DataChar.h>
 
 DataChar::DataChar() :
-    data(0) {
+data(0) {
 }
 
-DataChar::DataChar(double* data_double, std::vector<std::string> variable_names, size_t num_rows, size_t num_cols,
-    bool& error) {
-  this->variable_names = variable_names;
-  this->num_rows = num_rows;
-  this->num_cols = num_cols;
-  this->num_cols_no_sparse = num_cols;
+DataChar::DataChar(double* data_double, std::vector<std::string> variable_names, 
+        size_t num_rows, size_t num_cols, bool& error) : 
+        DataChar(variable_names, num_rows, num_cols) {
 
-  reserveMemory();
-
-  // Save data and report errors
-  for (size_t i = 0; i < num_cols; ++i) {
-    for (size_t j = 0; j < num_rows; ++j) {
-      double value = data_double[i * num_rows + j];
-      if (value > CHAR_MAX || value < CHAR_MIN) {
-        error = true;
-      }
-      if (floor(value) != ceil(value)) {
-        error = true;
-      }
-      data[i * num_rows + j] = (char) value;
+    // Save data and report errors
+    for (size_t i = 0; i < num_cols; ++i) {
+        for (size_t j = 0; j < num_rows; ++j) {
+            double value = data_double[i * num_rows + j];
+            if (value > CHAR_MAX || value < CHAR_MIN) {
+                error = true;
+            }
+            if (floor(value) != ceil(value)) {
+                error = true;
+            }
+            data[i * num_rows + j] = (char) value;
+        }
     }
-  }
 }
 
 DataChar::~DataChar() {
-  if (!externalData) {
     delete[] data;
-  }
 }

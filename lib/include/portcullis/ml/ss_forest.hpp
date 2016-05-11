@@ -59,10 +59,14 @@ private:
     bool verbose;
     uint16_t threads;
     string outputPrefix;
+    double contribution;    // How much of a contribution unlabelled data should make to the decision making
+    
+    double makePrediction(ForestPtr l, ForestPtr u, int i) const;
+
     
 public:
     SemiSupervisedForest(ModelFeatures& _mf, const JunctionList& labelled, const JunctionList& unlabelled,
-            string outputPrefix, uint16_t trees, uint16_t threads, bool verbose);
+            string outputPrefix, uint16_t trees, uint16_t threads, double contribution, bool verbose);
     
     virtual ~SemiSupervisedForest();
     
@@ -71,6 +75,9 @@ public:
     ForestPtr getForest() { return forest; };
     
     static Data* juncs2FeatureVectors(const JunctionList& x);
+
+    
+    
     
 };
 }

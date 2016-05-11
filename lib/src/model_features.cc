@@ -177,71 +177,69 @@ Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& x)
     }
     
     // Convert junction list info to double*
-    double* d = new double[x.size() * headers.size()];
+    Data* d = new DataDouble(headers, x.size(), headers.size());
     
     uint32_t row = 0;
     for (const auto& j : x) {
         SplicingScores ss = j->calcSplicingScores(gmap, donorTModel, donorFModel, acceptorTModel, acceptorFModel, 
                 donorPWModel, acceptorPWModel);
         
-        d[0 * x.size() + row] = j->isGenuine();
+        bool error = false;
+        d->set(0, row, j->isGenuine(), error);
         
         uint16_t i = 1;
         
         if (features[1].active) {
-            d[i++ * x.size() + row] = j->getNbUniquelySplicedReads();
+            d->set(i++, row, j->getNbUniquelySplicedReads(), error);
         }
         if (features[2].active) {
-            d[i++ * x.size() + row] = j->getNbDistinctAlignments();
+            d->set(i++, row, j->getNbDistinctAlignments(), error);
         }
         if (features[3].active) {
-            d[i++ * x.size() + row] = j->getNbReliableAlignments();
+            d->set(i++, row, j->getNbReliableAlignments(), error);
         }
         if (features[4].active) {
-            d[i++ * x.size() + row] = j->getEntropy();
+            d->set(i++, row, j->getEntropy(), error);
         }
         if (features[5].active) {
-            d[i++ * x.size() + row] = j->getReliable2RawRatio();
+            d->set(i++, row, j->getReliable2RawRatio(), error);
         }        
         if (features[6].active) {
-            d[i++ * x.size() + row] = j->getMaxMinAnchor();
+            d->set(i++, row, j->getMaxMinAnchor(), error);
         }        
         if (features[7].active) {
-            d[i++ * x.size() + row] = j->getMaxMMES();
+            d->set(i++, row, j->getMaxMMES(), error);
         }
         if (features[8].active) {
-            d[i++ * x.size() + row] = j->getMeanMismatches();
+            d->set(i++, row, j->getMeanMismatches(), error);
         }
         if (features[9].active) {
-            d[i++ * x.size() + row] = L95 == 0 ? 0.0 : j->calcIntronScore(L95);
+            d->set(i++, row, L95 == 0 ? 0.0 : j->calcIntronScore(L95), error);
         }
         if (features[10].active) {
-            d[i++ * x.size() + row] = std::min(j->getHammingDistance5p(), j->getHammingDistance3p());
+            d->set(i++, row, std::min(j->getHammingDistance5p(), j->getHammingDistance3p()), error);
         }
         if (features[11].active) {
-            d[i++ * x.size() + row] = isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel);
+            d->set(i++, row, isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel), error);
         }
         if (features[12].active) {
-            d[i++ * x.size() + row] = isPWModelEmpty() ? 0.0 : ss.positionWeighting;
+            d->set(i++, row, isPWModelEmpty() ? 0.0 : ss.positionWeighting, error);
         }
         if (features[13].active) {
-            d[i++ * x.size() + row] = isPWModelEmpty() ? 0.0 : ss.splicingSignal;
+            d->set(i++, row, isPWModelEmpty() ? 0.0 : ss.splicingSignal, error);
         }
-        
                 
         //Junction overhang values at each position are first converted into deviation from expected distributions       
         for(size_t joi = 0; joi < JO_NAMES.size(); joi++) {
             if (features[joi + 14].active) {
-                d[i++ * x.size() + row] = j->getJunctionOverhangLogDeviation(joi);
+                d->set(i++, row, j->getJunctionOverhangLogDeviation(joi), error);
             }
         }
         
         row++;
     }
     
-    Data* data = new DataDouble(d, headers, x.size(), headers.size());
-    data->setExternalData(false);      // This causes 'd' to be deleted when 'data' is deleted
-    return data;
+    return d;
 }
 
 

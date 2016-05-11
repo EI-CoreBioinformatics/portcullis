@@ -192,6 +192,7 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
     meanQueryLength = 0;
     suspicious = false;
     pfp = false;
+    genuine = false;
     canonicalSpliceSites = NO;
     maxMinAnchor = intron->minAnchorLength(_leftAncStart, _rightAncEnd);
     diffAnchor = 0;
@@ -247,6 +248,7 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
     meanQueryLength = j.meanQueryLength;
     suspicious = j.suspicious;
     pfp = j.pfp;
+    genuine = j.genuine;
     canonicalSpliceSites = j.canonicalSpliceSites;
     maxMinAnchor = j.maxMinAnchor;
     diffAnchor = j.diffAnchor;
