@@ -63,6 +63,10 @@ public:
             std::string status_variable_name, bool prediction_mode, bool sample_with_replacement,
             std::vector<std::string>& unordered_variable_names, bool memory_saving_splitting, SplitRule splitrule,
             std::vector<double>& case_weights, bool predict_all, bool keep_inbag, double sample_fraction);
+    void init(MemoryMode memory_mode, uint mtry, std::string output_prefix,
+            uint num_trees, uint seed, uint num_threads, ImportanceMode importance_mode,
+            uint min_node_size, bool prediction_mode, bool sample_with_replacement, bool memory_saving_splitting,
+            SplitRule splitrule, bool predict_all, double sample_fraction);
     void init(std::string dependent_variable_name, MemoryMode memory_mode, Data* input_data, uint mtry,
             std::string output_prefix, uint num_trees, uint seed, uint num_threads, ImportanceMode importance_mode,
             uint min_node_size, std::string status_variable_name, bool prediction_mode, bool sample_with_replacement,
@@ -120,16 +124,16 @@ public:
     const std::vector<std::vector<double> >& getPredictions() const {
         return predictions;
     }
-    
+
     const double getPrediction(int i) const {
         double sum = 0.0;
-        for(size_t j = 0; j < predictions[i].size(); j++) {
+        for (size_t j = 0; j < predictions[i].size(); j++) {
             sum += predictions[i][j];
         }
-        
+
         return sum / predictions[i].size();
     }
-    
+
     double makePrediction(int i) const;
 
     size_t getDependentVarId() const {
@@ -156,23 +160,16 @@ public:
         return is_ordered_variable;
     }
 
-    std::vector<std::vector<size_t>> getInbagCounts() const {
-        std::vector<std::vector < size_t>> result;
-        for (auto& tree : trees) {
-            result.push_back(tree->getInbagCounts());
-        }
-        return result;
-    }
-
     void setPredictionMode(bool prediction_mode) {
         this->prediction_mode = prediction_mode;
     }
 
-    void setData(Data* data) {
-        this->data = data;
-        // Assume we want to reset predictions too
-        //this->predictions.clear();
-    }
+    /**
+     * Resets the data to a new dataset.  Probably shouldn't use this unless you
+     * know what you are doing.  Best to use "init" method instead.
+     * @param data
+     */
+    void setData(Data* data, std::string dependent_variable_name, std::string status_variable_name, std::vector<std::string>& unordered_variable_names);
 
     void setVerboseOut(std::ostream* verbose_out) {
         this->verbose_out = verbose_out;
@@ -182,7 +179,7 @@ public:
 
     void grow(bool verbose);
     void predict();
-    
+
     const std::vector<double>& getCaseWeights() const {
         return case_weights;
     }
@@ -274,7 +271,7 @@ protected:
 
     // Random number generator
     std::mt19937_64 random_number_generator;
-    
+
     std::string output_prefix;
     ImportanceMode importance_mode;
 

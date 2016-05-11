@@ -79,9 +79,9 @@ void portcullis::Train::testInstance(shared_ptr<Forest> f, const JunctionList& x
     // Convert testing set junctions into feature vector
     ModelFeatures mf;
     Data* testingData = mf.juncs2FeatureVectors(x);
-    
-    f->setPredictionMode(true);
-    f->setData(testingData);
+    vector<string> catvars;
+    f->setPredictionMode(true);    
+    f->setData(testingData, "Genuine", "", catvars);
     f->run(false);
     
     delete testingData;

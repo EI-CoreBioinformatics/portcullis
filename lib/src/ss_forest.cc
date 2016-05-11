@@ -110,8 +110,8 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
     oobe.push_back(l->getOverallPredictionError());
     cout << "OOBE: " << l->getOverallPredictionError() << endl;
     
-    l->setData(unlabelled);        
     l->setPredictionMode(true);
+    l->setData(unlabelled, "Genuine", "", catVars);        
     l->run(verbose);
     
     
@@ -129,8 +129,8 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
         // unlabelled data with the current model
         if (improved && !first) {
             if (verbose) cout << "Making predictions on the unlabelled set using current model" << endl;
-            u->setData(all);
             u->setPredictionMode(true);
+            u->setData(all, "Genuine", "", catVars);
             u->run(verbose);
             if (verbose) cout << "Made predictions." << endl;
         }    
