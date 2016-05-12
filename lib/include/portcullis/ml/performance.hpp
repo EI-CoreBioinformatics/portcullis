@@ -17,15 +17,25 @@
 
 #pragma once
 
+#include <iomanip>
 #include <iostream>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <vector>
+using std::ostream;
 using std::stringstream;
+using std::shared_ptr;
+using std::string;
+using std::vector;
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/path.hpp>
 using boost::filesystem::path;
 
 namespace portcullis {  
-    
+namespace ml {
+     
 class Performance {
 protected:
     uint32_t tp;
@@ -207,6 +217,8 @@ public:
         return getPrecision() + getNPV() - 100.0;
     }
     
+    string toShortString() const;
+    string toLongString() const;
     
     static string shortHeader() {
         return "TP\tTN\tFP\tFN\tREC\tPRC\tF1";
@@ -222,54 +234,34 @@ public:
         return out.str();
     }
     
+    static void loadGenuine(path& genuineFile, vector<bool>& results);
     
-    string toShortString() const {
-        vector<string> parts;
-        parts.push_back(std::to_string(tp));
-        parts.push_back(std::to_string(tn)); 
-        parts.push_back(std::to_string(fp));
-        parts.push_back(std::to_string(fn));
-        parts.push_back(to_2dp_string(getRecall()));
-        parts.push_back(to_2dp_string(getPrecision()));
-        parts.push_back(to_2dp_string(getF1Score()));
-        return boost::algorithm::join(parts, "\t");
-    }
-    
-    string toLongString() const {
-        vector<string> parts;
-        parts.push_back(std::to_string(tp));
-        parts.push_back(std::to_string(tn)); 
-        parts.push_back(std::to_string(fp));
-        parts.push_back(std::to_string(fn));
-        parts.push_back(to_2dp_string(getPrevalence()));        
-        parts.push_back(to_2dp_string(getBias()));
-        parts.push_back(to_2dp_string(getSensitivity()));
-        parts.push_back(to_2dp_string(getSpecificity()));
-        parts.push_back(to_2dp_string(getPrecision()));
-        parts.push_back(to_2dp_string(getNPV()));
-        parts.push_back(to_2dp_string(getF1Score()));
-        parts.push_back(to_2dp_string(getAccuracy()));
-        parts.push_back(to_2dp_string(getInformedness()));
-        parts.push_back(to_2dp_string(getMarkedness()));
-        parts.push_back(to_2dp_string(getMCC()));        
-        return boost::algorithm::join(parts, "\t");
-    }
-    
-    
-    static void loadGenuine(path& genuineFile, vector<bool>& results) {
-    
-        // Load reference data    
-        std::ifstream refs(genuineFile.string());
-        string line;
-        uint32_t lineNb = 0;
-        while (std::getline(refs, line)) {
-            std::istringstream iss(line);
-            bool res;
-            iss >> res;
-            results.push_back(res);
-        }
-        refs.close();
-    }
 };
 
+class PerformanceList {
+public:
+    
+    void clear() {
+        this->scores.clear();
+    }
+    
+    shared_ptr<Performance> operator [](int i) const {
+        return this->scores[i];
+    }
+    
+    void add(shared_ptr<Performance> p) {
+        this->scores.push_back(p);
+    }
+    
+    void outputMeanPerformance(std::ostream& resout);
+
+protected:
+    
+    vector<shared_ptr<Performance>> scores;
+    
+    void outputMeanScore(const vector<double>& scores, const string& score_type, std::ostream& resout);
+
+};
+
+}
 }

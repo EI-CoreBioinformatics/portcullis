@@ -47,19 +47,24 @@ using boost::filesystem::create_directory;
 using boost::filesystem::symbolic_link_exists;
 
 #include <portcullis/bam/genome_mapper.hpp>
+using portcullis::bam::GenomeMapper;
+
+#include <portcullis/ml/performance.hpp>
+#include <portcullis/ml/model_features.hpp>
+using portcullis::ml::Performance;
+using portcullis::ml::ModelFeatures;
+
 #include <portcullis/intron.hpp>
 #include <portcullis/portcullis_fs.hpp>
 #include <portcullis/junction_system.hpp>
-#include <portcullis/performance.hpp>
 #include <portcullis/rule_parser.hpp>
-#include <portcullis/model_features.hpp>
-using portcullis::bam::GenomeMapper;
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
-using portcullis::Performance;
 using portcullis::JuncResultMap;
-using portcullis::ModelFeatures;
+
+#include "prepare.hpp"
+using portcullis::PreparedFiles;
 
 
 namespace portcullis {
@@ -84,7 +89,7 @@ class JunctionFilter {
 private:
     
     path junctionFile;
-    path genomeFile;
+    PreparedFiles prepData;
     path modelFile;
     path filterFile;
     path genuineFile;
@@ -107,7 +112,8 @@ public:
     static path scriptsDir;
     static path dataDir;
     
-    JunctionFilter( const path& _junctionFile, 
+    JunctionFilter( const path& _prepDir, 
+                    const path& _junctionFile, 
                     const path& _output);
     
     virtual ~JunctionFilter() {
@@ -133,14 +139,6 @@ public:
         this->junctionFile = junctionFile;
     }
     
-    path getGenomeFile() const {
-        return genomeFile;
-    }
-
-    void setGenomeFile(path genomeFile) {
-        this->genomeFile = genomeFile;
-    }
-
     double getThreshold() const {
         return threshold;
     }
@@ -301,7 +299,7 @@ protected:
         
     void createPositiveSet(const JunctionList& all, JunctionList& pos, JunctionList& unlabelled, ModelFeatures& mf);
     
-    void createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg);
+    void createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg, JunctionList& failJuncs);
     
 public:
   
@@ -309,11 +307,12 @@ public:
         return string("\nPortcullis Filter Mode Help.\n\n") +
                       "Filters out junctions that are unlikely to be genuine or that have too little\n" +
                       "supporting evidence.  The user can control three stages of the filtering\n" +
-                      "process.  First the user can perform filtering based on a pre-defined random\n" +
-                      "forest model.  Second the user can specify a configuration file described a\n" +
+                      "process.  First the user can perform filtering based on a random forest model\n" + 
+                      "self-trained on the provided data, alternatively the user can provide a pre-\n" +
+                      "trained model.  Second the user can specify a configuration file describing a\n" +
                       "set of filtering rules to apply.  Third, the user can directly through the\n" +
                       "command line filter based on junction (intron) length, or the canonical label.\n\n" +
-                      "Usage: portcullis filter [options] <junction-file>\n\n" +
+                      "Usage: portcullis filter [options] <prep_data_dir> <junction_file>\n\n" +
                       "Options";
     }
     

@@ -26,7 +26,7 @@ using std::vector;
 using std::cout;
 using std::cerr;
 using std::endl;
-using std::unique_ptr;
+using std::shared_ptr;
 using std::make_shared;
 
 #include <boost/program_options.hpp>
@@ -46,17 +46,20 @@ namespace po = boost::program_options;
 #include <ranger/ForestClassification.h>
 #include <ranger/ForestRegression.h>
 
+#include <portcullis/ml/performance.hpp>
+#include <portcullis/ml/k_fold.hpp>
+using portcullis::ml::Performance;
+using portcullis::ml::PerformanceList;
+using portcullis::ml::KFold;
+
 #include <portcullis/junction_system.hpp>
-#include <portcullis/performance.hpp>
 using portcullis::JunctionSystem;
 using portcullis::JunctionList;
-using portcullis::Performance;
 
 #include "train.hpp"
-using portcullis::KFold;
 using portcullis::Train;
 
-portcullis::Train::Train(const path& _junctionFile, const path& _refFile){
+portcullis::Train::Train(const path& _junctionFile, const path& _refFile) {
     junctionFile = _junctionFile;
     refFile = _refFile;
     outputPrefix = "";
@@ -76,9 +79,9 @@ void portcullis::Train::testInstance(shared_ptr<Forest> f, const JunctionList& x
     // Convert testing set junctions into feature vector
     ModelFeatures mf;
     Data* testingData = mf.juncs2FeatureVectors(x);
-    
-    f->setPredictionMode(true);
-    f->setData(testingData);
+    vector<string> catvars;
+    f->setPredictionMode(true);    
+    f->setData(testingData, "Genuine", "", catvars);
     f->run(false);
     
     delete testingData;
@@ -170,7 +173,7 @@ void portcullis::Train::train() {
         KFold<JunctionList::const_iterator> kf(folds, junctions.begin(), junctions.end());
 
         JunctionList test, train;
-        vector<unique_ptr<Performance>> perfs;
+        PerformanceList perfs;
         
         cout << endl << "Starting " << folds << "-fold cross validation" << endl;
         
@@ -213,12 +216,12 @@ void portcullis::Train::train() {
                 }
             }
             
-            unique_ptr<Performance> p( new Performance(tp, tn, fp, fn) );
+            shared_ptr<Performance> p = make_shared<Performance>(tp, tn, fp, fn);
             
             cout << p->toLongString() << endl;
             resout << p->toLongString() << endl;
 
-            perfs.push_back(std::move(p));
+            perfs.add(p);
             
             // Clear the train and test vectors in preparation for the next step
             train.clear();
@@ -227,7 +230,7 @@ void portcullis::Train::train() {
 
         cout << "Cross validation completed" << endl << endl;
     
-        outputMeanPerformance(perfs, resout);
+        perfs.outputMeanPerformance(resout);
         resout.close();
         
         cout << endl << "Saved cross validation results to file " << outputPrefix.string() << ".cv_results" << endl;
@@ -235,57 +238,6 @@ void portcullis::Train::train() {
     
     
     
-}
-
-void portcullis::Train::outputMeanPerformance(const vector<unique_ptr<Performance>>& scores, std::ofstream& resout) {
-    
-    vector<double> prevs;
-    vector<double> biases;
-    vector<double> recs;
-    vector<double> prcs;
-    vector<double> spcs;
-    vector<double> f1s;
-    vector<double> infs;
-    vector<double> mrks;
-    vector<double> accs;
-    vector<double> mccs;
-        
-    for(auto& p : scores) {
-        prevs.push_back(p->getPrevalence());
-        biases.push_back(p->getBias());
-        recs.push_back(p->getRecall());
-        prcs.push_back(p->getPrecision());
-        spcs.push_back(p->getSpecificity());
-        f1s.push_back(p->getF1Score());
-        infs.push_back(p->getInformedness());
-        mrks.push_back(p->getMarkedness());
-        accs.push_back(p->getAccuracy());
-        mccs.push_back(p->getMCC());
-    }
-    
-    outputMeanScore(prevs, "prevalence", resout);
-    outputMeanScore(biases, "bias", resout);
-    outputMeanScore(recs, "recall", resout);
-    outputMeanScore(prcs, "precision", resout);
-    outputMeanScore(f1s, "F1", resout);
-    outputMeanScore(spcs, "specificity", resout);
-    outputMeanScore(accs, "accuracy", resout);
-    outputMeanScore(infs, "informedness", resout);
-    outputMeanScore(mrks, "markededness", resout);
-    outputMeanScore(mccs, "MCC", resout);
-}
-
-void portcullis::Train::outputMeanScore(const vector<double>& scores, const string& score_type, std::ofstream& resout) {
-    double sum = std::accumulate(scores.begin(), scores.end(), 0.0);
-    double mean = sum / scores.size();
-    double sq_sum = std::inner_product(scores.begin(), scores.end(), scores.begin(), 0.0);
-    double stdev = std::sqrt(sq_sum / scores.size() - mean * mean);
-    
-    stringstream msg;
-    msg << "Mean " << std::left << std::setw(13) << score_type << ": " << std::fixed << std::setprecision(2) << mean << "% (+/- " << stdev << "%)" << endl;
-
-    cout << msg.str();
-    resout << msg.str();
 }
 
 void portcullis::Train::getRandomSubset(const JunctionList& in, JunctionList& out) {

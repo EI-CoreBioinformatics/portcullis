@@ -2,11 +2,11 @@
 	"parameters": {
 		"M4-nb_rel_aln": {
                         "operator": "gte",
-                        "value": 3
+                        "value": 5
                 },
                 "M4-nb_rel_aln.2": {
                         "operator": "gte",
-                        "value": 2
+                        "value": 3
                 },
                 "M12-maxmmes": {
                         "operator": "gte",
@@ -14,7 +14,7 @@
                 },
                 "M12-maxmmes.2": {
                         "operator": "gt",
-                        "value": 12
+                        "value": 15
                 },
                 "M13-hamming5p": {
                         "operator": "gte",
@@ -38,7 +38,7 @@
 		},
                 "M19-mean_mismatches.2": {
 			"operator": "lt",
-			"value": 0.5
+			"value": 0.25
 		}
 	},
 	"expression": "( M4-nb_rel_aln & M12-maxmmes ) | ( M4-nb_rel_aln.2 & M12-maxmmes.2 & M13-hamming5p & M14-hamming3p & M19-mean_mismatches.2 ) | ( M13-hamming5p.2 & M14-hamming3p.2 & M19-mean_mismatches )"  

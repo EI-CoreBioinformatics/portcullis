@@ -31,11 +31,11 @@ using std::make_shared;
 #include <portcullis/junction.hpp>
 using portcullis::Junction;
 
-#include <portcullis/model_features.hpp>
+#include <portcullis/ml/model_features.hpp>
 
 
 
-void portcullis::ModelFeatures::initGenomeMapper(const path& genomeFile) {
+void portcullis::ml::ModelFeatures::initGenomeMapper(const path& genomeFile) {
 
     // Initialise
     gmap.setGenomeFile(genomeFile);
@@ -44,7 +44,7 @@ void portcullis::ModelFeatures::initGenomeMapper(const path& genomeFile) {
     gmap.loadFastaIndex();
 }
 
-uint32_t portcullis::ModelFeatures::calcIntronThreshold(const JunctionList& juncs) {
+uint32_t portcullis::ml::ModelFeatures::calcIntronThreshold(const JunctionList& juncs) {
 
     vector<uint32_t> intron_sizes;
     for(auto& j : juncs) {
@@ -58,7 +58,7 @@ uint32_t portcullis::ModelFeatures::calcIntronThreshold(const JunctionList& junc
     return L95;
 }
 
-void portcullis::ModelFeatures::trainCodingPotentialModel(const JunctionList& in) {
+void portcullis::ml::ModelFeatures::trainCodingPotentialModel(const JunctionList& in) {
 
     vector<string> exons;
     vector<string> introns;
@@ -102,7 +102,7 @@ void portcullis::ModelFeatures::trainCodingPotentialModel(const JunctionList& in
     intronModel.train(introns, 5);
 }
 
-void portcullis::ModelFeatures::trainSplicingModels(const JunctionList& pass, const JunctionList& fail) {
+void portcullis::ml::ModelFeatures::trainSplicingModels(const JunctionList& pass, const JunctionList& fail) {
 
     vector<string> donors;
     vector<string> acceptors;
@@ -167,7 +167,7 @@ void portcullis::ModelFeatures::trainSplicingModels(const JunctionList& pass, co
     acceptorFModel.train(acceptors, 5);
 }
 
-Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
+Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
         
     vector<string> headers;
     for(auto& f : features) {
@@ -177,83 +177,81 @@ Data* portcullis::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
     }
     
     // Convert junction list info to double*
-    double* d = new double[x.size() * headers.size()];
+    Data* d = new DataDouble(headers, x.size(), headers.size());
     
     uint32_t row = 0;
     for (const auto& j : x) {
         SplicingScores ss = j->calcSplicingScores(gmap, donorTModel, donorFModel, acceptorTModel, acceptorFModel, 
                 donorPWModel, acceptorPWModel);
         
-        d[0 * x.size() + row] = j->isGenuine();
+        bool error = false;
+        d->set(0, row, j->isGenuine(), error);
         
         uint16_t i = 1;
         
         if (features[1].active) {
-            d[i++ * x.size() + row] = j->getNbUniquelySplicedReads();
+            d->set(i++, row, j->getNbUniquelySplicedReads(), error);
         }
         if (features[2].active) {
-            d[i++ * x.size() + row] = j->getNbDistinctAlignments();
+            d->set(i++, row, j->getNbDistinctAlignments(), error);
         }
         if (features[3].active) {
-            d[i++ * x.size() + row] = j->getNbReliableAlignments();
+            d->set(i++, row, j->getNbReliableAlignments(), error);
         }
         if (features[4].active) {
-            d[i++ * x.size() + row] = j->getEntropy();
+            d->set(i++, row, j->getEntropy(), error);
         }
         if (features[5].active) {
-            d[i++ * x.size() + row] = j->getReliable2RawRatio();
+            d->set(i++, row, j->getReliable2RawRatio(), error);
         }        
         if (features[6].active) {
-            d[i++ * x.size() + row] = j->getMaxMinAnchor();
+            d->set(i++, row, j->getMaxMinAnchor(), error);
         }        
         if (features[7].active) {
-            d[i++ * x.size() + row] = j->getMaxMMES();
+            d->set(i++, row, j->getMaxMMES(), error);
         }
         if (features[8].active) {
-            d[i++ * x.size() + row] = j->getMeanMismatches();
+            d->set(i++, row, j->getMeanMismatches(), error);
         }
         if (features[9].active) {
-            d[i++ * x.size() + row] = L95 == 0 ? 0.0 : j->calcIntronScore(L95);
+            d->set(i++, row, L95 == 0 ? 0.0 : j->calcIntronScore(L95), error);
         }
         if (features[10].active) {
-            d[i++ * x.size() + row] = std::min(j->getHammingDistance5p(), j->getHammingDistance3p());
+            d->set(i++, row, std::min(j->getHammingDistance5p(), j->getHammingDistance3p()), error);
         }
         if (features[11].active) {
-            d[i++ * x.size() + row] = isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel);
+            d->set(i++, row, isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel), error);
         }
         if (features[12].active) {
-            d[i++ * x.size() + row] = isPWModelEmpty() ? 0.0 : ss.positionWeighting;
+            d->set(i++, row, isPWModelEmpty() ? 0.0 : ss.positionWeighting, error);
         }
         if (features[13].active) {
-            d[i++ * x.size() + row] = isPWModelEmpty() ? 0.0 : ss.splicingSignal;
+            d->set(i++, row, isPWModelEmpty() ? 0.0 : ss.splicingSignal, error);
         }
-        
                 
         //Junction overhang values at each position are first converted into deviation from expected distributions       
         for(size_t joi = 0; joi < JO_NAMES.size(); joi++) {
             if (features[joi + 14].active) {
-                d[i++ * x.size() + row] = j->getJunctionOverhangLogDeviation(joi);
+                d->set(i++, row, j->getJunctionOverhangLogDeviation(joi), error);
             }
         }
         
         row++;
     }
     
-    Data* data = new DataDouble(d, headers, x.size(), headers.size());
-    data->setExternalData(false);      // This causes 'd' to be deleted when 'data' is deleted
-    return data;
+    return d;
 }
 
 
 
-portcullis::ForestPtr portcullis::ModelFeatures::trainInstance(const JunctionList& x, 
+portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const JunctionList& x, 
         string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose) {
     
-    cout << "Creating feature vector" << endl;
+    if (verbose) cout << "Creating feature vector" << endl;
     Data* trainingData = juncs2FeatureVectors(x);
     
     path feature_file = outputPrefix + ".features";
-    cout << "Saving feature vector to disk: " << feature_file << endl;
+    if (verbose) cout << "Saving feature vector to disk: " << feature_file << endl;
     
     ofstream fout(feature_file.c_str(), std::ofstream::out);
     
@@ -264,7 +262,7 @@ portcullis::ForestPtr portcullis::ModelFeatures::trainInstance(const JunctionLis
     
     fout.close();
      
-    cout << "Initialising random forest" << endl;
+    if (verbose) cout << "Initialising random forest" << endl;
     ForestPtr f = nullptr;
     if (probabilityMode) {
         f = make_shared<ForestProbability>();
@@ -295,7 +293,7 @@ portcullis::ForestPtr portcullis::ModelFeatures::trainInstance(const JunctionLis
         false,                      // predall
         1.0);                       // Sample fraction
             
-    cout << "Training" << endl;
+    if (verbose) cout << "Training" << endl;
     f->setVerboseOut(&cerr);
     f->run(verbose);
     

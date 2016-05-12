@@ -25,9 +25,10 @@ using std::endl;
 #include <portcullis/seq_utils.hpp>
 using portcullis::SeqUtils;
 
-#include <portcullis/markov_model.hpp>
+#include <portcullis/ml/markov_model.hpp>
+using portcullis::ml::KMMU;
 
-void portcullis::KmerMarkovModel::train(const vector<string>& input, const uint32_t _order) {
+void portcullis::ml::KmerMarkovModel::train(const vector<string>& input, const uint32_t _order) {
     order = _order;
     KMMU temp;
     for(auto& seq : input) {
@@ -52,7 +53,7 @@ void portcullis::KmerMarkovModel::train(const vector<string>& input, const uint3
 }
     
     
-double portcullis::KmerMarkovModel::getScore(const string& seq) {
+double portcullis::ml::KmerMarkovModel::getScore(const string& seq) {
     string s = SeqUtils::makeClean(seq);
     double score = 1.0;
     for(uint16_t i = order; i < s.size(); i++){
@@ -64,7 +65,7 @@ double portcullis::KmerMarkovModel::getScore(const string& seq) {
     return log(score);
 }
 
-void portcullis::PosMarkovModel::train(const vector<string>& input, const uint32_t _order) {
+void portcullis::ml::PosMarkovModel::train(const vector<string>& input, const uint32_t _order) {
     order = _order;
     PMMU temp;
     for(auto& seq : input) {
@@ -87,7 +88,7 @@ void portcullis::PosMarkovModel::train(const vector<string>& input, const uint32
 }
     
     
-double portcullis::PosMarkovModel::getScore(const string& seq) {
+double portcullis::ml::PosMarkovModel::getScore(const string& seq) {
     string s = SeqUtils::makeClean(seq);
     double score = 1.0;
     for(uint16_t i = order; i < s.size(); i++){

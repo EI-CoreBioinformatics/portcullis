@@ -34,40 +34,44 @@ wright@imbs.uni-luebeck.de
 #include "globals.h"
 #include "Data.h"
 
-class DataChar: public Data {
+class DataChar : public Data {
 public:
-  DataChar();
-  DataChar(double* data_double, std::vector<std::string> variable_names, size_t num_rows, size_t num_cols, bool& error);
-  virtual ~DataChar();
+    DataChar();
 
-  double get(size_t row, size_t col) const {
-    if (col < num_cols_no_sparse) {
-      return data[col * num_rows + row];
-    } else {
-      // Get data out of sparse storage. -1 because of GenABEL coding.
-      size_t idx = (col - num_cols_no_sparse) * num_rows_rounded + row;
-      return (((sparse_data[idx / 4] & mask[idx % 4]) >> offset[idx % 4]) - 1);
-    }
-  }
+    DataChar(std::vector<std::string> variable_names, size_t num_rows, size_t num_cols) : Data(variable_names, num_rows, num_cols) {
+        reserveMemory();
+    };
+    DataChar(double* data_double, std::vector<std::string> variable_names, size_t num_rows, size_t num_cols, bool& error);
+    virtual ~DataChar();
 
-  void reserveMemory() {
-    data = new char[num_cols * num_rows];
-  }
+    double get(size_t row, size_t col) const {
+        if (col < num_cols_no_sparse) {
+            return data[col * num_rows + row];
+        } else {
+            // Get data out of sparse storage. -1 because of GenABEL coding.
+            size_t idx = (col - num_cols_no_sparse) * num_rows_rounded + row;
+            return (((sparse_data[idx / 4] & mask[idx % 4]) >> offset[idx % 4]) - 1);
+        }
+    }
 
-  void set(size_t col, size_t row, double value, bool& error) {
-    if (value > CHAR_MAX || value < CHAR_MIN) {
-      error = true;
+    void reserveMemoryInternal() {
+        data = new char[num_cols * num_rows];
     }
-    if (floor(value) != ceil(value)) {
-      error = true;
+
+    void set(size_t col, size_t row, double value, bool& error) {
+        if (value > CHAR_MAX || value < CHAR_MIN) {
+            error = true;
+        }
+        if (floor(value) != ceil(value)) {
+            error = true;
+        }
+        data[col * num_rows + row] = (char) value;
     }
-    data[col * num_rows + row] = (char) value;
-  }
 
 private:
-  char* data;
+    char* data;
 
-  DISALLOW_COPY_AND_ASSIGN(DataChar);
+    DISALLOW_COPY_AND_ASSIGN(DataChar);
 };
 
 #endif /* DATACHAR_H_ */

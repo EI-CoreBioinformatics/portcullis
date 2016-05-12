@@ -27,16 +27,17 @@ using boost::filesystem::path;
 #include <ranger/Forest.h>
 
 #include <portcullis/bam/genome_mapper.hpp>
-#include <portcullis/markov_model.hpp>
+#include <portcullis/ml/markov_model.hpp>
 #include <portcullis/junction.hpp>
 using portcullis::bam::GenomeMapper;
-using portcullis::MarkovModel;
+using portcullis::ml::MarkovModel;
 using portcullis::Junction;
 using portcullis::JunctionPtr;
 using portcullis::JunctionList;
 using portcullis::SplicingScores;
 
 namespace portcullis {
+namespace ml {
     
 typedef shared_ptr<Forest> ForestPtr;
 
@@ -131,4 +132,5 @@ public:
     }
     
 };
+}
 }
