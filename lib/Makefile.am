@@ -23,7 +23,8 @@ libportcullis_la_SOURCES =	\
 	src/junction_system.cc \
 	src/rule_parser.cc \
 	src/performance.cc \
-	src/ss_forest.cc
+	src/ss_forest.cc \
+	src/enn.cc
 
 library_includedir=$(includedir)/portcullis-@PACKAGE_VERSION@/portcullis
 PI = include/portcullis
@@ -38,6 +39,7 @@ library_include_HEADERS = \
 	$(PI)/ml/model_features.hpp \
 	$(PI)/ml/performance.hpp \
 	$(PI)/ml/k_fold.hpp \
+	$(PI)/ml/enn.hpp \
 	$(PI)/ml/ss_forest.hpp \
 	$(PI)/kmer.hpp \
 	$(PI)/python_exe.hpp \

@@ -23,6 +23,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <map>
+#include <random>
 #include <unordered_set>
 #include <vector>
 using std::boolalpha;
@@ -233,7 +234,8 @@ void portcullis::JunctionFilter::filter() {
     mf.features[26].active=false;
     mf.features[27].active=false;
     mf.features[28].active=false;
-    mf.features[29].active=false;*/
+    mf.features[29].active=false;
+    */
 
 
 
@@ -256,8 +258,15 @@ void portcullis::JunctionFilter::filter() {
         mf.trainCodingPotentialModel(pos);
         mf.trainSplicingModels(pos, neg);
         cout << " done." << endl << endl;
-
-
+        
+        // Balance models for training
+        /*if (pos.size() > neg.size()) {
+            undersample(pos, neg.size());
+        }
+        else if (pos.size() < neg.size()) {
+            undersample(neg, pos.size());
+        }
+        cout << "Balanced datasets to size of smallest set: " << pos.size() << endl << endl;*/
 
         // Build the training set by combining the positive and negative sets
         JunctionList training;
@@ -271,9 +280,9 @@ void portcullis::JunctionFilter::filter() {
         cout << "Training Random Forest" << endl
                 << "----------------------" << endl << endl;
         bool done = false;
-        //shared_ptr<Forest> forest = mf.trainInstance(trainingSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
-        SemiSupervisedForest ssf(mf, trainingSystem.getJunctions(), unlabelled2, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, 0.1, true);
-        shared_ptr<Forest> forest = ssf.train();
+        shared_ptr<Forest> forest = mf.trainInstance(trainingSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
+        /*SemiSupervisedForest ssf(mf, trainingSystem.getJunctions(), unlabelled2, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, 0.1, true);
+        shared_ptr<Forest> forest = ssf.train();*/
         /*
         const vector<double> importance = forest->getVariableImportance();
         mf.resetActiveFeatureIndex();
@@ -438,6 +447,17 @@ void portcullis::JunctionFilter::filter() {
 
             refKeptJuncs.saveAll(outputDir.string() + "/" + outputPrefix + ".ref", source + "_ref");
         }
+    }
+}
+
+void portcullis::JunctionFilter::undersample(JunctionList& jl, size_t size) {
+    
+    std::mt19937 rng(12345);
+
+    while(jl.size() > size) {        
+        std::uniform_int_distribution<int> gen(0, jl.size()); // uniform, unbiased
+        int i = gen(rng);
+        jl.erase(jl.begin()+i);
     }
 }
 
@@ -758,13 +778,8 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 
     cout << "Initialising random forest" << endl;
 
-    shared_ptr<Forest> f = nullptr;
-    if (train) {
-        f = make_shared<ForestProbability>();
-    } else {
-        f = make_shared<ForestClassification>();
-    }
-
+    shared_ptr<Forest> f = make_shared<ForestProbability>();
+    
     vector<string> catVars;
 
     f->init(
@@ -843,12 +858,14 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 
         cout << "The best F1 score of " << max_f1 << " is achieved with threshold set at " << best_t_f1 << endl;
         cout << "The best MCC score of " << max_mcc << " is achieved with threshold set at " << best_t_mcc << endl;
-        cout << "Actual threshold set at " << threshold << endl;
-        categorise(f, all, pass, fail, threshold);
-    } else {
-        categorise(f, all, pass, fail, threshold);
+        //threshold = best_t_mcc;
     }
-
+    
+    //threshold = calcGoodThreshold(f, all);
+    
+    cout << "Threshold set at " << threshold << endl;
+    categorise(f, all, pass, fail, threshold);
+    
     cout << "Saved junction scores to: " << scorepath << endl;
 
 
@@ -864,6 +881,22 @@ void portcullis::JunctionFilter::categorise(shared_ptr<Forest> f, const Junction
             fail.push_back(all[i]);
         }
     }
+}
+
+double portcullis::JunctionFilter::calcGoodThreshold(shared_ptr<Forest> f, const JunctionList& all) {
+
+    uint32_t pos = 0;
+    uint32_t neg = 0;
+    
+    for (auto& p : f->getPredictions()) {
+        if (p[0] <= 0.5) {
+            pos++;
+        } else {
+            neg++;
+        }
+    }
+    
+    return (double)pos / (double)(pos+neg);
 }
 
 int portcullis::JunctionFilter::main(int argc, char *argv[]) {

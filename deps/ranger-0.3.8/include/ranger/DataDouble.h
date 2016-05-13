@@ -53,7 +53,7 @@ public:
             return result;
         }
     }
-
+    
     void reserveMemoryInternal() {
         data = new double[num_cols * num_rows];
     }

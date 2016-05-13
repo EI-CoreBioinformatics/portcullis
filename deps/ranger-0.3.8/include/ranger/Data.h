@@ -43,6 +43,11 @@ public:
     virtual ~Data();
 
     virtual double get(size_t row, size_t col) const = 0;
+    void getRow(size_t row, std::vector<double>& output) const {        
+        for(size_t col = 0; col < num_cols; col++) {
+            output.push_back(get(row, col));
+        }
+    }
 
     size_t getVariableID(std::string variable_name);
 

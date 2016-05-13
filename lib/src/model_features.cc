@@ -28,6 +28,9 @@ using std::make_shared;
 #include <ranger/ForestProbability.h>
 #include <ranger/ForestClassification.h>
 
+#include <portcullis/ml/enn.hpp>
+using portcullis::ml::ENN;
+
 #include <portcullis/junction.hpp>
 using portcullis::Junction;
 
@@ -167,6 +170,63 @@ void portcullis::ml::ModelFeatures::trainSplicingModels(const JunctionList& pass
     acceptorFModel.train(acceptors, 5);
 }
 
+void portcullis::ml::ModelFeatures::setRow(Data* d, size_t row, JunctionPtr j, bool labelled) {
+    SplicingScores ss = j->calcSplicingScores(gmap, donorTModel, donorFModel, acceptorTModel, acceptorFModel, 
+            donorPWModel, acceptorPWModel);
+
+    bool error = false;
+    d->set(0, row, j->isGenuine(), error);
+    
+    uint16_t i = 1;
+
+    if (features[1].active) {
+        d->set(i++, row, j->getNbUniquelySplicedReads(), error);
+    }
+    if (features[2].active) {
+        d->set(i++, row, j->getNbDistinctAlignments(), error);
+    }
+    if (features[3].active) {
+        d->set(i++, row, j->getNbReliableAlignments(), error);
+    }
+    if (features[4].active) {
+        d->set(i++, row, j->getEntropy(), error);
+    }
+    if (features[5].active) {
+        d->set(i++, row, j->getReliable2RawRatio(), error);
+    }        
+    if (features[6].active) {
+        d->set(i++, row, j->getMaxMinAnchor(), error);
+    }        
+    if (features[7].active) {
+        d->set(i++, row, j->getMaxMMES(), error);
+    }
+    if (features[8].active) {
+        d->set(i++, row, j->getMeanMismatches(), error);
+    }
+    if (features[9].active) {
+        d->set(i++, row, L95 == 0 ? 0.0 : j->calcIntronScore(L95), error);
+    }
+    if (features[10].active) {
+        d->set(i++, row, std::min(j->getHammingDistance5p(), j->getHammingDistance3p()), error);
+    }
+    if (features[11].active) {
+        d->set(i++, row, isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel), error);
+    }
+    if (features[12].active) {
+        d->set(i++, row, isPWModelEmpty() ? 0.0 : ss.positionWeighting, error);
+    }
+    if (features[13].active) {
+        d->set(i++, row, isPWModelEmpty() ? 0.0 : ss.splicingSignal, error);
+    }
+
+    //Junction overhang values at each position are first converted into deviation from expected distributions       
+    for(size_t joi = 0; joi < JO_NAMES.size(); joi++) {
+        if (features[joi + 14].active) {
+            d->set(i++, row, j->getJunctionOverhangLogDeviation(joi), error);
+        }
+    }
+}
+
 Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
         
     vector<string> headers;
@@ -180,64 +240,36 @@ Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& x)
     Data* d = new DataDouble(headers, x.size(), headers.size());
     
     uint32_t row = 0;
-    for (const auto& j : x) {
-        SplicingScores ss = j->calcSplicingScores(gmap, donorTModel, donorFModel, acceptorTModel, acceptorFModel, 
-                donorPWModel, acceptorPWModel);
+    for (const auto& j : x) {        
+        setRow(d, row, j, true);        
+        row++;
+    }    
+    
+    return d;
+}
+
+Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& xl, const JunctionList& xu) {
         
-        bool error = false;
-        d->set(0, row, j->isGenuine(), error);
-        
-        uint16_t i = 1;
-        
-        if (features[1].active) {
-            d->set(i++, row, j->getNbUniquelySplicedReads(), error);
+    vector<string> headers;
+    for(auto& f : features) {
+        if (f.active) {
+            headers.push_back(f.name);
         }
-        if (features[2].active) {
-            d->set(i++, row, j->getNbDistinctAlignments(), error);
-        }
-        if (features[3].active) {
-            d->set(i++, row, j->getNbReliableAlignments(), error);
-        }
-        if (features[4].active) {
-            d->set(i++, row, j->getEntropy(), error);
-        }
-        if (features[5].active) {
-            d->set(i++, row, j->getReliable2RawRatio(), error);
-        }        
-        if (features[6].active) {
-            d->set(i++, row, j->getMaxMinAnchor(), error);
-        }        
-        if (features[7].active) {
-            d->set(i++, row, j->getMaxMMES(), error);
-        }
-        if (features[8].active) {
-            d->set(i++, row, j->getMeanMismatches(), error);
-        }
-        if (features[9].active) {
-            d->set(i++, row, L95 == 0 ? 0.0 : j->calcIntronScore(L95), error);
-        }
-        if (features[10].active) {
-            d->set(i++, row, std::min(j->getHammingDistance5p(), j->getHammingDistance3p()), error);
-        }
-        if (features[11].active) {
-            d->set(i++, row, isCodingPotentialModelEmpty() ? 0.0 : j->calcCodingPotential(gmap, exonModel, intronModel), error);
-        }
-        if (features[12].active) {
-            d->set(i++, row, isPWModelEmpty() ? 0.0 : ss.positionWeighting, error);
-        }
-        if (features[13].active) {
-            d->set(i++, row, isPWModelEmpty() ? 0.0 : ss.splicingSignal, error);
-        }
-                
-        //Junction overhang values at each position are first converted into deviation from expected distributions       
-        for(size_t joi = 0; joi < JO_NAMES.size(); joi++) {
-            if (features[joi + 14].active) {
-                d->set(i++, row, j->getJunctionOverhangLogDeviation(joi), error);
-            }
-        }
-        
+    }
+    
+    // Convert junction list info to double*
+    Data* d = new DataDouble(headers, xl.size() + xu.size(), headers.size());
+    
+    uint32_t row = 0;
+    for (const auto& j : xl) {        
+        setRow(d, row, j, true);        
         row++;
     }
+    
+    for (const auto& j : xu) {        
+        setRow(d, row, j, false);        
+        row++;
+    }    
     
     return d;
 }
@@ -249,6 +281,47 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
     
     if (verbose) cout << "Creating feature vector" << endl;
     Data* trainingData = juncs2FeatureVectors(x);
+    
+    size_t elements = trainingData->getNumRows()*(trainingData->getNumCols()-1);
+    double* m = new double[elements];
+    for( uint32_t baseidx = 0; baseidx < trainingData->getNumRows(); baseidx++ ) {        
+        double* r = &m[baseidx * (trainingData->getNumCols()-1)];
+        for( size_t c = 1; c < trainingData->getNumCols(); c++) {
+            r[c - 1] = trainingData->get(baseidx, c);
+            //cout << r[c-1];
+        }
+        //cout << endl;
+    }
+    vector<bool> labels;
+    for(auto& j : x) {
+        labels.push_back(j->isGenuine());
+    }
+    cout << "Created data matrix" << endl;
+    
+    ENN enn(10, threads, m, trainingData->getNumRows(), trainingData->getNumCols()-1, labels);
+    enn.setVerbose(true);
+    vector<bool> results;
+    uint32_t count = enn.execute(results);
+    
+    delete[] m;
+    
+    uint32_t pcount = 0, ncount = 0;
+    JunctionList x2;
+    for(size_t i = 0; i < x.size(); i++) {
+        if (x[i]->isGenuine() && !results[i]) {
+            pcount++;
+        }
+        else if (!x[i]->isGenuine() && !results[i]) {
+            ncount++;
+        }
+        else {
+            x2.push_back(x[i]);
+        }
+    }
+    
+    Data* trainingData2 = juncs2FeatureVectors(x2);
+    
+    cout << "Should discard " << pcount << " + entries and " << ncount << " - entries (" << count << ")" << endl << endl;
     
     path feature_file = outputPrefix + ".features";
     if (verbose) cout << "Saving feature vector to disk: " << feature_file << endl;
@@ -276,10 +349,10 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
     f->init(
         "Genuine",                  // Dependant variable name
         MEM_DOUBLE,                 // Memory mode
-        trainingData,               // Data object
+        trainingData2,               // Data object
         0,                          // M Try (0 == use default)
         outputPrefix,               // Output prefix 
-        250, //trees,                      // Number of trees
+        trees,                      // Number of trees
         1236456789,                // Use fixed seed to avoid non-deterministic behaviour as much as possible
         threads,                    // Number of threads
         IMP_GINI,                   // Importance measure 
@@ -289,7 +362,7 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
         true,                       // Replace 
         catVars,                    // Unordered categorical variable names (vector<string>)
         false,                      // Memory saving
-        DEFAULT_SPLITRULE,          // Split rule
+        AUC, //DEFAULT_SPLITRULE,          // Split rule
         false,                      // predall
         1.0);                       // Sample fraction
             

@@ -301,6 +301,10 @@ protected:
     
     void createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg, JunctionList& failJuncs);
     
+    double calcGoodThreshold(shared_ptr<Forest> f, const JunctionList& all);
+    
+    void undersample(JunctionList& jl, size_t size);
+    
 public:
   
     static string helpMessage() {

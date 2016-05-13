@@ -53,6 +53,8 @@ public:
             return (((sparse_data[idx / 4] & mask[idx % 4]) >> offset[idx % 4]) - 1);
         }
     }
+    
+    
 
     void reserveMemoryInternal() {
         data = new char[num_cols * num_rows];
