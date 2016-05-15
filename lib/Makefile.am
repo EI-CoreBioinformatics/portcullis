@@ -24,6 +24,7 @@ libportcullis_la_SOURCES =	\
 	src/rule_parser.cc \
 	src/performance.cc \
 	src/ss_forest.cc \
+	src/knn.cc \
 	src/enn.cc
 
 library_includedir=$(includedir)/portcullis-@PACKAGE_VERSION@/portcullis
@@ -39,6 +40,7 @@ library_include_HEADERS = \
 	$(PI)/ml/model_features.hpp \
 	$(PI)/ml/performance.hpp \
 	$(PI)/ml/k_fold.hpp \
+	$(PI)/ml/knn.hpp \
 	$(PI)/ml/enn.hpp \
 	$(PI)/ml/ss_forest.hpp \
 	$(PI)/kmer.hpp \
