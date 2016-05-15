@@ -37,6 +37,8 @@ namespace ml {
 typedef boost::error_info<struct ENNError,string> ENNErrorInfo;
 struct ENNException: virtual boost::exception, virtual std::exception { };
     
+const uint16_t ENN_THRESHOLD = 5;
+
 /**
  * An parallel implementation of Wilson's Edited nearest neighbour algorithm.
  * Uses KNN to identify nearest neighbours for each sample, then marks entries
@@ -55,9 +57,7 @@ protected:
     size_t rows;
     size_t cols;
     
-    vector<bool> labels;
-    
-    void doSlice( uint16_t slice, vector<bool>& result ) const;
+    vector<bool> labels;    
     
 public:    
     
@@ -85,6 +85,10 @@ public:
 
     void setVerbose(bool verbose) {
         this->verbose = verbose;
+    }
+    
+    uint16_t getThreshold() const {
+        return k / 2;
     }
 
     

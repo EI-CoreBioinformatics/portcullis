@@ -18,10 +18,12 @@
 
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
 #include <vector>
+using std::ostream;
 using std::string;
 using std::thread;
 using std::vector;
@@ -94,6 +96,8 @@ public:
     }
     
     void execute();
+    
+    void print(ostream& out);
 };
 
 }

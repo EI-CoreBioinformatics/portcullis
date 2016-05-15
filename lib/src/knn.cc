@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <iostream>
+using std::ostream;
 using std::cout;
 using std::endl;
 using std::make_shared;
@@ -87,12 +88,12 @@ void portcullis::ml::KNN::doSlice(uint16_t slice) {
     }
 
     // Store final results
-    const uint16_t threshold = k / 2;
     for (uint32_t testidx = start; testidx <= end; testidx++) {
-        shared_ptr<vector<uint32_t>> knn = make_shared<vector<uint32_t>>(k);
+        shared_ptr<vector<uint32_t>> knn = make_shared<vector<uint32_t>>();
         
-        for(size_t i = 0; i < k; k++) {
-            (*knn)[i] = rbuf[((testidx - start) * k) + i];
+        for(size_t i = 0; i < k; i++) {
+            uint32_t index = rbuf[((testidx - start) * k) + i];
+            knn->push_back(index);
         }
         
         results[testidx] = knn;
@@ -101,7 +102,7 @@ void portcullis::ml::KNN::doSlice(uint16_t slice) {
 
 void portcullis::ml::KNN::execute() {
 
-    auto_cpu_timer timer(1, "  Time taken: %ws\n\n");
+    auto_cpu_timer timer(1, "  Time taken: %ws\n");
 
     if (verbose) {
         cout << "Performing K Nearest Neighbour (KNN) ...";
@@ -114,6 +115,14 @@ void portcullis::ml::KNN::execute() {
     }
     for (uint16_t i = 0; i < threads; i++) {
         t[i].join();
-    }
+    }    
 }
 
+void portcullis::ml::KNN::print(ostream& out) {
+    for(auto& i : results) {
+        for(auto j : *i) {
+            out << j << " ";
+        }
+        out << endl;
+    }
+}
