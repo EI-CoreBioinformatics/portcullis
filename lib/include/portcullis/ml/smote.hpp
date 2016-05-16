@@ -22,12 +22,9 @@
 namespace portcullis {
 namespace ml {
     
-typedef boost::error_info<struct BalancingError,string> BalancingErrorInfo;
-struct BalacingException: virtual boost::exception, virtual std::exception { };
+typedef boost::error_info<struct SmoteError,string> SmoteErrorInfo;
+struct SmoteException: virtual boost::exception, virtual std::exception { };
 
-class UnderSampler : UnbalancedDataset {
-    
-};
 
 /**
  * Object to perform classification on balanced ensembled selected from random sampling.
@@ -35,17 +32,63 @@ class UnderSampler : UnbalancedDataset {
  * It is based on the idea presented in the paper "Exploratory Undersampling 
  * Class-Imbalance Learning" by Liu et al.    
  */
-class EasyEnsemble : public UnderSampler {
+class Smote {
 private:
-     uint16_t nb_subsets;
+    uint16_t k;
+    uint16_t smoteness;
+    uint16_t threads;
+    bool verbose;
+    
+    double* data;
+    size_t rows;
+    size_t cols;
      
-     
+    double* synthetic;
+    size_t s_rows;
         
 public:
 
-    EasyEnsemble() {
-        
+    Smote(uint16_t defaultK, uint16_t _smoteness, uint16_t _threads, double* _data, size_t _rows, size_t _cols);
+    
+    ~Smote() {
+        delete[] synthetic;
     }
+    
+    uint16_t getK() const {
+        return k;
+    }
+
+    void setK(uint16_t k) {
+        this->k = k;
+    }
+
+    uint16_t getThreads() const {
+        return threads;
+    }
+
+    void setThreads(uint16_t threads) {
+        this->threads = threads;
+    }
+
+    bool isVerbose() const {
+        return verbose;
+    }
+
+    void setVerbose(bool verbose) {
+        this->verbose = verbose;
+    }
+    
+    double* getSynthetic() {
+        return synthetic;
+    }
+    
+    size_t getNbSynthRows() const {
+        return s_rows;
+    }
+    
+    void execute();
+    
+    
 };
 }
 }

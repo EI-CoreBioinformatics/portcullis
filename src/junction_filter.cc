@@ -269,18 +269,17 @@ void portcullis::JunctionFilter::filter() {
         cout << "Balanced datasets to size of smallest set: " << pos.size() << endl << endl;*/
 
         // Build the training set by combining the positive and negative sets
-        JunctionList training;
-        training.reserve(pos.size() + neg.size());
-        training.insert(training.end(), pos.begin(), pos.end());
-        training.insert(training.end(), neg.begin(), neg.end());
-
-        JunctionSystem trainingSystem(training);
-        trainingSystem.sort();
+        
+        JunctionSystem posSystem(pos);
+        posSystem.sort();
+        
+        JunctionSystem negSystem(neg);
+        negSystem.sort();
 
         cout << "Training Random Forest" << endl
                 << "----------------------" << endl << endl;
         bool done = false;
-        shared_ptr<Forest> forest = mf.trainInstance(trainingSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
+        shared_ptr<Forest> forest = mf.trainInstance(posSystem.getJunctions(), negSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
         /*SemiSupervisedForest ssf(mf, trainingSystem.getJunctions(), unlabelled2, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, 0.1, true);
         shared_ptr<Forest> forest = ssf.train();*/
         /*

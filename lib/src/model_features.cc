@@ -29,12 +29,16 @@ using std::make_shared;
 #include <ranger/ForestClassification.h>
 
 #include <portcullis/ml/enn.hpp>
+#include <portcullis/ml/smote.hpp>
 using portcullis::ml::ENN;
+using portcullis::ml::Smote;
 
 #include <portcullis/junction.hpp>
 using portcullis::Junction;
 
 #include <portcullis/ml/model_features.hpp>
+
+#include "portcullis/junction_system.hpp"
 
 
 
@@ -276,8 +280,38 @@ Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& xl
 
 
 
-portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const JunctionList& x, 
+portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const JunctionList& pos, const JunctionList& neg,
         string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose) {
+    
+    if (verbose) cout << "Creating feature vector" << endl;
+    Data* negData = juncs2FeatureVectors(neg);
+    
+    size_t nelements = negData->getNumRows()*(negData->getNumCols()-1);
+    double* nm = new double[nelements];
+    for( uint32_t baseidx = 0; baseidx < negData->getNumRows(); baseidx++ ) {        
+        double* r = &nm[baseidx * (negData->getNumCols()-1)];
+        for( size_t c = 1; c < negData->getNumCols(); c++) {
+            r[c - 1] = negData->get(baseidx, c);
+            //cout << r[c-1];
+        }
+        //cout << endl;
+    }
+    
+    uint16_t N = pos.size() / neg.size();
+    
+    Smote smote(5, N, threads, nm, negData->getNumRows(), negData->getNumCols()-1);
+    smote.execute();
+    cout << "Number of synthesized entries: " << smote.getNbSynthRows() << endl;
+    
+    JunctionList training;
+    training.reserve(pos.size() + neg.size());
+    training.insert(training.end(), pos.begin(), pos.end());
+    training.insert(training.end(), neg.begin(), neg.end());
+
+    JunctionSystem trainingSystem(training);
+    trainingSystem.sort();
+    JunctionList x = trainingSystem.getJunctions();
+       
     
     if (verbose) cout << "Creating feature vector" << endl;
     Data* trainingData = juncs2FeatureVectors(x);

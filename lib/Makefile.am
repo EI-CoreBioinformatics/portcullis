@@ -25,7 +25,8 @@ libportcullis_la_SOURCES =	\
 	src/performance.cc \
 	src/ss_forest.cc \
 	src/knn.cc \
-	src/enn.cc
+	src/enn.cc \
+	src/smote.cc
 
 library_includedir=$(includedir)/portcullis-@PACKAGE_VERSION@/portcullis
 PI = include/portcullis
@@ -42,6 +43,7 @@ library_include_HEADERS = \
 	$(PI)/ml/k_fold.hpp \
 	$(PI)/ml/knn.hpp \
 	$(PI)/ml/enn.hpp \
+	$(PI)/ml/smote.hpp \
 	$(PI)/ml/ss_forest.hpp \
 	$(PI)/kmer.hpp \
 	$(PI)/python_exe.hpp \

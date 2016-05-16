@@ -63,19 +63,19 @@ public:
     
     KNN(uint16_t defaultK, uint16_t _threads, double* _data, size_t _rows, size_t _cols);
     
-    int getK() const {
+    uint16_t getK() const {
         return k;
     }
 
-    void setK(int k) {
+    void setK(uint16_t k) {
         this->k = k;
     }
 
-    int getThreads() const {
+    uint16_t getThreads() const {
         return threads;
     }
 
-    void setThreads(int threads) {
+    void setThreads(uint16_t threads) {
         this->threads = threads;
     }
 
