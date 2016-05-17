@@ -86,6 +86,10 @@ public:
         return s_rows;
     }
     
+    double getSynth(size_t row, size_t col) const {
+        return synthetic[(row * cols) + col];
+    }
+    
     void execute();
     
     

@@ -314,7 +314,26 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
        
     
     if (verbose) cout << "Creating feature vector" << endl;
-    Data* trainingData = juncs2FeatureVectors(x);
+    Data* otd = juncs2FeatureVectors(x);
+    
+    Data* trainingData = new DataDouble(otd->getVariableNames(), otd->getNumRows() + smote.getNbSynthRows(), otd->getNumCols());
+    bool error = false;
+    cout << "0" << endl;
+    for(size_t i = 0; i < otd->getNumRows(); i++) {
+        for(size_t j = 0; j < trainingData->getNumCols(); j++) {            
+            trainingData->set(j, i, otd->get(i, j), error);
+        }
+    }
+    cout << "1" << endl;
+    size_t k = otd->getNumRows();
+    
+    for(size_t i = 0; i < smote.getNbSynthRows(); i++) {
+        trainingData->set(0, i, 0, error); // Set genuine (i.e. not genuine) flag
+        for(size_t j = 1; j < trainingData->getNumCols(); j++) {            
+            trainingData->set(j, k++, smote.getSynth(i, j-1), error);
+        }
+    }
+    cout << "2" << endl;
     
     size_t elements = trainingData->getNumRows()*(trainingData->getNumCols()-1);
     double* m = new double[elements];
@@ -327,8 +346,8 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
         //cout << endl;
     }
     vector<bool> labels;
-    for(auto& j : x) {
-        labels.push_back(j->isGenuine());
+    for(size_t i = 0; i < trainingData->getNumRows(); i++) {
+        labels.push_back(trainingData->get(i, 0) == 1.0);
     }
     cout << "Created data matrix" << endl;
     
