@@ -46,10 +46,6 @@ uint32_t portcullis::ml::ENN::execute(vector<bool>& results) const {
 
     auto_cpu_timer timer(1, "ENN Time taken: %ws\n\n");
 
-    if (verbose) {
-        cout << "Starting Wilson's Edited Nearest Neighbour (ENN)" << endl;
-    }
-
     KNN knn(k, threads, data, rows, cols);
     knn.setVerbose(verbose);
     knn.execute();    

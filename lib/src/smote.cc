@@ -77,3 +77,23 @@ void portcullis::ml::Smote::execute() {
         }
     }    
 }
+
+void portcullis::ml::Smote::print(ostream& out) const {
+    
+    out << "Input:" << endl;
+    for(size_t i = 0; i < rows; i++) {
+        for(size_t j = 0; j < cols; j++) {
+            out << data[(i * cols) + j] << " ";
+        }
+        out << endl;
+    }
+    
+    out << endl << "Synthetic:" << endl;
+    for(size_t i = 0; i < s_rows; i++) {
+        for(size_t j = 0; j < cols; j++) {
+            out << synthetic[(i * cols) + j] << " ";
+        }
+        out << endl;
+    }
+    out << endl;
+}

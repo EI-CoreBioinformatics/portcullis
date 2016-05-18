@@ -283,58 +283,97 @@ Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& xl
 portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const JunctionList& pos, const JunctionList& neg,
         string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose) {
     
-    if (verbose) cout << "Creating feature vector" << endl;
-    Data* negData = juncs2FeatureVectors(neg);
+    // Work out number of times to duplicate negative set
+    int N = (pos.size() / neg.size()) - 1;
     
-    size_t nelements = negData->getNumRows()*(negData->getNumCols()-1);
-    double* nm = new double[nelements];
-    for( uint32_t baseidx = 0; baseidx < negData->getNumRows(); baseidx++ ) {        
-        double* r = &nm[baseidx * (negData->getNumCols()-1)];
-        for( size_t c = 1; c < negData->getNumCols(); c++) {
-            r[c - 1] = negData->get(baseidx, c);
-            //cout << r[c-1];
+    // Duplicate pointers to negative set
+    JunctionList neg2;
+    neg2.reserve(neg.size());
+    neg2.insert(neg2.end(), neg.begin(), neg.end());
+    
+    uint32_t smote_rows = 0;
+    double* smote_data = 0;
+    if (N > 0) {
+    
+        cout << "Oversampling negative set to balance with positive set using SMOTE" << endl;
+        Data* negData = juncs2FeatureVectors(neg);
+
+        size_t nelements = negData->getNumRows()*(negData->getNumCols()-1);
+        double* nm = new double[nelements];
+        for( uint32_t baseidx = 0; baseidx < negData->getNumRows(); baseidx++ ) {        
+            double* r = &nm[baseidx * (negData->getNumCols()-1)];
+            for( size_t c = 1; c < negData->getNumCols(); c++) {
+                r[c - 1] = negData->get(baseidx, c);
+                //cout << r[c-1];
+            }
+            //cout << endl;
         }
-        //cout << endl;
+
+        uint16_t N = pos.size() / neg.size();
+
+        Smote smote(5, N, threads, nm, negData->getNumRows(), negData->getNumCols()-1);
+        smote.execute();
+        smote_rows = smote.getNbSynthRows();
+        smote_data = new double[smote_rows * (negData->getNumCols()-1)];
+        double* sd = smote.getSynthetic();
+        for(size_t i = 0; i < smote_rows * (negData->getNumCols()-1); i++) {
+            smote_data[i] = sd[i];
+        }
+        cout << "Number of synthesized entries: " << smote.getNbSynthRows() << endl;
+    }
+    else {
+        
+        cout << "Undersampling negative set to balance with positive set" << endl;
+        std::mt19937 rng(12345);
+        while(neg2.size() > pos.size()) {        
+            std::uniform_int_distribution<int> gen(0, neg2.size()); // uniform, unbiased
+            int i = gen(rng);
+            neg2.erase(neg2.begin()+i);
+        }
     }
     
-    uint16_t N = pos.size() / neg.size();
     
-    Smote smote(5, N, threads, nm, negData->getNumRows(), negData->getNumCols()-1);
-    smote.execute();
-    cout << "Number of synthesized entries: " << smote.getNbSynthRows() << endl;
+    if (verbose) cout << endl << "Combining positive, negative " << (N > 0 ? "and synthetic negative " : "") << "datasets." << endl;
     
     JunctionList training;
-    training.reserve(pos.size() + neg.size());
+    training.reserve(pos.size() + neg2.size());
     training.insert(training.end(), pos.begin(), pos.end());
-    training.insert(training.end(), neg.begin(), neg.end());
+    training.insert(training.end(), neg2.begin(), neg2.end());
 
     JunctionSystem trainingSystem(training);
     trainingSystem.sort();
     JunctionList x = trainingSystem.getJunctions();
        
     
-    if (verbose) cout << "Creating feature vector" << endl;
     Data* otd = juncs2FeatureVectors(x);
     
-    Data* trainingData = new DataDouble(otd->getVariableNames(), otd->getNumRows() + smote.getNbSynthRows(), otd->getNumCols());
-    bool error = false;
-    cout << "0" << endl;
-    for(size_t i = 0; i < otd->getNumRows(); i++) {
-        for(size_t j = 0; j < trainingData->getNumCols(); j++) {            
-            trainingData->set(j, i, otd->get(i, j), error);
-        }
-    }
-    cout << "1" << endl;
-    size_t k = otd->getNumRows();
+    // Create data to correct size
+    Data* trainingData = N > 0 ? 
+        new DataDouble(
+            otd->getVariableNames(), 
+            otd->getNumRows() + smote_rows, 
+            otd->getNumCols())
+        : otd;
     
-    for(size_t i = 0; i < smote.getNbSynthRows(); i++) {
-        trainingData->set(0, i, 0, error); // Set genuine (i.e. not genuine) flag
-        for(size_t j = 1; j < trainingData->getNumCols(); j++) {            
-            trainingData->set(j, k++, smote.getSynth(i, j-1), error);
+    if (N > 0) {
+        bool error = false;
+        for(size_t i = 0; i < otd->getNumRows(); i++) {
+            for(size_t j = 0; j < trainingData->getNumCols(); j++) {            
+                trainingData->set(j, i, otd->get(i, j), error);
+            }
         }
+
+        size_t k = otd->getNumRows();    
+        for(size_t i = 0; i < smote_rows; i++) {
+            trainingData->set(0, i, 0, error); // Set genuine (i.e. not genuine) flag
+            for(size_t j = 1; j < trainingData->getNumCols(); j++) {            
+                trainingData->set(j, k++, smote_data[(i * (trainingData->getNumCols() - 1)) + j-1], error);
+            }
+        }
+        delete[] smote_data;
     }
-    cout << "2" << endl;
-    
+
+    if (verbose) cout << endl << "Converting training data for ENN" << endl;
     size_t elements = trainingData->getNumRows()*(trainingData->getNumCols()-1);
     double* m = new double[elements];
     for( uint32_t baseidx = 0; baseidx < trainingData->getNumRows(); baseidx++ ) {        
@@ -344,14 +383,16 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
             //cout << r[c-1];
         }
         //cout << endl;
-    }
+    }    
+    
+    if (verbose) cout << endl << "Extracting labels for ENN" << endl;
     vector<bool> labels;
     for(size_t i = 0; i < trainingData->getNumRows(); i++) {
         labels.push_back(trainingData->get(i, 0) == 1.0);
     }
-    cout << "Created data matrix" << endl;
     
-    ENN enn(10, threads, m, trainingData->getNumRows(), trainingData->getNumCols()-1, labels);
+    cout << endl << "Starting Wilson's Edited Nearest Neighbour (ENN) to clean decision region" << endl;
+    ENN enn(5, threads, m, trainingData->getNumRows(), trainingData->getNumCols()-1, labels);
     enn.setVerbose(true);
     vector<bool> results;
     uint32_t count = enn.execute(results);
@@ -360,33 +401,44 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
     
     uint32_t pcount = 0, ncount = 0;
     JunctionList x2;
-    for(size_t i = 0; i < x.size(); i++) {
-        if (x[i]->isGenuine() && !results[i]) {
+    for(size_t i = 0; i < trainingData->getNumRows(); i++) {
+        if (trainingData->get(i, 0) == 1.0 && !results[i]) {
             pcount++;
         }
-        else if (!x[i]->isGenuine() && !results[i]) {
+        else if (trainingData->get(i, 0) == 0.0 && !results[i]) {
             ncount++;
         }
-        else {
-            x2.push_back(x[i]);
-        }
     }
     
-    Data* trainingData2 = juncs2FeatureVectors(x2);
+    cout << "Should discard " << pcount << " + entries and " << ncount << " - entries (Total=" << count << ")" << endl << endl;
     
-    cout << "Should discard " << pcount << " + entries and " << ncount << " - entries (" << count << ")" << endl << endl;
     
-    path feature_file = outputPrefix + ".features";
+    Data* trainingData2 = new DataDouble(
+            trainingData->getVariableNames(), 
+            trainingData->getNumRows() - count, 
+            trainingData->getNumCols());
+    
+    size_t new_index = 0;
+    for(size_t i = 0; i < trainingData->getNumRows(); i++) {
+        if ((trainingData->get(i, 0) == 1.0 && results[i]) || (trainingData->get(i, 0) == 0.0 && !results[i])) {
+            bool error = false;
+            for(size_t j = 0; j < trainingData->getNumCols(); j++) {            
+                trainingData2->set(j, new_index, trainingData->get(i, j), error);
+            }
+            new_index++;
+        }        
+    }
+    
+    
+    /*path feature_file = outputPrefix + ".features";
     if (verbose) cout << "Saving feature vector to disk: " << feature_file << endl;
     
-    ofstream fout(feature_file.c_str(), std::ofstream::out);
-    
-    fout << Intron::locationOutputHeader() << "\t" << trainingData->getHeader() << endl;
-    for(size_t i = 0; i < x.size(); i++) {        
-        fout << *(x[i]->getIntron()) << "\t" << trainingData->getRow(i) << endl;
-    }
-    
-    fout.close();
+    ofstream fout(feature_file.c_str(), std::ofstream::out);    
+    fout << Intron::locationOutputHeader() << "\t" << trainingData2->getHeader() << endl;
+    for(size_t i = 0; i < x2.size(); i++) {        
+        fout << *(x2[i]->getIntron()) << "\t" << trainingData2->getRow(i) << endl;
+    }    
+    fout.close();*/
      
     if (verbose) cout << "Initialising random forest" << endl;
     ForestPtr f = nullptr;

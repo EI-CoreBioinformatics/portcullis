@@ -16,6 +16,10 @@
 //  *******************************************************************
 
 #pragma once
+#include <iostream>
+#include <string>
+using std::ostream;
+using std::string;
 
 #include <boost/exception/all.hpp>
 
@@ -89,10 +93,10 @@ public:
     double getSynth(size_t row, size_t col) const {
         return synthetic[(row * cols) + col];
     }
-    
+        
     void execute();
     
-    
+    void print(ostream& out) const;
 };
 }
 }
