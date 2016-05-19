@@ -40,6 +40,8 @@ portcullis::ml::ENN::ENN(uint16_t defaultK, uint16_t _threads, double* _data, si
         k = defaultK;
     threads = _threads;
     verbose = false;
+    
+    threshold = k / 2;
 }
 
 uint32_t portcullis::ml::ENN::execute(vector<bool>& results) const {
@@ -73,7 +75,7 @@ uint32_t portcullis::ml::ENN::execute(vector<bool>& results) const {
                 neg_count++;
             }
         }
-        results[i] = ((pos && pos_count > threshold) || (!pos && neg_count > threshold));    
+        results[i] = ((pos && pos_count >= threshold) || (!pos && neg_count >= threshold));    
         if (!results[i]) discard++;
     }
 

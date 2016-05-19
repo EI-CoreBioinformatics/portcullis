@@ -1,37 +1,37 @@
 {
-	"parameters": {
-		"M4-nb_rel_aln": {
-                        "operator": "gte",
-                        "value": 1
-                },
-                "M12-maxmmes": {
-                        "operator": "gte",
-                        "value": 8
-                },
-                "M11-entropy": {
-			"operator": "gt",
-			"value": 1.0
-		},
-		"M13-hamming5p": {
-                        "operator": "gte",
-                        "value": 5
-                },
-                "M14-hamming3p": {
-                        "operator": "gte",
-                        "value": 5
-                },
-                "M19-mean_mismatches": {
-			"operator": "lte",
-			"value": 1.0
-		},
-                "M20-nb_usrs": {
-                        "operator": "gte",
-                        "value": 1
-                },
-                "M22-rel2raw": {
-                        "operator": "gte",
-                        "value": 0.25
-                }
-	},
-	"expression": "M4-nb_rel_aln & M13-hamming5p & M14-hamming3p & M12-maxmmes & M20-nb_usrs & M19-mean_mismatches & M22-rel2raw"  
+    "parameters": {
+        "M4-nb_rel_aln": {
+            "operator": "gte",
+            "value": 1
+        },
+        "M12-maxmmes": {
+            "operator": "gte",
+            "value": 8
+        },
+        "M11-entropy": {
+            "operator": "gt",
+            "value": 1.0
+        },
+        "M13-hamming5p": {
+            "operator": "gte",
+            "value": 4
+        },
+        "M14-hamming3p": {
+            "operator": "gte",
+            "value": 4
+        },
+        "M19-mean_mismatches": {
+            "operator": "lte",
+            "value": 1.0
+        },
+        "M20-nb_usrs": {
+            "operator": "gte",
+            "value": 1
+        },
+        "M22-rel2raw": {
+            "operator": "gte",
+            "value": 0.25
+        }
+    },
+    "expression": "M4-nb_rel_aln & M13-hamming5p & M14-hamming3p & M12-maxmmes & M20-nb_usrs & M19-mean_mismatches & M22-rel2raw"
 }

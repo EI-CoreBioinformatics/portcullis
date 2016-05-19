@@ -239,6 +239,7 @@ void portcullis::JunctionFilter::filter() {
 
 
 
+    double ratio = 0.0;
 
     if (train) {
 
@@ -253,6 +254,10 @@ void portcullis::JunctionFilter::filter() {
 
         cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
 
+        ratio = 1.0 - ((double)pos.size() / (double)(pos.size() + neg.size()));
+        
+        cout << "Pos to neg ratio: " << ratio << endl << endl;
+        
         cout << "Training markov models ...";
         cout.flush();
         mf.trainCodingPotentialModel(pos);
@@ -501,10 +506,10 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
         cout << p3.size() << "\t" << unlabelled.size();
     }
 
-    cout << endl << "L95x1.5\t";
+    cout << endl << "L95x1.2\t";
 
-    const uint32_t L95 = mf.calcIntronThreshold(p2);
-    const uint32_t pos_length_limit = L95 * 1.5;
+    const uint32_t L95 = mf.calcIntronThreshold(p3);
+    const uint32_t pos_length_limit = L95 * 1.2;
 
     JunctionList passJuncs;
     for (auto& j : p3) {
@@ -636,7 +641,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
     JunctionList passJuncs;
     const uint32_t L95x10 = L95 * 10;
     for (auto& j : f7) {
-        if (j->getIntronSize() > L95x10 && j->getMaxMMES() < 10) {
+        if (j->getIntronSize() > L95x10 && j->getMaxMMES() < 12) {
             p8.push_back(j);
         } else {
             failJuncs.push_back(j);

@@ -284,7 +284,7 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
         string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose) {
     
     // Work out number of times to duplicate negative set
-    int N = (pos.size() / neg.size()) - 1;
+    const int N = (pos.size() / neg.size()) - 1;
     
     // Duplicate pointers to negative set
     JunctionList neg2;
@@ -297,11 +297,12 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
     
         cout << "Oversampling negative set to balance with positive set using SMOTE" << endl;
         Data* negData = juncs2FeatureVectors(neg);
-
-        size_t nelements = negData->getNumRows()*(negData->getNumCols()-1);
+        const int SC = negData->getNumCols() - 1;
+    
+        size_t nelements = negData->getNumRows() * SC ;
         double* nm = new double[nelements];
         for( uint32_t baseidx = 0; baseidx < negData->getNumRows(); baseidx++ ) {        
-            double* r = &nm[baseidx * (negData->getNumCols()-1)];
+            double* r = &nm[baseidx * SC];
             for( size_t c = 1; c < negData->getNumCols(); c++) {
                 r[c - 1] = negData->get(baseidx, c);
                 //cout << r[c-1];
@@ -309,14 +310,12 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
             //cout << endl;
         }
 
-        uint16_t N = pos.size() / neg.size();
-
         Smote smote(5, N, threads, nm, negData->getNumRows(), negData->getNumCols()-1);
         smote.execute();
         smote_rows = smote.getNbSynthRows();
-        smote_data = new double[smote_rows * (negData->getNumCols()-1)];
+        smote_data = new double[smote_rows * SC];
         double* sd = smote.getSynthetic();
-        for(size_t i = 0; i < smote_rows * (negData->getNumCols()-1); i++) {
+        for(size_t i = 0; i < smote_rows * SC; i++) {
             smote_data[i] = sd[i];
         }
         cout << "Number of synthesized entries: " << smote.getNbSynthRows() << endl;
@@ -351,24 +350,26 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
     Data* trainingData = N > 0 ? 
         new DataDouble(
             otd->getVariableNames(), 
-            otd->getNumRows() + smote_rows, 
+            x.size() + smote_rows, 
             otd->getNumCols())
         : otd;
     
     if (N > 0) {
+        const int SC = trainingData->getNumCols() - 1;
         bool error = false;
         for(size_t i = 0; i < otd->getNumRows(); i++) {
             for(size_t j = 0; j < trainingData->getNumCols(); j++) {            
                 trainingData->set(j, i, otd->get(i, j), error);
-            }
+            }            
         }
-
-        size_t k = otd->getNumRows();    
+        
+        size_t k = x.size();    
         for(size_t i = 0; i < smote_rows; i++) {
-            trainingData->set(0, i, 0, error); // Set genuine (i.e. not genuine) flag
+            trainingData->set(0, k, 0.0, error); // Set genuine (i.e. not genuine) flag
             for(size_t j = 1; j < trainingData->getNumCols(); j++) {            
-                trainingData->set(j, k++, smote_data[(i * (trainingData->getNumCols() - 1)) + j-1], error);
-            }
+                trainingData->set(j, k, smote_data[(i * SC) + j-1], error);                
+            }            
+            k++;
         }
         delete[] smote_data;
     }
@@ -380,19 +381,29 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
         double* r = &m[baseidx * (trainingData->getNumCols()-1)];
         for( size_t c = 1; c < trainingData->getNumCols(); c++) {
             r[c - 1] = trainingData->get(baseidx, c);
-            //cout << r[c-1];
         }
-        //cout << endl;
     }    
     
-    if (verbose) cout << endl << "Extracting labels for ENN" << endl;
+    if (verbose) cout << "Extracting labels for ENN" << endl;
     vector<bool> labels;
+    uint32_t p = 0, n = 0, o = 0;
     for(size_t i = 0; i < trainingData->getNumRows(); i++) {
         labels.push_back(trainingData->get(i, 0) == 1.0);
+        if (trainingData->get(i, 0) == 1.0) {
+            p++;
+        }
+        else if (trainingData->get(i, 0) == 0.0) {
+            n++;
+        }
+        else {
+            o++;
+        }
     }
+    cout << "P: " << p << "; N: " << n << "; O: " << o << endl;
     
     cout << endl << "Starting Wilson's Edited Nearest Neighbour (ENN) to clean decision region" << endl;
-    ENN enn(5, threads, m, trainingData->getNumRows(), trainingData->getNumCols()-1, labels);
+    ENN enn(3, threads, m, trainingData->getNumRows(), trainingData->getNumCols()-1, labels);
+    enn.setThreshold(3);
     enn.setVerbose(true);
     vector<bool> results;
     uint32_t count = enn.execute(results);
@@ -415,20 +426,30 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
     
     Data* trainingData2 = new DataDouble(
             trainingData->getVariableNames(), 
-            trainingData->getNumRows() - count, 
+            trainingData->getNumRows() - pcount,
             trainingData->getNumCols());
     
     size_t new_index = 0;
+    pcount = 0, ncount = 0;
     for(size_t i = 0; i < trainingData->getNumRows(); i++) {
-        if ((trainingData->get(i, 0) == 1.0 && results[i]) || (trainingData->get(i, 0) == 0.0 && !results[i])) {
+        if (results[i]) { // || trainingData->get(i, 0) == 0.0) {
             bool error = false;
             for(size_t j = 0; j < trainingData->getNumCols(); j++) {            
                 trainingData2->set(j, new_index, trainingData->get(i, j), error);
             }
             new_index++;
-        }        
+            if (trainingData->get(i, 0) == 1) {
+                pcount++;
+            }
+            else {
+                ncount++;
+            }
+        }
     }
     
+    delete trainingData;
+    
+    cout << "Final training set contains " << pcount << " positive entries and " << ncount << " negative entries" << endl;
     
     /*path feature_file = outputPrefix + ".features";
     if (verbose) cout << "Saving feature vector to disk: " << feature_file << endl;
@@ -439,7 +460,7 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
         fout << *(x2[i]->getIntron()) << "\t" << trainingData2->getRow(i) << endl;
     }    
     fout.close();*/
-     
+         
     if (verbose) cout << "Initialising random forest" << endl;
     ForestPtr f = nullptr;
     if (probabilityMode) {
@@ -464,7 +485,7 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
         probabilityMode ? DEFAULT_MIN_NODE_SIZE_PROBABILITY : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
         "",                         // Status var name 
         false,                      // Prediction mode
-        true,                       // Replace 
+        false,                       // Replace 
         catVars,                    // Unordered categorical variable names (vector<string>)
         false,                      // Memory saving
         AUC, //DEFAULT_SPLITRULE,          // Split rule
@@ -474,6 +495,9 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
     if (verbose) cout << "Training" << endl;
     f->setVerboseOut(&cerr);
     f->run(verbose);
+    cout << "OOBE: " << f->getOverallPredictionError() << endl;
+    
+    delete trainingData2;
     
     return f;
 }
