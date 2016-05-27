@@ -104,6 +104,8 @@ private:
     bool filterNovel;    
     string source;
     double threshold;
+    bool smote;
+    bool enn;
     bool verbose;    
     
     
@@ -219,6 +221,23 @@ public:
     void setThreads(uint16_t threads) {
         this->threads = threads;
     }
+    
+    bool isENN() const {
+        return enn;
+    }
+
+    void setENN(bool enn) {
+        this->enn = enn;
+    }
+
+    bool isSmote() const {
+        return smote;
+    }
+
+    void setSmote(bool smote) {
+        this->smote = smote;
+    }
+
     
     void setCanonical(const string& canonical) {
         vector<string> modes;

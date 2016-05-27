@@ -88,6 +88,8 @@ portcullis::JunctionFilter::JunctionFilter(const path& _prepDir, const path& _ju
     source = DEFAULT_FILTER_SOURCE;
     verbose = false;
     threshold = DEFAULT_FILTER_THRESHOLD;
+    smote = true;
+    enn = true;
 }
 
 void portcullis::JunctionFilter::filter() {
@@ -284,7 +286,7 @@ void portcullis::JunctionFilter::filter() {
         cout << "Training Random Forest" << endl
                 << "----------------------" << endl << endl;
         bool done = false;
-        shared_ptr<Forest> forest = mf.trainInstance(posSystem.getJunctions(), negSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
+        shared_ptr<Forest> forest = mf.trainInstance(posSystem.getJunctions(), negSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true, smote, enn);
         /*SemiSupervisedForest ssf(mf, trainingSystem.getJunctions(), unlabelled2, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, 0.1, true);
         shared_ptr<Forest> forest = ssf.train();*/
         /*
@@ -918,6 +920,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     int32_t max_length;
     string canonical;
     string source;
+    bool no_smote;
+    bool no_enn;
     double threshold;
     bool verbose;
     bool help;
@@ -963,7 +967,11 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             ("prep_data_dir,i", po::value<path>(&prepDir), "Path to directory containing prepared data.")
             ("junction_file", po::value<path>(&junctionFile), "Path to the junction file to process.")
             ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD),
-            "The threshold score at which we determine a junction to be genuine or not.")
+                "The threshold score at which we determine a junction to be genuine or not.")
+            ("no_smote", po::bool_switch(&no_smote)->default_value(false),
+                "Use this flag to disable synthetic oversampling")
+            ("no_enn", po::bool_switch(&no_enn)->default_value(false),
+                "Use this flag to disable Edited Nearest Neighbour")
             ;
 
     // Positional option for the input bam file
@@ -1016,6 +1024,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     }
     filter.setReferenceFile(referenceFile);
     filter.setThreshold(threshold);
+    filter.setSmote(!no_smote);
+    filter.setENN(!no_enn);
 
     filter.filter();
 

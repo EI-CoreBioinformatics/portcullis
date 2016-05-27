@@ -281,7 +281,7 @@ Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& xl
 
 
 portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const JunctionList& pos, const JunctionList& neg,
-        string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose) {
+        string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose, bool smote, bool enn) {
     
     // Work out number of times to duplicate negative set
     const int N = (pos.size() / neg.size()) - 1;
@@ -293,7 +293,7 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
     
     uint32_t smote_rows = 0;
     double* smote_data = 0;
-    if (N > 0) {
+    if (N > 0 && smote) {
     
         cout << "Oversampling negative set to balance with positive set using SMOTE" << endl;
         Data* negData = juncs2FeatureVectors(neg);
@@ -320,7 +320,7 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
         }
         cout << "Number of synthesized entries: " << smote.getNbSynthRows() << endl;
     }
-    else {
+    else if (N <= 0 && smote) {
         
         cout << "Undersampling negative set to balance with positive set" << endl;
         std::mt19937 rng(12345);
@@ -347,14 +347,14 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
     Data* otd = juncs2FeatureVectors(x);
     
     // Create data to correct size
-    Data* trainingData = N > 0 ? 
+    Data* trainingData = N > 0 && smote ? 
         new DataDouble(
             otd->getVariableNames(), 
             x.size() + smote_rows, 
             otd->getNumCols())
         : otd;
     
-    if (N > 0) {
+    if (N > 0 && smote) {
         const int SC = trainingData->getNumCols() - 1;
         bool error = false;
         for(size_t i = 0; i < otd->getNumRows(); i++) {
@@ -374,82 +374,89 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
         delete[] smote_data;
     }
 
-    if (verbose) cout << endl << "Converting training data for ENN" << endl;
-    size_t elements = trainingData->getNumRows()*(trainingData->getNumCols()-1);
-    double* m = new double[elements];
-    for( uint32_t baseidx = 0; baseidx < trainingData->getNumRows(); baseidx++ ) {        
-        double* r = &m[baseidx * (trainingData->getNumCols()-1)];
-        for( size_t c = 1; c < trainingData->getNumCols(); c++) {
-            r[c - 1] = trainingData->get(baseidx, c);
-        }
-    }    
-    
-    if (verbose) cout << "Extracting labels for ENN" << endl;
-    vector<bool> labels;
-    uint32_t p = 0, n = 0, o = 0;
-    for(size_t i = 0; i < trainingData->getNumRows(); i++) {
-        labels.push_back(trainingData->get(i, 0) == 1.0);
-        if (trainingData->get(i, 0) == 1.0) {
-            p++;
-        }
-        else if (trainingData->get(i, 0) == 0.0) {
-            n++;
-        }
-        else {
-            o++;
-        }
-    }
-    cout << "P: " << p << "; N: " << n << "; O: " << o << endl;
-    
-    cout << endl << "Starting Wilson's Edited Nearest Neighbour (ENN) to clean decision region" << endl;
-    ENN enn(3, threads, m, trainingData->getNumRows(), trainingData->getNumCols()-1, labels);
-    enn.setThreshold(3);
-    enn.setVerbose(true);
     vector<bool> results;
-    uint32_t count = enn.execute(results);
-    
-    delete[] m;
-    
-    uint32_t pcount = 0, ncount = 0;
-    JunctionList x2;
-    for(size_t i = 0; i < trainingData->getNumRows(); i++) {
-        if (trainingData->get(i, 0) == 1.0 && !results[i]) {
-            pcount++;
-        }
-        else if (trainingData->get(i, 0) == 0.0 && !results[i]) {
-            ncount++;
-        }
-    }
-    
-    cout << "Should discard " << pcount << " + entries and " << ncount << " - entries (Total=" << count << ")" << endl << endl;
-    
-    
-    Data* trainingData2 = new DataDouble(
-            trainingData->getVariableNames(), 
-            trainingData->getNumRows() - pcount,
-            trainingData->getNumCols());
-    
-    size_t new_index = 0;
-    pcount = 0, ncount = 0;
-    for(size_t i = 0; i < trainingData->getNumRows(); i++) {
-        if (results[i]) { // || trainingData->get(i, 0) == 0.0) {
-            bool error = false;
-            for(size_t j = 0; j < trainingData->getNumCols(); j++) {            
-                trainingData2->set(j, new_index, trainingData->get(i, j), error);
+        
+    if (enn) {
+        if (verbose) cout << endl << "Converting training data for ENN" << endl;
+        size_t elements = trainingData->getNumRows()*(trainingData->getNumCols()-1);
+        double* m = new double[elements];
+        for( uint32_t baseidx = 0; baseidx < trainingData->getNumRows(); baseidx++ ) {        
+            double* r = &m[baseidx * (trainingData->getNumCols()-1)];
+            for( size_t c = 1; c < trainingData->getNumCols(); c++) {
+                r[c - 1] = trainingData->get(baseidx, c);
             }
-            new_index++;
-            if (trainingData->get(i, 0) == 1) {
-                pcount++;
+        }    
+
+        if (verbose) cout << "Extracting labels for ENN" << endl;
+        vector<bool> labels;
+        uint32_t p = 0, n = 0, o = 0;
+        for(size_t i = 0; i < trainingData->getNumRows(); i++) {
+            labels.push_back(trainingData->get(i, 0) == 1.0);
+            if (trainingData->get(i, 0) == 1.0) {
+                p++;
+            }
+            else if (trainingData->get(i, 0) == 0.0) {
+                n++;
             }
             else {
+                o++;
+            }
+        }
+        cout << "P: " << p << "; N: " << n << "; O: " << o << endl;
+
+        cout << endl << "Starting Wilson's Edited Nearest Neighbour (ENN) to clean decision region" << endl;
+        ENN enn(3, threads, m, trainingData->getNumRows(), trainingData->getNumCols()-1, labels);
+        enn.setThreshold(3);
+        enn.setVerbose(true);
+        uint32_t count = enn.execute(results);
+
+        delete[] m;
+
+        uint32_t pcount = 0, ncount = 0;
+        JunctionList x2;
+        for(size_t i = 0; i < trainingData->getNumRows(); i++) {
+            if (trainingData->get(i, 0) == 1.0 && !results[i]) {
+                pcount++;
+            }
+            else if (trainingData->get(i, 0) == 0.0 && !results[i]) {
                 ncount++;
             }
         }
+
+        cout << "Should discard " << pcount << " + entries and " << ncount << " - entries (Total=" << count << ")" << endl << endl;
     }
     
-    delete trainingData;
+    uint32_t pcount = 0, ncount = 0;
     
-    cout << "Final training set contains " << pcount << " positive entries and " << ncount << " negative entries" << endl;
+    Data* trainingData2 = enn ? 
+        new DataDouble(
+            trainingData->getVariableNames(), 
+            trainingData->getNumRows() - pcount,
+            trainingData->getNumCols()) :
+        trainingData;
+    
+    if (enn) {
+        size_t new_index = 0;
+        for(size_t i = 0; i < trainingData->getNumRows(); i++) {
+            if (results[i]) { // || trainingData->get(i, 0) == 0.0) {
+                bool error = false;
+                for(size_t j = 0; j < trainingData->getNumCols(); j++) {            
+                    trainingData2->set(j, new_index, trainingData->get(i, j), error);
+                }
+                new_index++;
+                if (trainingData->get(i, 0) == 1) {
+                    pcount++;
+                }
+                else {
+                    ncount++;
+                }
+            }
+        }
+
+        delete trainingData;
+
+        cout << "Final training set contains " << pcount << " positive entries and " << ncount << " negative entries" << endl;
+    }
     
     /*path feature_file = outputPrefix + ".features";
     if (verbose) cout << "Saving feature vector to disk: " << feature_file << endl;

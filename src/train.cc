@@ -159,7 +159,7 @@ void portcullis::Train::train() {
      
         cout << "Training on full dataset" << endl;
 
-        ForestPtr f = ModelFeatures().trainInstance(junctions, JunctionList(), outputPrefix.string(), trees, threads, false, true);
+        ForestPtr f = ModelFeatures().trainInstance(junctions, JunctionList(), outputPrefix.string(), trees, threads, false, true, false, false);
         
         f->saveToFile();
         f->writeOutput(&cout);        
@@ -194,7 +194,7 @@ void portcullis::Train::train() {
             kf.getFold(i, back_inserter(train), back_inserter(test));
             
             // Train on this particular set
-            ForestPtr f = ModelFeatures().trainInstance(train, JunctionList(), outputPrefix.string(), trees, threads, false, false);
+            ForestPtr f = ModelFeatures().trainInstance(train, JunctionList(), outputPrefix.string(), trees, threads, false, false, false, false);
             
             // Test model instance
             testInstance(f, test);
