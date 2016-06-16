@@ -61,8 +61,6 @@ private:
     string outputPrefix;
     double contribution;    // How much of a contribution unlabelled data should make to the decision making
     
-    double makePrediction(ForestPtr l, ForestPtr u, int i) const;
-
     
 public:
     SemiSupervisedForest(ModelFeatures& _mf, const JunctionList& labelled, const JunctionList& unlabelled,

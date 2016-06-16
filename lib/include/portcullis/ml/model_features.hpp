@@ -67,6 +67,9 @@ struct Feature {
 class ModelFeatures {
 private:
     size_t fi;
+protected:
+    void setRow(Data* d, size_t row, JunctionPtr j, bool labelled);
+        
 public:
     uint32_t L95;
     KmerMarkovModel exonModel;
@@ -114,9 +117,11 @@ public:
     void trainSplicingModels(const JunctionList& pass, const JunctionList& fail);
     
     Data* juncs2FeatureVectors(const JunctionList& x);
+    Data* juncs2FeatureVectors(const JunctionList& xl, const JunctionList& xu);
     
-    ForestPtr trainInstance(const JunctionList& x, string outputPrefix, 
-            uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose);
+    
+    ForestPtr trainInstance(const JunctionList& pos, const JunctionList& neg, string outputPrefix, 
+            uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose, bool smote, bool enn);
     
     void resetActiveFeatureIndex() {
         fi = 0;

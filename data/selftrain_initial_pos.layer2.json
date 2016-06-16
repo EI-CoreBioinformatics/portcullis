@@ -1,45 +1,45 @@
 {
-	"parameters": {
-		"M4-nb_rel_aln": {
-                        "operator": "gte",
-                        "value": 5
-                },
-                "M4-nb_rel_aln.2": {
-                        "operator": "gte",
-                        "value": 3
-                },
-                "M12-maxmmes": {
-                        "operator": "gte",
-                        "value": 25
-                },
-                "M12-maxmmes.2": {
-                        "operator": "gt",
-                        "value": 15
-                },
-                "M13-hamming5p": {
-                        "operator": "gte",
-                        "value": 8
-                },
-                "M13-hamming5p.2": {
-                        "operator": "gte",
-                        "value": 10
-                },
-                "M14-hamming3p": {
-                        "operator": "gte",
-                        "value": 8
-                },
-                "M14-hamming3p.2": {
-                        "operator": "gte",
-                        "value": 10
-                },
-                "M19-mean_mismatches": {
-			"operator": "lt",
-			"value": 0
-		},
-                "M19-mean_mismatches.2": {
-			"operator": "lt",
-			"value": 0.25
-		}
-	},
-	"expression": "( M4-nb_rel_aln & M12-maxmmes ) | ( M4-nb_rel_aln.2 & M12-maxmmes.2 & M13-hamming5p & M14-hamming3p & M19-mean_mismatches.2 ) | ( M13-hamming5p.2 & M14-hamming3p.2 & M19-mean_mismatches )"  
+    "parameters": {
+        "M4-nb_rel_aln": {
+            "operator": "gte",
+            "value": 5
+        },
+        "M4-nb_rel_aln.2": {
+            "operator": "gte",
+            "value": 3
+        },
+        "M12-maxmmes": {
+            "operator": "gte",
+            "value": 20
+        },
+        "M12-maxmmes.2": {
+            "operator": "gt",
+            "value": 12
+        },
+        "M13-hamming5p": {
+            "operator": "gte",
+            "value": 7
+        },
+        "M13-hamming5p.2": {
+            "operator": "gte",
+            "value": 9
+        },
+        "M14-hamming3p": {
+            "operator": "gte",
+            "value": 7
+        },
+        "M14-hamming3p.2": {
+            "operator": "gte",
+            "value": 9
+        },
+        "M19-mean_mismatches": {
+            "operator": "lte",
+            "value": 0
+        },
+        "M19-mean_mismatches.2": {
+            "operator": "lt",
+            "value": 0.33
+        }
+    },
+    "expression": "( M4-nb_rel_aln & M12-maxmmes ) | ( M4-nb_rel_aln.2 & M12-maxmmes.2 & M13-hamming5p & M14-hamming3p & M19-mean_mismatches.2 ) | ( M13-hamming5p.2 & M14-hamming3p.2 & M19-mean_mismatches )"
 }

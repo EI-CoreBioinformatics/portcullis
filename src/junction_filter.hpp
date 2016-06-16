@@ -81,7 +81,7 @@ const string ST_IPOS_RULES_FILE = "selftrain_initial_pos";
 const string ST_INEG_RULES_FILE = "selftrain_initial_neg";
 const uint16_t DEFAULT_FILTER_THREADS = 1;
 const uint16_t DEFAULT_SELFTRAIN_TREES = 100;
-const double DEFAULT_FILTER_THRESHOLD = 0.625;
+const double DEFAULT_FILTER_THRESHOLD = 0.5;
 
 
 class JunctionFilter {
@@ -104,6 +104,8 @@ private:
     bool filterNovel;    
     string source;
     double threshold;
+    bool smote;
+    bool enn;
     bool verbose;    
     
     
@@ -220,6 +222,23 @@ public:
         this->threads = threads;
     }
     
+    bool isENN() const {
+        return enn;
+    }
+
+    void setENN(bool enn) {
+        this->enn = enn;
+    }
+
+    bool isSmote() const {
+        return smote;
+    }
+
+    void setSmote(bool smote) {
+        this->smote = smote;
+    }
+
+    
     void setCanonical(const string& canonical) {
         vector<string> modes;
         boost::split( modes, canonical, boost::is_any_of(","), boost::token_compress_on );
@@ -300,6 +319,10 @@ protected:
     void createPositiveSet(const JunctionList& all, JunctionList& pos, JunctionList& unlabelled, ModelFeatures& mf);
     
     void createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg, JunctionList& failJuncs);
+    
+    double calcGoodThreshold(shared_ptr<Forest> f, const JunctionList& all);
+    
+    void undersample(JunctionList& jl, size_t size);
     
 public:
   

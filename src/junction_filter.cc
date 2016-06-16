@@ -23,6 +23,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <map>
+#include <random>
 #include <unordered_set>
 #include <vector>
 using std::boolalpha;
@@ -87,6 +88,8 @@ portcullis::JunctionFilter::JunctionFilter(const path& _prepDir, const path& _ju
     source = DEFAULT_FILTER_SOURCE;
     verbose = false;
     threshold = DEFAULT_FILTER_THRESHOLD;
+    smote = true;
+    enn = true;
 }
 
 void portcullis::JunctionFilter::filter() {
@@ -233,10 +236,12 @@ void portcullis::JunctionFilter::filter() {
     mf.features[26].active=false;
     mf.features[27].active=false;
     mf.features[28].active=false;
-    mf.features[29].active=false;*/
+    mf.features[29].active=false;
+    */
 
 
 
+    double ratio = 0.0;
 
     if (train) {
 
@@ -251,29 +256,39 @@ void portcullis::JunctionFilter::filter() {
 
         cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
 
+        ratio = 1.0 - ((double)pos.size() / (double)(pos.size() + neg.size()));
+        
+        cout << "Pos to neg ratio: " << ratio << endl << endl;
+        
         cout << "Training markov models ...";
         cout.flush();
         mf.trainCodingPotentialModel(pos);
         mf.trainSplicingModels(pos, neg);
         cout << " done." << endl << endl;
-
-
+        
+        // Balance models for training
+        /*if (pos.size() > neg.size()) {
+            undersample(pos, neg.size());
+        }
+        else if (pos.size() < neg.size()) {
+            undersample(neg, pos.size());
+        }
+        cout << "Balanced datasets to size of smallest set: " << pos.size() << endl << endl;*/
 
         // Build the training set by combining the positive and negative sets
-        JunctionList training;
-        training.reserve(pos.size() + neg.size());
-        training.insert(training.end(), pos.begin(), pos.end());
-        training.insert(training.end(), neg.begin(), neg.end());
-
-        JunctionSystem trainingSystem(training);
-        trainingSystem.sort();
+        
+        JunctionSystem posSystem(pos);
+        posSystem.sort();
+        
+        JunctionSystem negSystem(neg);
+        negSystem.sort();
 
         cout << "Training Random Forest" << endl
                 << "----------------------" << endl << endl;
         bool done = false;
-        //shared_ptr<Forest> forest = mf.trainInstance(trainingSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true);
-        SemiSupervisedForest ssf(mf, trainingSystem.getJunctions(), unlabelled2, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, 0.1, true);
-        shared_ptr<Forest> forest = ssf.train();
+        shared_ptr<Forest> forest = mf.trainInstance(posSystem.getJunctions(), negSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true, smote, enn);
+        /*SemiSupervisedForest ssf(mf, trainingSystem.getJunctions(), unlabelled2, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, 0.1, true);
+        shared_ptr<Forest> forest = ssf.train();*/
         /*
         const vector<double> importance = forest->getVariableImportance();
         mf.resetActiveFeatureIndex();
@@ -441,6 +456,17 @@ void portcullis::JunctionFilter::filter() {
     }
 }
 
+void portcullis::JunctionFilter::undersample(JunctionList& jl, size_t size) {
+    
+    std::mt19937 rng(12345);
+
+    while(jl.size() > size) {        
+        std::uniform_int_distribution<int> gen(0, jl.size()); // uniform, unbiased
+        int i = gen(rng);
+        jl.erase(jl.begin()+i);
+    }
+}
+
 void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, JunctionList& pos, JunctionList& unlabelled, ModelFeatures& mf) {
     JuncResultMap resultMap;
 
@@ -482,10 +508,10 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
         cout << p3.size() << "\t" << unlabelled.size();
     }
 
-    cout << endl << "L95x1.5\t";
+    cout << endl << "L95x1.2\t";
 
-    const uint32_t L95 = mf.calcIntronThreshold(p2);
-    const uint32_t pos_length_limit = L95 * 1.5;
+    const uint32_t L95 = mf.calcIntronThreshold(p3);
+    const uint32_t pos_length_limit = L95 * 1.2;
 
     JunctionList passJuncs;
     for (auto& j : p3) {
@@ -617,7 +643,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
     JunctionList passJuncs;
     const uint32_t L95x10 = L95 * 10;
     for (auto& j : f7) {
-        if (j->getIntronSize() > L95x10 && j->getMaxMMES() < 10) {
+        if (j->getIntronSize() > L95x10 && j->getMaxMMES() < 12) {
             p8.push_back(j);
         } else {
             failJuncs.push_back(j);
@@ -758,13 +784,8 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 
     cout << "Initialising random forest" << endl;
 
-    shared_ptr<Forest> f = nullptr;
-    if (train) {
-        f = make_shared<ForestProbability>();
-    } else {
-        f = make_shared<ForestClassification>();
-    }
-
+    shared_ptr<Forest> f = make_shared<ForestProbability>();
+    
     vector<string> catVars;
 
     f->init(
@@ -803,7 +824,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 
     for (size_t i = 0; i < all.size(); i++) {
 
-        scoreStream << f->getPredictions()[i][0] << "\t" << *(all[i]->getIntron())
+        scoreStream << (1.0 - f->getPredictions()[i][0]) << "\t" << *(all[i]->getIntron())
                 << "\t" << strandToChar(all[i]->getConsensusStrand())
                 << "\t" << cssToChar(all[i]->getSpliceSiteType())
                 << "\t" << testingData->getRow(i) << endl;
@@ -843,12 +864,14 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 
         cout << "The best F1 score of " << max_f1 << " is achieved with threshold set at " << best_t_f1 << endl;
         cout << "The best MCC score of " << max_mcc << " is achieved with threshold set at " << best_t_mcc << endl;
-        cout << "Actual threshold set at " << threshold << endl;
-        categorise(f, all, pass, fail, threshold);
-    } else {
-        categorise(f, all, pass, fail, threshold);
+        //threshold = best_t_mcc;
     }
-
+    
+    //threshold = calcGoodThreshold(f, all);
+    
+    cout << "Threshold set at " << threshold << endl;
+    categorise(f, all, pass, fail, threshold);
+    
     cout << "Saved junction scores to: " << scorepath << endl;
 
 
@@ -858,12 +881,28 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 void portcullis::JunctionFilter::categorise(shared_ptr<Forest> f, const JunctionList& all, JunctionList& pass, JunctionList& fail, double t) {
 
     for (size_t i = 0; i < all.size(); i++) {
-        if (f->getPredictions()[i][0] <= t) {
+        if ((1.0 - f->getPredictions()[i][0]) >= t) {
             pass.push_back(all[i]);
         } else {
             fail.push_back(all[i]);
         }
     }
+}
+
+double portcullis::JunctionFilter::calcGoodThreshold(shared_ptr<Forest> f, const JunctionList& all) {
+
+    uint32_t pos = 0;
+    uint32_t neg = 0;
+    
+    for (auto& p : f->getPredictions()) {
+        if ((1.0 - p[0]) >= 0.5) {
+            pos++;
+        } else {
+            neg++;
+        }
+    }
+    
+    return (double)pos / (double)(pos+neg);
 }
 
 int portcullis::JunctionFilter::main(int argc, char *argv[]) {
@@ -881,6 +920,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     int32_t max_length;
     string canonical;
     string source;
+    bool no_smote;
+    bool enn;
     double threshold;
     bool verbose;
     bool help;
@@ -914,6 +955,10 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GU-AG), S = Semi-canonical junctions (AT-AC, or  GT-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_FILTER_THREADS),
             "The number of threads to use during testing (only applies if using forest model).")
+            ("enn", po::bool_switch(&enn)->default_value(false),
+                "Use this flag to enable Edited Nearest Neighbour to clean decision region")
+            ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD),
+                "The threshold score at which we determine a junction to be genuine or not.  Increase value towards 0.0 to increase precision, decrease towards 0.0 to increase sensitivity.  We generally find that increasing sensitivity helps when using high coverage data, or when the aligner has already performed some form of junction filtering.")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false),
             "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -924,9 +969,9 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
             ("prep_data_dir,i", po::value<path>(&prepDir), "Path to directory containing prepared data.")
-            ("junction_file", po::value<path>(&junctionFile), "Path to the junction file to process.")
-            ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD),
-            "The threshold score at which we determine a junction to be genuine or not.")
+            ("junction_file", po::value<path>(&junctionFile), "Path to the junction file to process.")            
+            ("no_smote", po::bool_switch(&no_smote)->default_value(false),
+                "Use this flag to disable synthetic oversampling")            
             ;
 
     // Positional option for the input bam file
@@ -949,8 +994,6 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
         cout << generic_options << endl;
         return 1;
     }
-
-
 
     auto_cpu_timer timer(1, "\nPortcullis junction filter completed.\nTotal runtime: %ws\n\n");
 
@@ -979,6 +1022,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     }
     filter.setReferenceFile(referenceFile);
     filter.setThreshold(threshold);
+    filter.setSmote(!no_smote);
+    filter.setENN(enn);
 
     filter.filter();
 

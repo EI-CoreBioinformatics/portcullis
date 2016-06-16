@@ -47,10 +47,7 @@ portcullis::ml::SemiSupervisedForest::SemiSupervisedForest(ModelFeatures& mf,
     // Combine labelled and unlabelled
     // This is inefficient but it makes life easier... hopefully it doesn't take too
     // much memory
-    JunctionList _all;
-    _all.insert(_all.end(), _labelled.begin(), _labelled.end());
-    _all.insert(_all.end(), _unlabelled.begin(), _unlabelled.end());
-    all = mf.juncs2FeatureVectors(_all);
+    all = mf.juncs2FeatureVectors(_labelled, _unlabelled);
     if (verbose) cout << "Created combined FV with " << all->getNumRows() << " entries." << endl;
     
     
@@ -70,7 +67,6 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
     
     if (verbose) cout << "Initialising random forest" << endl;
     ForestPtr l = make_shared<ForestProbability>();
-    ForestPtr u = make_shared<ForestProbability>();
         
     vector<string> catVars;
     
@@ -115,6 +111,24 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
     l->run(verbose);
     
     
+    ForestPtr u = make_shared<ForestProbability>();
+    u->init(
+            MEM_DOUBLE,                 // Memory mode
+            0,                          // M Try (0 == use default)
+            outputPrefix,               // Output prefix 
+            trees,                      // Number of trees
+            1236456789,                 // Use fixed seed to avoid non-deterministic behaviour as much as possible
+            threads,                    // Number of threads
+            IMP_GINI,                   // Importance measure 
+            DEFAULT_MIN_NODE_SIZE_PROBABILITY,  // Min node size
+            false,                      // Prediction mode
+            true,                       // Replace 
+            false,                      // Memory saving
+            DEFAULT_SPLITRULE,          // Split rule
+            true,                       // predall
+            1.0);                       // Sample fraction
+    u->setData(all, "Genuine", "", catVars);
+                
     
     // Loop until no improvement using deterministic annealing
     bool initOnly = false;
@@ -130,7 +144,6 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
         if (improved && !first) {
             if (verbose) cout << "Making predictions on the unlabelled set using current model" << endl;
             u->setPredictionMode(true);
-            u->setData(all, "Genuine", "", catVars);
             u->run(verbose);
             if (verbose) cout << "Made predictions." << endl;
         }    
@@ -151,27 +164,7 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
         }
         
         if (verbose) cout << "Re-training newly labelled data" << endl;
-        u = make_shared<ForestProbability>();
-        u->init(
-            "Genuine",                  // Dependant variable name
-            MEM_DOUBLE,                 // Memory mode
-            all,                   // Data object
-            0,                          // M Try (0 == use default)
-            outputPrefix + "_" + std::to_string(it),               // Output prefix 
-            trees,                      // Number of trees
-            1236456789,                 // Use fixed seed to avoid non-deterministic behaviour as much as possible
-            threads,                    // Number of threads
-            IMP_GINI,                   // Importance measure 
-            DEFAULT_MIN_NODE_SIZE_PROBABILITY,  // Min node size
-            "",                         // Status var name 
-            false,                      // Prediction mode
-            true,                       // Replace 
-            catVars,                    // Unordered categorical variable names (vector<string>)
-            false,                      // Memory saving
-            DEFAULT_SPLITRULE,          // Split rule
-            true,                       // predall
-            1.0);                       // Sample fraction
-        //u->setCaseWeights(case_weights);
+        u->setPredictionMode(false);
         u->run(verbose);
         
         cout << "OOBE: " << u->getOverallPredictionError() << endl;
@@ -202,11 +195,9 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
     else {
         for(size_t j = labelled->getNumRows(); j < labelled->getNumRows()+unlabelled->getNumRows(); j++) {
             bool error = false;
-            all->set(0, j, unlabelled->get(j - labelled->getNumRows(), 0), error);
+            all->set(0, j, all->get(j, 0), error);
         }
     }
-    
-    initOnly = false;
     
     // Revert to the best forest
     ForestPtr b = make_shared<ForestProbability>();
@@ -233,54 +224,4 @@ ForestPtr portcullis::ml::SemiSupervisedForest::train() {
     b->run(verbose);
     
     return b;
-}
-
-double portcullis::ml::SemiSupervisedForest::makePrediction(ForestPtr lab, ForestPtr unlab, int i) const {
-    
-    const std::vector<std::vector<double>> lab_pred = lab->getPredictions();
-    const std::vector<std::vector<double>> unlab_pred = unlab->getPredictions();
-    
-    double lab_sum = std::accumulate(lab_pred[i].begin(), lab_pred[i].end(), 0.0);
-    double unlab_sum = std::accumulate(unlab_pred[i].begin(), unlab_pred[i].end(), 0.0);
-    
-    double weight_sum = (double)lab_pred[i].size() + ((double)unlab_pred[i].size() * contribution );
-    
-    double lab_mean = lab_sum / (double)lab_pred[i].size();    
-    double unlab_mean = unlab_sum / (double)unlab_pred[i].size();
-    double weighted_mean = (lab_sum + (unlab_sum * contribution)) / (weight_sum);
-    
-    cout << "Means: lab - " << lab_mean << "; unlab - " << unlab_mean << "; weighted - " << weighted_mean << endl;
-    
-    double contr2 = std::pow(contribution, 2);
-    
-    double lab_sq_sum = std::inner_product(lab_pred[i].begin(), lab_pred[i].end(), lab_pred[i].begin(), 0.0);
-    double lab_stdev = std::sqrt(lab_sq_sum / lab_pred[i].size() - lab_mean * lab_mean);
-
-    double unlab_sq_sum = std::inner_product(unlab_pred[i].begin(), unlab_pred[i].end(), unlab_pred[i].begin(), 0.0);
-    double unlab_stdev = std::sqrt(unlab_sq_sum / unlab_pred[i].size() - unlab_mean * unlab_mean);
-
-    double var = 0.0;
-    for(size_t j = 0; j < lab_pred[i].size(); j++) {
-        var += std::pow(lab_pred[i][j] - weighted_mean, 2);
-    }
-    for(size_t j = 0; j < unlab_pred[i].size(); j++) {
-        var += contribution * std::pow(unlab_pred[i][j] - weighted_mean, 2);
-    }
-    
-    var /= weight_sum;    
-    double weighted_stdev = std::sqrt(var);
-
-    cout << "STD dev: lab - " << lab_stdev << "; unlab - " << unlab_stdev << "; weighted - " << weighted_stdev << endl;
-    
-    
-
-    std::random_device rd;
-    std::mt19937 gen(rd());        
-
-    // values near the mean are the most likely
-    // standard deviation affects the dispersion of generated values from the mean
-    std::normal_distribution<double> ndist(weighted_mean,weighted_stdev);
-
-    // Return the new prediction based on the distribution
-    return std::abs(std::round(ndist(gen)));
 }
