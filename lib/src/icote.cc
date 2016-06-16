@@ -131,6 +131,9 @@ void portcullis::ml::Smote::execute() {
                 }
                 dist[(i * sel_cols) + j] = std::sqrt(s);
             }
+            
+            // Clone K antibodies in proportion to antigen-antibody affinity
+            
         }
     
         if (verbose) cout << "Mutating antibodies" << endl;

@@ -824,7 +824,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 
     for (size_t i = 0; i < all.size(); i++) {
 
-        scoreStream << f->getPredictions()[i][0] << "\t" << *(all[i]->getIntron())
+        scoreStream << (1.0 - f->getPredictions()[i][0]) << "\t" << *(all[i]->getIntron())
                 << "\t" << strandToChar(all[i]->getConsensusStrand())
                 << "\t" << cssToChar(all[i]->getSpliceSiteType())
                 << "\t" << testingData->getRow(i) << endl;
@@ -881,7 +881,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 void portcullis::JunctionFilter::categorise(shared_ptr<Forest> f, const JunctionList& all, JunctionList& pass, JunctionList& fail, double t) {
 
     for (size_t i = 0; i < all.size(); i++) {
-        if (f->getPredictions()[i][0] <= t) {
+        if ((1.0 - f->getPredictions()[i][0]) >= t) {
             pass.push_back(all[i]);
         } else {
             fail.push_back(all[i]);
@@ -895,7 +895,7 @@ double portcullis::JunctionFilter::calcGoodThreshold(shared_ptr<Forest> f, const
     uint32_t neg = 0;
     
     for (auto& p : f->getPredictions()) {
-        if (p[0] <= 0.5) {
+        if ((1.0 - p[0]) >= 0.5) {
             pos++;
         } else {
             neg++;
@@ -921,7 +921,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     string canonical;
     string source;
     bool no_smote;
-    bool no_enn;
+    bool enn;
     double threshold;
     bool verbose;
     bool help;
@@ -955,6 +955,10 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GU-AG), S = Semi-canonical junctions (AT-AC, or  GT-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_FILTER_THREADS),
             "The number of threads to use during testing (only applies if using forest model).")
+            ("enn", po::bool_switch(&enn)->default_value(false),
+                "Use this flag to enable Edited Nearest Neighbour to clean decision region")
+            ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD),
+                "The threshold score at which we determine a junction to be genuine or not.  Increase value towards 0.0 to increase precision, decrease towards 0.0 to increase sensitivity.  We generally find that increasing sensitivity helps when using high coverage data, or when the aligner has already performed some form of junction filtering.")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false),
             "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -965,13 +969,9 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
             ("prep_data_dir,i", po::value<path>(&prepDir), "Path to directory containing prepared data.")
-            ("junction_file", po::value<path>(&junctionFile), "Path to the junction file to process.")
-            ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD),
-                "The threshold score at which we determine a junction to be genuine or not.")
+            ("junction_file", po::value<path>(&junctionFile), "Path to the junction file to process.")            
             ("no_smote", po::bool_switch(&no_smote)->default_value(false),
-                "Use this flag to disable synthetic oversampling")
-            ("no_enn", po::bool_switch(&no_enn)->default_value(false),
-                "Use this flag to disable Edited Nearest Neighbour")
+                "Use this flag to disable synthetic oversampling")            
             ;
 
     // Positional option for the input bam file
@@ -994,8 +994,6 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
         cout << generic_options << endl;
         return 1;
     }
-
-
 
     auto_cpu_timer timer(1, "\nPortcullis junction filter completed.\nTotal runtime: %ws\n\n");
 
@@ -1025,7 +1023,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     filter.setReferenceFile(referenceFile);
     filter.setThreshold(threshold);
     filter.setSmote(!no_smote);
-    filter.setENN(!no_enn);
+    filter.setENN(enn);
 
     filter.filter();
 
