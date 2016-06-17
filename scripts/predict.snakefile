@@ -38,6 +38,7 @@ LOAD_PORTCULLIS = config["load_portcullis"]
 LOAD_SPANKI = config["load_spanki"]
 LOAD_FINESPLICE = config["load_finesplice"]
 LOAD_TRUESIGHT = config["load_truesight"]
+LOAD_SOAPSPLICE = config["load_soapsplice"]
 LOAD_PYTHON3 = config["load_python3"]
 LOAD_GT = config["load_gt"]
 LOAD_MIKADO = config["load_mikado"]
@@ -72,6 +73,8 @@ JUNC_DIR = OUT_DIR + "/junctions"
 JUNC_DIR_FULL = os.path.abspath(JUNC_DIR)
 PORTCULLIS_DIR = JUNC_DIR + "/portcullis"
 PORTCULLIS_DIR_FULL = os.path.abspath(PORTCULLIS_DIR)
+PORTCULLIS_DIR2 = JUNC_DIR + "/portcullis2"
+PORTCULLIS_DIR2_FULL = os.path.abspath(PORTCULLIS_DIR2)
 
 CWD = os.getcwd()
 
@@ -85,7 +88,7 @@ ISOFORM_FRACTION = {"permissive": 0.01, "semipermissive": 0.03, "default": 0.1, 
 #########################
 Rules
 
-localrules: all, truesight2bed
+localrules: all, truesight2bed, soapsplice2bed
 
 # Define 
 rule all:
@@ -95,7 +98,9 @@ rule all:
 		expand(JUNC_DIR+"/output/tophat-{reads}-spanki.bed", reads=INPUT_SETS),
 		expand(JUNC_DIR+"/output/tophat-{reads}-finesplice.bed", reads=INPUT_SETS),
 		expand(JUNC_DIR+"/output/truesight-{reads}-truesight.bed", reads=INPUT_SETS),
-		expand(ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.bed", asm_method=ASSEMBLY_METHODS, asm_mode=ASSEMBLY_MODES, aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
+		expand(JUNC_DIR+"/output/soapsplice-{reads}-soapsplice.bed", reads=INPUT_SETS),
+		expand(ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.bed", asm_method=ASSEMBLY_METHODS, asm_mode=ASSEMBLY_MODES, aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS),
+		#expand(PORTCULLIS_DIR2+"/{aln_method}-{reads}/junc/{aln_method}-{reads}.junctions.tab", aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
 #		expand(ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.stats", asm_method=ASSEMBLY_METHODS, asm_mode=ASSEMBLY_MODES, aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
 		
 
@@ -269,7 +274,9 @@ rule portcullis_prep:
 		ref=REF,
 		bam=rules.bam_sort.output,
 		idx=rules.bam_index.output
-	output: PORTCULLIS_DIR+"/{aln_method}-{reads}/prep/portcullis.sorted.alignments.bam.bai"
+	output: 
+		bai=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep/portcullis.sorted.alignments.bam.bai",
+		fa=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep/portcullis.genome.fa"
 	params:
 		outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep",
 		load=LOAD_PORTCULLIS
@@ -278,7 +285,7 @@ rule portcullis_prep:
 	message: "Using portcullis to prepare: {input}"
 	run:
 		strand = PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"
-		shell("{params.load} && portcullis prep -o {params.outdir} -l --strandedness={strand} -t {threads} {input.ref} {input.bam} > {log} 2>&1")
+		shell("{params.load} && portcullis prep -o {params.outdir} --strandedness={strand} -t {threads} {input.ref} {input.bam} > {log} 2>&1")
 
 
 rule portcullis_junc:
@@ -294,11 +301,12 @@ rule portcullis_junc:
 	message: "Using portcullis to analyse potential junctions: {input}"
 	run:
 		strand = PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"		
-		shell("{params.load} && {RUN_TIME} portcullis junc -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} --strandedness={strand} -t {threads} {params.prepdir} > {log} 2>&1")
+		shell("{params.load} && {RUN_TIME} portcullis junc -o {params.outdir}/{wildcards.aln_method}-{wildcards.reads} --strandedness={strand} -t {threads} {params.prepdir} > {log} 2>&1")
 
 
 rule portcullis_filter:
-	input: rules.portcullis_junc.output
+	input: 	tab=rules.portcullis_junc.output,
+		ref=rules.portcullis_prep.output.fa
 	output:
 		link=JUNC_DIR+"/output/{aln_method}-{reads}-portcullis.bed",
 		unfilt_link=JUNC_DIR+"/output/{aln_method}-{reads}-all.bed",
@@ -311,7 +319,7 @@ rule portcullis_filter:
 	log: PORTCULLIS_DIR+"/{aln_method}-{reads}-filter.log"
 	threads: int(THREADS)
 	message: "Using portcullis to filter invalid junctions: {input}"
-	shell: "{params.load} && portcullis filter -t {threads} -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} {input} > {log} 2>&1 && ln -sf {params.bed} {output.link} && touch -h {output.link} && ln -sf {params.unfilt_bed} {output.unfilt_link} && touch -h {output.unfilt_link}"
+	shell: "{params.load} && portcullis filter -t {threads} -o {params.outdir}/{wildcards.aln_method}-{wildcards.reads} {input.ref} {input.tab} > {log} 2>&1 && ln -sf {params.bed} {output.link} && touch -h {output.link} && ln -sf {params.unfilt_bed} {output.unfilt_link} && touch -h {output.unfilt_link}"
 
 
 rule portcullis_bamfilt:
@@ -326,6 +334,43 @@ rule portcullis_bamfilt:
 	threads: int(THREADS)
 	message: "Using portcullis to filter alignments containing invalid junctions: {input.tab}"
 	shell: "{params.load} && portcullis bamfilt --output={output.bam} {input.tab} {input.bam} > {log} 2>&1"
+
+'''
+rule portcullis_prep2:
+	input:
+		ref=REF,
+		bam=rules.bam_sort.output,
+		idx=rules.bam_index.output
+	output: PORTCULLIS_DIR2+"/{aln_method}-{reads}/prep/portcullis.sorted.alignments.bam.bai"
+	params:
+		outdir=PORTCULLIS_DIR2+"/{aln_method}-{reads}/prep",
+		load=LOAD_PORTCULLIS2
+	log: PORTCULLIS_DIR2+"/{aln_method}-{reads}-prep.log"
+	threads: int(THREADS)
+	message: "Using portcullis to prepare: {input}"
+	run:
+		strand = PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"
+		shell("{params.load} && portcullis prep -o {params.outdir} --strandedness={strand} -t {threads} {input.ref} {input.bam} > {log} 2>&1")
+
+
+rule portcullis_junc2:
+	input:
+		bai=rules.portcullis_prep2.output
+	output: PORTCULLIS_DIR2+"/{aln_method}-{reads}/junc/{aln_method}-{reads}.junctions.tab"
+	params:
+		prepdir=PORTCULLIS_DIR2+"/{aln_method}-{reads}/prep",
+		outdir=PORTCULLIS_DIR2+"/{aln_method}-{reads}/junc",
+		load=LOAD_PORTCULLIS2
+	log: PORTCULLIS_DIR2+"/{aln_method}-{reads}-junc.log"
+	threads: int(THREADS)
+	message: "Using portcullis to analyse potential junctions: {input}"
+	run:
+		strand = PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"		
+		shell("{params.load} && {RUN_TIME} portcullis junc -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} --strandedness={strand} -t {threads} {params.prepdir} > {log} 2>&1")
+'''
+
+
+
 
 rule spanki:
     input:
@@ -408,7 +453,7 @@ rule truesight:
     log: JUNC_DIR_FULL+"/truesight/{reads}-truesight.log"
     threads: int(THREADS)
     message: "Using Truesight to find junctions"
-    shell: "{params.load_fs} && cd {params.outdir} && {RUN_TIME} truesight_pair.pl -i {MIN_INTRON} -I {MAX_INTRON} -v 1 -r {params.index} -p {threads} -o . -f {params.r1} {params.r2} > {log} 2>&1 && cd {CWD}"
+    shell: "{params.load_fs} && cd {params.outdir} && {RUN_TIME} truesight_pair.pl -i {MIN_INTRON} -I {MAX_INTRON} -v 1 -r {params.index} -p {threads} -o . -f {params.r1} {params.r2} > {log} 2>&1 && rm GapAli.sam && cd {CWD}"
 
 rule truesight2bed:
 	input: rules.truesight.output
@@ -422,6 +467,43 @@ rule truesight2bed:
 	message: "Creating bed file from truesight output: {input}"
 	shell: "{params.load_portcullis} && truesight2bed.py {input} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
+rule soapsplice_index:
+	input: fa=REF
+	output: JUNC_DIR + "/soapsplice/index/"+NAME+".index.bwt"
+	log: JUNC_DIR + "/soapsplice/index.log"
+	params:
+        	load_ss=LOAD_SOAPSPLICE,
+		index=JUNC_DIR + "/soapsplice/index/"+NAME
+	threads: 1
+	message: "Creating index for soapsplice"
+	shell: "{params.load_ss} && 2bwt-builder {input.fa} {params.index} > {log} 2>&1"
+
+rule soapsplice:
+    input:
+        r1=READS_DIR+"/{reads}.R1.fq",
+        r2=READS_DIR+"/{reads}.R2.fq",
+	idx=rules.soapsplice_index.output
+    output: JUNC_DIR+"/soapsplice/{reads}/ss-{reads}.junc"
+    params:
+        load_ss=LOAD_SOAPSPLICE,
+	index=JUNC_DIR + "/soapsplice/index/"+NAME+".index",
+        outdir=JUNC_DIR+"/soapsplice/{reads}"
+    log: JUNC_DIR+"/soapsplice/{reads}-soapsplice.log"
+    threads: int(THREADS)
+    message: "Using soapsplice to find junctions"
+    shell: "{params.load_ss} && {RUN_TIME} soapsplice -d {params.index} -1 {input.r1} -2 {input.r2} -I 450 -o {params.outdir}/ss-{wildcards.reads} -p {threads} -t {MAX_INTRON} -c 0 -f 2 -L {MAX_INTRON} -l {MIN_INTRON} > {log} 2>&1 && rm -f {params.outdir}/ss-{wildcards.reads}.sam"
+
+rule soapsplice2bed:
+	input: rules.soapsplice.output
+	output:
+		link=JUNC_DIR+"/output/soapsplice-{reads}-soapsplice.bed",
+	        bed=JUNC_DIR+"/soapsplice/{reads}/soapsplice-{reads}-soapsplice.bed"
+	params:
+		load_portcullis=LOAD_PORTCULLIS,
+		bed="../soapsplice/{reads}/soapsplice-{reads}-soapsplice.bed"
+	threads: 1
+	message: "Creating bed file from soapsplice output: {input}"
+	shell: "{params.load_portcullis} && soapsplice2bed.py {input} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 ###
 
@@ -489,13 +571,9 @@ rule gtf_2_bed:
 	output:
 		bed=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.bed"
 	params:
-		load_gt=LOAD_GT,
-		load_cuff=LOAD_CUFFLINKS,
 		load_p=LOAD_PORTCULLIS,
-		gff=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.gff3",
-		gffi=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.introns.gff3"
 	message: "Converting GTF to BED for: {input.gtf}"
-	shell: "{params.load_gt} && {params.load_cuff} && gffread -E {input.gtf} -o- > {params.gff} && gt gff3 -sort -tidy -addintrons -force -o {params.gffi} {params.gff} && {params.load_p} && gff2bed.py {params.gffi} > {output.bed} && rm {params.gff} {params.gffi}"
+	shell: "{params.load_p} && gtf2bed.py {input.gtf} > {output.bed}"
 
 rule gtf_stats:
 	input:

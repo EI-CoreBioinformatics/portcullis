@@ -35,11 +35,10 @@ using std::unique_ptr;
 using boost::filesystem::path;
 
 #include <ranger/Forest.h>
-#include <portcullis/performance.hpp>
-#include <portcullis/bam/genome_mapper.hpp>
-#include <portcullis/model_features.hpp>
-using portcullis::bam::GenomeMapper;
-using portcullis::ModelFeatures;
+
+#include <portcullis/ml/model_features.hpp>
+using portcullis::ml::ModelFeatures;
+using portcullis::ml::ForestPtr;
 
 namespace portcullis {
     
@@ -52,53 +51,6 @@ const uint16_t DEFAULT_TRAIN_TREES = 100;
 const uint16_t DEFAULT_TRAIN_THREADS = 1;
 const double DEFAULT_TRAIN_FRACTION = 1.0;
 const int DEFAULT_SEED = 1234567;       // To avoid non-deterministic behaviour
-
-
-
-// Derived from https://sureshamrita.wordpress.com/2011/08/24/c-implementation-of-k-fold-cross-validation/
-template<class In>
-class KFold {
-public:
-    KFold(int k, In _beg, In _end) :
-        beg(_beg), end(_end), K(k) {
-        if (K <= 0)
-            BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
-                        "The supplied value of K is =") + lexical_cast<string>(K) + 
-                        ". One cannot create " + lexical_cast<string>(K) + "no of folds"));
-
-        //create the vector of integers
-        int foldNo = 0;
-        for (In i = beg; i != end; i++) {
-            whichFoldToGo.push_back(++foldNo);
-            if (foldNo == K)
-                foldNo = 0;
-        }
-        if (!K)
-            BOOST_THROW_EXCEPTION(TrainException() << TrainErrorInfo(string(
-                        "With this value of k (=") + lexical_cast<string>(K) + 
-                        ")Equal division of the data is not possible"));
-
-        random_shuffle(whichFoldToGo.begin(), whichFoldToGo.end());
-    }
-        
-    template<class Out>
-    void getFold(int foldNo, Out training, Out testing) {
-        int k = 0;
-        In i = beg;
-        while (i != end) {
-            if (whichFoldToGo[k++] == foldNo) {
-                *testing++ = *i++;
-            } else
-                *training++ = *i++;
-        }
-    }
-    
-private:
-    In beg;
-    In end;
-    int K; //how many folds in this
-    vector<int> whichFoldToGo; 
-};
 
 
 class Train {
@@ -223,13 +175,9 @@ public:
 protected:
     
     
-    void testInstance(shared_ptr<Forest> f, const JunctionList& y);
+    void testInstance(ForestPtr f, const JunctionList& y);
     
-    void getRandomSubset(const JunctionList& in, JunctionList& out);
-    
-    void outputMeanPerformance(const vector<unique_ptr<Performance>>& scores, std::ofstream& resout);
-    
-    void outputMeanScore(const vector<double>& scores, const string& score_type, std::ofstream& resout);
+    void getRandomSubset(const JunctionList& in, JunctionList& out);    
 };
 }
 

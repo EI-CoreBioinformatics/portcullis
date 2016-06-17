@@ -26,6 +26,7 @@ using std::vector;
 
 
 namespace portcullis {
+namespace ml {
 
 typedef boost::error_info<struct MMError,string> MMErrorInfo;
 struct MMException: virtual boost::exception, virtual std::exception {};
@@ -74,9 +75,9 @@ public:
     virtual double getScore(const string& seq) = 0;
 };
 
-class KmerMarkovModel : public portcullis::MarkovModel {
+class KmerMarkovModel : public portcullis::ml::MarkovModel {
 private:
-    portcullis::KMMU model;
+    portcullis::ml::KMMU model;
 public:
     KmerMarkovModel() : MarkovModel(1) {}
     KmerMarkovModel(const uint32_t _order) : MarkovModel(_order) {};    
@@ -89,9 +90,9 @@ public:
     }
 };
 
-class PosMarkovModel : public portcullis::MarkovModel {
+class PosMarkovModel : public portcullis::ml::MarkovModel {
 private:
-    portcullis::PMMU model;
+    portcullis::ml::PMMU model;
 public:
     PosMarkovModel() : MarkovModel(1) {}
     PosMarkovModel(const uint32_t _order) : MarkovModel(_order) {};    
@@ -104,6 +105,6 @@ public:
     }    
 };
 
-
+}
 }
 

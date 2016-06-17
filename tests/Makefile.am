@@ -25,6 +25,7 @@ check_PROGRAMS = check_unit_tests
 check_unit_tests_SOURCES =	bam_tests.cpp \
 				seq_utils_tests.cpp \
 				kmer_tests.cpp \
+				smote_tests.cpp \
 				intron_tests.cpp \
 				junction_tests.cpp \	
 				check_portcullis.cc

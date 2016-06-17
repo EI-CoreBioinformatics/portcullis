@@ -32,26 +32,19 @@ wright@imbs.uni-luebeck.de
 #include <ranger/DataFloat.h>
 
 DataFloat::DataFloat() :
-    data(0) {
+data(0) {
 }
 
-DataFloat::DataFloat(double* data_double, std::vector<std::string> variable_names, size_t num_rows, size_t num_cols) {
-  this->variable_names = variable_names;
-  this->num_rows = num_rows;
-  this->num_cols = num_cols;
-  this->num_cols_no_sparse = num_cols;
-
-  reserveMemory();
-  for (size_t i = 0; i < num_cols; ++i) {
-    for (size_t j = 0; j < num_rows; ++j) {
-      data[i * num_rows + j] = (float) data_double[i * num_rows + j];
+DataFloat::DataFloat(double* data_double, std::vector<std::string> variable_names, size_t num_rows, size_t num_cols) :
+    DataFloat(variable_names, num_rows, num_cols) {
+    for (size_t i = 0; i < num_cols; ++i) {
+        for (size_t j = 0; j < num_rows; ++j) {
+            data[i * num_rows + j] = (float) data_double[i * num_rows + j];
+        }
     }
-  }
 }
 
 DataFloat::~DataFloat() {
-  if (!externalData) {
     delete[] data;
-  }
 }
 

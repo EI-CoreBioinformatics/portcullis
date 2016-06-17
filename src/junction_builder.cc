@@ -93,6 +93,11 @@ void portcullis::JunctionBuilder::process() {
         }
     }
     
+    if (!bfs::exists(prepData.getSortedBamFilePath())) {        
+        BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+                "Could not find prepared BAM file at: ") + prepData.getSortedBamFilePath().string()));        
+    }
+    
     // Test if we have all the required data
     if (!prepData.valid(useCsi)) {
         BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(

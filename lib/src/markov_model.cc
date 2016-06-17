@@ -25,9 +25,10 @@ using std::endl;
 #include <portcullis/seq_utils.hpp>
 using portcullis::SeqUtils;
 
-#include <portcullis/markov_model.hpp>
+#include <portcullis/ml/markov_model.hpp>
+using portcullis::ml::KMMU;
 
-void portcullis::KmerMarkovModel::train(const vector<string>& input, const uint32_t _order) {
+void portcullis::ml::KmerMarkovModel::train(const vector<string>& input, const uint32_t _order) {
     order = _order;
     KMMU temp;
     for(auto& seq : input) {
@@ -52,19 +53,30 @@ void portcullis::KmerMarkovModel::train(const vector<string>& input, const uint3
 }
     
     
-double portcullis::KmerMarkovModel::getScore(const string& seq) {
+double portcullis::ml::KmerMarkovModel::getScore(const string& seq) {
     string s = SeqUtils::makeClean(seq);
     double score = 1.0;
+    uint32_t no_count = 0;
     for(uint16_t i = order; i < s.size(); i++){
-        score *= model[s.substr(i-order, order)][s.substr(i, 1)];
+        double m = model[s.substr(i-order, order)][s.substr(i, 1)];
+        if (m != 0.0) {
+            score *= m;
+        }
+        else {
+            no_count++;
+        }
     }
     if(score == 0.0) {
         return -100.0;
     }
+    else if (no_count > 2) {
+        // Add a penalty for situations where we repeatedly don't find a kmer in the tranining set
+        score /= ((double)no_count * 0.5);
+    }
     return log(score);
 }
 
-void portcullis::PosMarkovModel::train(const vector<string>& input, const uint32_t _order) {
+void portcullis::ml::PosMarkovModel::train(const vector<string>& input, const uint32_t _order) {
     order = _order;
     PMMU temp;
     for(auto& seq : input) {
@@ -87,7 +99,7 @@ void portcullis::PosMarkovModel::train(const vector<string>& input, const uint32
 }
     
     
-double portcullis::PosMarkovModel::getScore(const string& seq) {
+double portcullis::ml::PosMarkovModel::getScore(const string& seq) {
     string s = SeqUtils::makeClean(seq);
     double score = 1.0;
     for(uint16_t i = order; i < s.size(); i++){

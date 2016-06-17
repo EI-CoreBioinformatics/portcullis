@@ -32,34 +32,38 @@ wright@imbs.uni-luebeck.de
 #include "globals.h"
 #include "Data.h"
 
-class DataFloat: public Data {
+class DataFloat : public Data {
 public:
-  DataFloat();
-  DataFloat(double* data_double, std::vector<std::string> variable_names, size_t num_rows, size_t num_cols);
-  virtual ~DataFloat();
+    DataFloat();
 
-  double get(size_t row, size_t col) const {
-    if (col < num_cols_no_sparse) {
-      return data[col * num_rows + row];
-    } else {
-      // Get data out of sparse storage. -1 because of GenABEL coding.
-      size_t idx = (col - num_cols_no_sparse) * num_rows_rounded + row;
-      return (((sparse_data[idx / 4] & mask[idx % 4]) >> offset[idx % 4]) - 1);
+    DataFloat(std::vector<std::string> variable_names, size_t num_rows, size_t num_cols) : Data(variable_names, num_rows, num_cols) {
+        reserveMemory();
+    };
+    DataFloat(double* data_double, std::vector<std::string> variable_names, size_t num_rows, size_t num_cols);
+    virtual ~DataFloat();
+
+    double get(size_t row, size_t col) const {
+        if (col < num_cols_no_sparse) {
+            return data[col * num_rows + row];
+        } else {
+            // Get data out of sparse storage. -1 because of GenABEL coding.
+            size_t idx = (col - num_cols_no_sparse) * num_rows_rounded + row;
+            return (((sparse_data[idx / 4] & mask[idx % 4]) >> offset[idx % 4]) - 1);
+        }
     }
-  }
 
-  void reserveMemory() {
-    data = new float[num_cols * num_rows];
-  }
+    void reserveMemoryInternal() {
+        data = new float[num_cols * num_rows];
+    }
 
-  void set(size_t col, size_t row, double value, bool& error) {
-    data[col * num_rows + row] = (float) value;
-  }
+    void set(size_t col, size_t row, double value, bool& error) {
+        data[col * num_rows + row] = (float) value;
+    }
 
 private:
-  float* data;
+    float* data;
 
-  DISALLOW_COPY_AND_ASSIGN(DataFloat);
+    DISALLOW_COPY_AND_ASSIGN(DataFloat);
 };
 
 #endif /* DATAFLOAT_H_ */

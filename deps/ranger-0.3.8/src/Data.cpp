@@ -36,8 +36,15 @@
 #include <ranger/utility.h>
 
 Data::Data() :
-num_rows(0), num_rows_rounded(0), num_cols(0), sparse_data(0), num_cols_no_sparse(0), externalData(true), index_data(
+num_rows(0), num_rows_rounded(0), num_cols(0), sparse_data(0), num_cols_no_sparse(0), index_data(
 0), max_num_unique_values(0) {
+}
+
+Data::Data(std::vector<std::string> variable_names, size_t num_rows, size_t num_cols) : Data() {
+    this->variable_names = variable_names;
+    this->num_rows = num_rows;
+    this->num_cols = num_cols;
+    this->num_cols_no_sparse = num_cols;
 }
 
 Data::~Data() {
@@ -94,7 +101,6 @@ bool Data::loadFromFile(std::string filename) {
         result = loadFromFileWhitespace(input_file, header_line);
     }
 
-    externalData = false;
     input_file.close();
     return result;
 }

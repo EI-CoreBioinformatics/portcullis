@@ -29,12 +29,19 @@ wright@imbs.uni-luebeck.de
 #include <ranger/DataDouble.h>
 
 DataDouble::DataDouble() :
-    data(0) {
+data(0) {
+}
+
+DataDouble::DataDouble(double* data_double, std::vector<std::string> variable_names, size_t num_rows, size_t num_cols) : 
+        DataDouble(variable_names, num_rows, num_cols) {
+    
+    for (size_t i = 0; i < num_cols; ++i) {
+        for (size_t j = 0; j < num_rows; ++j) {
+            data[i * num_rows + j] = data_double[i * num_rows + j];
+        }
+    }
 }
 
 DataDouble::~DataDouble() {
-  if (!externalData) {
     delete[] data;
-  }
 }
-

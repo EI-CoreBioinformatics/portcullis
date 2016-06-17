@@ -10,11 +10,11 @@
                 },
                 "M13-hamming5p": {
                         "operator": "lte",
-                        "value": 4
+                        "value": 3
                 },
                 "M14-hamming3p": {
                         "operator": "lte",
-                        "value": 4
+                        "value": 3
                 }
 	},
 	"expression": "( M2-nb_reads & M22-rel2raw & M13-hamming5p & M14-hamming3p )"  
