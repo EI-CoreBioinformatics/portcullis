@@ -43,7 +43,7 @@ After portcullis has been installed, the ```portcullis``` executable should be a
 
 Typing ```portcullis``` or ```portcullis --help``` at the command line will present you with the portcullis help message.
 
-There are 4 modes available:
+These modes are available:
 
     - prep    - Prepares input data so that it is suitable for junction analysis
     - junc    - Calculates junction metrics for the prepared data
@@ -53,7 +53,7 @@ There are 4 modes available:
 
 Typing ```portcullis <mode> --help``` will bring up help and usage information specific to that mode.
 
-An online version of the manual can be found at [readthedocs](https://portcullis.readthedocs.org/en/latest/).
+An online version of the manual can be found here: [https://portcullis.readthedocs.org/en/latest/](https://portcullis.readthedocs.org/en/latest/).
 
 ##Licensing:
 
