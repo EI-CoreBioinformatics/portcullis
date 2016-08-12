@@ -53,6 +53,8 @@ There are 4 modes available:
 
 Typing ```portcullis <mode> --help``` will bring up help and usage information specific to that mode.
 
+An online version of the manual can be found at [readthedocs](https://portcullis.readthedocs.org/en/latest/).
+
 ##Licensing:
 
 GNU GPL V3.  See COPYING file for more details.
