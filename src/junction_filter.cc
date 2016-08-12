@@ -73,7 +73,7 @@ using portcullis::eval;
 portcullis::JunctionFilter::JunctionFilter(const path& _prepDir, const path& _junctionFile,
         const path& _output) {
     junctionFile = _junctionFile;
-    prepData = PreparedFiles(_prepDir);
+    prepData.setPrepDir(_prepDir);
     modelFile = "";
     genuineFile = "";
     output = _output;
