@@ -707,11 +707,11 @@ void portcullis::Junction::calcAlignmentStats() {
             lastEnd = end;
         }
 
-        // TODO Suspect this is wrong!!
         // This doesn't seem intuitive but this is how they recommend finding
         // "reliable" (i.e. unique) alignments in samtools.  They do this
         // because apparently "uniqueness" is not a well defined concept.
-        if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD) {
+        // We also require a "reliably" aligned read to be properly paired.
+        if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD && ba->isProperPair()) {
             nbReliableAlignments++;
         }
 

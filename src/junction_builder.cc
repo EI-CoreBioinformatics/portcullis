@@ -353,7 +353,7 @@ void portcullis::JunctionBuilder::findJuncs(BamReader& reader, GenomeMapper& gma
         while (results[seq].js.size() > 0 && lastCalculatedJunctionIndex < results[seq].js.size() && 
                 al.getPosition() > results[seq].js.getJunctionAt(lastCalculatedJunctionIndex)->getIntron()->end) {
 
-            JunctionPtr j = results[seq].js.getJunctionAt(lastCalculatedJunctionIndex);            
+            JunctionPtr j = results[seq].js.getJunctionAt(lastCalculatedJunctionIndex);
 
             j->calcMetrics();
             j->processJunctionWindow(gmap);

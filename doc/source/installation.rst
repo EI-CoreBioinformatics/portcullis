@@ -23,7 +23,8 @@ Portcullis depends on some external software:
  * samtools
  * pthreads
  * zlib
- * sphinx (optional)
+ * sphinx (optional - for building documentation)
+ * python3 (optional - for running additional scripts)
 
 Please make sure these programs are correctly configured and installed 
 on your system prior to building portcullis.  Consult the each program's installation
@@ -41,7 +42,7 @@ it will be.  For samtools, we just require the executable to be on the path.
 If the user has sphinx installed then documentation will also be built along with
 the software.  If sphinx is not detected then the documentation building stage is
 skipped and documentation won't be available locally, although it can still be 
-found at: https://kat.readthedocs.org/en/latest/
+found at: https://portcullis.readthedocs.org/en/latest/
 
 Boost is statically linked and doesn't need to be available at runtime.  zlib and pthreads are 
 dynamically linked so will need to be on your LD_LIBRARY_PATH,
@@ -52,8 +53,8 @@ to dynamically link them at runtime.  No other non-system libraries need linking
 Internal Dependencies
 ---------------------
 
-Portcullis contains HTSlib in the source tree.  The user does
-not need to do anything special to handle htslib as it is automatically
+Portcullis contains HTSlib and Ranger (a random forest implementation)  in the source tree.  The user does
+not need to do anything special to handle htslib and ranger as these are automatically
 built and managed inside portcullis.
 
 

@@ -93,6 +93,22 @@ public:
                         "File exists with name of suggested output directory: ") + prepDir.string()));            
         }
     }
+    
+    void setPrepDir(const path& _prepDir) {
+        
+        prepDir = _prepDir;
+        
+        if (!bfs::exists(prepDir)) {
+            if (!bfs::create_directories(prepDir)) {
+                BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "Could not create output directory at: ") + prepDir.string()));
+            }
+        }
+        else if (!bfs::is_directory(prepDir)) {
+            BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
+                        "File exists with name of suggested output directory: ") + prepDir.string()));            
+        }
+    }
         
     path getPrepDir() const {
         return prepDir;
