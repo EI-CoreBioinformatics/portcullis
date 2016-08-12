@@ -3,7 +3,7 @@
 Quickstart
 ==========
 
-For the impatient, just use ```portcullis full -t <threads> <genome> (<bam>)+``` 
+For the impatient, just use ``portcullis full -t <threads> <genome> (<bam>)+`` 
 to get up and running.  This runs the following subtools in order:
 
 * Prepare

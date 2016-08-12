@@ -4,9 +4,9 @@ Using Portcullis
 ================
 
 Portcullis is a C++11 program containing a number of subtools which can be used in
-isolation or as part of a pipeline.  Typing ```portcullis --help``` will show a
+isolation or as part of a pipeline.  Typing ``portcullis --help`` will show a
 list of the available subtools.  Each subtool has its own help system which you 
-can access by typing ```portcullis <subtool> --help```.  
+can access by typing ``portcullis <subtool> --help``.  
 
 The list of subtools present in portcullis are listed below in order.  A more detailed
 description of each subtool follows in the subsequent sections:
@@ -151,8 +151,8 @@ for deriving a custom filter profile.  The rules can be combined
 using logic operations (and / or / not, etc) and applied to the full set of input 
 junctions.
 
-Here's an example set of rules that must all be satisfied to pass this filter:
-::
+Here's an example set of rules that must all be satisfied to pass this filter::
+
     {
             "parameters": {
                     "M4-nb_rel_aln": {
