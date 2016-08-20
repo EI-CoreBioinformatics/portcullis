@@ -104,6 +104,16 @@ enum class Strandedness : std::uint8_t {
     UNKNOWN = 3
 };
 
+enum class Orientation : std::uint8_t {
+    F = 0,
+    R = 1,
+    FR = 2,
+    RF = 3,
+    FF = 4,
+    RR = 5,
+    UNKNOWN = 6
+};
+
 inline const string strandednessToString(Strandedness ss) {
     switch (ss) {
         case Strandedness::UNSTRANDED:   return "UNSTRANDED";

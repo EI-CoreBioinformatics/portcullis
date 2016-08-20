@@ -34,7 +34,7 @@ void portcullis::ml::KmerMarkovModel::train(const vector<string>& input, const u
     for(auto& seq : input) {
         string s = SeqUtils::makeClean(seq);
         if (s.size() > order+1) {
-            for(uint16_t i = order; i < s.size(); i++) {
+            for(size_t i = order; i < s.size(); i++) {
                 temp[s.substr(i-order, order)][s.substr(i, 1)]++;
             }
         }
@@ -57,7 +57,7 @@ double portcullis::ml::KmerMarkovModel::getScore(const string& seq) {
     string s = SeqUtils::makeClean(seq);
     double score = 1.0;
     uint32_t no_count = 0;
-    for(uint16_t i = order; i < s.size(); i++){
+    for(size_t i = order; i < s.size(); i++) {
         double m = model[s.substr(i-order, order)][s.substr(i, 1)];
         if (m != 0.0) {
             score *= m;
@@ -81,7 +81,7 @@ void portcullis::ml::PosMarkovModel::train(const vector<string>& input, const ui
     PMMU temp;
     for(auto& seq : input) {
         string s = SeqUtils::makeClean(seq);
-        for(uint16_t i = order; i < s.size(); i++) {
+        for(size_t i = order; i < s.size(); i++) {
             temp[i][s.substr(i, 1)]++;
         }
     }
@@ -102,7 +102,7 @@ void portcullis::ml::PosMarkovModel::train(const vector<string>& input, const ui
 double portcullis::ml::PosMarkovModel::getScore(const string& seq) {
     string s = SeqUtils::makeClean(seq);
     double score = 1.0;
-    for(uint16_t i = order; i < s.size(); i++){
+    for(size_t i = order; i < s.size(); i++) {
         score *= model[i][s.substr(i, 1)];
     }
     if(score == 0.0) {
