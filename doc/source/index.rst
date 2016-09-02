@@ -55,6 +55,12 @@ Open source code available on github: https://github.com/maplesond/portcullis.gi
 Spectre is available under GNU GLP V3: http://www.gnu.org/licenses/gpl.txt
 
 
+Additional Resources
+===================
+
+Portcullis was presented at the Genome Science 2016 conference: :download:`poster <assets/portcullis_genomescience2016_poster.pdf>`; :download:`slides <assets/portcullis_genomescience2016_slides.pdf>`
+
+
 Authors and Acknowledgements
 ============================
 
