@@ -36,12 +36,31 @@ class BedEntry:
 		bstarts = ",".join([str(_) for _ in self.block_starts])
 
 		line = [self.chrom, self.start, self.end, self.name, self.score,
-				self.strand if self.strand else "?",
+				self.strand if self.strand else ".",
 				self.thick_start, self.thick_end,
 				rgb,
 				self.block_count,
 				bsizes,
 				bstarts
+				]
+		return "\t".join([str(_) for _ in line])
+
+	def toIntronStyle(self):
+
+		rgb = ",".join([str(_) for _ in (self.red, self.green, self.blue)])
+		assert len(self.block_sizes) == len(self.block_starts) == self.block_count, (self.block_count,
+																					 len(self.block_sizes),
+																					 len(self.block_starts))
+		bsizes = ",".join([str(_) for _ in self.block_sizes])
+		bstarts = ",".join([str(_) for _ in self.block_starts])
+
+		line = [self.chrom, self.thick_start, self.thick_end, self.name, self.score,
+				self.strand if self.strand else ".",
+				self.thick_start, self.thick_end,
+				rgb,
+				0,
+				"",
+				""
 				]
 		return "\t".join([str(_) for _ in line])
 

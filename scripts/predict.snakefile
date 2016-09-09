@@ -393,7 +393,7 @@ rule spanki:
     log: JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}-spanki.log"
     threads: 1
     message: "Using SPANKI to analyse junctions: {input.bam}"
-    shell: "set +e && {params.load_spanki} && cd {params.outdir} && {RUN_TIME} spankijunc -i {params.bam} -g {params.gtf} -f {params.fa} > {log} 2>&1 && cd {CWD} && if [[ -s {params.all_juncs} ]] ; then {params.load_portcullis} && spanki_filter.py {params.all_juncs} > {params.filt_juncs} && spanki2bed.py {params.filt_juncs} > {output.bed} ; else touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+    shell: "set +e && {params.load_spanki} && cd {params.outdir} && {RUN_TIME} spankijunc -i {params.bam} -g {params.gtf} -f {params.fa} > {log} 2>&1 && cd {CWD} && if [[ -s {params.all_juncs} ]] ; then {params.load_portcullis} && spanki_filter.py {params.all_juncs} > {params.filt_juncs} && portcullis_convert spanki2ibed {params.filt_juncs} > {output.bed} ; else touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 rule spanki_annot:
     input:
@@ -416,7 +416,7 @@ rule spanki_annot:
     log: JUNC_DIR_FULL+"/spanki_annot/{aln_method}-{reads}-spanki_annot.log"
     threads: 1
     message: "Using SPANKI to analyse junctions: {input.bam}"
-    shell: "set +e && {params.load_spanki} && cd {params.outdir} && {RUN_TIME} spankijunc -i {params.bam} -g {params.gtf} -f {params.fa} -filter T > {log} 2>&1 && cd {CWD} && if [[ -s {params.all_juncs} ]] ; then {params.load_portcullis} && spanki2bed.py {params.all_juncs} > {output.bed} ; else touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+    shell: "set +e && {params.load_spanki} && cd {params.outdir} && {RUN_TIME} spankijunc -i {params.bam} -g {params.gtf} -f {params.fa} -filter T > {log} 2>&1 && cd {CWD} && if [[ -s {params.all_juncs} ]] ; then {params.load_portcullis} && portcullis_convert spanki2ibed.py {params.all_juncs} > {output.bed} ; else touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 	
 rule finesplice:
     input:
@@ -434,7 +434,7 @@ rule finesplice:
     log: JUNC_DIR_FULL+"/finesplice/{aln_method}-{reads}-finesplice.log"
     threads: 1
     message: "Using FineSplice to analyse junctions: {input.bam}"
-    shell: "set +e && {params.load_fs} && cd {params.outdir} && if {RUN_TIME} FineSplice.py -i {params.bam} -l {READ_LENGTH} > {log} 2>&1 ; then cd {CWD} && {params.load_portcullis} && fs2bed.py {params.junc} > {output.bed} ; else cd {CWD}; touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+    shell: "set +e && {params.load_fs} && cd {params.outdir} && if {RUN_TIME} FineSplice.py -i {params.bam} -l {READ_LENGTH} > {log} 2>&1 ; then cd {CWD} && {params.load_portcullis} && portcullis_convrt finesplice2ibed.py {params.junc} > {output.bed} ; else cd {CWD}; touch {output.bed} ; fi && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 
 rule truesight:
@@ -465,7 +465,7 @@ rule truesight2bed:
 		bed="../truesight/{reads}/truesight-{reads}-truesight.bed"
 	threads: 1
 	message: "Creating bed file from truesight output: {input}"
-	shell: "{params.load_portcullis} && truesight2bed.py {input} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+	shell: "{params.load_portcullis} && portcullis_convert truesight2ibed.py {input} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 rule soapsplice_index:
 	input: fa=REF
@@ -503,7 +503,7 @@ rule soapsplice2bed:
 		bed="../soapsplice/{reads}/soapsplice-{reads}-soapsplice.bed"
 	threads: 1
 	message: "Creating bed file from soapsplice output: {input}"
-	shell: "{params.load_portcullis} && soapsplice2bed.py {input} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+	shell: "{params.load_portcullis} && portcullis_convert soapsplice2ibed.py {input} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
 
 ###
 
