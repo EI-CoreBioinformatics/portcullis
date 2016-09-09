@@ -16,7 +16,7 @@ class BedEntry:
 		self.end = 0
 		self.name = ""
 		self.score = 0
-		self.strand = "?"
+		self.strand = "."
 		self.thick_start = 0
 		self.thick_end = 0
 		self.red = 0
