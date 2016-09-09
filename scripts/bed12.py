@@ -45,23 +45,25 @@ class BedEntry:
 				]
 		return "\t".join([str(_) for _ in line])
 
-	def toIntronStyle(self):
+	def toIntronStyle(self, bed6=False):
 
 		rgb = ",".join([str(_) for _ in (self.red, self.green, self.blue)])
 		assert len(self.block_sizes) == len(self.block_starts) == self.block_count, (self.block_count,
 																					 len(self.block_sizes),
 																					 len(self.block_starts))
-		bsizes = ",".join([str(_) for _ in self.block_sizes])
-		bstarts = ",".join([str(_) for _ in self.block_starts])
-
-		line = [self.chrom, self.thick_start, self.thick_end, self.name, self.score,
-				self.strand if self.strand else ".",
-				self.thick_start, self.thick_end,
-				rgb,
-				0,
-				"",
-				""
-				]
+		line = ""
+		if not bed6:
+			line = [self.chrom, self.thick_start, self.thick_end, self.name, self.score,
+					self.strand if self.strand else ".",
+					self.thick_start, self.thick_end,
+					rgb,
+					2,
+					"0,0",
+					"0,0"
+					]
+		else:
+			line = [self.chrom, self.thick_start, self.thick_end, self.name, self.score,
+					self.strand if self.strand else "."]
 		return "\t".join([str(_) for _ in line])
 
 	def __cmp__(self, other):

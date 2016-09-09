@@ -51,8 +51,7 @@ def sortandprint(junctions):
     index = 0;
     for j in junctions:
         print(j.seq + "\t" + str(j.start) + "\t" + str(j.end) + "\tjunc_" + str(index) + "\t" + str(
-            j.cov) + "\t" + j.strand + "\t" + str(j.start) + "\t" + str(j.end) + "\t255,0,0\t2\t1,1\t0," + str(
-            j.end - j.start))
+            j.cov) + "\t" + j.strand + "\t" + str(j.start) + "\t" + str(j.end) + "\t255,0,0\t2\t0,0\t0,0")
 
         index += 1
 
@@ -66,6 +65,27 @@ def ebed2ibed(args):
         for line in f:
             b = bed12.BedEntry.create_from_line(line, use_strand=True)
             print(b.toIntronStyle())
+
+def ebed2ibed6(args):
+    with open(args.input) as f:
+        # Skip header
+        f.readline()
+        print("track name=\"junctions\"")
+
+        for line in f:
+            b = bed12.BedEntry.create_from_line(line, use_strand=True)
+            print(b.toIntronStyle(bed6=True))
+
+def ibed2ibed6(args):
+    with open(args.input) as f:
+        # Skip header
+        f.readline()
+        print("track name=\"junctions\"")
+
+        for line in f:
+
+            parts = line.split("\t")
+            print("\t".join(parts[0:6]))
 
 
 def tbed2ebed(args):
@@ -303,7 +323,21 @@ def main():
         title="Conversion options")
 
     ebed2ibed_parser = subparsers.add_parser("ebed2ibed",
-                                             help="Converts a portcullis BED file (containing exon anchors - as produced by the main executable) to a pure intron-based BED file (no exon anchors).")
+                                             help="Converts a portcullis BED file (containing exon anchors - as produced by the main executable) to a pure intron-based BED 12 file (no exon anchors).")
+
+    ebed2ibed_parser.add_argument("input", help="The portcullis exon-based BED file with anchors to convert")
+    ebed2ibed_parser.set_defaults(func=ebed2ibed)
+
+    ebed2ibed6_parser = subparsers.add_parser("ebed2ibed6",
+                                             help="Converts a portcullis BED file (containing exon anchors - as produced by the main executable) to a pure intron-based BED 6 file (no exon anchors).")
+    ebed2ibed6_parser.add_argument("input", help="The portcullis exon-based BED file with anchors to convert")
+    ebed2ibed6_parser.set_defaults(func=ebed2ibed6)
+
+    ibed2ibed6_parser = subparsers.add_parser("ibed2ibed6",
+                                             help="Converts a portcullis intron-based BED 12 file (12 column format) to BED 6 file.  This tools simply removes the last 6 columns from the BED file.")
+    ibed2ibed6_parser.add_argument("input", help="The intron-based (no anchors) BED 12 file")
+    ibed2ibed6_parser.set_defaults(func=ibed2ibed6)
+
 
     ebed2ibed_parser.add_argument("input", help="The portcullis BED file to convert")
     ebed2ibed_parser.set_defaults(func=ebed2ibed)
