@@ -23,33 +23,25 @@ dist_bin_SCRIPTS =  scripts/analyse_alignments.py \
 		    scripts/bed12_set.py \
 		    scripts/bed_merge.py \
 		    scripts/bed_v_ref.py \
-		    scripts/cleanup_spanki.py \
 		    scripts/create_ref.py \
 		    scripts/cufflinks2spankicov.py \
 		    scripts/example_pp_ath.yaml \
 		    scripts/filter_junctions.py \
-		    scripts/fs2bed.py \
 		    scripts/fs2gff.py \
-		    scripts/gff2bed.py \
-		    scripts/gtf2bed.py \
 		    scripts/hpc.json \
 		    scripts/ml.py \
 		    scripts/pca.py \
 		    scripts/performance.py \
+		    scripts/portcullis_convert.py \
 		    scripts/predict.snakefile \
 		    scripts/read_gen.snakefile \
 		    scripts/snakey.py \
-		    scripts/soapsplice2bed.py \
-		    scripts/spanki2bed.py \
 		    scripts/spanki_filter.py \
 		    scripts/split_error_classes.py \
-		    scripts/star_tab2bed.py \
 		    scripts/tab.py \
 		    scripts/tab_bed12_set.py \
 		    scripts/tab_in_bedref.py \
 		    scripts/tab_combine.py \
-		    scripts/tophat2bed12.py \
-		    scripts/truesight2bed.py \
 		    scripts/venn.py
 		    
 # Config files

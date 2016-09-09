@@ -154,6 +154,10 @@ void portcullis::JunctionFilter::filter() {
 
     unordered_set<string> ref;
     if (!referenceFile.empty()) {
+        
+        cout << "Loading junctions from reference: " << referenceFile.string() << " ...";
+        cout.flush();
+        
         ifstream ifs(referenceFile.c_str());
 
         string line;
@@ -171,6 +175,9 @@ void portcullis::JunctionFilter::filter() {
                 ref.insert(key);
             }
         }
+        
+        cout << " done." << endl
+            << "Found " << ref.size() << " junctions in reference." << endl << endl;
     }
 
     vector<bool> genuine;
@@ -416,13 +423,23 @@ void portcullis::JunctionFilter::filter() {
             filteredJuncs.addJunction(j);
         }
 
+        uint32_t inref = 0;
         if (!referenceFile.empty()) {
+            
+            for (auto& j : currentJuncs) {
+                if (ref.count(j->locationAsString()) > 0) {
+                    inref++;
+                }
+            }
+            
             for (auto& j : discardedJuncs.getJunctions()) {
                 if (ref.count(j->locationAsString()) > 0) {
                     filteredJuncs.addJunction(j);
                     refKeptJuncs.addJunction(j);
+                    inref++;
                 }
             }
+            
         }
 
         filteredJuncs.calcJunctionStats();
@@ -430,7 +447,8 @@ void portcullis::JunctionFilter::filter() {
         cout << " done." << endl << endl;
 
         if (!referenceFile.empty()) {
-            cout << "Brought back " << refKeptJuncs.size() << " junctions that were discarded by filters but were present in reference file." << endl << endl;
+            cout << "Brought back " << refKeptJuncs.size() << " junctions that were discarded by filters but were present in reference file." << endl;
+            cout << "Your sample contains " << inref << " / " << ref.size() << " (" << ((double)inref / (double)ref.size()) * 100.0 << "%) junctions from the reference." << endl << endl;
         }
     }
 

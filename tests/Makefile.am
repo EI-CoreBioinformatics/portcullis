@@ -27,7 +27,7 @@ check_unit_tests_SOURCES =	bam_tests.cpp \
 				kmer_tests.cpp \
 				smote_tests.cpp \
 				intron_tests.cpp \
-				junction_tests.cpp \	
+				junction_tests.cpp \
 				check_portcullis.cc
 
 check_unit_tests_CXXFLAGS = -O0 @AM_CXXFLAGS@ @CXXFLAGS@
