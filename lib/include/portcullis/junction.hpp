@@ -284,6 +284,7 @@ private:
     Strand readStrand;      // Strand derived from alignments
     Strand ssStrand;        // Strand derived from splice sites    
     Strand consensusStrand; // If readStrand and ssStrand agree then strand is the same, otherwise UNKNOWN
+    double score;           // Only applied if the random forest makes a prediction
     
     bool genuine;           // Used as a hidden variable for use with cross validating a trained model instance.
     
@@ -867,6 +868,15 @@ public:
         this->genuine = genuine;
     }
     
+    double getScore() const {
+        return score;
+    }
+
+    void setScore(double score) {
+        this->score = score;
+    }
+
+    
     string locationAsString() const {
         return this->intron->toString() + strandToChar(this->consensusStrand);
     }
@@ -930,7 +940,7 @@ public:
      * Complete human readable description of this junction
      * @param strm
      */
-    void outputBED(std::ostream &strm, const string& prefix, uint32_t id);
+    void outputBED(std::ostream &strm, const string& prefix, uint32_t id, bool bedscore);
     
     
     /**

@@ -156,6 +156,8 @@ public:
     
     void saveAll(const path& outputPrefix, const string& source);
     
+    void saveAll(const path& outputPrefix, const string& source, bool bedscore);
+    
     void outputDescription(std::ostream &strm);
     
     friend std::ostream& operator<<(std::ostream &strm, const JunctionSystem& js) {
@@ -176,9 +178,9 @@ public:
     
     void outputGTF(std::ostream &strm) {}
     
-    void outputBED(string& path, CanonicalSS type, const string& prefix);
+    void outputBED(string& path, CanonicalSS type, const string& prefix, bool bedscore);
     
-    void outputBED(std::ostream &strm, CanonicalSS type, const string& prefix);
+    void outputBED(std::ostream &strm, CanonicalSS type, const string& prefix, bool bedscore);
     
     void load(const path& junctionTabFile);
     void load(const path& junctionTabFile, const bool simple);

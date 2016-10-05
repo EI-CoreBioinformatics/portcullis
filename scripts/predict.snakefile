@@ -17,31 +17,12 @@ OUT_DIR_FULL = os.path.abspath(config["out_dir"])
 MIN_INTRON = config["min_intron"]
 MAX_INTRON = config["max_intron"]
 STRANDEDNESS = config["strandedness"]
-THREADS = config["threads"]
+THREADS = int(config["threads"])
 READ_LENGTH = config["min_read_length"]
 READ_LENGTH_MINUS_1 = int(READ_LENGTH) - 1
 
 RUN_TIME = config["run_time"]
 
-LOAD_BOWTIE = config["load_bowtie"]
-LOAD_SPANKI = config["load_spanki"]
-LOAD_TRIMGALORE = config["load_trimgalore"]
-LOAD_TOPHAT = config["load_tophat"]
-LOAD_GMAP = config["load_gsnap"]
-LOAD_STAR = config["load_star"]
-LOAD_HISAT = config["load_hisat"]
-LOAD_SAMTOOLS = config["load_samtools"]
-LOAD_CUFFLINKS = config["load_cufflinks"]
-LOAD_STRINGTIE = config["load_stringtie"]
-LOAD_CLASS = config["load_class"]
-LOAD_PORTCULLIS = config["load_portcullis"]
-LOAD_SPANKI = config["load_spanki"]
-LOAD_FINESPLICE = config["load_finesplice"]
-LOAD_TRUESIGHT = config["load_truesight"]
-LOAD_SOAPSPLICE = config["load_soapsplice"]
-LOAD_PYTHON3 = config["load_python3"]
-LOAD_GT = config["load_gt"]
-LOAD_MIKADO = config["load_mikado"]
 
 INDEX_STAR_EXTRA = config["index_star_extra"]
 ALIGN_TOPHAT_EXTRA = config["align_tophat_extra"]
@@ -99,6 +80,7 @@ rule all:
 		expand(JUNC_DIR+"/output/tophat-{reads}-finesplice.bed", reads=INPUT_SETS),
 		expand(JUNC_DIR+"/output/truesight-{reads}-truesight.bed", reads=INPUT_SETS),
 		expand(JUNC_DIR+"/output/soapsplice-{reads}-soapsplice.bed", reads=INPUT_SETS),
+		expand(JUNC_DIR+"/output/mapsplice-{reads}-mapsplice.bed", reads=INPUT_SETS),
 		expand(ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.bed", asm_method=ASSEMBLY_METHODS, asm_mode=ASSEMBLY_MODES, aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS),
 		#expand(PORTCULLIS_DIR2+"/{aln_method}-{reads}/junc/{aln_method}-{reads}.junctions.tab", aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
 #		expand(ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.stats", asm_method=ASSEMBLY_METHODS, asm_mode=ASSEMBLY_MODES, aln_method=ALIGNMENT_METHODS, reads=INPUT_SETS)
@@ -116,52 +98,55 @@ rule align_bowtie_index:
 		fa_link=ALIGN_DIR+"/bowtie/index/"+NAME+".fa"
 	params:
 		out_prefix=ALIGN_DIR+"/bowtie/index/"+NAME,
-		ref=os.path.abspath(REF)
+		ref=os.path.abspath(REF),
+		load=config["load"]["bowtie"]
 	log: ALIGN_DIR + "/bowtie.index.log"
 	threads: 1
 	message: "Indexing genome with bowtie"
-	shell: "{LOAD_BOWTIE} && bowtie-build {input} {params.out_prefix} > {log} 2>&1 && ln -sf {params.ref} {output.fa_link} && touch -h {output.fa_link}"
+	shell: "{params.load} && bowtie-build {input} {params.out_prefix} > {log} 2>&1 && ln -sf {params.ref} {output.fa_link} && touch -h {output.fa_link}"
 
 
 rule align_tophat_index:
-    input: REF
-    output: ALIGN_DIR +"/tophat/index/"+NAME+".4.bt2"
-    log: ALIGN_DIR + "/tophat.index.log"
-    threads: 1
-    message: "Indexing genome with tophat"
-    shell: "{LOAD_TOPHAT} && bowtie2-build {REF} {ALIGN_DIR}/tophat/index/{NAME} > {log} 2>&1"
-
-
+	input: REF
+	output: ALIGN_DIR +"/tophat/index/"+NAME+".4.bt2"
+	params: load=config["load"]["tophat"]
+	log: ALIGN_DIR + "/tophat.index.log"
+	threads: 1
+	message: "Indexing genome with tophat"
+	shell: "{params.load} && bowtie2-build {REF} {ALIGN_DIR}/tophat/index/{NAME} > {log} 2>&1"
 
 
 rule align_gsnap_index:
-    input: REF
-    output: ALIGN_DIR +"/gsnap/index/"+NAME+"/"+NAME+".sachildguide1024"
-    log: ALIGN_DIR +"/gsnap.index.log"
-    threads: 1
-    message: "Indexing genome with gsnap"
-    shell: "{LOAD_GMAP} && gmap_build --dir={ALIGN_DIR}/gsnap/index --db={NAME} {input} > {log} 2>&1"
-
+	input: REF
+	output: ALIGN_DIR +"/gsnap/index/"+NAME+"/"+NAME+".sachildguide1024"
+	params: load=config["load"]["gmap"]
+	log: ALIGN_DIR +"/gsnap.index.log"
+	threads: 1
+	message: "Indexing genome with gsnap"
+	shell: "{params.load} && gmap_build --dir={ALIGN_DIR}/gsnap/index --db={NAME} {input} > {log} 2>&1"
 
 
 rule align_star_index:
-    input: os.path.abspath(REF)
-    output: ALIGN_DIR +"/star/index/SAindex"
-    params: indexdir=ALIGN_DIR_FULL+"/star/index"
-    log: ALIGN_DIR_FULL+"/star.index.log"
-    threads: int(THREADS)
-    message: "Indexing genome with star"
-    shell: "{LOAD_STAR} && cd {ALIGN_DIR_FULL}/star && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {params.indexdir} --genomeFastaFiles {input} {INDEX_STAR_EXTRA} > {log} 2>&1 && cd {CWD}"
+	input: os.path.abspath(REF)
+	output: ALIGN_DIR +"/star/index/SAindex"
+	params: 
+		indexdir=ALIGN_DIR_FULL+"/star/index",
+		load=config["load"]["star"]
+	log: ALIGN_DIR_FULL+"/star.index.log"
+	threads: int(THREADS)
+	message: "Indexing genome with star"
+	shell: "{params.load} && cd {ALIGN_DIR_FULL}/star && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {params.indexdir} --genomeFastaFiles {input} {INDEX_STAR_EXTRA} > {log} 2>&1 && cd {CWD}"
 
 
 
 rule align_hisat_index:
 	input: REF
 	output: ALIGN_DIR+"/hisat/index/"+NAME+".4.ht2"
+	params: load=config["load"]["hisat"]
 	log: ALIGN_DIR+"/hisat.index.log"
 	threads: 1
 	message: "Indexing genome with hisat"
-	shell: "{LOAD_HISAT} && hisat2-build {input} {ALIGN_DIR}/hisat/index/{NAME} > {log} 2>&1"
+	shell: "{params.load} && hisat2-build {input} {ALIGN_DIR}/hisat/index/{NAME} > {log} 2>&1"
 
 
 
@@ -171,103 +156,112 @@ rule align_hisat_index:
 
 
 rule align_tophat:
-    input:
-        r1=READS_DIR+"/{reads}.R1.fq",
-        r2=READS_DIR+"/{reads}.R2.fq",
-        index=rules.align_tophat_index.output
-    output:
-        bam=ALIGN_DIR_FULL+"/tophat/{reads}/accepted_hits.bam",
-        link=ALIGN_DIR+"/output/tophat-{reads}.bam"
-    params:
-        outdir=ALIGN_DIR+"/tophat/{reads}",
-        indexdir=ALIGN_DIR+"/tophat/index/"+NAME
-    log: ALIGN_DIR + "/tophat-{reads}.log"
-    threads: int(THREADS)
-    message: "Aligning RNAseq data with tophat"
-    run:
-        strand = STRANDEDNESS if wildcards.reads.startswith("real") else "fr-unstranded"
-        shell("{LOAD_TOPHAT} && {RUN_TIME} tophat2 --output-dir={params.outdir} --num-threads={threads} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --microexon-search --library-type={strand} {ALIGN_TOPHAT_EXTRA} {params.indexdir} {input.r1} {input.r2} > {log} 2>&1 && ln -sf {output.bam} {output.link} && touch -h {output.link}")
+	input:
+		r1=READS_DIR+"/{reads}.R1.fq",
+		r2=READS_DIR+"/{reads}.R2.fq",
+		index=rules.align_tophat_index.output
+	output:
+		bam=ALIGN_DIR_FULL+"/tophat/{reads}/accepted_hits.bam",
+		link=ALIGN_DIR+"/output/tophat-{reads}.bam"
+	params:
+		load=config["load"]["tophat"],
+		outdir=ALIGN_DIR+"/tophat/{reads}",
+		indexdir=ALIGN_DIR+"/tophat/index/"+NAME,
+		strand=lambda wildcards: STRANDEDNESS if wildcards.reads.startswith("real") else "fr-unstranded"
+	log: ALIGN_DIR + "/tophat-{reads}.log"
+	threads: THREADS
+	message: "Aligning RNAseq data with tophat"
+	shell: "{params.load} && {RUN_TIME} tophat2 --output-dir={params.outdir} --num-threads={threads} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} --microexon-search --library-type={params.strand} {ALIGN_TOPHAT_EXTRA} {params.indexdir} {input.r1} {input.r2} > {log} 2>&1 && ln -sf {output.bam} {output.link} && touch -h {output.link}"
 
 
 
 rule align_gsnap:
-    input:
-        r1=READS_DIR+"/{reads}.R1.fq",
-        r2=READS_DIR+"/{reads}.R2.fq",
-        index=rules.align_gsnap_index.output
-    output:
-        bam=ALIGN_DIR_FULL+"/gsnap/{reads}/gsnap.bam",
-        link=ALIGN_DIR+"/output/gsnap-{reads}.bam"
-    log: ALIGN_DIR+"/gsnap-{reads}.log"
-    threads: int(THREADS)
-    message: "Aligning RNAseq with gsnap"
-    shell: "{LOAD_GMAP} && {LOAD_SAMTOOLS} && {RUN_TIME} gsnap --dir={ALIGN_DIR}/gsnap/index --db={NAME} {ALIGN_GSNAP_EXTRA} --novelsplicing=1 --localsplicedist={MAX_INTRON} --nthreads={threads} --format=sam --npaths=20 {input.r1} {input.r2} 2> {log} | samtools view -b -@ {threads} - > {output.bam} && ln -sf {output.bam} {output.link} && touch -h {output.link}"
+	input:
+		r1=READS_DIR+"/{reads}.R1.fq",
+		r2=READS_DIR+"/{reads}.R2.fq",
+		index=rules.align_gsnap_index.output
+	output:
+		bam=ALIGN_DIR_FULL+"/gsnap/{reads}/gsnap.bam",
+		link=ALIGN_DIR+"/output/gsnap-{reads}.bam"
+	params:
+		load_g=config["load"]["gmap"],
+		load_s=config["load"]["samtools"]
+	log: ALIGN_DIR+"/gsnap-{reads}.log"
+	threads: THREADS
+	message: "Aligning RNAseq with gsnap"
+	shell: "{params.load_g} && {params.load_s} && {RUN_TIME} gsnap --dir={ALIGN_DIR}/gsnap/index --db={NAME} {ALIGN_GSNAP_EXTRA} --novelsplicing=1 --localsplicedist={MAX_INTRON} --nthreads={threads} --format=sam --npaths=20 {input.r1} {input.r2} 2> {log} | samtools view -b -@ {threads} - > {output.bam} && ln -sf {output.bam} {output.link} && touch -h {output.link}"
 
 
 
 
 rule align_star:
-    input:
-        r1=READS_DIR_FULL+"/{reads}.R1.fq",
-        r2=READS_DIR_FULL+"/{reads}.R2.fq",
-        index=rules.align_star_index.output
-    output:
-        bam=ALIGN_DIR_FULL+"/star/{reads}/Aligned.out.bam",
-        link=ALIGN_DIR+"/output/star-{reads}.bam"
-    params:
-        outdir=ALIGN_DIR_FULL+"/star/{reads}",
-        indexdir=ALIGN_DIR_FULL+"/star/index"
-    log: ALIGN_DIR_FULL+"/star-{reads}.log"
-    threads: int(THREADS)
-    message: "Aligning input with star"
-    shell: "{LOAD_STAR} && cd {params.outdir} && {RUN_TIME} STAR --runThreadN {threads} --runMode alignReads --genomeDir {params.indexdir} --readFilesIn {input.r1} {input.r2} --outSAMtype BAM Unsorted --outSAMstrandField intronMotif --alignIntronMin {MIN_INTRON} --alignIntronMax {MAX_INTRON} --alignMatesGapMax 20000 --outFileNamePrefix {params.outdir}/ {ALIGN_STAR_EXTRA} > {log} 2>&1 && cd {CWD} && ln -sf {output.bam} {output.link} && touch -h {output.link}"
+	input:
+		r1=READS_DIR_FULL+"/{reads}.R1.fq",
+		r2=READS_DIR_FULL+"/{reads}.R2.fq",
+		index=rules.align_star_index.output
+	output:
+		bam=ALIGN_DIR_FULL+"/star/{reads}/Aligned.out.bam",
+		link=ALIGN_DIR+"/output/star-{reads}.bam"
+	params:
+		load=config["load"]["star"],
+		outdir=ALIGN_DIR_FULL+"/star/{reads}",
+		indexdir=ALIGN_DIR_FULL+"/star/index"
+	log: ALIGN_DIR_FULL+"/star-{reads}.log"
+	threads: int(THREADS)
+	message: "Aligning input with star"
+	shell: "{params.load} && cd {params.outdir} && {RUN_TIME} STAR --runThreadN {threads} --runMode alignReads --genomeDir {params.indexdir} --readFilesIn {input.r1} {input.r2} --outSAMtype BAM Unsorted --outSAMstrandField intronMotif --alignIntronMin {MIN_INTRON} --alignIntronMax {MAX_INTRON} --alignMatesGapMax 20000 --outFileNamePrefix {params.outdir}/ {ALIGN_STAR_EXTRA} > {log} 2>&1 && cd {CWD} && ln -sf {output.bam} {output.link} && touch -h {output.link}"
 
 
 
 rule align_hisat:
-    input:
-        r1=READS_DIR+"/{reads}.R1.fq",
-        r2=READS_DIR+"/{reads}.R2.fq",
-        index=rules.align_hisat_index.output
-    output:
-        bam=ALIGN_DIR_FULL+"/hisat/{reads}/hisat.bam",
-        link=ALIGN_DIR+"/output/hisat-{reads}.bam"
-    params:
-        indexdir=ALIGN_DIR+"/hisat/index/"+NAME
-    log: ALIGN_DIR+"/hisat-{reads}.log"
-    threads: int(THREADS)
-    message: "Aligning input with hisat"
-    run:
-        strand = HISAT_STRAND if wildcards.reads.startswith("real") else ""
-        shell("{LOAD_HISAT} && {LOAD_SAMTOOLS} && {RUN_TIME} hisat2 -p {threads} --min-intronlen={MIN_INTRON} --max-intronlen={MAX_INTRON} {strand} -x {params.indexdir} -1 {input.r1} -2 {input.r2} 2> {log} | samtools view -b -@ {threads} - > {output.bam} && ln -sf {output.bam} {output.link} && touch -h {output.link}")
+	input:
+		r1=READS_DIR+"/{reads}.R1.fq",
+		r2=READS_DIR+"/{reads}.R2.fq",
+		index=rules.align_hisat_index.output
+	output:
+		bam=ALIGN_DIR_FULL+"/hisat/{reads}/hisat.bam",
+		link=ALIGN_DIR+"/output/hisat-{reads}.bam"
+	params:
+		load_h=config["load"]["hisat"],
+		load_s=config["load"]["samtools"],
+		indexdir=ALIGN_DIR+"/hisat/index/"+NAME,
+		strand=lambda wildcards: HISAT_STRAND if wildcards.reads.startswith("real") else ""
+	log: ALIGN_DIR+"/hisat-{reads}.log"
+	threads: THREADS
+	message: "Aligning input with hisat"
+	shell: "{params.load_h} && {params.load_s} && {RUN_TIME} hisat2 -p {threads} --min-intronlen={MIN_INTRON} --max-intronlen={MAX_INTRON} {strand} -x {params.indexdir} -1 {input.r1} -2 {input.r2} 2> {log} | samtools view -b -@ {threads} - > {output.bam} && ln -sf {output.bam} {output.link} && touch -h {output.link}"
 
 rule bam_sort:
 	input: 
 		bam=ALIGN_DIR+"/output/{aln_method}-{reads}.bam"
 	output: ALIGN_DIR+"/output/{aln_method}-{reads}.sorted.bam"
-	threads: int(THREADS)
+	params:
+		load_s=config["load"]["samtools"]		
+	threads: THREADS
 	message: "Using samtools to sort {input.bam}"
-	shell: "{LOAD_SAMTOOLS} && samtools sort -o {output} -O bam -m 1G -T sort_{wildcards.aln_method}_{wildcards.reads} -@ {threads} {input.bam}"
+	shell: "{params.load_s} && samtools sort -o {output} -O bam -m 1G -T sort_{wildcards.aln_method}_{wildcards.reads} -@ {threads} {input.bam}"
 
 
 rule bam_index:
 	input: rules.bam_sort.output
 	output: ALIGN_DIR+"/output/{aln_method}-{reads}.sorted.bam.bai"
+	params:
+		load_s=config["load"]["samtools"]		
 	threads: 1
 	message: "Using samtools to index: {input}"
-	shell: "{LOAD_SAMTOOLS} && samtools index {input}"
+	shell: "{params.load_s} && samtools index {input}"
 
 rule bam_stats:
-        input:
-                bam=rules.bam_sort.output,
-                idx=rules.bam_index.output
-        output: ALIGN_DIR+"/output/{aln_method}-{reads}.sorted.bam.stats"
-        params: 
-                load=LOAD_SAMTOOLS,
-                plot_out=ALIGN_DIR+"/output/plots/{aln_method}-{reads}/{aln_method}-{reads}"
-        threads: 1
-        message: "Using samtools to collected stats for: {input}"
-        shell: "{params.load} && samtools stats {input.bam} > {output} && plot-bamstats -p {params.plot_out} {output}"
+	input:
+		bam=rules.bam_sort.output,
+		idx=rules.bam_index.output
+	output: ALIGN_DIR+"/output/{aln_method}-{reads}.sorted.bam.stats"
+	params:
+		load=config["load"]["samtools"],
+		plot_out=ALIGN_DIR+"/output/plots/{aln_method}-{reads}/{aln_method}-{reads}"
+	threads: 1
+	message: "Using samtools to collected stats for: {input}"
+	shell: "{params.load} && samtools stats {input.bam} > {output} && plot-bamstats -p {params.plot_out} {output}"
 
 rule portcullis_prep:
 	input:
@@ -279,13 +273,12 @@ rule portcullis_prep:
 		fa=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep/portcullis.genome.fa"
 	params:
 		outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep",
-		load=LOAD_PORTCULLIS
+		load=config["load"]["portcullis"],
+		strand=lambda wildcards: PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"
 	log: PORTCULLIS_DIR+"/{aln_method}-{reads}-prep.log"
-	threads: int(THREADS)
+	threads: THREADS
 	message: "Using portcullis to prepare: {input}"
-	run:
-		strand = PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"
-		shell("{params.load} && portcullis prep -o {params.outdir} --strandedness={strand} -t {threads} {input.ref} {input.bam} > {log} 2>&1")
+	shell: "{params.load} && {RUN_TIME} portcullis prep -o {params.outdir} --strandedness={strand} -t {threads} {input.ref} {input.bam} > {log} 2>&1"
 
 
 rule portcullis_junc:
@@ -295,13 +288,12 @@ rule portcullis_junc:
 	params:
 		prepdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep",
 		outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/junc",
-		load=LOAD_PORTCULLIS
+		load=config["load"]["portcullis"],
+		strand=lambda wildcards: PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"
 	log: PORTCULLIS_DIR+"/{aln_method}-{reads}-junc.log"
-	threads: int(THREADS)
+	threads: THREADS
 	message: "Using portcullis to analyse potential junctions: {input}"
-	run:
-		strand = PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"		
-		shell("{params.load} && {RUN_TIME} portcullis junc -o {params.outdir}/{wildcards.aln_method}-{wildcards.reads} --strandedness={strand} -t {threads} {params.prepdir} > {log} 2>&1")
+	shell: "{params.load} && {RUN_TIME} portcullis junc -o {params.outdir}/{wildcards.aln_method}-{wildcards.reads} --strandedness={strand} -t {threads} {params.prepdir} > {log} 2>&1"
 
 
 rule portcullis_filter:
@@ -313,11 +305,11 @@ rule portcullis_filter:
 		tab=PORTCULLIS_DIR+"/{aln_method}-{reads}/filt/{aln_method}-{reads}.pass.junctions.tab",
 	params:
 		outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/filt",
-		load=LOAD_PORTCULLIS,
+		load=config["load"]["portcullis"],
 		bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}/filt/{aln_method}-{reads}.pass.junctions.bed",
 		unfilt_bed=PORTCULLIS_DIR_FULL+"/{aln_method}-{reads}/junc/{aln_method}-{reads}.junctions.bed"
 	log: PORTCULLIS_DIR+"/{aln_method}-{reads}-filter.log"
-	threads: int(THREADS)
+	threads: THREADS
 	message: "Using portcullis to filter invalid junctions: {input}"
 	shell: "{params.load} && portcullis filter -t {threads} -o {params.outdir}/{wildcards.aln_method}-{wildcards.reads} {input.ref} {input.tab} > {log} 2>&1 && ln -sf {params.bed} {output.link} && touch -h {output.link} && ln -sf {params.unfilt_bed} {output.unfilt_link} && touch -h {output.unfilt_link}"
 
@@ -329,45 +321,11 @@ rule portcullis_bamfilt:
 	output:
 		bam=PORTCULLIS_DIR+"/{aln_method}-{reads}/bam/{aln_method}-{reads}-portcullis.bam"
 	params:
-		load=LOAD_PORTCULLIS,
+		load=config["load"]["portcullis"]
 	log: PORTCULLIS_DIR+"/{aln_method}-{reads}-bam.log"
-	threads: int(THREADS)
+	threads: THREADS
 	message: "Using portcullis to filter alignments containing invalid junctions: {input.tab}"
 	shell: "{params.load} && portcullis bamfilt --output={output.bam} {input.tab} {input.bam} > {log} 2>&1"
-
-'''
-rule portcullis_prep2:
-	input:
-		ref=REF,
-		bam=rules.bam_sort.output,
-		idx=rules.bam_index.output
-	output: PORTCULLIS_DIR2+"/{aln_method}-{reads}/prep/portcullis.sorted.alignments.bam.bai"
-	params:
-		outdir=PORTCULLIS_DIR2+"/{aln_method}-{reads}/prep",
-		load=LOAD_PORTCULLIS2
-	log: PORTCULLIS_DIR2+"/{aln_method}-{reads}-prep.log"
-	threads: int(THREADS)
-	message: "Using portcullis to prepare: {input}"
-	run:
-		strand = PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"
-		shell("{params.load} && portcullis prep -o {params.outdir} --strandedness={strand} -t {threads} {input.ref} {input.bam} > {log} 2>&1")
-
-
-rule portcullis_junc2:
-	input:
-		bai=rules.portcullis_prep2.output
-	output: PORTCULLIS_DIR2+"/{aln_method}-{reads}/junc/{aln_method}-{reads}.junctions.tab"
-	params:
-		prepdir=PORTCULLIS_DIR2+"/{aln_method}-{reads}/prep",
-		outdir=PORTCULLIS_DIR2+"/{aln_method}-{reads}/junc",
-		load=LOAD_PORTCULLIS2
-	log: PORTCULLIS_DIR2+"/{aln_method}-{reads}-junc.log"
-	threads: int(THREADS)
-	message: "Using portcullis to analyse potential junctions: {input}"
-	run:
-		strand = PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"		
-		shell("{params.load} && {RUN_TIME} portcullis junc -o {params.outdir} -p {wildcards.aln_method}-{wildcards.reads} --strandedness={strand} -t {threads} {params.prepdir} > {log} 2>&1")
-'''
 
 
 
@@ -381,8 +339,8 @@ rule spanki:
     output: link=JUNC_DIR+"/output/{aln_method}-{reads}-spanki.bed",
         bed=JUNC_DIR+"/spanki/{aln_method}-{reads}/junctions_out/{aln_method}-{reads}-spanki.bed"
     params:
-        load_spanki=LOAD_SPANKI,
-        load_portcullis=LOAD_PORTCULLIS,
+        load_spanki=config["load"]["spanki"],
+        load_portcullis=config["load"]["portcullis"],
         outdir=JUNC_DIR_FULL+"/spanki/{aln_method}-{reads}",
         bam=ALIGN_DIR_FULL+"/output/{aln_method}-{reads}.sorted.bam",
         fa=os.path.abspath(REF),
@@ -404,8 +362,8 @@ rule spanki_annot:
     output: link=JUNC_DIR+"/output/{aln_method}-{reads}-spanki_annot.bed",
         bed=JUNC_DIR+"/spanki/{aln_method}-{reads}/junctions_out/{aln_method}-{reads}-spanki_annot.bed"
     params:
-        load_spanki=LOAD_SPANKI,
-        load_portcullis=LOAD_PORTCULLIS,
+        load_spanki=config["load"]["spanki"],
+        load_portcullis=config["load"]["portcullis"],
         outdir=JUNC_DIR_FULL+"/spanki_annot/{aln_method}-{reads}",
         bam=ALIGN_DIR_FULL+"/output/{aln_method}-{reads}.sorted.bam",
         fa=os.path.abspath(REF),
@@ -425,8 +383,8 @@ rule finesplice:
     output: link=JUNC_DIR+"/output/{aln_method}-{reads}-finesplice.bed",
         bed=JUNC_DIR+"/finesplice/{aln_method}-{reads}/{aln_method}-{reads}-finesplice.bed"
     params:
-        load_fs=LOAD_FINESPLICE,
-        load_portcullis=LOAD_PORTCULLIS,
+        load_fs=config["load"]["finesplice"],
+        load_portcullis=config["load"]["portcullis"],
         bam=ALIGN_DIR_FULL+"/output/{aln_method}-{reads}.sorted.bam",
         outdir=JUNC_DIR_FULL+"/finesplice/{aln_method}-{reads}",
         junc=JUNC_DIR_FULL+"/finesplice/{aln_method}-{reads}/{aln_method}-{reads}.sorted.accepted.junc",
@@ -444,7 +402,7 @@ rule truesight:
         r2=READS_DIR+"/{reads}.R2.fq"
     output: JUNC_DIR+"/truesight/{reads}/GapAli.junc"
     params:
-        load_fs=LOAD_TRUESIGHT,
+        load_fs=config["load"]["truesight"],
 	index=ALIGN_DIR_FULL + "/bowtie/index/"+NAME,
         outdir=JUNC_DIR+"/truesight/{reads}",
         junc=JUNC_DIR+"/truesight/{reads}/GapAli.junc",
@@ -458,52 +416,88 @@ rule truesight:
 rule truesight2bed:
 	input: rules.truesight.output
 	output:
-		link=JUNC_DIR+"/output/truesight-{reads}-truesight.bed",
-	        bed=JUNC_DIR+"/truesight/{reads}/truesight-{reads}-truesight.bed"
+		bed=JUNC_DIR+"/output/truesight-{reads}-truesight.bed"
 	params:
-		load_portcullis=LOAD_PORTCULLIS,
-		bed="../truesight/{reads}/truesight-{reads}-truesight.bed"
+		load_portcullis=config["load"]["portcullis"]
 	threads: 1
 	message: "Creating bed file from truesight output: {input}"
-	shell: "{params.load_portcullis} && portcullis_convert truesight2ibed.py {input} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+	shell: "{params.load_portcullis} && portcullis_convert.py truesight2ibed {input} > {output.bed}"
 
 rule soapsplice_index:
 	input: fa=REF
 	output: JUNC_DIR + "/soapsplice/index/"+NAME+".index.bwt"
 	log: JUNC_DIR + "/soapsplice/index.log"
 	params:
-        	load_ss=LOAD_SOAPSPLICE,
+        	load_ss=config["load"]["soapsplice"],
 		index=JUNC_DIR + "/soapsplice/index/"+NAME
 	threads: 1
 	message: "Creating index for soapsplice"
 	shell: "{params.load_ss} && 2bwt-builder {input.fa} {params.index} > {log} 2>&1"
 
 rule soapsplice:
-    input:
-        r1=READS_DIR+"/{reads}.R1.fq",
-        r2=READS_DIR+"/{reads}.R2.fq",
-	idx=rules.soapsplice_index.output
-    output: JUNC_DIR+"/soapsplice/{reads}/ss-{reads}.junc"
-    params:
-        load_ss=LOAD_SOAPSPLICE,
-	index=JUNC_DIR + "/soapsplice/index/"+NAME+".index",
-        outdir=JUNC_DIR+"/soapsplice/{reads}"
-    log: JUNC_DIR+"/soapsplice/{reads}-soapsplice.log"
-    threads: int(THREADS)
-    message: "Using soapsplice to find junctions"
-    shell: "{params.load_ss} && {RUN_TIME} soapsplice -d {params.index} -1 {input.r1} -2 {input.r2} -I 450 -o {params.outdir}/ss-{wildcards.reads} -p {threads} -t {MAX_INTRON} -c 0 -f 2 -L {MAX_INTRON} -l {MIN_INTRON} > {log} 2>&1 && rm -f {params.outdir}/ss-{wildcards.reads}.sam"
+	input:
+		r1=READS_DIR+"/{reads}.R1.fq",
+		r2=READS_DIR+"/{reads}.R2.fq",
+		idx=rules.soapsplice_index.output
+	output: JUNC_DIR+"/soapsplice/{reads}/ss-{reads}.junc"
+	params:
+		load_ss=config["load"]["soapsplice"],
+		index=JUNC_DIR + "/soapsplice/index/"+NAME+".index",
+		outdir=JUNC_DIR+"/soapsplice/{reads}"
+	log: JUNC_DIR+"/soapsplice/{reads}-soapsplice.log"
+	threads: THREADS
+	message: "Using soapsplice to find junctions"
+	shell: "{params.load_ss} && {RUN_TIME} soapsplice -d {params.index} -1 {input.r1} -2 {input.r2} -I 450 -o {params.outdir}/ss-{wildcards.reads} -p {threads} -t {MAX_INTRON} -c 0 -f 2 -L {MAX_INTRON} -l {MIN_INTRON} > {log} 2>&1 && rm -f {params.outdir}/ss-{wildcards.reads}.sam"
 
 rule soapsplice2bed:
 	input: rules.soapsplice.output
 	output:
-		link=JUNC_DIR+"/output/soapsplice-{reads}-soapsplice.bed",
-	        bed=JUNC_DIR+"/soapsplice/{reads}/soapsplice-{reads}-soapsplice.bed"
+		bed=JUNC_DIR+"/output/soapsplice-{reads}-soapsplice.bed"
 	params:
-		load_portcullis=LOAD_PORTCULLIS,
-		bed="../soapsplice/{reads}/soapsplice-{reads}-soapsplice.bed"
+		load_portcullis=config["load"]["portcullis"]
 	threads: 1
 	message: "Creating bed file from soapsplice output: {input}"
-	shell: "{params.load_portcullis} && portcullis_convert soapsplice2ibed.py {input} > {output.bed} && ln -sf {params.bed} {output.link} && touch -h {output.link}"
+	shell: "{params.load_portcullis} && portcullis_convert.py soapsplice2ibed {input} > {output.bed}"
+
+rule mapsplice_ref:
+	input:
+		ref=REF
+	output:
+		done=JUNC_DIR+"/mapsplice/ref/all.done"
+	params:
+		load=config["load"]["portcullis"],
+		outdir=JUNC_DIR+"/mapsplice/ref"
+	message: "Creating reference for mapsplice"
+	threads: 1
+	shell: "{params.load} && split.py -o {params.outdir} {input.ref} && touch {output.done}"
+
+rule mapsplice:
+	input:
+		r1=READS_DIR+"/{reads}.R1.fq",
+		r2=READS_DIR+"/{reads}.R2.fq",
+		ref=rules.mapsplice_ref.output.done
+	output:
+		JUNC_DIR+"/mapsplice/{reads}/junctions.txt"
+	params:
+		refdir=JUNC_DIR+"/mapsplice/ref",
+		idx=ALIGN_DIR+"/bowtie/index/"+NAME,
+		load_ms=config["load"]["mapsplice"],
+		outdir=JUNC_DIR+"/mapsplice/{reads}"
+	log: JUNC_DIR+"/mapsplice/{reads}-mapsplice.log"
+	threads: int(THREADS)
+	message: "Using mapsplice to find junctions"
+	shell: "{params.load_ms} && {RUN_TIME} mapsplice.py -c {params.refdir} -1 {input.r1} -2 {input.r2} -o {params.outdir}/mapsplice-{wildcards.reads} -p {threads} --bam -i {MIN_INTRON} -I {MAX_INTRON} > {log} 2>&1"
+
+rule mapsplice2bed:
+	input: rules.mapsplice.output
+	output:
+		bed=JUNC_DIR+"/output/mapsplice-{reads}-mapsplice.bed"
+	params:
+		load_p=config["load"]["portcullis"],
+	threads: 1
+	message: "Creating bed file from mapsplice output: {input}"
+	shell: "{params.load_p} && portcullis_convert.py mapsplice2ibed {input} > {output.bed}"
+
 
 ###
 
@@ -517,13 +511,12 @@ rule asm_cufflinks:
 		outdir=ASM_DIR+"/cufflinks_{asm_mode}-{aln_method}-{reads}",
 		gtf=ASM_DIR+"/cufflinks_{asm_mode}-{aln_method}-{reads}/transcripts.gtf",
 		link_src="../cufflinks_{asm_mode}-{aln_method}-{reads}/transcripts.gtf",
-		load=LOAD_CUFFLINKS
+		load=config["load"]["cufflinks"],
+		iso_frac=lambda wildcards: ISOFORM_FRACTION[wildcards.asm_mode]
 	log: ASM_DIR+"/cufflinks_{asm_mode}-{aln_method}-{reads}.log"
 	threads: int(THREADS)
 	message: "Using cufflinks to assemble {input.bam}"
-	run:
-		mode = ISOFORM_FRACTION[wildcards.asm_mode]
-		shell("{params.load} && cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} -F {mode} --no-update-check {input.bam} > {log} 2>&1 && ln -sf {params.link_src} {output.gtf} && touch -h {output.gtf}")
+	shell: "{params.load} && cufflinks --output-dir={params.outdir} --num-threads={threads} --library-type={STRANDEDNESS} --min-intron-length={MIN_INTRON} --max-intron-length={MAX_INTRON} -F {params.iso_frac} --no-update-check {input.bam} > {log} 2>&1 && ln -sf {params.link_src} {output.gtf} && touch -h {output.gtf}"
 
 
 
@@ -533,16 +526,15 @@ rule asm_stringtie:
 		link=ASM_DIR+"/output/stringtie_{asm_mode}-{aln_method}-{reads}.gtf",
 		gtf=ASM_DIR+"/stringtie_{asm_mode}-{aln_method}-{reads}/stringtie_{asm_mode}-{aln_method}-{reads}.gtf"
 	params:
-		load=LOAD_STRINGTIE,
+		load=config["load"]["stringtie"],
 		gtf=ASM_DIR+"/stringtie_{asm_mode}-{aln_method}-{reads}/stringtie_{asm_mode}-{aln_method}-{reads}.gtf",
 		link_src="../stringtie_{asm_mode}-{aln_method}-{reads}/stringtie_{asm_mode}-{aln_method}-{reads}.gtf",
-		name="Stringtie_{asm_mode}_{aln_method}_{reads}"
+		name="Stringtie_{asm_mode}_{aln_method}_{reads}",
+		iso_frac=lambda wildcards: ISOFORM_FRACTION[wildcards.asm_mode]
 	log: ASM_DIR+"/stringtie_{asm_mode}-{aln_method}-{reads}.log"
 	threads: int(THREADS)
 	message: "Using stringtie to assemble: {input.bam}"
-	run:
-		mode = ISOFORM_FRACTION[wildcards.asm_mode]
-		shell("{params.load} && {RUN_TIME} stringtie {input.bam} -l {params.name} -f {mode} -m 200 -o {params.gtf} -p {threads} > {log} 2>&1 && ln -sf {params.link_src} {output.link} && touch -h {output.link}")
+	shell: "{params.load} && {RUN_TIME} stringtie {input.bam} -l {params.name} -f {params.iso_frac} -m 200 -o {params.gtf} -p {threads} > {log} 2>&1 && ln -sf {params.link_src} {output.link} && touch -h {output.link}"
 
 
 rule asm_class:
@@ -554,15 +546,14 @@ rule asm_class:
 		gtf=ASM_DIR+"/class_{asm_mode}-{aln_method}-{reads}/class_{asm_mode}-{aln_method}-{reads}.gtf"
 	params:
 		outdir=ASM_DIR+"/class_{asm_mode}-{aln_method}-{reads}",
-		load=LOAD_CLASS,
+		load=config["load"]["class"],
 		gtf=ASM_DIR+"/class_{asm_mode}-{aln_method}-{reads}/class_{asm_mode}-{aln_method}-{reads}.gtf",
-		link_src="../class_{asm_mode}-{aln_method}-{reads}/class_{asm_mode}-{aln_method}-{reads}.gtf"
+		link_src="../class_{asm_mode}-{aln_method}-{reads}/class_{asm_mode}-{aln_method}-{reads}.gtf",
+		iso_frac=lambda wildcards: ISOFORM_FRACTION[wildcards.asm_mode]
 	log: ASM_DIR+"/class_{asm_mode}-{aln_method}-{reads}.log"
 	threads: int(THREADS)
 	message: "Using class to assemble: {input.bam}"
-	run:
-		mode = ISOFORM_FRACTION[wildcards.asm_mode]
-		shell("{params.load} && class_run.py -c '-F {mode}' -p {threads} {input.bam} > {output.gtf} 2> {log} && ln -sf {params.link_src} {output.link} && touch -h {output.link}")
+	shell: "{params.load} && class_run.py -c '-F {params.isofrac}' -p {threads} {input.bam} > {output.gtf} 2> {log} && ln -sf {params.link_src} {output.link} && touch -h {output.link}"
 
 
 rule gtf_2_bed:
@@ -571,9 +562,9 @@ rule gtf_2_bed:
 	output:
 		bed=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.bed"
 	params:
-		load_p=LOAD_PORTCULLIS,
+		load_p=config["load"]["portcullis"]
 	message: "Converting GTF to BED for: {input.gtf}"
-	shell: "{params.load_p} && gtf2bed.py {input.gtf} > {output.bed}"
+	shell: "{params.load_p} && portcullis_convert.py gtf2ibed {input.gtf} > {output.bed}"
 
 rule gtf_stats:
 	input:
@@ -583,7 +574,7 @@ rule gtf_stats:
 		comp=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.comp.stats",
 		stats=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.stats"
 	params: 
-		load_mikado=LOAD_MIKADO,
+		load_mikado=config["load"]["mikado"],
 		prefix=ASM_DIR+"/output/{asm_method}_{asm_mode}-{aln_method}-{reads}.comp"
 	message: "Calculating stats for: {input.gtf}"
 	shell: "{params.load_mikado} && mikado.py util stats {input.gtf} > {output.stats} && mikado.py compare -r {input.ref} -p {input.gtf} -o {params.prefix}"

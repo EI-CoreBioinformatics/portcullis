@@ -459,17 +459,17 @@ void portcullis::JunctionFilter::filter() {
 
     cout << endl << "Saving junctions passing filter to disk:" << endl;
 
-    filteredJuncs.saveAll(outputDir.string() + "/" + outputPrefix + ".pass", source + "_pass");
+    filteredJuncs.saveAll(outputDir.string() + "/" + outputPrefix + ".pass", source + "_pass", true);
 
     if (saveBad) {
         cout << "Saving junctions failing filter to disk:" << endl;
 
-        discardedJuncs.saveAll(outputDir.string() + "/" + outputPrefix + ".fail", source + "_fail");
+        discardedJuncs.saveAll(outputDir.string() + "/" + outputPrefix + ".fail", source + "_fail", true);
 
         if (!referenceFile.empty()) {
             cout << "Saving junctions failing filters but present in reference:" << endl;
 
-            refKeptJuncs.saveAll(outputDir.string() + "/" + outputPrefix + ".ref", source + "_ref");
+            refKeptJuncs.saveAll(outputDir.string() + "/" + outputPrefix + ".ref", source + "_ref", true);
         }
     }
 }
@@ -842,7 +842,12 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 
     for (size_t i = 0; i < all.size(); i++) {
 
-        scoreStream << (1.0 - f->getPredictions()[i][0]) << "\t" << *(all[i]->getIntron())
+        double score = 1.0 - f->getPredictions()[i][0];
+        
+        // Make sure score is saved back with the junction
+        all[i]->setScore(score);
+        
+        scoreStream << score << "\t" << *(all[i]->getIntron())
                 << "\t" << strandToChar(all[i]->getConsensusStrand())
                 << "\t" << cssToChar(all[i]->getSpliceSiteType())
                 << "\t" << testingData->getRow(i) << endl;

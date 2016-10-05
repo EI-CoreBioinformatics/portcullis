@@ -291,6 +291,7 @@ int mainFull(int argc, char *argv[]) {
     filter.setCanonical(canonical);
     filter.setTrain(true);
     filter.setThreads(threads);
+    filter.setENN(false);
     filter.filter();
 
     

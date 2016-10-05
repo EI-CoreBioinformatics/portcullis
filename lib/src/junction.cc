@@ -226,6 +226,7 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
     readStrand = Strand::UNKNOWN;
     ssStrand = Strand::UNKNOWN;
     consensusStrand = Strand::UNKNOWN;
+    score = 0.0;
     
     nbUpstreamJunctions = 0;
     nbDownstreamJunctions = 0;
@@ -274,6 +275,7 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
     readStrand = j.readStrand;
     ssStrand = j.ssStrand;
     consensusStrand = j.consensusStrand;
+    score = j.score;
     
     nbUpstreamJunctions = j.nbUpstreamJunctions;
     nbDownstreamJunctions = j.nbDownstreamJunctions;
@@ -1095,7 +1097,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id, co
  * Complete human readable description of this junction
  * @param strm
  */
-void portcullis::Junction::outputBED(std::ostream &strm, const string& prefix, uint32_t id) {
+void portcullis::Junction::outputBED(std::ostream &strm, const string& prefix, uint32_t id, bool bedscore) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
@@ -1110,12 +1112,14 @@ void portcullis::Junction::outputBED(std::ostream &strm, const string& prefix, u
     string blockSizes = lexical_cast<string>(sz1) + "," + lexical_cast<string>(sz2);
     string blockStarts = lexical_cast<string>(0) + "," + lexical_cast<string>(intron->end - leftAncStart + 1);
 
+    strm << std::fixed << std::setprecision(3);
+    
     // Output junction parent
     strm << intron->ref.name << "\t"         // chrom
          << leftAncStart << "\t"  // chromstart
          << rightAncEnd + 1 << "\t"   // chromend (adding 1 as end position is exclusive)
          << juncId << "\t"          // name
-         << this->getNbJunctionAlignments() << "\t"           // Use the depth as the score for the moment
+         << (bedscore ? this->getScore() : this->getNbJunctionAlignments()) << "\t"           // Use the depth as the score for the moment
          << strand << "\t"          // strand
          << intron->start << "\t"   // thickstart
          << intron->end + 1 << "\t"     // thickend  (adding 1 as end position is exclusive)

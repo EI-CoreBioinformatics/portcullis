@@ -375,6 +375,10 @@ void portcullis::JunctionSystem::sort() {
 }
 
 void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string& source) {
+    saveAll(outputPrefix, source, false);
+}
+
+void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string& source, bool bedscore) {
 
     auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");
 
@@ -426,7 +430,7 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string&
     cout.flush();
 
     // Print junctions in BED format to file
-    outputBED(junctionBEDAllPath, ALL, source);
+    outputBED(junctionBEDAllPath, ALL, source, bedscore);
 
     cout << "done." << endl;
 }
@@ -457,19 +461,19 @@ void portcullis::JunctionSystem::outputIntronGFF(std::ostream &strm, const strin
     }
 }
 
-void portcullis::JunctionSystem::outputBED(string& path, CanonicalSS type, const string& prefix) {
+void portcullis::JunctionSystem::outputBED(string& path, CanonicalSS type, const string& prefix, bool bedscore) {
 
     ofstream junctionBEDStream(path.c_str());
-    outputBED(junctionBEDStream, type, prefix);
+    outputBED(junctionBEDStream, type, prefix, bedscore);
     junctionBEDStream.close();
 }
 
-void portcullis::JunctionSystem::outputBED(std::ostream &strm, CanonicalSS type, const string& prefix) {
+void portcullis::JunctionSystem::outputBED(std::ostream &strm, CanonicalSS type, const string& prefix, bool bedscore) {
     strm << "track name=\"junctions\" description=\"Portcullis V" << (version.empty() ? "X.X.X" : version) << " junctions\"" << endl;
     uint64_t i = 1;
     for (JunctionPtr j : junctionList) {
         if (type == ALL || j->getSpliceSiteType() == type) {
-            j->outputBED(strm, prefix, i++);
+            j->outputBED(strm, prefix, i++, bedscore);
         }
     }
 }

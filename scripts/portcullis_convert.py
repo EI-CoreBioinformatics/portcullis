@@ -212,6 +212,25 @@ def ss2ibed(args):
 
         sortandprint(junctions)
 
+def ms2ibed(args):
+    junctions = list()
+
+    with open(args.input) as f:
+        # Skip header
+        f.readline()
+
+        for line in f:
+            words = line.split("\t")
+
+            j = Junction()
+            j.seq = words[0]
+            j.start = int(words[1])
+            j.end = int(words[2]) - 1
+            j.strand = words[5]
+            j.cov = int(words[4])
+            junctions.append(j)
+
+        sortandprint(junctions)
 
 def gtf2ibed(args):
     with open(args.input) as f:
@@ -383,6 +402,12 @@ def main():
 
     ss2ibed_parser.add_argument("input", help="The soapsplice tab delimited junction file to convert")
     ss2ibed_parser.set_defaults(func=ss2ibed)
+    
+    ms2ibed_parser = subparsers.add_parser("mapsplice2ibed",
+                                           help="Converts a mapsplice junction file to a portcullis (intron-based - no anchors) BED file.")
+
+    ms2ibed_parser.add_argument("input", help="The mpsplice tab delimited junction file to convert")
+    ms2ibed_parser.set_defaults(func=ms2ibed)
 
     gtf2ibed_parser = subparsers.add_parser("gtf2ibed",
                                             help="Converts a GTF file containing genes and transcripts in to a portcullis intron-based BED file containing junctions derived from the GTF.")
