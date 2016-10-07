@@ -66,6 +66,16 @@ PORTCULLIS_STRAND = "firststrand" if STRANDEDNESS == "fr-firststrand" else "seco
 
 ISOFORM_FRACTION = {"permissive": 0.01, "semipermissive": 0.03, "default": 0.1, "semistrict": 0.2, "strict": 0.5}
 
+def portcullisStrandOption(run):
+	return PORTCULLIS_STRAND if run.startswith("real") else "unstranded"
+
+
+def tophatStrandOption(run):
+	return STRANDEDNESS if run.startswith("real") else "fr-unstranded"
+
+def hisatStrandOption(run):
+	return HISAT_STRAND if run.startswith("real") else ""
+
 #########################
 Rules
 
@@ -103,7 +113,7 @@ rule align_bowtie_index:
 	log: ALIGN_DIR + "/bowtie.index.log"
 	threads: 1
 	message: "Indexing genome with bowtie"
-	shell: "{params.load} && bowtie-build {input} {params.out_prefix} > {log} 2>&1 && ln -sf {params.ref} {output.fa_link} && touch -h {output.fa_link}"
+	shell: "{params.load} && {RUN_TIME} bowtie-build {input} {params.out_prefix} > {log} 2>&1 && ln -sf {params.ref} {output.fa_link} && touch -h {output.fa_link}"
 
 
 rule align_tophat_index:
@@ -113,7 +123,7 @@ rule align_tophat_index:
 	log: ALIGN_DIR + "/tophat.index.log"
 	threads: 1
 	message: "Indexing genome with tophat"
-	shell: "{params.load} && bowtie2-build {REF} {ALIGN_DIR}/tophat/index/{NAME} > {log} 2>&1"
+	shell: "{params.load} && {RUN_TIME} bowtie2-build {REF} {ALIGN_DIR}/tophat/index/{NAME} > {log} 2>&1"
 
 
 rule align_gsnap_index:
@@ -123,7 +133,7 @@ rule align_gsnap_index:
 	log: ALIGN_DIR +"/gsnap.index.log"
 	threads: 1
 	message: "Indexing genome with gsnap"
-	shell: "{params.load} && gmap_build --dir={ALIGN_DIR}/gsnap/index --db={NAME} {input} > {log} 2>&1"
+	shell: "{params.load} && {RUN_TIME} gmap_build --dir={ALIGN_DIR}/gsnap/index --db={NAME} {input} > {log} 2>&1"
 
 
 rule align_star_index:
@@ -135,7 +145,7 @@ rule align_star_index:
 	log: ALIGN_DIR_FULL+"/star.index.log"
 	threads: int(THREADS)
 	message: "Indexing genome with star"
-	shell: "{params.load} && cd {ALIGN_DIR_FULL}/star && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {params.indexdir} --genomeFastaFiles {input} {INDEX_STAR_EXTRA} > {log} 2>&1 && cd {CWD}"
+	shell: "{params.load} && cd {ALIGN_DIR_FULL}/star && {RUN_TIME} STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {params.indexdir} --genomeFastaFiles {input} {INDEX_STAR_EXTRA} > {log} 2>&1 && cd {CWD}"
 
 
 
@@ -146,7 +156,7 @@ rule align_hisat_index:
 	log: ALIGN_DIR+"/hisat.index.log"
 	threads: 1
 	message: "Indexing genome with hisat"
-	shell: "{params.load} && hisat2-build {input} {ALIGN_DIR}/hisat/index/{NAME} > {log} 2>&1"
+	shell: "{params.load} && {RUN_TIME} hisat2-build {input} {ALIGN_DIR}/hisat/index/{NAME} > {log} 2>&1"
 
 
 
@@ -167,7 +177,7 @@ rule align_tophat:
 		load=config["load"]["tophat"],
 		outdir=ALIGN_DIR+"/tophat/{reads}",
 		indexdir=ALIGN_DIR+"/tophat/index/"+NAME,
-		strand=lambda wildcards: STRANDEDNESS if wildcards.reads.startswith("real") else "fr-unstranded"
+		strand=lambda wildcards: tophatStrandOption(wildcards.reads)
 	log: ALIGN_DIR + "/tophat-{reads}.log"
 	threads: THREADS
 	message: "Aligning RNAseq data with tophat"
@@ -225,31 +235,33 @@ rule align_hisat:
 		load_h=config["load"]["hisat"],
 		load_s=config["load"]["samtools"],
 		indexdir=ALIGN_DIR+"/hisat/index/"+NAME,
-		strand=lambda wildcards: HISAT_STRAND if wildcards.reads.startswith("real") else ""
+		strand=lambda wildcards: hisatStrandOption(wildcards.reads)
 	log: ALIGN_DIR+"/hisat-{reads}.log"
 	threads: THREADS
 	message: "Aligning input with hisat"
-	shell: "{params.load_h} && {params.load_s} && {RUN_TIME} hisat2 -p {threads} --min-intronlen={MIN_INTRON} --max-intronlen={MAX_INTRON} {strand} -x {params.indexdir} -1 {input.r1} -2 {input.r2} 2> {log} | samtools view -b -@ {threads} - > {output.bam} && ln -sf {output.bam} {output.link} && touch -h {output.link}"
+	shell: "{params.load_h} && {params.load_s} && {RUN_TIME} hisat2 -p {threads} --min-intronlen={MIN_INTRON} --max-intronlen={MAX_INTRON} {params.strand} -x {params.indexdir} -1 {input.r1} -2 {input.r2} 2> {log} | samtools view -b -@ {threads} - > {output.bam} && ln -sf {output.bam} {output.link} && touch -h {output.link}"
 
 rule bam_sort:
 	input: 
 		bam=ALIGN_DIR+"/output/{aln_method}-{reads}.bam"
 	output: ALIGN_DIR+"/output/{aln_method}-{reads}.sorted.bam"
 	params:
-		load_s=config["load"]["samtools"]		
+		load_s=config["load"]["samtools"]
+	log: ALIGN_DIR+"/output/logs/{aln_method}-{reads}.sorted.log"
 	threads: THREADS
 	message: "Using samtools to sort {input.bam}"
-	shell: "{params.load_s} && samtools sort -o {output} -O bam -m 1G -T sort_{wildcards.aln_method}_{wildcards.reads} -@ {threads} {input.bam}"
+	shell: "{params.load_s} && {RUN_TIME} samtools sort -o {output} -O bam -m 1G -T sort_{wildcards.aln_method}_{wildcards.reads} -@ {threads} {input.bam} > {log} 2>&1"
 
 
 rule bam_index:
 	input: rules.bam_sort.output
 	output: ALIGN_DIR+"/output/{aln_method}-{reads}.sorted.bam.bai"
 	params:
-		load_s=config["load"]["samtools"]		
+		load_s=config["load"]["samtools"]
+	log: ALIGN_DIR+"/output/logs/{aln_method}-{reads}.index.log"
 	threads: 1
 	message: "Using samtools to index: {input}"
-	shell: "{params.load_s} && samtools index {input}"
+	shell: "{params.load_s} && {RUN_TIME} samtools index {input} > {log} 2>&1"
 
 rule bam_stats:
 	input:
@@ -274,7 +286,7 @@ rule portcullis_prep:
 	params:
 		outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep",
 		load=config["load"]["portcullis"],
-		strand=lambda wildcards: PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"
+		strand=lambda wildcards: portcullisStrandOption(wildcards.reads)
 	log: PORTCULLIS_DIR+"/{aln_method}-{reads}-prep.log"
 	threads: THREADS
 	message: "Using portcullis to prepare: {input}"
@@ -289,7 +301,7 @@ rule portcullis_junc:
 		prepdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/prep",
 		outdir=PORTCULLIS_DIR+"/{aln_method}-{reads}/junc",
 		load=config["load"]["portcullis"],
-		strand=lambda wildcards: PORTCULLIS_STRAND if wildcards.reads.startswith("real") else "unstranded"
+		strand=lambda wildcards: portcullisStrandOption(wildcards.reads)
 	log: PORTCULLIS_DIR+"/{aln_method}-{reads}-junc.log"
 	threads: THREADS
 	message: "Using portcullis to analyse potential junctions: {input}"
@@ -432,7 +444,7 @@ rule soapsplice_index:
 		index=JUNC_DIR + "/soapsplice/index/"+NAME
 	threads: 1
 	message: "Creating index for soapsplice"
-	shell: "{params.load_ss} && 2bwt-builder {input.fa} {params.index} > {log} 2>&1"
+	shell: "{params.load_ss} && {RUN_TIME} 2bwt-builder {input.fa} {params.index} > {log} 2>&1"
 
 rule soapsplice:
 	input:

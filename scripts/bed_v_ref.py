@@ -13,46 +13,97 @@ def main():
 	parser.add_argument("input", nargs="+", help="The BED file to analyse")
 	parser.add_argument("-r", "--reference", required=True, help="The reference BED file to compare against")
 	parser.add_argument("-o", "--output", help="The output venn plot")
+	parser.add_argument("-m", "--multiclass", action='store_true', default=False,
+						help="""Breakdown results into multiple classes:
+						1) Matching intron
+						2) Two matching splice sites but no matching intron (i.e. splice sites from different introns)
+						3) One matching splice site
+						4) No matching splice sites""")
 	args = parser.parse_args()
 
-	ref_bed = bed12.loadbed(args.reference, False, False)
-	print("Loaded Reference BED file.  # junctions: ", len(ref_bed))
+	if not args.multiclass:
 
-	# Load all bed files
-	print("Results:")
-	print("File\t#junc\t", Performance.shortHeader())
+		ref_bed = bed12.loadbed(args.reference, False, False)
+		print("Loaded Reference BED file.  # junctions: ", len(ref_bed))
 
-	recall = 0
-	precision = 0
-	f1 = 0
+		# Load all bed files
+		print("Results:")
+		print("File\t#junc\t", Performance.shortHeader())
 
-	for bf in args.input:
-		bed_data = bed12.loadbed(bf, False, False)
+		recall = 0
+		precision = 0
+		f1 = 0
 
-		# Build table
-		tab = list()
-		p = Performance()
-		p.tp = len(ref_bed & bed_data)
-		p.fp = len(bed_data - ref_bed)
-		p.fn = len(ref_bed - bed_data)
+		for bf in args.input:
+			bed_data = bed12.loadbed(bf, False, False)
 
-		print(bf, "\t", len(bed_data), "\t", p)
+			# Build table
+			tab = list()
+			p = Performance()
+			p.tp = len(ref_bed & bed_data)
+			p.fp = len(bed_data - ref_bed)
+			p.fn = len(ref_bed - bed_data)
 
-		recall += p.recall()
-		precision += p.precision()
-		f1 += p.F1()
+			print(bf, "\t", len(bed_data), "\t", p)
 
-	if len(args.input) > 1:
-		print("Mean recall: ", recall / len(args.input))
-		print("Mean precision: ", precision / len(args.input))
-		print("Mean f1: ", f1 / len(args.input))
+			recall += p.recall()
+			precision += p.precision()
+			f1 += p.F1()
 
-	if not args.output == None and len(args.input) == 1:
-		# Create Venns
-		plt = figure(1, figsize=(6, 6))
-		venn2(subsets=(p.fn, p.fp, p.tp), set_labels=(args.reference, args.input))
-		plt.show()
-		plt.savefig(args.output)
+		if len(args.input) > 1:
+			print("Mean recall: ", recall / len(args.input))
+			print("Mean precision: ", precision / len(args.input))
+			print("Mean f1: ", f1 / len(args.input))
+
+		if not args.output == None and len(args.input) == 1:
+			# Create Venns
+			plt = figure(1, figsize=(6, 6))
+			venn2(subsets=(p.fn, p.fp, p.tp), set_labels=(args.reference, args.input))
+			plt.show()
+			plt.savefig(args.output)
+
+	else:
+
+		ref_intron = bed12.loadbed(args.reference, False, False)
+		ref_ss = bed12.loadsplicesites(args.reference, usestrand=False)
+		print("Loaded Reference BED file.  # introns: ", len(ref_intron), ", with ", len(ref_ss), " distinct splice sites")
+
+		# Load all bed files
+		print("Results:")
+		print("Class 1 = Intron in ref")
+		print("Class 2 = Both splice sites in ref")
+		print("Class 3 = Only 1 splice site in ref")
+		print("Class 4 = Novel")
+		
+		print("\t".join(["file", "class1", "class2", "class3", "class4"]))
+
+		for bf in args.input:
+
+			class1 = 0
+			class2 = 0
+			class3 = 0
+			class4 = 0
+
+			with open(bf) as f:
+				# Skip header
+				f.readline()
+				for line in f:
+					b = bed12.BedEntry.create_from_line(line,
+											use_strand=False,
+											tophat=False)
+					key1 = (b.chrom.encode(), b.thick_start, None)
+					key2 = (b.chrom.encode(), b.thick_end, None)
+
+					if b in ref_intron:
+						class1 += 1
+					elif key1 in ref_ss and key2 in ref_ss:
+						class2 += 1
+					elif key1 in ref_ss or key2 in ref_ss:
+						class3 += 1
+					else:
+						class4 += 1
+
+			print("\t".join([bf, str(class1), str(class2), str(class3), str(class4)]))
 
 
 main()

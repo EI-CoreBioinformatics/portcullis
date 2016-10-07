@@ -253,6 +253,36 @@ def loadbed(filepath, usestrand, tophat):
 		print("duplicated items in bed file " + filepath)
 	return items
 
+def loadsplicesites(filepath, usestrand=True):
+	items = {}
+	with open(filepath) as f:
+		# Skip header
+		f.readline()
+		for line in f:
+			parts = line.split("\t")
+			# Handle header or blank lines
+			if (len(parts) != 12):
+				continue
+
+			chrom = parts[0]
+			strand = parts[5]
+			thick_start = int(parts[6])
+			thick_end = int(parts[7])
+
+			key1 = (chrom.encode(), thick_start, strand if usestrand else None)
+			key2 = (chrom.encode(), thick_end, strand if usestrand else None)
+
+			if key1 in items:
+				items[key1] += 1
+			else:
+				items[key1] = 1
+
+			if key2 in items:
+				items[key2] += 1
+			else:
+				items[key2] = 1
+	return items
+
 
 def saveList(filepath, list, description):
 	o = open(filepath, 'w')
