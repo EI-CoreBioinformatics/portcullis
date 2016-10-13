@@ -35,7 +35,7 @@ Some other splice junction prediction tools don't directly generate bed files.  
 
 
 bed_v_ref.py
-----------
+------------
 
 Allows the user to compare one or more BED files against a reference BED file.  This is useful for measuring the performance of portcullis, or any other tool against a reference.
 

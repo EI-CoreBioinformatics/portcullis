@@ -22,10 +22,11 @@ portcullis_LDFLAGS =	-L$(top_srcdir)/lib/.libs \
 			@LDFLAGS@
 
 portcullis_LDADD =	@AM_LIBS@ \
+			-l:libportcullis.a \
 			-l:libranger.a \
 			-l:libphts.a \
-			-l:libportcullis.a
-			
+			-lz
+						
 
 noinst_HEADERS =	prepare.hpp \
 			junction_builder.hpp \
