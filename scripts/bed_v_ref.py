@@ -74,7 +74,7 @@ def main():
 		print("Class 2 = Both splice sites in ref")
 		print("Class 3 = Only 1 splice site in ref")
 		print("Class 4 = Novel")
-		
+
 		print("\t".join(["file", "class1", "class2", "class3", "class4"]))
 
 		for bf in args.input:

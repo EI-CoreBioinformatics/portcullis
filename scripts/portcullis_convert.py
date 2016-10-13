@@ -232,6 +232,15 @@ def ms2ibed(args):
 
         sortandprint(junctions)
 
+def ebed2hisat(args):
+    with open(args.input) as f:
+        # Skip header
+        f.readline()
+
+        for line in f:
+            b = bed12.BedEntry.create_from_line(line, use_strand=True)
+            print("\t".join([b.chrom, str(b.thick_start-1), str(b.thick_end), b.strand]))
+
 def gtf2ibed(args):
     with open(args.input) as f:
         junctions = [];
@@ -406,8 +415,14 @@ def main():
     ms2ibed_parser = subparsers.add_parser("mapsplice2ibed",
                                            help="Converts a mapsplice junction file to a portcullis (intron-based - no anchors) BED file.")
 
-    ms2ibed_parser.add_argument("input", help="The mpsplice tab delimited junction file to convert")
+    ms2ibed_parser.add_argument("input", help="The mapsplice tab delimited junction file to convert")
     ms2ibed_parser.set_defaults(func=ms2ibed)
+
+    ebed2hisat_parser = subparsers.add_parser("ebed2hisat",
+                                           help="Converts a portcullis exon-based junction file to hisat TSV junction file.")
+
+    ebed2hisat_parser.add_argument("input", help="The ebed file to convert")
+    ebed2hisat_parser.set_defaults(func=ebed2hisat)
 
     gtf2ibed_parser = subparsers.add_parser("gtf2ibed",
                                             help="Converts a GTF file containing genes and transcripts in to a portcullis intron-based BED file containing junctions derived from the GTF.")
