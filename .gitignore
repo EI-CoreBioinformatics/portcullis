@@ -41,3 +41,4 @@ callgrind*
 *.travis.yml.swp
 *.h
 *.ac~
+/portcullis-1.0.0/
