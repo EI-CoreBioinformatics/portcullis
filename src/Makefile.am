@@ -15,9 +15,9 @@ portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 			@AM_CPPFLAGS@ \
 			@CPPFLAGS@
 
-portcullis_LDFLAGS =	-L$(top_srcdir)/lib/.libs \
-			-L$(top_srcdir)/deps/htslib-1.3/.libs \
-			-L$(top_srcdir)/deps/ranger-0.3.8/.libs \
+portcullis_LDFLAGS =	-L../lib/.libs \
+			-L../deps/htslib-1.3/.libs \
+			-L../deps/ranger-0.3.8/.libs \
 			@AM_LDFLAGS@ \
 			@LDFLAGS@
 
