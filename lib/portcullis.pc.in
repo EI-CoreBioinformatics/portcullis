@@ -6,6 +6,6 @@ includedir=@includedir@
 Name: portcullis
 Description: The portcullis library.
 Version: @PACKAGE_VERSION@
-Requires.private: hts
+Requires.private: phts
 Libs: -L${libdir} -lportcullis -lpthread
 Cflags: -I${includedir}/portcullis-@PACKAGE_VERSION@
