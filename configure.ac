@@ -4,7 +4,7 @@
 
 # Autoconf setup
 AC_PREREQ([2.68])
-AC_INIT([portcullis],[1.0.0],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
+AC_INIT([portcullis],[1.0.0],[daniel.mapleson@earlham.ac.uk],[portcullis],[http://www.earlham.ac.uk])
 AC_CONFIG_SRCDIR([src/portcullis.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
@@ -95,7 +95,7 @@ if test "$with_samtools" == no ; then
     AC_MSG_ERROR([samtools not found])
 fi 
 
-AM_PATH_PYTHON([], [], AC_MSG_ERROR([Python interpreter not found.]))
+#AM_PATH_PYTHON([], [], AC_MSG_ERROR([Python interpreter not found.]))
 
 AX_PYTHON_DEVEL([>= '3.1'])
 
@@ -107,12 +107,14 @@ if [[ -z "${PYTHON_EXTRA_LIBS}" ]]; then
     AC_MSG_ERROR([Python3 detected but Python3 development library was not found. If running on a debian system try "sudo apt-get install python3-dev".])
 fi
 
+pybin=python${PYTHON_VERSION}
+
 # Check for required python libraries
-AX_PYTHON_MODULE(numpy, [AC_MSG_ERROR([numpy not found])], python3)
-AX_PYTHON_MODULE(matplotlib, [AC_MSG_ERROR([matplotlib not found])], python3)
-AX_PYTHON_MODULE(scipy, [AC_MSG_ERROR([scipy not found])], python3)
-AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], python3)
-AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], python3)     
+AX_PYTHON_MODULE(numpy, [AC_MSG_ERROR([numpy not found])], ${pybin})
+AX_PYTHON_MODULE(matplotlib, [AC_MSG_ERROR([matplotlib not found])], ${pybin})
+AX_PYTHON_MODULE(scipy, [AC_MSG_ERROR([scipy not found])], ${pybin})
+AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], ${pybin})
+AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], ${pybin})     
 
 
 # Check for sphinx executable to build documentation
