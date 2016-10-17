@@ -129,10 +129,12 @@ if [[ "${sphinx}" == "yes" ]]; then
     minor_size=${#sphinx_minor_version}
     if (( ("${major_size}" > 2) || ("${minor_size}" > 2) )); then sphinx_major_version=0; sphinx_minor_version=0; fi
     if (( ("${sphinx_major_version}" < 1 ) || (  ( "${sphinx_major_version}" >= 1 ) && ( "${sphinx_minor_version}" < 3 ) ) )); then
-        AC_MSG_ERROR([Sphinx detected, but version is too old.  Cant create documentation.])
+        AC_MSG_WARN([Sphinx detected, but version is too old.  Cant create documentation.])
+        sphinx="no"
     fi
 else
-    AC_MSG_ERROR([Sphinx not detected, cant create documentation.])    
+    AC_MSG_WARN([Sphinx not detected, cant create documentation.])
+    sphinx="no"  
 fi
 AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
 AC_SUBST([MAKE_DOCS])
@@ -169,3 +171,9 @@ AM_LIBS="${M_LIB} ${DL_LIB} ${BOOST_LIBS} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS} ${
 AC_SUBST([AM_LIBS])
 
 AC_OUTPUT
+
+if [[ "${sphinx}" == "no" ]]; then
+    AC_MSG_WARN([Sphinx not detected, or version is too old.  Wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.io/en/latest/])    
+else
+    AC_MSG_NOTICE([Building documentation with sphinx])
+fi
