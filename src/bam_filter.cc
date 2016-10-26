@@ -59,7 +59,7 @@ portcullis::BamFilter::BamFilter(const path& _junctionFile, const path& _bamFile
                     "Could not find junction file at: ") + junctionFile.string()));
     }
 
-    // Test if provided genome exists
+    // Test if provided BAM exists
     if (!bfs::exists(bamFile)) {
         BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
                     "Could not find BAM file at: ") + bamFile.string()));
@@ -182,12 +182,19 @@ void portcullis::BamFilter::filter() {
     shared_ptr<RefSeqPtrList> refs = reader.createRefList();
     js.setRefs(refs);
 
-    if (!bfs::exists(outputBam.parent_path())) {
-        if (!bfs::create_directory(outputBam.parent_path())) {
+    path outDir = outputBam.parent_path();
+    
+    if (!bfs::exists(outDir)) {
+        if (!bfs::create_directories(outDir)) {
             BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
-                    "Could not create output directory: ") + outputBam.parent_path().string()));
+                    "Could not create output directory at: ") + outDir.string()));
         }
     }
+    else if (!bfs::is_directory(outDir)) {
+        BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
+                    "File exists with name of suggested output directory: ") + outDir.string()));            
+    }
+    
     
     cout << " - Processing alignments from: " << bamFile << endl;
 
