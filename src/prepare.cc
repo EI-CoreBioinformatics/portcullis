@@ -358,7 +358,7 @@ void portcullis::Prepare::prepare(vector<path> bamFiles, const path& originalGen
         }
     }
     
-    bool validIndexingMode = checkIndexMode(output->getGenomeFilePath(), useCsi);
+    bool validIndexingMode = checkIndexMode(output->getGenomeIndexFilePath(), useCsi);
     
     if (!validIndexingMode) {
         BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
