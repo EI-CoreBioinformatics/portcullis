@@ -4,6 +4,7 @@ import bed12
 
 
 class TabEntry:
+	id = ""
 	chrom = ""
 	start = 0
 	end = 0
@@ -42,12 +43,62 @@ class TabEntry:
 	def __hash__(self):
 		return hash(self.__key__())
 
+	def getRaw(self):
+		return self.M2
+
+	def getReliable(self):
+		return self.M4
+
+	def getEntropy(self):
+		return self.M11
+
+	def getEntropyAsStr(self):
+		return "{0:.2f}".format(self.getEntropy())
+
+	def getMaxMMES(self):
+		return self.M12
+
+	def getMinHamming(self):
+		return min(self.M13, self.M14)
+
 	@property
 	def key(self):
 		return (self.chrom, self.start, self.end)
 
 	def makeMatrixRow(self):
 		return [self.M2, self.M3, self.M4, self.M8, self.M9, self.M10, self.M11, self.M12, self.M13, self.M14]
+
+	def toExonGFF(self, source="portcullis"):
+		parts = [self.chrom, source, "match", self.left + 1, self.right + 1, 0.0, self.strand, ".",
+				"ID=" + self.id + ";" +
+				"Note=cov:" + str(self.getRaw()) + "|rel:" + str(self.getReliable()) + "|ent:" + self.getEntropyAsStr() + "|maxmmes:" + str(self.getMaxMMES()) + "|ham:" + str(
+					self.getMinHamming()) + ";" +
+				"mult=" + str(self.getRaw()) + ";" +
+				"grp=" + str(self.id) + ";" +
+				"src=E;"
+				]
+		print("\t".join([str(_) for _ in parts]))
+
+		parts = [self.chrom, source, "match_part", self.left + 1, self.start, 0.0, self.strand, ".",
+				 "ID=" + self.id + "_left;" +
+				 "Parent=" + self.id]
+		print("\t".join([str(_) for _ in parts]))
+
+		parts = [self.chrom, source, "match_part", self.end + 2, self.right + 1, 0.0, self.strand, ".",
+				 "ID=" + self.id + "_right;" +
+				 "Parent=" + self.id]
+		print("\t".join([str(_) for _ in parts]))
+
+	def toIntronGFF(self, source="portcullis"):
+		parts = [self.chrom, source, "intron", self.start + 1, self.end + 1, self.getRaw(), self.strand, ".",
+				"ID=" + self.id + ";" +
+				"Note=cov:" + str(self.getRaw()) + "|rel:" + str(self.getReliable()) + "|ent:" + self.getEntropyAsStr() + "|maxmmes:" + str(self.getMaxMMES()) + "|ham:" + str(
+					self.getMinHamming()) + ";" +
+				"mult=" + str(self.getRaw()) + ";" +
+				"grp=" + self.id + ";" +
+				"src=E;"
+				]
+		print("\t".join([str(_) for _ in parts]))
 
 	@staticmethod
 	def features():
@@ -76,6 +127,7 @@ class TabEntry:
 
 		parts = line.split("\t")
 
+		b.id = str(parts[0])
 		b.chrom = parts[2]
 		b.left = int(parts[6])
 		b.right = int(parts[7])

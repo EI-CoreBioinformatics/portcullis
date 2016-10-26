@@ -17,7 +17,6 @@ libportcullis_la_SOURCES =	\
 	src/genome_mapper.cc \
 	src/markov_model.cc \
 	src/model_features.cc \
-	src/python_exe.cc \
 	src/intron.cc \
 	src/junction.cc \
 	src/junction_system.cc \

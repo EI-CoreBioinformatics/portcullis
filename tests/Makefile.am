@@ -47,6 +47,7 @@ check_unit_tests_LDFLAGS =	-L../lib \
 				@LDFLAGS@
 	
 check_unit_tests_LDADD =	libgtest.la \
+				-lz \
 				-lportcullis \
 				-lphts \
 				-lranger \

@@ -8,6 +8,7 @@ import sys
 import argparse
 
 import bed12
+import tab
 
 
 __author__ = "Dan Mapleson"
@@ -54,6 +55,24 @@ def sortandprint(junctions):
             j.cov) + "\t" + j.strand + "\t" + str(j.start) + "\t" + str(j.end) + "\t255,0,0\t2\t0,0\t0,0")
 
         index += 1
+
+def tab2egff(args):
+    with open(args.input) as f:
+        # Skip header
+        f.readline()
+
+        for line in f:
+            b = tab.TabEntry.create_from_tabline(line)
+            print(b.toExonGFF(source=args.source))
+
+def tab2igff(args):
+    with open(args.input) as f:
+        # Skip header
+        f.readline()
+
+        for line in f:
+            b = tab.TabEntry.create_from_tabline(line)
+            print(b.toIntronGFF(source=args.source))
 
 
 def ebed2ibed(args):
@@ -350,6 +369,19 @@ def main():
     subparsers = parser.add_subparsers(
         title="Conversion options")
 
+    tab2egff_parser = subparsers.add_parser("tab2egff",
+                                             help="Converts a portcullis TAB file to a GFF file containing exon anchors.")
+    tab2egff_parser.add_argument("-s", "--source", help="Use this value in the source column of the GFF")
+    tab2egff_parser.add_argument("input", help="The portcullis TAB file to convert")
+    tab2egff_parser.set_defaults(func=tab2egff)
+
+    tab2igff_parser = subparsers.add_parser("tab2igff",
+                                             help="Converts a portcullis TAB file to an intron based GFF file (doesn't contain exon anchors).")
+
+    tab2igff_parser.add_argument("-s", "--source", help="Use this value in the source column of the GFF")
+    tab2igff_parser.add_argument("input", help="The portcullis TAB file to convert")
+    tab2igff_parser.set_defaults(func=tab2igff)
+
     ebed2ibed_parser = subparsers.add_parser("ebed2ibed",
                                              help="Converts a portcullis BED file (containing exon anchors - as produced by the main executable) to a pure intron-based BED 12 file (no exon anchors).")
 
@@ -411,7 +443,7 @@ def main():
 
     ss2ibed_parser.add_argument("input", help="The soapsplice tab delimited junction file to convert")
     ss2ibed_parser.set_defaults(func=ss2ibed)
-    
+
     ms2ibed_parser = subparsers.add_parser("mapsplice2ibed",
                                            help="Converts a mapsplice junction file to a portcullis (intron-based - no anchors) BED file.")
 
