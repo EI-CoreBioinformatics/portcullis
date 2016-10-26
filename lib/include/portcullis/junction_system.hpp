@@ -156,7 +156,7 @@ public:
     
     void saveAll(const path& outputPrefix, const string& source);
     
-    void saveAll(const path& outputPrefix, const string& source, bool bedscore);
+    void saveAll(const path& outputPrefix, const string& source, bool bedscore, bool outputExonGFF, bool outputIntronGFF);
     
     void outputDescription(std::ostream &strm);
     
@@ -172,11 +172,11 @@ public:
         return strm;
     }
     
-    void outputJunctionGFF(std::ostream &strm, const string& source);
+    void writeExonGFF(std::ostream &strm, const string& source);
     
-    void outputIntronGFF(std::ostream &strm, const string& source);
+    void writeIntronGFF(std::ostream &strm, const string& source);
     
-    void outputGTF(std::ostream &strm) {}
+    //void outputGTF(std::ostream &strm) {}
     
     void outputBED(string& path, CanonicalSS type, const string& prefix, bool bedscore);
     

@@ -475,7 +475,7 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
     // Declare the supported options.
-    po::options_description generic_options(helpMessage(), w.ws_col, (unsigned)((double)w.ws_col/1.7));
+    po::options_description generic_options("Options", w.ws_col, (unsigned)((double)w.ws_col/1.5));
     generic_options.add_options()
             ("output,o", po::value<path>(&outputDir)->default_value(DEFAULT_PREP_OUTPUT_DIR), 
                 "Output directory for prepared files.")
@@ -518,7 +518,10 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
 
     // Output help information the exit if requested
     if (help || argc <= 1) {
-        cout << generic_options << endl;
+        cout << title() << endl << endl
+                << description() << endl << endl
+                << "Usage: " << usage() << endl << endl      
+                << generic_options << endl;
         return 1;
     }
 

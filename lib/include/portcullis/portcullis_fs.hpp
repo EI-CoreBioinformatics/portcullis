@@ -235,8 +235,6 @@ namespace portcullis {
         bool IsRelative() const {
             return isRelative;
         }
-
-
         
         friend std::ostream& operator<<(std::ostream &strm, const PortcullisFS& pfs) {
             

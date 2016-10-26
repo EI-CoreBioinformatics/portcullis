@@ -78,13 +78,13 @@ Mode parseMode(string mode) {
     
     string upperMode = boost::to_upper_copy(mode);
     
-    if (upperMode == string("PREP")) {
+    if (upperMode == string("PREP") || upperMode == string("PREPARE")) {
         return PREP;                
     }
-    else if (upperMode == string("JUNC")) {
+    else if (upperMode == string("JUNC") || upperMode == string("ANALYSE") || upperMode == string("ANALYZE")) {
         return JUNC;
     }
-    else if (upperMode == string("FILTER")) {
+    else if (upperMode == string("FILTER") || upperMode == string("FILT")) {
         return FILTER;
     }
     else if (upperMode == string("BAMFILT")) {
@@ -102,30 +102,40 @@ Mode parseMode(string mode) {
     }
 }
 
-string helpHeader() {
-    return string("\nPortcullis Help.\n\n") +
-                  "Portcullis is a tool to identify genuine splice junctions using aligned RNAseq reads\n\n" +
-                  "Usage: portcullis [options] <mode> <mode_args>\n\n" +
-                  "Available modes:\n\n" +
-                  " - full    - Runs prep, junc, filter and bamfilt as a complete pipeline\n\n" +
-                  "******** Portcullis sub-steps ******************************\n\n" +
-                  " - prep    - Prepares a genome and bam file(s) ready for junction analysis\n" +
-                  " - junc    - Perform junction analysis on prepared data\n" +
-                  " - filter  - Discard unlikely junctions and produce BAM containing alignments\n" +
-                  "             to genuine junctions\n" +
-                  " - bamfilt - Filters a BAM to remove any reads associated with invalid\n" +
-                  "             junctions\n\n" + 
-                  "******** Miscellaneous **************************************\n\n" +
-                  " - train   - Train a random forest model to use for filtering junctions\n" +
-                  "\nOptions";
+string title() {
+    return string("Portcullis Help");
 }
 
-static string fullHelp() {
-    return string("\nPortcullis Full Pipeline Mode Help.\n\n") +
-                  "Runs prep, junc, filter, and optionally bamfilt, as a complete pipeline.  Assumes\n" +
-                  "that the self-trained machine learning approach for filtering is to be used.\n\n" + 
-                  "Usage: portcullis full [options] <genome-file> (<bam-file>)+ \n\n" +
-                  "Options";
+string description() {
+    return string("Portcullis is a tool to identify genuine splice junctions using aligned RNAseq reads");                  
+}
+
+string usage() {
+    return string("portcullis [options] <mode> <mode_args>");
+}
+
+string modes() {
+    return string(
+                  " - full    - Full pipeline.  Runs prep, junc, filt (and optionally bamfilt) in sequence\n") +
+                  " - prep    - Step 1: Prepares a genome and bam file(s) ready for junction analysis\n" +
+                  " - junc    - Step 2: Perform junction analysis on prepared data\n" +
+                  " - filt    - Step 3: Discard unlikely junctions and produce BAM containing alignments\n" +
+                  "             to genuine junctions\n" +
+                  " - bamfilt - Step 4: Filters a BAM to remove any reads associated with invalid\n" +
+                  "             junctions";
+}
+
+string fulltitle() {
+    return string("Portcullis Full Pipeline Mode Help");
+}
+
+string fulldescription() {
+    return string("Runs prep, junc, filter, and optionally bamfilt, as a complete pipeline.  Assumes\n") +
+                  "that the self-trained machine learning approach for filtering is to be used.";
+}
+
+string fullusage() {
+    return string("portcullis full [options] <genome-file> (<bam-file>)+");
 }
 
 
@@ -142,6 +152,8 @@ int mainFull(int argc, char *argv[]) {
     bool force;
     bool useCsi;
     bool saveBad;
+    bool exongff;
+    bool introngff;
     bool bamFilter;
     string source;
     uint32_t max_length;
@@ -153,20 +165,44 @@ int mainFull(int argc, char *argv[]) {
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
     // Declare the supported options.
-    po::options_description generic_options(fullHelp(), w.ws_col, (unsigned)((double)w.ws_col/1.7));
-    generic_options.add_options()
+    
+    po::options_description system_options("System options", w.ws_col, (unsigned)((double)w.ws_col/1.5));
+    system_options.add_options()
+            ("threads,t", po::value<uint16_t>(&threads)->default_value(1),
+                "The number of threads to use.  Note that increasing the number of threads will also increase memory requirements.  Default: 1")
+            ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
+                "Print extra information")
+            ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
+            ;
+    
+    po::options_description output_options("Output options", w.ws_col, (unsigned)((double)w.ws_col/1.5));
+    output_options.add_options()    
             ("output,o", po::value<path>(&outputDir)->default_value("portcullis_out"), 
                 "Output directory. Default: portcullis_out")
-            ("force", po::bool_switch(&force)->default_value(false), 
-                "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
+            ("bam_filter,b", po::bool_switch(&bamFilter)->default_value(false), 
+                "Filter out alignments corresponding with false junctions.  Warning: this is time consuming; make sure you really want to do this first!")
+            ("exon_gff", po::bool_switch(&exongff)->default_value(false),
+                "Output exon-based junctions in GFF format.")
+            ("intron_gff", po::bool_switch(&introngff)->default_value(false),
+                "Output intron-based junctions in GFF format.")
+            ("source", po::value<string>(&source)->default_value("portcullis"),
+                "The value to enter into the \"source\" field in GFF files.")
+            ;
+    
+    po::options_description prepare_options("Preparation options", w.ws_col, (unsigned)((double)w.ws_col/1.5));
+    prepare_options.add_options()    
             ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unknown\"")
+            ("force", po::bool_switch(&force)->default_value(false), 
+                "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
             ("copy", po::bool_switch(&copy)->default_value(false), 
                 "Whether to copy files from input data to prepared data where possible, otherwise will use symlinks.  Will require more time and disk space to prepare input but is potentially more robust.")
             ("use_csi", po::bool_switch(&useCsi)->default_value(false), 
                 "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
-            ("threads,t", po::value<uint16_t>(&threads)->default_value(1),
-                "The number of threads to use.  Default: 1")
+            ;
+    
+    po::options_description filter_options("Filtering options", w.ws_col, (unsigned)((double)w.ws_col/1.5));
+    filter_options.add_options()            
             ("reference,r", po::value<path>(&referenceFile),
                 "Reference annotation of junctions in BED format.  Any junctions found by the junction analysis tool will be preserved if found in this reference file regardless of any other filtering criteria.  If you need to convert a reference annotation from GTF or GFF to BED format portcullis contains scripts for this.")
             ("max_length", po::value<uint32_t>(&max_length)->default_value(0),
@@ -174,14 +210,7 @@ int mainFull(int argc, char *argv[]) {
             ("canonical,c", po::value<string>(&canonical)->default_value("OFF"),
                 "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GT-AG), S = Semi-canonical junctions (AT-AC, or  GC-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")
             ("save_bad", po::bool_switch(&saveBad)->default_value(false),
-                "Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)")            
-            ("bam_filter,b", po::bool_switch(&bamFilter)->default_value(false), 
-                "Filter out alignments corresponding with false junctions.  Warning: this is time consuming; make sure you really want to do this first!")
-            ("source", po::value<string>(&source)->default_value("portcullis"),
-                "The value to enter into the \"source\" field in GFF files.")
-            ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
-                "Print extra information")
-            ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
+                "Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)") 
             ;
 
     // Hidden options, will be allowed both on command line and
@@ -197,9 +226,13 @@ int mainFull(int argc, char *argv[]) {
     p.add("genome-file", 1);
     p.add("bam-files", -1);
 
-    // Combine non-positional options
+    // Combine non-positional options for displaying to the user
+    po::options_description display_options;
+    display_options.add(system_options).add(output_options).add(prepare_options).add(filter_options);
+    
+    // Combine non-positional options for use at the command line    
     po::options_description cmdline_options;
-    cmdline_options.add(generic_options).add(hidden_options);
+    cmdline_options.add(display_options).add(hidden_options);
 
     // Parse command line
     po::variables_map vm;        
@@ -208,7 +241,10 @@ int mainFull(int argc, char *argv[]) {
 
     // Output help information the exit if requested
     if (help || argc <= 1) {
-        cout << generic_options << endl;
+        cout << fulltitle() << endl << endl
+                << fulldescription() << endl << endl
+                << "Usage: " << fullusage() << endl
+                << display_options << endl << endl;
         return 1;
     }
 
@@ -275,6 +311,8 @@ int mainFull(int argc, char *argv[]) {
     jb.setStrandSpecific(strandednessFromString(strandSpecific));
     jb.setSource(source);
     jb.setUseCsi(useCsi);
+    jb.setOutputExonGFF(exongff);
+    jb.setOutputIntronGFF(introngff);
     jb.setVerbose(verbose);
     
     jb.process();
@@ -296,6 +334,8 @@ int mainFull(int argc, char *argv[]) {
     filter.setTrain(true);
     filter.setThreads(threads);
     filter.setENN(false);
+    filter.setOutputExonGFF(exongff);
+    filter.setOutputIntronGFF(introngff);
     filter.setSaveBad(saveBad);
     filter.filter();
 
@@ -336,7 +376,7 @@ int main(int argc, char *argv[]) {
         ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
     
         // Declare the supported options.
-        po::options_description generic_options(helpHeader(), w.ws_col, (unsigned)((double)w.ws_col/1.7));
+        po::options_description generic_options("Options", w.ws_col, (unsigned)((double)w.ws_col/1.7));
         generic_options.add_options()
                 ("verbose,v", po::bool_switch(&verbose)->default_value(false), "Print extra information")
                 ("version", po::bool_switch(&version)->default_value(false), "Print version string")
@@ -390,7 +430,12 @@ int main(int argc, char *argv[]) {
         
         // Output help information the exit if requested
         if (argc == 1 || (argc == 2 && verbose) || (argc == 2 && help) || (argc == 3 && verbose && help)) {
-            cout << generic_options << endl;
+            
+            cout << title() << endl << endl
+                    << description() << endl << endl
+                    << "Modes:" << endl << modes() << endl << endl
+                    << "Usage: " << usage() << endl << endl
+                    << generic_options << endl << endl;
             return 1;
         }
 

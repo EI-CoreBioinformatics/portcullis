@@ -375,17 +375,17 @@ void portcullis::JunctionSystem::sort() {
 }
 
 void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string& source) {
-    saveAll(outputPrefix, source, false);
+    saveAll(outputPrefix, source, false, false, false);
 }
 
-void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string& source, bool bedscore) {
+void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string& source, bool bedscore, bool outputExonGFF, bool outputIntronGFF) {
 
     auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");
 
     string junctionReportPath = outputPrefix.string() + ".junctions.txt";
     string junctionFilePath = outputPrefix.string() + ".junctions.tab";
-    string junctionGFFPath = outputPrefix.string() + ".junctions.gff3";
-    string intronGFFPath = outputPrefix.string() + ".introns.gff3";
+    string junctionGFFPath = outputPrefix.string() + ".junctions.exon.gff3";
+    string intronGFFPath = outputPrefix.string() + ".junctions.intron.gff3";
     string junctionBEDAllPath = outputPrefix.string() + ".junctions.bed";
 
     /*cout << " - Saving junction report to: " << junctionReportPath << " ... ";
@@ -406,26 +406,32 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string&
     junctionFileStream.close();
 
     cout << "done." << endl;
-    /*cout << " - Saving junction GFF file to: " << junctionGFFPath << " ... ";
-    cout.flush();
+    
+    if (outputExonGFF) {
+        cout << " - Saving junction GFF file to: " << junctionGFFPath << " ... ";
+        cout.flush();
 
-    // Print junction stats to file
-    ofstream junctionGFFStream(junctionGFFPath.c_str());
-    outputJunctionGFF(junctionGFFStream, source);
-    junctionGFFStream.close();
+        // Print junction stats to file
+        ofstream junctionGFFStream(junctionGFFPath.c_str());
+        writeExonGFF(junctionGFFStream, source);
+        junctionGFFStream.close();
 
-    cout << "done." << endl
-            << " - Saving intron GFF file to: " << intronGFFPath << " ... ";
-    cout.flush();
+        cout << "done." << endl;
+    }
+    
+    if (outputIntronGFF) {
+        cout << " - Saving intron GFF file to: " << intronGFFPath << " ... ";
+        cout.flush();
 
-    // Print junction stats to file
-    ofstream intronGFFStream(intronGFFPath.c_str());
-    outputIntronGFF(intronGFFStream, source);
-    intronGFFStream.close();
-
-    // Output BED files
-
-    cout << "done." << endl*/
+        // Print junction stats to file
+        ofstream intronGFFStream(intronGFFPath.c_str());
+        writeIntronGFF(intronGFFStream, source);
+        intronGFFStream.close();
+        
+        cout << "done." << endl;
+    }
+    
+    // Output BED files            
     cout << " - Saving BED file with all junctions to: " << junctionBEDAllPath << " ... ";
     cout.flush();
 
@@ -445,7 +451,7 @@ void portcullis::JunctionSystem::outputDescription(std::ostream &strm) {
     }
 }
 
-void portcullis::JunctionSystem::outputJunctionGFF(std::ostream &strm, const string& source) {
+void portcullis::JunctionSystem::writeExonGFF(std::ostream &strm, const string& source) {
 
     uint64_t i = 0;
     for (JunctionPtr j : junctionList) {
@@ -453,7 +459,7 @@ void portcullis::JunctionSystem::outputJunctionGFF(std::ostream &strm, const str
     }
 }
 
-void portcullis::JunctionSystem::outputIntronGFF(std::ostream &strm, const string& source) {
+void portcullis::JunctionSystem::writeIntronGFF(std::ostream &strm, const string& source) {
 
     uint64_t i = 0;
     for (JunctionPtr j : junctionList) {

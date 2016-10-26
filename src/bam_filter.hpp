@@ -190,12 +190,18 @@ public:
     
     void filter();
   
-    static string helpMessage() {
-        return string("\nPortcullis BAM Filter Mode Help.\n\n") +
-                      "Removes alignments associated with bad junctions from BAM file\n\n" + 
-                      "Usage: portcullis bamfilt [options] <junction-file> <bam-file>\n\n" +
-                      "Options";
+    static string title() {
+        return string("Portcullis BAM Filter Mode Help.");
     }
+    
+    static string description() {
+        return string("Removes alignments associated with bad junctions from BAM file");
+    }
+    
+    static string usage() {
+        return string("portcullis bamfilt [options] <junction-file> <bam-file>");
+    }
+    
     
     static int main(int argc, char *argv[]);
 };

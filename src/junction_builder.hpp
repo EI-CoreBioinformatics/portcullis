@@ -90,6 +90,8 @@ private:
     bool extra;
     bool separate;
     bool useCsi;
+    bool outputExonGFF;
+    bool outputIntronGFF;
     string source;
     bool verbose;
     
@@ -201,6 +203,22 @@ public:
     void setUseCsi(bool useCsi) {
         this->useCsi = useCsi;
     }
+            
+    bool isOutputExonGFF() const {
+        return outputExonGFF;
+    }
+
+    void setOutputExonGFF(bool outputExonGFF) {
+        this->outputExonGFF = outputExonGFF;
+    }
+
+    bool isOutputIntronGFF() const {
+        return outputIntronGFF;
+    }
+
+    void setOutputIntronGFF(bool outputIntronGFF) {
+        this->outputIntronGFF = outputIntronGFF;
+    }
 
 
     
@@ -212,13 +230,18 @@ public:
      */
     void process();
     
-    static string helpMessage() {
-        return string("\nPortcullis Junction Builder Mode Help.\n\n") +
-                      "Analyses all potential junctions found in the input BAM file.\n" +
+    static string title() {
+        return string("Portcullis Junction Builder Mode Help");
+    }
+    
+    static string description() {
+        return string("Analyses all potential junctions found in the input BAM file.\n") +
                       "Run \"portcullis prep ...\" to generate data suitable for junction finding\n" +
-                      "before running \"portcullis junc ...\"\n\n" +
-                      "Usage: portcullis junc [options] <prep_data_dir> \n\n" +
-                      "Options";
+                      "before running \"portcullis junc ...\"";
+    }
+    
+    static string usage() {
+        return string("portcullis junc [options] <prep_data_dir>");
     }
     
     static int main(int argc, char *argv[]);
