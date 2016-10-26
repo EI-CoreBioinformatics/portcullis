@@ -335,7 +335,9 @@ public:
                       "trained model.  Second the user can specify a configuration file describing a\n" +
                       "set of filtering rules to apply.  Third, the user can directly through the\n" +
                       "command line filter based on junction (intron) length, or the canonical label.\n\n" +
-                      "Usage: portcullis filter [options] <prep_data_dir> <junction_file>\n\n" +
+                      "This stage requires the prep directory and the tab file generated from the\n" +
+                      "stage as input.\n\n" +
+                      "Usage: portcullis filter [options] <prep_data_dir> <junction_tab_file>\n\n" +
                       "Options";
     }
     

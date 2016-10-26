@@ -975,13 +975,13 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             ("max_length,l", po::value<int32_t>(&max_length)->default_value(0),
             "Filter junctions longer than this value.  Default (0) is to not filter based on length.")
             ("canonical,c", po::value<string>(&canonical)->default_value("OFF"),
-            "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GU-AG), S = Semi-canonical junctions (AT-AC, or  GT-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")
+            "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GT-AG), S = Semi-canonical junctions (AT-AC, or GC-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")
             ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_FILTER_THREADS),
             "The number of threads to use during testing (only applies if using forest model).")
             ("enn", po::bool_switch(&enn)->default_value(false),
                 "Use this flag to enable Edited Nearest Neighbour to clean decision region")
             ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD),
-                "The threshold score at which we determine a junction to be genuine or not.  Increase value towards 0.0 to increase precision, decrease towards 0.0 to increase sensitivity.  We generally find that increasing sensitivity helps when using high coverage data, or when the aligner has already performed some form of junction filtering.")
+                "The threshold score at which we determine a junction to be genuine or not.  Increase value towards 1.0 to increase precision, decrease towards 0.0 to increase sensitivity.  We generally find that increasing sensitivity helps when using high coverage data, or when the aligner has already performed some form of junction filtering.")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false),
             "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
@@ -992,7 +992,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
             ("prep_data_dir,i", po::value<path>(&prepDir), "Path to directory containing prepared data.")
-            ("junction_file", po::value<path>(&junctionFile), "Path to the junction file to process.")            
+            ("junction_file", po::value<path>(&junctionFile), "Path to the junction tab file to process.")            
             ("no_smote", po::bool_switch(&no_smote)->default_value(false),
                 "Use this flag to disable synthetic oversampling")            
             ;

@@ -122,7 +122,8 @@ string helpHeader() {
 
 static string fullHelp() {
     return string("\nPortcullis Full Pipeline Mode Help.\n\n") +
-                  "Runs prep, junc, filter and bamfilt as a complete pipeline\n\n" + 
+                  "Runs prep, junc, filter, and optionally bamfilt, as a complete pipeline.  Assumes\n" +
+                  "that the self-trained machine learning approach for filtering is to be used.\n\n" + 
                   "Usage: portcullis full [options] <genome-file> (<bam-file>)+ \n\n" +
                   "Options";
 }
@@ -140,6 +141,7 @@ int mainFull(int argc, char *argv[]) {
     bool copy;
     bool force;
     bool useCsi;
+    bool saveBad;
     bool bamFilter;
     string source;
     uint32_t max_length;
@@ -170,9 +172,11 @@ int mainFull(int argc, char *argv[]) {
             ("max_length", po::value<uint32_t>(&max_length)->default_value(0),
                 "Filter junctions longer than this value.  Default (0) is to not filter based on length.")
             ("canonical,c", po::value<string>(&canonical)->default_value("OFF"),
-                "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GU-AG), S = Semi-canonical junctions (AT-AC, or  GT-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")
+                "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GT-AG), S = Semi-canonical junctions (AT-AC, or  GC-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")
+            ("save_bad", po::bool_switch(&saveBad)->default_value(false),
+                "Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)")            
             ("bam_filter,b", po::bool_switch(&bamFilter)->default_value(false), 
-                "Filter out alignments corresponding with false junctions")
+                "Filter out alignments corresponding with false junctions.  Warning: this is time consuming; make sure you really want to do this first!")
             ("source", po::value<string>(&source)->default_value("portcullis"),
                 "The value to enter into the \"source\" field in GFF files.")
             ("verbose,v", po::bool_switch(&verbose)->default_value(false), 
@@ -292,6 +296,7 @@ int mainFull(int argc, char *argv[]) {
     filter.setTrain(true);
     filter.setThreads(threads);
     filter.setENN(false);
+    filter.setSaveBad(saveBad);
     filter.filter();
 
     

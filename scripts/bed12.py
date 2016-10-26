@@ -139,7 +139,7 @@ class BedEntry:
 		b.start = int(parts[1])
 		b.end = int(parts[2])
 		b.name = parts[3]
-		b.score = int(parts[4])
+		b.score = float(parts[4])
 		b.strand = parts[5]
 		b.thick_start = int(parts[6])
 		b.thick_end = int(parts[7])
@@ -180,7 +180,7 @@ class BedEntry:
 		b.start = int(parts[6])
 		b.end = int(parts[7]) + 1
 		b.strand = parts[12]
-		b.score = int(parts[14])
+		b.score = float(parts[14])
 		b.thick_start = int(parts[4])
 		b.thick_end = int(parts[5]) + 1
 		b.name = "junc"
