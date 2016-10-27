@@ -5,37 +5,43 @@ import bed12
 
 class TabEntry:
 	id = ""
-	chrom = ""
+	refid = ""
+	refname = ""
+	reflen = 0
 	start = 0
 	end = 0
 	left = 0
 	right = 0
-	strand = "?"
-	# M1 = "N"
-	M2 = 0
-	M3 = 0
-	M4 = 0
-	# M5 = 0
-	# M6 = 0
-	# M7 = 0
-	M8 = 0
-	M9 = 0
-	M10 = 0
-	M11 = 0.0
-	M12 = 0
-	M13 = 0
-	M14 = 0
+	ss1 = ""
+	ss2 = ""
+	read_strand = "."
+	ss_strand = "."
+	consensus_strand = "."
 
-	# M15 = 0.0
+	metrics = [29]
+
+	mql = ""
+	suspect = False
+	pfp = False
+
+	jo = [20]
 
 	def __init__(self):
 		self.data = []
 
 	def __str__(self):
-		line = [self.chrom, self.start, self.end, self.left, self.right, self.strand,
-				self.M2, self.M3, self.M4, self.M8, self.M9, self.M10, self.M11, self.M12, self.M13, self.M14
-				]
-		return "\t".join([str(_) for _ in line])
+		id_parts = [self.id, self.refid, self.refname, self.reflen, self.start, self.end, self.left, self.right,
+				self.ss1, self.ss2,
+				self.read_strand, self.ss_strand, self.consensus_strand]
+		jo_parts = [self.mql, self.suspect, self.pfp]
+
+		chunks = []
+		chunks.append("\t".join([str(_) for _ in id_parts]))
+		chunks.append("\t".join([str(_) for _ in self.metrics]))
+		chunks.append("\t".join([str(_) for _ in jo_parts]))
+		chunks.append("\t".join([str(_) for _ in self.jo]))
+
+		return "\t".join(chunks)
 
 	def __key__(self):
 		return (self.chrom.encode(), self.start, self.end)
@@ -44,29 +50,26 @@ class TabEntry:
 		return hash(self.__key__())
 
 	def getRaw(self):
-		return self.M2
+		return self.metrics[1]
 
 	def getReliable(self):
-		return self.M4
+		return self.metrics[3]
 
 	def getEntropy(self):
-		return self.M11
+		return self.metrics[10]
 
 	def getEntropyAsStr(self):
 		return "{0:.2f}".format(self.getEntropy())
 
 	def getMaxMMES(self):
-		return self.M12
+		return self.metrics[11]
 
 	def getMinHamming(self):
-		return min(self.M13, self.M14)
+		return min(self.metrics[12], self.metrics[13])
 
 	@property
 	def key(self):
-		return (self.chrom, self.start, self.end)
-
-	def makeMatrixRow(self):
-		return [self.M2, self.M3, self.M4, self.M8, self.M9, self.M10, self.M11, self.M12, self.M13, self.M14]
+		return (self.chrom, self.start, self.end, self.consensus_strand)
 
 	def toExonGFF(self, source="portcullis"):
 
@@ -107,9 +110,63 @@ class TabEntry:
 		return "\t".join([str(_) for _ in parts])
 
 	@staticmethod
-	def features():
-		return ["M2-nb-reads", "M3-nb_dist_aln", "M4-nb_rel_aln", "M8-max_min_anc", "M9-dif_anc", "M10-dist_anc",
-				"M11-entropy", "M12-maxmmes", "M13-hammping5p", "M14-hamming3p"]
+	def metric_names():
+		return ["M1-canonical_ss",
+				"M2-nb_reads",
+				"M3-nb_dist_aln",
+				"M4-nb_rel_aln",
+				"M5-intron_size",
+				"M6-left_anc_size",
+				"M7-right_anc_size",
+				"M8-max_min_anc",
+				"M9-dif_anc",
+				"M10-dist_anc",
+				"M11-entropy",
+				"M12-maxmmes",
+				"M13-hamming5p",
+				"M14-hamming3p",
+				"M15-coverage",
+				"M16-uniq_junc",
+				"M17-primary_junc",
+				"M18-mm_score",
+				"M19-mean_mismatches",
+				"M20-nb_usrs",
+				"M21-nb_msrs",
+				"M22-rel2raw",
+				"M23-nb_up_juncs",
+				"M24-nb_down_juncs",
+				"M25-up_aln",
+				"M26-down_aln",
+				"M27-dist_2_up_junc",
+				"M28-dist_2_down_junc",
+				"M29-dist_nearest_junc"]
+
+	@staticmethod
+	def jo_names():
+		return ["JO01",
+				"JO02",
+				"JO03",
+				"JO04",
+				"JO05",
+				"JO06",
+				"JO07",
+				"JO08",
+				"JO09",
+				"JO10",
+				"JO11",
+				"JO12",
+				"JO13",
+				"JO14",
+				"JO15",
+				"JO16",
+				"JO17",
+				"JO18",
+				"JO19",
+				"JO20"]
+
+	@staticmethod
+	def strand_names():
+		return ["read-strand", "ss-strand", "consensus-strand"]
 
 	@staticmethod
 	def featureAt(index):
@@ -133,24 +190,32 @@ class TabEntry:
 
 		parts = line.split("\t")
 
+		assert len(parts >= 56)
+
 		b.id = str(parts[0])
-		b.chrom = parts[2]
-		b.left = int(parts[6])
-		b.right = int(parts[7])
-		b.strand = parts[12]
+		b.refid = int(parts[1])
+		b.refname = parts[2]
+		b.reflen = int(parts[3])
 		b.start = int(parts[4])
 		b.end = int(parts[5])
+		b.left = int(parts[6])
+		b.right = int(parts[7])
+		b.ss1 = parts[8]
+		b.ss2 = parts[9]
+		b.read_strand = parts[10]
+		b.ss_strand = parts[11]
+		b.consensus_strand = parts[12]
 
-		b.M2 = int(parts[14])
-		b.M3 = int(parts[15])
-		b.M4 = int(parts[16])
-		b.M8 = int(parts[20])
-		b.M9 = int(parts[21])
-		b.M10 = int(parts[22])
-		b.M11 = float(parts[23])
-		b.M12 = int(parts[24])
-		b.M13 = int(parts[25])
-		b.M14 = int(parts[26])
+		b.metrics = parts[13:32]
+
+		b.mql = parts[33]
+		b.suspect = bool(parts[34])
+		b.pfp = bool(parts[35])
+
+		b.jo = parts[36:56]
+
+		if len(parts > 56):
+			i=0
 
 		return b
 

@@ -5,7 +5,7 @@ __author__ = 'maplesod'
 # Can't use bedtools as bedtools doesn't properly support bed12 files... specifically we need to base our intersections on the
 # thickstart and thickend columns
 
-class BedEntry:
+class BedEntry(Intron):
 	__slots__ = ['__use_strand', 'chrom', 'start', 'end', 'name', 'score', 'strand', 'thick_start', 'thick_end', 'red',
 				 'green', 'blue', 'block_count', 'block_sizes', 'block_starts']
 

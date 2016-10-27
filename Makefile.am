@@ -17,31 +17,20 @@ EXTRA_DIST = \
 # FILES NOT TO INSTALL
 dist_noinst_SCRIPTS = autogen.sh antigen.sh
 
-dist_bin_SCRIPTS =  scripts/analyse_alignments.py \
-		    scripts/analyse_junctions.py \
-		    scripts/bed12.py \
+dist_bin_SCRIPTS =  scripts/bed12.py \
 		    scripts/bed12_set.py \
 		    scripts/bed_merge.py \
 		    scripts/bed_v_ref.py \
 		    scripts/create_ref.py \
-		    scripts/cufflinks2spankicov.py \
-		    scripts/example_pp_ath.yaml \
-		    scripts/filter_junctions.py \
-		    scripts/fs2gff.py \
-		    scripts/hpc.json \
-		    scripts/ml.py \
-		    scripts/pca.py \
 		    scripts/performance.py \
 		    scripts/portcullis_convert.py \
-		    scripts/predict.snakefile \
-		    scripts/read_gen.snakefile \
-		    scripts/snakey.py \
+		    scripts/portcullis_rulefilt.py \
 		    scripts/split_error_classes.py \
 		    scripts/tab.py \
 		    scripts/tab_bed12_set.py \
 		    scripts/tab_in_bedref.py \
-		    scripts/tab_combine.py \
-		    scripts/venn.py
+		    scripts/tab_combine.py
+		    
 		    
 # Config files
 configdir = $(datadir)/portcullis
