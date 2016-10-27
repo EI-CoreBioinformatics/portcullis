@@ -1055,6 +1055,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id, co
          << strand << "\t"          // strand
          << "." << "\t"             // Just put "." for the phase
          << "ID=" << juncId << ";"  // ID of the intron
+         << "Name=" << juncId << ";"  // ID of the intron
          << "Note=cov:" << nbJunctionAlignments 
                         << "|rel:" << this->nbReliableAlignments 
                         << "|ent:" << std::setprecision(4) << this->entropy << std::setprecision(9)

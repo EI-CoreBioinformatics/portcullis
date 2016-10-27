@@ -62,8 +62,10 @@ def tab2egff(args):
         f.readline()
 
         for line in f:
-            b = tab.TabEntry.create_from_tabline(line)
-            print(b.toExonGFF(source=args.source))
+            l = line.strip()
+            if not l == "":
+                b = tab.TabEntry.create_from_tabline(l)
+                print(b.toExonGFF(source=args.source))
 
 def tab2igff(args):
     with open(args.input) as f:
@@ -71,8 +73,10 @@ def tab2igff(args):
         f.readline()
 
         for line in f:
-            b = tab.TabEntry.create_from_tabline(line)
-            print(b.toIntronGFF(source=args.source))
+            l = line.strip()
+            if not l == "":
+                b = tab.TabEntry.create_from_tabline(l)
+                print(b.toIntronGFF(source=args.source))
 
 
 def ebed2ibed(args):
@@ -371,14 +375,14 @@ def main():
 
     tab2egff_parser = subparsers.add_parser("tab2egff",
                                              help="Converts a portcullis TAB file to a GFF file containing exon anchors.")
-    tab2egff_parser.add_argument("-s", "--source", help="Use this value in the source column of the GFF")
+    tab2egff_parser.add_argument("-s", "--source", default="portcullis", help="Use this value in the source column of the GFF")
     tab2egff_parser.add_argument("input", help="The portcullis TAB file to convert")
     tab2egff_parser.set_defaults(func=tab2egff)
 
     tab2igff_parser = subparsers.add_parser("tab2igff",
                                              help="Converts a portcullis TAB file to an intron based GFF file (doesn't contain exon anchors).")
 
-    tab2igff_parser.add_argument("-s", "--source", help="Use this value in the source column of the GFF")
+    tab2igff_parser.add_argument("-s", "--source", default="portcullis",help="Use this value in the source column of the GFF")
     tab2igff_parser.add_argument("input", help="The portcullis TAB file to convert")
     tab2igff_parser.set_defaults(func=tab2igff)
 

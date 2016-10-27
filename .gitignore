@@ -42,3 +42,4 @@ callgrind*
 *.h
 *.ac~
 /portcullis-1.0.0/
+/portcullis-1.0.0_beta2/
