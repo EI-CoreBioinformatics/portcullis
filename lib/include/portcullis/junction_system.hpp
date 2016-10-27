@@ -154,6 +154,8 @@ public:
     
     void sort();
     
+    void index();
+    
     void saveAll(const path& outputPrefix, const string& source);
     
     void saveAll(const path& outputPrefix, const string& source, bool bedscore, bool outputExonGFF, bool outputIntronGFF);
@@ -162,11 +164,10 @@ public:
     
     friend std::ostream& operator<<(std::ostream &strm, const JunctionSystem& js) {
         
-        strm << "index\t" << Junction::junctionOutputHeader() << endl;
+        strm << Junction::junctionOutputHeader() << endl;
         
-        uint64_t i = 0;
         for(const auto& j : js.junctionList) {
-            strm << i++ << "\t" << *j << endl;
+            strm << *j << endl;
         }
         
         return strm;

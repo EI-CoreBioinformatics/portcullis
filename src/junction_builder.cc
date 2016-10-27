@@ -290,6 +290,9 @@ void portcullis::JunctionBuilder::findJunctions() {
     // Make sure the output is properly ordered
     junctionSystem.sort();
     
+    // Add unique identifiers to each junction
+    junctionSystem.index();
+    
     cout << " done." << endl;
     
     // Calculate some alignment stats

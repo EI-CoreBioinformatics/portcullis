@@ -227,6 +227,7 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
     ssStrand = Strand::UNKNOWN;
     consensusStrand = Strand::UNKNOWN;
     score = 0.0;
+    id = 0;
     
     nbUpstreamJunctions = 0;
     nbDownstreamJunctions = 0;
@@ -243,6 +244,7 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
  * @param withAlignments Whether to copy over the alignments or not
  */
 portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
+    id = j.id;
     intron = make_shared<Intron>(*(j.intron));        
     leftAncStart = j.leftAncStart;
     rightAncEnd = j.rightAncEnd;
@@ -999,7 +1001,7 @@ void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string
  * Complete human readable description of this intron (for augustus hints)
  * @param strm
  */
-void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id, const string& source) {
+void portcullis::Junction::outputIntronGFF(std::ostream &strm, const string& source) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
@@ -1035,7 +1037,7 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, uint32_t id, cons
  * Complete human readable description of this junction
  * @param strm
  */
-void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id, const string& source) {
+void portcullis::Junction::outputJunctionGFF(std::ostream &strm, const string& source) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
@@ -1098,7 +1100,7 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, uint32_t id, co
  * Complete human readable description of this junction
  * @param strm
  */
-void portcullis::Junction::outputBED(std::ostream &strm, const string& prefix, uint32_t id, bool bedscore) {
+void portcullis::Junction::outputBED(std::ostream &strm, const string& prefix, bool bedscore) {
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
@@ -1139,7 +1141,7 @@ void portcullis::Junction::outputBED(std::ostream &strm, const string& prefix, u
  * @return 
  */
 string portcullis::Junction::junctionOutputHeader() {
-    return string(Intron::locationOutputHeader()) + "\tleft\tright\tss1\tss2\t" + 
+    return string("index\t") + Intron::locationOutputHeader() + "\tleft\tright\tss1\tss2\t" + 
             boost::algorithm::join(STRAND_NAMES, "\t") + "\t" +
             boost::algorithm::join(METRIC_NAMES, "\t") + "\t" + 
             "MQL\tSuspect\tPFP\t" +
@@ -1177,6 +1179,8 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
         lexical_cast<int32_t>(parts[6]),
         lexical_cast<int32_t>(parts[7])
     );
+    
+    j->setId(lexical_cast<uint32_t>(parts[0]));
 
     // Splice site strings
     j->setDa1(parts[8]);

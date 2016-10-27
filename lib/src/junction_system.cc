@@ -370,8 +370,13 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
 
 
 void portcullis::JunctionSystem::sort() {
-
     std::sort(junctionList.begin(), junctionList.end(), JunctionComparator());
+}
+
+void portcullis::JunctionSystem::index() {
+    for (size_t i = 0; i < this->size(); i++) {
+        junctionList[i]->setId(i);
+    }
 }
 
 void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string& source) {
@@ -443,9 +448,8 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string&
 
 void portcullis::JunctionSystem::outputDescription(std::ostream &strm) {
 
-    uint64_t i = 0;
     for (JunctionPtr j : junctionList) {
-        strm << "Junction " << i++ << ":" << endl;
+        strm << "Junction " << j->getId() << ":" << endl;
         j->outputDescription(strm);
         strm << endl;
     }
@@ -453,17 +457,15 @@ void portcullis::JunctionSystem::outputDescription(std::ostream &strm) {
 
 void portcullis::JunctionSystem::writeExonGFF(std::ostream &strm, const string& source) {
 
-    uint64_t i = 0;
     for (JunctionPtr j : junctionList) {
-        j->outputJunctionGFF(strm, i++, source);
+        j->outputJunctionGFF(strm, source);
     }
 }
 
 void portcullis::JunctionSystem::writeIntronGFF(std::ostream &strm, const string& source) {
 
-    uint64_t i = 0;
     for (JunctionPtr j : junctionList) {
-        j->outputIntronGFF(strm, i++, source);
+        j->outputIntronGFF(strm, source);
     }
 }
 
@@ -476,10 +478,9 @@ void portcullis::JunctionSystem::outputBED(string& path, CanonicalSS type, const
 
 void portcullis::JunctionSystem::outputBED(std::ostream &strm, CanonicalSS type, const string& prefix, bool bedscore) {
     strm << "track name=\"junctions\" description=\"Portcullis V" << (version.empty() ? "X.X.X" : version) << " junctions\"" << endl;
-    uint64_t i = 0;
     for (JunctionPtr j : junctionList) {
         if (type == ALL || j->getSpliceSiteType() == type) {
-            j->outputBED(strm, prefix, i++, bedscore);
+            j->outputBED(strm, prefix, bedscore);
         }
     }
 }
