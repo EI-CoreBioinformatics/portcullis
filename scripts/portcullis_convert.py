@@ -7,8 +7,7 @@ This python script is intended to convert between various junction file formats.
 import sys
 import argparse
 
-import bed12
-import tab
+from portcullis_junction import *
 
 
 __author__ = "Dan Mapleson"
@@ -19,42 +18,10 @@ __maintainer__ = "Dan Mapleson,"
 __email__ = "daniel.mapleson@earlham.ac.uk"
 
 
-class Junction:
-    def __init__(self):
-        self.data = []
-        self.seq = ""
-        self.start = 0
-        self.end = 0
-        self.strand = "."
-        self.cov = 0
-
-    def display(self):
-        print(self.seq + "\t" + str(self.start) + "\t" + str(self.end) + "\t" + self.strand + "\t" + str(self.cov))
-
-    def key(self):
-        return (self.seq, self.start, self.end, self.strand)
-
-
 def decstart(junctions):
     for j in junctions:
         j.start -= 1
 
-
-def sortandprint(junctions):
-    # Sort by
-    junctions.sort(key=lambda x: x.strand)
-    junctions.sort(key=lambda x: x.end)
-    junctions.sort(key=lambda x: x.start)
-    junctions.sort(key=lambda x: x.seq)
-
-    print("track name=\"junctions\"")
-
-    index = 0;
-    for j in junctions:
-        print(j.seq + "\t" + str(j.start) + "\t" + str(j.end) + "\tjunc_" + str(index) + "\t" + str(
-            j.cov) + "\t" + j.strand + "\t" + str(j.start) + "\t" + str(j.end) + "\t255,0,0\t2\t0,0\t0,0")
-
-        index += 1
 
 def tab2egff(args):
     with open(args.input) as f:
@@ -64,8 +31,7 @@ def tab2egff(args):
         for line in f:
             l = line.strip()
             if not l == "":
-                b = tab.TabEntry.create_from_tabline(l)
-                print(b.toExonGFF(source=args.source))
+                print(TabJunction().parse_line(l).toExonGFF(source=args.source))
 
 def tab2igff(args):
     with open(args.input) as f:
@@ -75,8 +41,7 @@ def tab2igff(args):
         for line in f:
             l = line.strip()
             if not l == "":
-                b = tab.TabEntry.create_from_tabline(l)
-                print(b.toIntronGFF(source=args.source))
+                print(TabJunction().parse_line(l).toIntronGFF(source=args.source))
 
 
 def ebed2ibed(args):
@@ -86,49 +51,31 @@ def ebed2ibed(args):
         print("track name=\"junctions\"")
 
         for line in f:
-            b = bed12.BedEntry.create_from_line(line, use_strand=True)
-            print(b.toIntronStyle())
+            print(b = Bed12Junction(use_strand=True).parse_line(line).toIntronStyle())
 
-def ebed2ibed6(args):
+def bed2ibed6(args):
     with open(args.input) as f:
-        # Skip header
-        f.readline()
-        print("track name=\"junctions\"")
-
+        print(Bed6Junction.file_header())
         for line in f:
-            b = bed12.BedEntry.create_from_line(line, use_strand=True)
-            print(b.toIntronStyle(bed6=True))
-
-def ibed2ibed6(args):
-    with open(args.input) as f:
-        # Skip header
-        f.readline()
-        print("track name=\"junctions\"")
-
-        for line in f:
-
-            parts = line.split("\t")
-            print("\t".join(parts[0:6]))
-
+            b = Bed12Junction(use_strand=True, tophat=True).parse_line(line, fullparse=True)
+            if not b == None:
+                print(b.toIntronStyle(bed6=True))
 
 def tbed2ebed(args):
     with open(args.input) as f:
-        # Skip header
-        f.readline()
-        print("track name=\"junctions\"")
-
+        print(Bed12Junction.file_header())
         for line in f:
-            print(bed12.BedEntry.create_from_line(line, use_strand=True, tophat=True))
+            b = Bed12Junction(use_strand=True, tophat=True).parse_line(line, fullparse=True)
+            if not b == None:
+                print(b)
 
 def tbed2ibed(args):
     with open(args.input) as f:
-        # Skip header
-        f.readline()
-        print("track name=\"junctions\"")
-
+        print(Bed12Junction.file_header())
         for line in f:
-            b = bed12.BedEntry.create_from_line(line, use_strand=True, tophat=True)
-            print(b.toIntronStyle())
+            b = Bed12Junction(use_strand=True, tophat=True).parse_line(line, fullparse=True)
+            if not b == None:
+                print(b.toIntronStyle())
 
 
 
@@ -142,15 +89,22 @@ def star2ibed(args):
         for line in f:
             words = line.split("\t")
 
-            j = Junction()
+            j = Bed12Junction()
             j.seq = words[0]
             j.start = int(words[1]) - 1
             j.end = int(words[2])
+            j.left = j.start
+            j.right = j.end
             j.strand = "+" if words[3] == "1" else "-" if words[3] == "2" else "."
             j.cov = int(words[6])
             junctions.append(j)
 
-        sortandprint(junctions)
+        Junction.sort(junctions)
+        Junction.reindex(junctions)
+
+        print(Bed12Junction.file_header())
+        for j in junctions:
+            print(j)
 
 
 def fs2ibed(args):
@@ -180,15 +134,22 @@ def ts2ibed(args):
         for line in f:
             words = line.split("\t")
 
-            j = Junction()
+            j = Bed12Junction()
             j.seq = words[0]
             j.start = int(words[1]) - 1
             j.end = int(words[2]) - 1
+            j.left = j.start
+            j.right = j.end
             j.strand = "."
             j.cov = int(words[4])
             junctions.append(j)
 
-        sortandprint(junctions)
+        Junction.sort(junctions)
+        Junction.reindex(junctions)
+
+        print(Bed12Junction.file_header())
+        for j in junctions:
+            print(j)
 
 
 def sp2ibed(args):
@@ -204,15 +165,22 @@ def sp2ibed(args):
             parts1 = words[0].split(":")
             parts2 = parts1[1].split("_")
 
-            j = Junction()
+            j = Bed12Junction()
             j.seq = parts1[0]
             j.start = int(parts2[0]) - 1
             j.end = int(parts2[1])
+            j.left = j.start
+            j.right = j.end
             j.strand = parts1[2]
             j.cov = int(words[9])
             junctions.append(j)
 
-        sortandprint(junctions)
+        Junction.sort(junctions)
+        Junction.reindex(junctions)
+
+        print(Bed12Junction.file_header())
+        for j in junctions:
+            print(j)
 
 
 def ss2ibed(args):
@@ -225,15 +193,22 @@ def ss2ibed(args):
         for line in f:
             words = line.split("\t")
 
-            j = Junction()
+            j = Bed12Junction()
             j.seq = words[0]
             j.start = int(words[1])
             j.end = int(words[2]) - 1
+            j.left = j.start
+            j.right = j.end
             j.strand = "."
             j.cov = int(words[4])
             junctions.append(j)
 
-        sortandprint(junctions)
+        Junction.sort(junctions)
+        Junction.reindex(junctions)
+
+        print(Bed12Junction.file_header())
+        for j in junctions:
+            print(j)
 
 def ms2ibed(args):
     junctions = list()
@@ -249,11 +224,18 @@ def ms2ibed(args):
             j.seq = words[0]
             j.start = int(words[1])
             j.end = int(words[2]) - 1
+            j.left = j.start
+            j.right = j.end
             j.strand = words[5]
             j.cov = int(words[4])
             junctions.append(j)
 
-        sortandprint(junctions)
+        Junction.sort(junctions)
+        Junction.reindex(junctions)
+
+        print(Bed12Junction.file_header())
+        for j in junctions:
+            print(j)
 
 def ebed2hisat(args):
     with open(args.input) as f:
@@ -261,8 +243,8 @@ def ebed2hisat(args):
         f.readline()
 
         for line in f:
-            b = bed12.BedEntry.create_from_line(line, use_strand=True)
-            print("\t".join([b.chrom, str(b.thick_start-1), str(b.thick_end), b.strand]))
+            b = Bed12Junction().parse_line(line)
+            print("\t".join([b.refseq, str(b.start-1), str(b.end), b.strand]))
 
 def gtf2ibed(args):
     with open(args.input) as f:
@@ -324,7 +306,12 @@ def gtf2ibed(args):
                     last_exon_strand = words[6]
 
         decstart(junctions)
-        sortandprint(junctions)
+        Junction.sort(junctions)
+        Junction.reindex(junctions)
+
+        print(Bed12Junction.file_header())
+        for j in junctions:
+            print(j)
 
 
 def gff2ibed(args):
@@ -361,7 +348,12 @@ def gff2ibed(args):
                         junctions.append(j)
                         index += 1
 
-        sortandprint(junctions)
+        Junction.sort(junctions)
+        Junction.reindex(junctions)
+
+        print(Bed12Junction.file_header())
+        for j in junctions:
+            print(j)
 
 
 def main():
@@ -392,15 +384,10 @@ def main():
     ebed2ibed_parser.add_argument("input", help="The portcullis exon-based BED file with anchors to convert")
     ebed2ibed_parser.set_defaults(func=ebed2ibed)
 
-    ebed2ibed6_parser = subparsers.add_parser("ebed2ibed6",
-                                             help="Converts a portcullis BED file (containing exon anchors - as produced by the main executable) to a pure intron-based BED 6 file (no exon anchors).")
-    ebed2ibed6_parser.add_argument("input", help="The portcullis exon-based BED file with anchors to convert")
-    ebed2ibed6_parser.set_defaults(func=ebed2ibed6)
-
-    ibed2ibed6_parser = subparsers.add_parser("ibed2ibed6",
-                                             help="Converts a portcullis intron-based BED 12 file (12 column format) to BED 6 file.  This tools simply removes the last 6 columns from the BED file.")
-    ibed2ibed6_parser.add_argument("input", help="The intron-based (no anchors) BED 12 file")
-    ibed2ibed6_parser.set_defaults(func=ibed2ibed6)
+    bed2ibed6_parser = subparsers.add_parser("bed2ibed6",
+                                             help="Converts a portcullis stytle BED12 file, which contains junction start and stop coordinates in the thickstart and thickend columns to an intron-based BED 6 file.")
+    bed2ibed6_parser.add_argument("input", help="The portcullis BED file to convert")
+    bed2ibed6_parser.set_defaults(func=bed2ibed6)
 
 
     ebed2ibed_parser.add_argument("input", help="The portcullis BED file to convert")
