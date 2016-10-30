@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
-import itertools
 import argparse
-import bed12
-from performance import Performance
+
 from matplotlib_venn import venn2
 from pylab import figure
+
+from junctools.performance import Performance
+from junctools.junction import *
 
 
 def main():
@@ -13,6 +14,8 @@ def main():
 	parser.add_argument("input", nargs="+", help="The BED file to analyse")
 	parser.add_argument("-r", "--reference", required=True, help="The reference BED file to compare against")
 	parser.add_argument("-o", "--output", help="The output venn plot")
+	parser.add_argument("-s", "--use_strand", action='store_true', default=False,
+						help="Whether to use strand information when building keys")
 	parser.add_argument("-m", "--multiclass", action='store_true', default=False,
 						help="""Breakdown results into multiple classes:
 						1) Matching intron
@@ -23,8 +26,8 @@ def main():
 
 	if not args.multiclass:
 
-		ref_bed = bed12.loadbed(args.reference, False, False)
-		print("Loaded Reference BED file.  # junctions: ", len(ref_bed))
+		ref_bed = Junction.createDict(args.reference, use_strand=args.use_strand)
+		print("Loaded Reference file.  # junctions: ", len(ref_bed))
 
 		# Load all bed files
 		print("Results:")
@@ -35,7 +38,7 @@ def main():
 		f1 = 0
 
 		for bf in args.input:
-			bed_data = bed12.loadbed(bf, False, False)
+			bed_data = Junction.createDict(bf, use_strand=args.use_strand)
 
 			# Build table
 			tab = list()
@@ -64,8 +67,8 @@ def main():
 
 	else:
 
-		ref_intron = bed12.loadbed(args.reference, False, False)
-		ref_ss = bed12.loadsplicesites(args.reference, usestrand=False)
+		ref_intron = Junction.createSet(args.reference, use_strand=args.use_strand)
+		ref_ss = Junction.createSpliceSiteSet(args.reference, use_strand=args.use_strand)
 		print("Loaded Reference BED file.  # introns: ", len(ref_intron), ", with ", len(ref_ss), " distinct splice sites")
 
 		# Load all bed files
@@ -77,33 +80,29 @@ def main():
 
 		print("\t".join(["file", "class1", "class2", "class3", "class4"]))
 
-		for bf in args.input:
+		for jf in args.input:
+
+			juncfileset = Junction.createSet(jf, use_strand=args.use_strand, keyonly=True)
 
 			class1 = 0
 			class2 = 0
 			class3 = 0
 			class4 = 0
 
-			with open(bf) as f:
-				# Skip header
-				f.readline()
-				for line in f:
-					b = bed12.BedEntry.create_from_line(line,
-											use_strand=False,
-											tophat=False)
-					key1 = (b.chrom.encode(), b.thick_start, None)
-					key2 = (b.chrom.encode(), b.thick_end, None)
+			for j in juncfileset:
+				key1 = j.startSplicsiteKey()
+				key2 = j.endSplicesiteKey()
 
-					if b in ref_intron:
-						class1 += 1
-					elif key1 in ref_ss and key2 in ref_ss:
-						class2 += 1
-					elif key1 in ref_ss or key2 in ref_ss:
-						class3 += 1
-					else:
-						class4 += 1
+				if j in ref_intron:
+					class1 += 1
+				elif key1 in ref_ss and key2 in ref_ss:
+					class2 += 1
+				elif key1 in ref_ss or key2 in ref_ss:
+					class3 += 1
+				else:
+					class4 += 1
 
-			print("\t".join([bf, str(class1), str(class2), str(class3), str(class4)]))
+			print("\t".join([jf, str(class1), str(class2), str(class3), str(class4)]))
 
 
 main()

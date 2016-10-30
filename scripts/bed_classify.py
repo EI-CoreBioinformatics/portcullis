@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import sys
-import os
 import argparse
+import sys
+
 import bed12
-from performance import Performance
+from junctools.performance import Performance
 
 
 def main():

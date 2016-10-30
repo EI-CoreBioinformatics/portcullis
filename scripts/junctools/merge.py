@@ -4,11 +4,11 @@
 This python script is intended to merge output from several junction files into one by various means
 """
 
-import sys
-import os
 import argparse
 import collections
-from portcullis_junction import *
+import sys
+
+from junctools.junction import *
 
 __author__ = "Dan Mapleson"
 __copyright__ = "Copyright 2016, Portcullis"
@@ -29,7 +29,7 @@ def calc_op(op, vals):
 	else:
 		raise ValueError
 
-def main():
+def merge(margs):
 
 	parser = argparse.ArgumentParser("This script can merge output from several portcullis runs into one.\
 		This supports BED12 and TAB formats that contain exon anchors.\
@@ -45,7 +45,7 @@ def main():
 							help="Prefix to apply to name column in BED output file")
 	parser.add_argument("input", nargs="+", help="List of BED or TAB files to merge (must all be the same type)")
 
-	args = parser.parse_args()
+	args = parser.parse_args(args=margs)
 
 	min_entry = args.min_entry if args.min_entry > 0 else len(args.input)
 
@@ -55,12 +55,18 @@ def main():
 	last_ext = None
 	for f in args.input:
 		filename, ext = os.path.splitext(f)
-		if not last_ext == None:
-			if not last_ext == ext:
+		if last_ext != None:
+			if last_ext != ext:
 				print("Not all input files have the same extension.", out=sys.stderr)
 				exit(1)
 		else:
 			last_ext = ext
+
+	filename, ext = os.path.splitext(args.output)
+
+	if last_ext != ext:
+		print("Output extension is not the same as the input.", out=sys.stderr)
+		exit(1)
 
 
 	for f in args.input:
@@ -68,7 +74,7 @@ def main():
 		found = set()
 		with open(f) as fin:
 			for line in fin:
-				junc = create_exon_junction(last_ext)
+				junc = ExonJunction.create(last_ext)
 				res = junc.parse_line(line, fullparse=False)
 				if res is None:
 					# Skipping header
@@ -88,9 +94,9 @@ def main():
 	with open(args.output, "wt") as out:
 
 		description = "Merge of multiple junction files.  Min_Entry: {0}. Score_op: {1}".format(min_entry, args.operator.upper())
-		header = create_exon_junction(last_ext).file_header(description=description)
-
+		header = ExonJunction.create(last_ext).file_header(description=description)
 		print(header, file=out)
+
 		for b in sorted(merged):
 			if len(merged[b]) >= min_entry:
 				juncs = []
@@ -98,7 +104,7 @@ def main():
 				lefts = []
 				rights = []
 				for line in merged[b]:
-					j = create_exon_junction(last_ext).parse_line(line)
+					j = ExonJunction.create(last_ext).parse_line(line)
 					juncs.append(j)
 					scores.append(j.score)
 					lefts.append(j.left)
@@ -116,6 +122,3 @@ def main():
 
 	print("Filtered out", len(merged)-i, "entries")
 	print("Output file", args.output, "contains", i, "entries.")
-
-if __name__ == '__main__':
-	main()
