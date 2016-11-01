@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
 
-import sys
-
-from junctools.junction import *
-
+from .junction import *
 
 
 def markup(args):
-
 	ref_set, ref_entries = Junction.createJuncSet(args.reference[0], use_strand=args.use_strand)
 	print()
 	print("Reference:")
 	print(" - # distinct junctions:", len(ref_set))
 	print(" - # total junctions:", ref_entries)
 	print()
-	print("\t".join(["File","Total","InRef","OutRef"]))
+	print("\t".join(["File", "Total", "InRef", "OutRef"]))
 
 	nb_pos = 0
 	nb_neg = 0
@@ -27,7 +23,8 @@ def markup(args):
 
 		with open(filepath) as f:
 			for line in f:
-				junc = JuncFactory.create_from_file(filepath, use_strand=args.use_strand).parse_line(line, fullparse=False)
+				junc = JuncFactory.create_from_file(filepath, use_strand=args.use_strand).parse_line(line,
+																									 fullparse=False)
 				if junc:
 
 					if junc.key in ref_set:
@@ -37,10 +34,9 @@ def markup(args):
 						print("0", file=res)
 						nb_neg += 1
 
-
 		res.close()
 
-		print("\t".join([filepath, str(nb_pos+nb_neg), str(nb_pos), str(nb_neg)]))
+		print("\t".join([filepath, str(nb_pos + nb_neg), str(nb_pos), str(nb_neg)]))
 
 
 def add_options(parser):

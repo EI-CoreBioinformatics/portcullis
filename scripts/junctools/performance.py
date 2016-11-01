@@ -3,6 +3,7 @@ __author__ = 'maplesod'
 
 import math
 
+
 class Performance:
 	def __init__(self, tp=0, fp=0, fn=0, tn=0):
 		self.tp = tp
@@ -100,8 +101,8 @@ class Performance:
 		:param self:
 		:return:
 		"""
-		return math.sqrt(self.informedness() * self.markedness()) if not self.informedness() == 0.0 and not self.markedness() == 0.0 else 0.0
-
+		return math.sqrt(
+			self.informedness() * self.markedness()) if not self.informedness() == 0.0 and not self.markedness() == 0.0 else 0.0
 
 	def __str__(self):
 		return self.shortStr()
@@ -115,7 +116,6 @@ class Performance:
 		parts.append(format(self.precision(), '.2f'))
 		parts.append(format(self.F1(), '.2f'))
 		return "\t".join(parts)
-
 
 	def longStr(self):
 		parts = []
@@ -137,11 +137,9 @@ class Performance:
 
 		return "\t".join(parts)
 
-
 	@staticmethod
 	def shortHeader():
 		return "TP\tFP\tFN\tREC\tPRC\tF1"
-
 
 	@staticmethod
 	def longHeader():

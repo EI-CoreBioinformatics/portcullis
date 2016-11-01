@@ -1,8 +1,7 @@
-
-import sys
 import argparse
+import sys
 
-from junctools.junction import JuncFactory, Junction, BedJunction
+from .junction import JuncFactory, Junction, BedJunction
 
 
 def decstart(junctions):
@@ -165,27 +164,27 @@ def add_options(parser):
 	parser.add_argument("-of", "--output_format", required=True, help='''The output format.''')
 
 	parser.add_argument("-o", "--output", default=sys.stdout,
-								help="Output to this file.  By default we print to stdout.")
+						help="Output to this file.  By default we print to stdout.")
 
 	parser.add_argument("-is", "--ignore_strand", action='store_true', default=False,
-								help="Whether or not to ignore strand when creating a key for the junction")
+						help="Whether or not to ignore strand when creating a key for the junction")
 
 	parser.add_argument("-d", "--dedup", action='store_true', default=False,
-								help="Whether or not to remove duplicate junctions")
+						help="Whether or not to remove duplicate junctions")
 
 	parser.add_argument("-s", "--sort", action='store_true', default=False,
-								help="Whether or not to sort the junctions.  Note that sorting requires all junctions to be loaded into memory first.  This maybe an issue for very large input files.")
+						help="Whether or not to sort the junctions.  Note that sorting requires all junctions to be loaded into memory first.  This maybe an issue for very large input files.")
 
 	parser.add_argument("-r", "--reindex", action='store_true', default=False,
-								help="Whether or not to reindex the output.  The index is applied after prefix.")
+						help="Whether or not to reindex the output.  The index is applied after prefix.")
 
 	parser.add_argument("--index_start", type=int, default=0,
-								help="The starting index to apply if the user requested reindexing")
+						help="The starting index to apply if the user requested reindexing")
 
 	parser.add_argument("--prefix", default="junc_",
-								help="The prefix to apply to junction ids if the user requested reindexing")
+						help="The prefix to apply to junction ids if the user requested reindexing")
 
 	parser.add_argument("--source", default="portcullis",
-								help="Only relevant if output is GFF format, use this option to set the source column in the GFF")
+						help="Only relevant if output is GFF format, use this option to set the source column in the GFF")
 
 	parser.add_argument("input", help="The input file to convert")

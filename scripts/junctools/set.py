@@ -4,12 +4,10 @@
 This python script is intended to merge output from several junction files into one by various means
 """
 
-import collections
-import sys
 import argparse
-from enum import Enum, unique
+import collections
 
-from junctools.junction import *
+from .junction import *
 
 __author__ = "Dan Mapleson"
 __copyright__ = "Copyright 2016, Portcullis"
@@ -17,6 +15,7 @@ __credits__ = ["Dan Mapleson", "Luca Venturini", "David Swarbreck"]
 __license__ = "GPLv3"
 __maintainer__ = "Dan Mapleson,"
 __email__ = "daniel.mapleson@earlham.ac.uk"
+
 
 @unique
 class Mode(Enum):
@@ -38,6 +37,7 @@ class Mode(Enum):
 	def is_test(self):
 		return self.value >= 6
 
+
 @unique
 class CalcOp(Enum):
 	MIN = 1
@@ -57,8 +57,8 @@ class CalcOp(Enum):
 		else:
 			raise ValueError("CalcOp Error - Should never happen")
 
-def setops(args):
 
+def setops(args):
 	mode = Mode[args.mode.upper()]
 
 	min_entry = 1
@@ -82,7 +82,6 @@ def setops(args):
 	if min_entry <= 0:
 		raise ValueError("Invalid value for min_entry.  Please enter a value of 2 or more.")
 
-
 	# Check all input files have the same extension
 	last_ext = None
 	for f in args.input:
@@ -92,7 +91,6 @@ def setops(args):
 				raise ValueError("Not all input files have the same extension.")
 		else:
 			last_ext = ext
-
 
 	if mode.makes_output():
 
@@ -106,18 +104,18 @@ def setops(args):
 
 	print("junctools set", mode.name.lower())
 
-
 	if mode.multifile():
 		merged = collections.defaultdict(list)
 
-		print("\t".join(["File","distinct","total"]))
+		print("\t".join(["File", "distinct", "total"]))
 
 		for f in args.input:
 			counter = 0
 			found = set()
 			with open(f) as fin:
 				for line in fin:
-					junc = JuncFactory.create_from_ext(last_ext, use_strand=not args.ignore_strand).parse_line(line, fullparse=False)
+					junc = JuncFactory.create_from_ext(last_ext, use_strand=not args.ignore_strand).parse_line(line,
+																											   fullparse=False)
 					if junc:
 						counter += 1
 						key = junc.key
@@ -132,7 +130,9 @@ def setops(args):
 		i = 0
 		with open(args.output, "wt") as out:
 
-			description = "Set operation on junction files. Mode: {0};  Min_Entry: {1}; Score_op: {2}".format(mode.name, min_entry, args.operator.upper())
+			description = "Set operation on junction files. Mode: {0};  Min_Entry: {1}; Score_op: {2}".format(mode.name,
+																											  min_entry,
+																											  args.operator.upper())
 			header = JuncFactory.create_from_ext(last_ext).file_header(description=description)
 			print(header, file=out)
 
@@ -162,18 +162,18 @@ def setops(args):
 					print(merged_junc, file=out)
 
 			if mode != Mode.UNION:
-				print("Filtered out", len(merged)-i, "entries")
+				print("Filtered out", len(merged) - i, "entries")
 			print("Output file", args.output, "contains", i, "entries.")
 
 	else:
 		if mode.makes_output():
 
-			print("\t".join(["File","Total","Distinct"]))
+			print("\t".join(["File", "Total", "Distinct"]))
 			dicts = []
 			for f in args.input:
 				juncs, entries = Junction.createDict(f, use_strand=not args.ignore_strand, fullparse=False)
 				dicts.append(juncs)
-				print("\t".join([f,str(entries),str(len(juncs))]))
+				print("\t".join([f, str(entries), str(len(juncs))]))
 			print()
 
 			res = {}
@@ -200,12 +200,12 @@ def setops(args):
 		elif mode.is_test():
 
 			print()
-			print("\t".join(["File","Total","Distinct"]))
+			print("\t".join(["File", "Total", "Distinct"]))
 			sets = []
 			for f in args.input:
 				juncs, entries = Junction.createJuncSet(f, use_strand=not args.ignore_strand, fullparse=False)
 				sets.append(juncs)
-				print("\t".join([f,str(entries),str(len(juncs))]))
+				print("\t".join([f, str(entries), str(len(juncs))]))
 			print()
 
 			res = None
@@ -223,27 +223,26 @@ def setops(args):
 			raise "Unknown mode"
 
 
-
 def add_options(parser):
-
 	parser.formatter_class = argparse.RawTextHelpFormatter
 
 	parser.add_argument("-m", "--min_entry", type=int, default="1",
-							  help='''Minimum number of files the entry is require to be in.  0 means entry must be
+						help='''Minimum number of files the entry is require to be in.  0 means entry must be
 present in all files, i.e. true intersection.  1 means a union of all input files''')
 	parser.add_argument("--operator", default="sum",
-							  help='''Operator to use for calculating the score in the merged file.
+						help='''Operator to use for calculating the score in the merged file.
 This option is only applicable to 'intersection', 'union' and 'consensus' modes.
 Available values:
  - min
  - max
  - sum
  - mean''')
-	parser.add_argument("-o", "--output", help="Output junction file.  Required for operations that produce an output file.")
+	parser.add_argument("-o", "--output",
+						help="Output junction file.  Required for operations that produce an output file.")
 	parser.add_argument("-p", "--prefix", default="junc_merged",
-							  help="Prefix to apply to name column in BED output file")
+						help="Prefix to apply to name column in BED output file")
 	parser.add_argument("-is", "--ignore_strand", action='store_true', default=False,
-								help="Whether or not to ignore strand when creating a key for the junction")
+						help="Whether or not to ignore strand when creating a key for the junction")
 	parser.add_argument("mode", help='''Set operation to apply.  See above for details.  Available options:
  - intersection
  - union

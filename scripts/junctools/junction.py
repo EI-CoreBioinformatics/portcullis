@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-import os
 import abc
 import copy
+import os
 from enum import Enum, unique
 
 __author__ = 'maplesod'
@@ -40,7 +40,7 @@ class JuncFactory(Enum):
 		return self.value >= JuncFactory.GFF.value and self.value <= JuncFactory.IGFF.value
 
 	@staticmethod
-	def create_from_file(filepath, use_strand=True):
+	def create_from_file(filepath, use_strand=True, junc_to_copy=None):
 		'''
 		Creates an instance of a junction that
 		:param filepath:
@@ -48,13 +48,13 @@ class JuncFactory(Enum):
 		:return:
 		'''
 		filename, ext = os.path.splitext(filepath)
-		return JuncFactory.create_from_ext(ext, use_strand=use_strand)
+		return JuncFactory.create_from_ext(ext, use_strand=use_strand, junc_to_copy=junc_to_copy)
 
 	@staticmethod
-	def create_from_ext(ext, use_strand=True):
+	def create_from_ext(ext, use_strand=True, junc_to_copy=None):
 		for cls in ExonJunction.__subclasses__():
 			if cls.accepts_ext(ext):
-				return cls(use_strand=use_strand)
+				return cls(use_strand=use_strand, junc_to_copy=junc_to_copy)
 		raise ValueError("No junction can be created for " + ext + " files")
 
 	@staticmethod
@@ -192,7 +192,8 @@ class Junction(object):
 
 		with open(filepath) as f:
 			for line in f:
-				junc = JuncFactory.create_from_file(filepath, use_strand=use_strand).parse_line(line, fullparse=fullparse)
+				junc = JuncFactory.create_from_file(filepath, use_strand=use_strand).parse_line(line,
+																								fullparse=fullparse)
 				if junc:
 					items[junc.key] = line if not fullparse else junc
 					index += 1
@@ -206,11 +207,48 @@ class Junction(object):
 
 		with open(filepath) as f:
 			for line in f:
-				junc = JuncFactory.create_from_file(filepath, use_strand=use_strand).parse_line(line, fullparse=fullparse)
+				junc = JuncFactory.create_from_file(filepath, use_strand=use_strand).parse_line(line,
+																								fullparse=fullparse)
 				if junc:
 					items.add(junc.key)
 					index += 1
 		return items, index
+
+	@staticmethod
+	def createMarkedupJuncSets(filepath, labelpath, use_strand=True, fullparse=False):
+		# Load reference and labels, divide into tp and tn
+		rp = set()
+		rn = set()
+
+		labs = open(labelpath, "r")
+		juncs = open(filepath, "r")
+
+		# Assume we have a header in the juncs file
+		header = juncs.readline()
+
+		# Now we should have the same number of lines in both files
+		line = 1
+		while 1:
+			ref_line = juncs.readline()
+			lab_line = labs.readline()
+			if not ref_line and not lab_line: break
+			if (lab_line and not ref_line) or (not lab_line and ref_line): print(
+				"ERROR: reference file and labels file have a different number of entries.", file=sys.stderr); exit(1)
+			ref_line = ref_line.strip()
+			lab_line = lab_line.strip()
+			junc = JuncFactory.create_from_file(filepath, use_strand=use_strand).parse_line(line, fullparse=fullparse)
+			if lab_line == "1":
+				rp.add(junc)
+			elif lab_line == "0":
+				rn.add(junc)
+			else:
+				raise ValueError(
+					"ERROR: Label file contains an entry that is not either \"0\" or \"1\" at line:" + line)
+			line += 1
+		labs.close()
+		juncs.close()
+
+		return rp, rn, line - 1
 
 	@staticmethod
 	def createSpliceSiteSet(filepath, use_strand=True, fullparse=False):
@@ -219,7 +257,8 @@ class Junction(object):
 
 		with open(filepath) as f:
 			for line in f:
-				junc = JuncFactory.create_from_file(filepath, use_strand=use_strand).parse_line(line, fullparse=fullparse)
+				junc = JuncFactory.create_from_file(filepath, use_strand=use_strand).parse_line(line,
+																								fullparse=fullparse)
 
 				if junc:
 
@@ -307,7 +346,7 @@ class BedJunction(ExonJunction):
 			self.block_count = 2
 			self.block_sizes = [self.start - self.left, self.right - self.end]
 			self.block_starts = [0, self.end - self.left + 1]
-			self.style=JuncFactory.IBED
+			self.style = JuncFactory.IBED
 
 	def __str__(self):
 
@@ -425,15 +464,15 @@ class GFFJunction(ExonJunction):
 		self.source = "portcullis"
 		self.feature = "intron"
 		self.frame = "."
-		self.note=""
+		self.note = ""
 		self.raw = 0
 
 		if junc_to_copy:
 			if type(junc_to_copy) is TabJunction:
-				self.note="Note=can:" + junc_to_copy.canonical + "|cov:" + str(junc_to_copy.getRaw()) + "|rel:" + str(
-						 junc_to_copy.getReliable()) + "|ent:" + junc_to_copy.getEntropyAsStr() + "|maxmmes:" + str(
-						 junc_to_copy.getMaxMMES()) + "|ham:" + str(
-						 junc_to_copy.getMinHamming()) + ";"
+				self.note = "Note=can:" + junc_to_copy.canonical + "|cov:" + str(junc_to_copy.getRaw()) + "|rel:" + str(
+					junc_to_copy.getReliable()) + "|ent:" + junc_to_copy.getEntropyAsStr() + "|maxmmes:" + str(
+					junc_to_copy.getMaxMMES()) + "|ham:" + str(
+					junc_to_copy.getMinHamming()) + ";"
 				self.raw = junc_to_copy.getRaw()
 			elif type(junc_to_copy) is GFFJunction:
 				self.note = junc_to_copy.note
@@ -447,7 +486,8 @@ class GFFJunction(ExonJunction):
 
 		if self.style == JuncFactory.EGFF:
 			entries = []
-			parts = [self.refseq, self.source, "match", self.left + 1, self.right + 1, self.raw, self.strand, self.frame,
+			parts = [self.refseq, self.source, "match", self.left + 1, self.right + 1, self.raw, self.strand,
+					 self.frame,
 					 "ID=" + self.id + ";" +
 					 "Name=" + self.id + ";" +
 					 self.note +
@@ -469,15 +509,16 @@ class GFFJunction(ExonJunction):
 
 			return "\n".join(entries)
 		else:
-			parts = [self.refseq, self.source, self.feature, self.start + 1, self.end + 1, self.raw, self.strand, self.frame,
-				 # "ID=" + self.id + ";" +
-				 # "Name=" + self.id + ";" +
-				 # Removing this as it causes issues with PASA
-				 # "Note=cov:" + str(self.getRaw()) + "|rel:" + str(self.getReliable()) + "|ent:" + self.getEntropyAsStr() + "|maxmmes:" + str(self.getMaxMMES()) + "|ham:" + str(
-				 #	self.getMinHamming()) + ";" +
-				 "mult=" + str(self.raw) + ";" +
-				 "grp=" + self.id + ";" +
-				 "src=E"]
+			parts = [self.refseq, self.source, self.feature, self.start + 1, self.end + 1, self.raw, self.strand,
+					 self.frame,
+					 # "ID=" + self.id + ";" +
+					 # "Name=" + self.id + ";" +
+					 # Removing this as it causes issues with PASA
+					 # "Note=cov:" + str(self.getRaw()) + "|rel:" + str(self.getReliable()) + "|ent:" + self.getEntropyAsStr() + "|maxmmes:" + str(self.getMaxMMES()) + "|ham:" + str(
+					 #	self.getMinHamming()) + ";" +
+					 "mult=" + str(self.raw) + ";" +
+					 "grp=" + self.id + ";" +
+					 "src=E"]
 		return "\t".join([str(_) for _ in parts])
 
 	def parse_line(self, line, fullparse=True):
@@ -509,6 +550,7 @@ class GFFJunction(ExonJunction):
 			self.frame = parts[7]
 
 		return self
+
 
 class TabJunction(ExonJunction):
 	def __init__(self, use_strand=True, junc_to_copy=None):
@@ -696,6 +738,7 @@ class TabJunction(ExonJunction):
 
 		return self
 
+
 class StarJunction(Junction):
 	def __init__(self, use_strand=True, junc_to_copy=None):
 		Junction.__init__(self, use_strand=use_strand, junc_to_copy=junc_to_copy)
@@ -714,7 +757,8 @@ class StarJunction(Junction):
 
 	def __str__(self):
 		st = 1 if self.strand == "+" else 2 if self.strand == "-" else 0
-		line = [self.refseq, self.start+1, self.end+1, st, self.motif, self.annotated, self.score, self.mm, self.overhang]
+		line = [self.refseq, self.start + 1, self.end + 1, st, self.motif, self.annotated, self.score, self.mm,
+				self.overhang]
 		return "\t".join([str(_) for _ in line])
 
 	def parse_line(self, line, fullparse=True):
@@ -742,12 +786,13 @@ class StarJunction(Junction):
 
 		return self
 
+
 class HisatJunction(Junction):
 	def __init__(self, use_strand=True, junc_to_copy=None):
 		Junction.__init__(self, use_strand=use_strand, junc_to_copy=junc_to_copy)
 
 	def __str__(self):
-		line = [self.refseq, self.start-1, self.end+1, self.strand]
+		line = [self.refseq, self.start - 1, self.end + 1, self.strand]
 		return "\t".join([str(_) for _ in line])
 
 	def parse_line(self, line, fullparse=True):
@@ -768,6 +813,7 @@ class HisatJunction(Junction):
 
 		return self
 
+
 class FinespliceJunction(Junction):
 	def __init__(self, junc_to_copy=None):
 		Junction.__init__(self, use_strand=False, junc_to_copy=junc_to_copy)
@@ -780,7 +826,7 @@ class FinespliceJunction(Junction):
 			self.rescued = 0
 
 	def __str__(self):
-		line = [self.refseq, self.start, self.end+1, self.score, self.unique, self.rescued]
+		line = [self.refseq, self.start, self.end + 1, self.score, self.unique, self.rescued]
 		return "\t".join([str(_) for _ in line])
 
 	def file_header(self, description=""):
@@ -876,6 +922,7 @@ class SoapspliceJunction(Junction):
 
 		return self
 
+
 class SpankiJunction(Junction):
 	def __init__(self, use_strand=True, junc_to_copy=None):
 		Junction.__init__(self, use_strand=use_strand, junc_to_copy=junc_to_copy)
@@ -908,7 +955,6 @@ class SpankiJunction(Junction):
 
 		parts1 = parts[0].split(":")
 		parts2 = parts1[1].split("_")
-
 
 		self.refseq = parts1[0]
 		self.start = int(parts2[0]) - 1

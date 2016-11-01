@@ -16,21 +16,6 @@ EXTRA_DIST = \
 
 # FILES NOT TO INSTALL
 dist_noinst_SCRIPTS = autogen.sh antigen.sh
-
-dist_bin_SCRIPTS =  scripts/bed12.py \
-		    scripts/bed12_set.py \
-		    scripts/bed_merge.py \
-		    scripts/bed_v_ref.py \
-		    scripts/create_ref.py \
-		    scripts/performance.py \
-		    scripts/portcullis_convert.py \
-		    scripts/portcullis_rulefilt.py \
-		    scripts/split_error_classes.py \
-		    scripts/tab.py \
-		    scripts/tab_bed12_set.py \
-		    scripts/tab_in_bedref.py \
-		    scripts/tab_combine.py
-		    
 		    
 # Config files
 configdir = $(datadir)/portcullis
@@ -48,7 +33,7 @@ dist_config_DATA = \
 		    data/selftrain_initial_pos.layer3.json
 
 # SRC DIRS
-make_dirs=deps/htslib-1.3 deps/ranger-0.3.8 lib src tests
+make_dirs=deps/htslib-1.3 deps/ranger-0.3.8 lib src tests scripts
 
 if MAKE_DOCS
     make_dirs += doc

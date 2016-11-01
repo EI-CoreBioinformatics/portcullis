@@ -1,24 +1,36 @@
-
 from matplotlib_venn import venn2
 from pylab import figure
 
-from junctools.performance import Performance
-from junctools.junction import *
+from .performance import Performance
+from .junction import *
 
 
 def compare(args):
-
 	if not args.multiclass:
 
-		ref_set, ref_entries = Junction.createJuncSet(args.reference[0], use_strand=args.use_strand)
+		rp = set()
+		rn = set()
+		ref_entries = 0
+
+		if args.labels:
+			rp, ref_entries = Junction.createJuncSet(args.reference[0], use_strand=args.use_strand)
+		else:
+			rp, rn, ref_entries = Junction.createMarkedupJuncSets(args.reference[0], use_strand=args.use_strand)
+
 		print()
 		print("Reference:")
-		print(" - # distinct junctions:", len(ref_set))
 		print(" - # total junctions:", ref_entries)
+		if args.labels:
+			print(" - # distinct positive junctions:", len(rp))
+			print(" - # distinct negative junctions:", len(rn))
+		else:
+			print(" - # distinct junctions:", len(rp))
+
 		print()
 
 		# Load all junction files
-		print("\t".join(["File","distinct", "total", Performance.shortHeader()]))
+		print("\t".join(
+			["File", "distinct", "total", Performance.longHeader() if args.labels else Performance.shortHeader()]))
 
 		recall = 0
 		precision = 0
@@ -30,11 +42,18 @@ def compare(args):
 			# Build table
 			tab = list()
 			p = Performance()
-			p.tp = len(ref_set & junc_set)
-			p.fp = len(junc_set - ref_set)
-			p.fn = len(ref_set - junc_set)
 
-			print("\t".join([f, str(len(junc_set)), str(bed_entries), str(p)]))
+			if args.labels:
+				p.tp = len(junc_set & rp)
+				p.fp = len(junc_set & rn)
+				p.fn = len(rp - junc_set)
+				p.tn = len(rn - junc_set)
+			else:
+				p.tp = len(rp & junc_set)
+				p.fp = len(junc_set - rp)
+				p.fn = len(rp - junc_set)
+
+			print("\t".join([f, str(len(junc_set)), str(bed_entries), p.longStr() if args.labels else str(p)]))
 
 			recall += p.recall()
 			precision += p.precision()
@@ -96,6 +115,8 @@ def add_options(parser):
 	parser.add_argument("input", nargs="+", help="One or more junction files to compare against the reference")
 	parser.add_argument("-s", "--use_strand", action='store_true', default=False,
 						help="Whether to use strand information when building keys")
+	parser.add_argument("-l", "--labels",
+						help="Path to a file containing labels for the reference indicating whether or not each reference junction is genuine (as generated using the markup tool).  If provided this script produces a much richer performance analysis.  Not compatible with '--multiclass'")
 	parser.add_argument("-m", "--multiclass", action='store_true', default=False,
 						help="""Breakdown results into multiple classes:
 						1) Matching intron

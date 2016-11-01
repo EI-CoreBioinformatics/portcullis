@@ -1,12 +1,24 @@
 #!/usr/bin/env python3
 
+"""
+The junctools module is designed to perform various operations of common junction files, such as
+file conversion, set operations and comparisons
+"""
+
+_title__ = "junctools"
+__author__ = 'Daniel Mapleson'
+__license__ = 'GPLV3'
+__copyright__ = 'Copyright 2016 Daniel Mapleson'
+__version__ = '@PACKAGE_VERSION@'
+
 import argparse
 import sys
 
-import junctools.compare
-import junctools.convert
-import junctools.markup
-import junctools.set
+from . import compare
+from . import convert
+from . import markup
+from . import set
+from . import split
 
 def main():
 	call_args = sys.argv[1:]
@@ -19,8 +31,8 @@ def main():
 
 	compare_parser = subparsers.add_parser("compare",
 										   help="Compares junction files.")
-	junctools.compare.add_options(compare_parser)
-	compare_parser.set_defaults(func=junctools.compare.compare)
+	compare.add_options(compare_parser)
+	compare_parser.set_defaults(func=compare.compare)
 
 	convert_parser = subparsers.add_parser("convert",
 										   help="Converts junction files between various formats.",
@@ -54,16 +66,16 @@ soapslice  = Soapsplice style tab delimited format.
 spanki     = SPANKI style tab delimited format.
 truesight  = Truesight style tab delimited format.''')
 
-	junctools.convert.add_options(convert_parser)
-	convert_parser.set_defaults(func=junctools.convert.convert)
+	convert.add_options(convert_parser)
+	convert_parser.set_defaults(func=convert.convert)
 
 	markup_parser = subparsers.add_parser("markup",
-										 help="Marks whether each junction in the input can be found in the reference or not.")
-	junctools.markup.add_options(markup_parser)
-	markup_parser.set_defaults(func=junctools.markup.markup)
+										  help="Marks whether each junction in the input can be found in the reference or not.")
+	markup.add_options(markup_parser)
+	markup_parser.set_defaults(func=markup.markup)
 
 	set_parser = subparsers.add_parser("set",
-										 description='''Supported set operations:
+									   description='''Supported set operations:
 
 # These modes support 2 or more input files.
 # The output contains junctions with extended anchors representing the most
@@ -88,9 +100,14 @@ is_subset    = Returns True if all junctions in the first file are present in th
 is_superset  = Returns True if all junctions in the second file are present in the
                first
 is_disjoint  = Returns True if there is a null intersection between both files''',
-										 help="Apply set operations to two or more junction files.")
-	junctools.set.add_options(set_parser)
-	set_parser.set_defaults(func=junctools.set.setops)
+									   help="Apply set operations to two or more junction files.")
+	set.add_options(set_parser)
+	set_parser.set_defaults(func=set.setops)
+
+	split_parser = subparsers.add_parser("split",
+										 help="Marks whether each junction in the input can be found in the reference or not.")
+	split.add_options(split_parser)
+	split_parser.set_defaults(func=split.split)
 
 	args = parser.parse_args(call_args)
 	if hasattr(args, "func"):
@@ -99,5 +116,7 @@ is_disjoint  = Returns True if there is a null intersection between both files''
 		parser.print_help()
 
 
+
 if __name__ == '__main__':
+	# __spec__ = "junctools"
 	main()
