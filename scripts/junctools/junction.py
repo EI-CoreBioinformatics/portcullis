@@ -10,7 +10,7 @@ __author__ = 'maplesod'
 
 @unique
 class JuncFactory(Enum):
-	TAB = 1
+	PORTCULLIS = 1
 	BED = 2
 	EBED = 3
 	TBED = 4
@@ -31,7 +31,7 @@ class JuncFactory(Enum):
 		return False if self == JuncFactory.GFF or self == JuncFactory.EGFF or self == JuncFactory.GTF else True
 
 	def exon_based(self):
-		return True if self.TAB or self.EBED or self.TBED or self.EGFF else False
+		return True if self.PORTCULLIS or self.EBED or self.TBED or self.EGFF else False
 
 	def isBed(self):
 		return self.value >= JuncFactory.BED.value and self.value <= JuncFactory.BED6.value
@@ -55,11 +55,11 @@ class JuncFactory(Enum):
 		for cls in ExonJunction.__subclasses__():
 			if cls.accepts_ext(ext):
 				return cls(use_strand=use_strand)
-		raise "Extension not detected as a valid junction type"
+		raise ValueError("No junction can be created for " + ext + " files")
 
 	@staticmethod
 	def create_from_enum(type, use_strand=True, junc_to_copy=None):
-		if type == JuncFactory.TAB:
+		if type == JuncFactory.PORTCULLIS:
 			return TabJunction(use_strand=use_strand, junc_to_copy=junc_to_copy)
 		elif type.isBed():
 			return BedJunction(use_strand=use_strand, junc_to_copy=junc_to_copy)
@@ -286,14 +286,6 @@ class ExonJunction(Junction):
 	def __str__(self):
 		line = [super.__str__(), self.left, self.right]
 		return "\t".join([str(_) for _ in line])
-
-	@staticmethod
-	def create(filepath, use_strand=True):
-		filename, ext = os.path.splitext(filepath)
-		for cls in ExonJunction.__subclasses__():
-			if cls.accepts_ext(ext):
-				return cls(use_strand)
-		raise ValueError
 
 
 class BedJunction(ExonJunction):

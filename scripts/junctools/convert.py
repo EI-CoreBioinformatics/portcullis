@@ -160,33 +160,9 @@ def convert(args):
 def add_options(parser):
 	parser.formatter_class = argparse.RawTextHelpFormatter
 
-	parser.add_argument("-if", "--input_format", required=True, help='''The format of the input file to convert.  Available options:
-tab        = Portcullis tab output
-bed        = BED format (We automatically determine if this is BED 6 or 12 format,
-             and if it is intron, exon or tophat style)
-star       = STAR style tab delimited format
-hisat      = HISAT style tab delimited format
-finesplice = Finesplice style tab delimited format
-mapsplice  = Mapsplice style tab delimited format
-soapslice  = Soapsplice style tab delimited format
-truesight  = Truesight style tab delimited format
-spanki     = SPANKI style tab delimited format
-gtf        = Transcript assembly or gene model.  Note: output will only contain
-             junctions
-gff        = Transcript assembly or gene model containing introns to extract.
-             Note: input must contain \"intron\" entries, and output will only
-             contain these introns represented as junctions'''
-								)
+	parser.add_argument("-if", "--input_format", required=True, help='''The format of the input file to convert.''')
 
-	parser.add_argument("-of", "--output_format", required=True, help='''The output format.  Available options:
-ebed   = Exon-based BED12 format (Thick-start and end represent splice sites)
-tbed   = Tophat style exon-based BED12 format (splice sites derived from blocks)
-ibed   = Intron-based BED12 format
-bed6   = BED6 format (BED6 files are intron-based)
-hisat  = HISAT style tab delimited format
-egff   = Exon-based junctions in GFF3 format, uses partial matches to indicate exon anchors
-igff   = Intron-based junctions in GFF3 format'''
-								)
+	parser.add_argument("-of", "--output_format", required=True, help='''The output format.''')
 
 	parser.add_argument("-o", "--output", default=sys.stdout,
 								help="Output to this file.  By default we print to stdout.")

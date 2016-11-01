@@ -23,7 +23,37 @@ def main():
 	compare_parser.set_defaults(func=junctools.compare.compare)
 
 	convert_parser = subparsers.add_parser("convert",
-										   help="Converts junction files between various formats.")
+										   help="Converts junction files between various formats.",
+										   description='''Supported file formats:
+
+# Widely used file formats
+bed        = (Input only) BED format - we automatically determine if this is
+             BED 6 or 12 format, as well as if it is intron, exon or tophat style).
+ebed       = (Output only) Portcullis style exon-based BED12 format (Thick-start
+             and end represent splice sites).
+tbed       = (Output only) Tophat style exon-based BED12 format (splice sites
+             derived from blocks).
+ibed       = (Output only) Intron-based BED12 format.
+bed6       = (Output only) BED6 format (BED6 files are intron-based).
+gtf        = (Input only) Transcript assembly or gene model containing transcript
+             and exon features.  NOTE: output will only contain junctions derived
+             from this GTF.
+gff        = (Input only) Transcript assembly or gene model containing introns to
+             extract. NOTE: input must contain \"intron\" features, and output will
+             only contain these introns represented as junctions.
+egff       = (Output only) Exon-based junctions in GFF3 format, uses partial
+             matches to indicate exon anchors.
+igff       = (Output only) Intron-based junctions in GFF3 format
+
+# Application specific tab delimited file formats
+portcullis = Portcullis style tab delimited output.
+hisat      = HISAT style tab delimited format.
+star       = STAR style tab delimited format.
+finesplice = Finesplice style tab delimited format.
+soapslice  = Soapsplice style tab delimited format.
+spanki     = SPANKI style tab delimited format.
+truesight  = Truesight style tab delimited format.''')
+
 	junctools.convert.add_options(convert_parser)
 	convert_parser.set_defaults(func=junctools.convert.convert)
 
@@ -32,10 +62,35 @@ def main():
 	junctools.markup.add_options(markup_parser)
 	markup_parser.set_defaults(func=junctools.markup.markup)
 
-	merge_parser = subparsers.add_parser("set",
+	set_parser = subparsers.add_parser("set",
+										 description='''Supported set operations:
+
+# These modes support 2 or more input files.
+# The output contains junctions with extended anchors representing the most
+# extreme extents found across all inputs
+intersection = Produces the intersection of junctions from multiple input files
+union        = Produces the union of junctions from multiple input files
+consensus    = If there are 3 or more input files, the consensus operation produces
+               a merged set of junctions where those junctions are found across
+               a user-defined number of input files
+
+# These modes only support 2 input files and produce an output file
+subtract     = Produces an output set of junctions containing all junctions present
+               in the first input file that also are not found in the second file
+symmetric_difference =
+               Produces an output set containing junctions from both input files
+               that are not present in the intersection of both
+
+# These modes also only support 2 input files and return True or False
+# depending on the test requested
+is_subset    = Returns True if all junctions in the first file are present in the
+               second
+is_superset  = Returns True if all junctions in the second file are present in the
+               first
+is_disjoint  = Returns True if there is a null intersection between both files''',
 										 help="Apply set operations to two or more junction files.")
-	junctools.set.add_options(merge_parser)
-	merge_parser.set_defaults(func=junctools.set.setops)
+	junctools.set.add_options(set_parser)
+	set_parser.set_defaults(func=junctools.set.setops)
 
 	args = parser.parse_args(call_args)
 	if hasattr(args, "func"):
