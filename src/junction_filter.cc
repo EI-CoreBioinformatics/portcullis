@@ -1077,5 +1077,4 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     return 0;
 }
 
-path portcullis::JunctionFilter::scriptsDir = ".";
 path portcullis::JunctionFilter::dataDir = ".";

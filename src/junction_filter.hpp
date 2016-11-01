@@ -113,7 +113,6 @@ private:
     
 public:
     
-    static path scriptsDir;
     static path dataDir;
     
     JunctionFilter( const path& _prepDir, 

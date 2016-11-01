@@ -48,7 +48,6 @@ namespace portcullis {
         
         // Directories
         path dataDir;
-        path scriptsDir;
         
         // Info
         string version;
@@ -112,9 +111,7 @@ namespace portcullis {
             // Check to see if scripts are adjacent to exe first
             path root = canonicalExe.parent_path();
             path kda(root);
-            kda /= "bed12.py";
-            if (exists(kda)) {
-                scriptsDir = root;
+            if (kda.leaf() == "bin") { // Usually this is a good indication of whether portcullis has been installed
                 dataDir = path(DATADIR "/portcullis/");
             }
             else {
@@ -123,44 +120,28 @@ namespace portcullis {
                 // Not 100% sure how far back we need to go (depends on whether using KAT exe or tests) 
                 // so try 2, 3 and 4 levels.
                 root = root.parent_path();
-                scriptsDir = root;
-                scriptsDir /= "scripts";
-                
                 dataDir = root;
                 dataDir /= "data";
 
-                if (!exists(scriptsDir)) {
+                if (!exists(dataDir)) {
                     root = root.parent_path();
-                    scriptsDir = root;
-                    scriptsDir /= "scripts";
                     dataDir = root;
                     dataDir /= "data";
 
-                    if (!exists(scriptsDir)) {
+                    if (!exists(dataDir)) {
                         root = root.parent_path();
-                        scriptsDir = root;
-                        scriptsDir /= "scripts";
                         dataDir = root;
                         dataDir /= "data";
 
-                        if (!exists(scriptsDir)) {
+                        if (!exists(dataDir)) {
                             BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-                                "Could not find suitable directory containing scripts relative to provided exe: ") + canonicalExe.c_str()));
+                                "Could not find suitable directory containing data files relative to provided exe: ") + canonicalExe.c_str()));
                         }
 
                     }
                 }
             }
             
-            path pb = scriptsDir;
-            pb /= "bed12.py";
-
-            if (!exists(pb)) {
-                BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-                    "Found the scripts directory where expected") + scriptsDir.string() + 
-                        ". However, could not find the \"bed12.py\" script inside."));
-            }
-
             path df = dataDir;
             df /= "default_filter.json";
 
@@ -203,10 +184,6 @@ namespace portcullis {
         path getPortcullisExe() const {
             return portcullisExe;
         }
-
-        path getScriptsDir() const {
-            return scriptsDir;
-        }
         
         path getDataDir() const {
             return dataDir;
@@ -242,7 +219,6 @@ namespace portcullis {
                         << " - portcullis: " << pfs.portcullisExe << " - " << pfs.canonicalExe << endl
                         << "Directories: " << endl
                         << " - Data: " << pfs.dataDir << endl
-                        << " - Scripts: " << pfs.scriptsDir << endl
                         << "Info:" << endl
                         << " - Version: " << pfs.version << endl;
         }     

@@ -456,7 +456,6 @@ int main(int argc, char *argv[]) {
         char** modeArgV = argv+1;
         
         // Set static variables in downstream subtools so they know where to get their resources from
-        JunctionFilter::scriptsDir = portcullis::pfs.getScriptsDir();
         JunctionFilter::dataDir = portcullis::pfs.getDataDir();
         JunctionSystem::version = portcullis::pfs.getVersion();
         

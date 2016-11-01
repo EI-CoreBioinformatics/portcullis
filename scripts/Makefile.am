@@ -1,11 +1,12 @@
+AUTOMAKE_OPTIONS = subdir-objects
 
 install-exec-hook: 
 	python3 setup.py install
 
 uninstall-hook:
-	pip3 uninstall junctools
+	pip3 uninstall -y junctools
 
-junctools_scripts = \
+EXTRA_DIST = \
 	junctools/compare.py \
 	junctools/convert.py \
 	junctools/junction.py \
@@ -14,5 +15,7 @@ junctools_scripts = \
 	junctools/set.py \
 	junctools/split.py
 
-dist-hook:
-	cp $(junctools_scripts) $(distdir)/junctools
+clean-local: clean-local-check
+.PHONY: clean-local-check
+clean-local-check:
+	-rm -rf dist build junctools.egg-info
