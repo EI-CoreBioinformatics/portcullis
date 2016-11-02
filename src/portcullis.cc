@@ -274,7 +274,7 @@ int mainFull(int argc, char *argv[]) {
 
 
     if (!exists(outputDir)) {
-        if (!create_directory(outputDir)) {
+        if (!create_directories(outputDir)) {
             BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
                     "Could not create output directory: ") + outputDir.string()));
         }
