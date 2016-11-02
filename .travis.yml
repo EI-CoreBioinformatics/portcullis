@@ -8,6 +8,11 @@ matrix:
         - os: osx
           compiler: clang
 
+# safelist
+branches:
+  only:
+  - master
+  - develop
 
 # Setup compiler
 before_install:

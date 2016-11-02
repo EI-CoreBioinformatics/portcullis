@@ -19,7 +19,10 @@ analyses such as gene prediction and genome annotation.
 
 ##Installation:
 
-There are two ways to install portcullis from source, either by cloning the git repository, or by downloading a distributable package, the later method is generally recommended as it reduces the number of installation steps and dependencies required to be on your system.
+There are two ways to install portcullis from source, either by cloning the git 
+repository, or by downloading a distributable package, the later method is generally 
+recommended as it reduces the number of installation steps and dependencies required 
+to be on your system.
 
 When installing from distributable first confirm dependencies are installed and configured:
 
@@ -33,6 +36,15 @@ When installing from distributable first confirm dependencies are installed and 
  - **Python3** (including python3 development libraries and the *numpy*, *scipy*, *matplotlib*, and *sklearn* packages)
  - **Sphinx-doc** V1.3+ (Optional: only required for building the documentation.  Sphinx comes with anaconda3, however if not using anaconda3 then install according to the instructions on the sphinx website: [http://www.sphinx-doc.org/en/stable/instructions](http://www.sphinx-doc.org/en/stable/instructions))
   
+Then proceed with the following steps:
+
+ - Download the latest tarball from here: [https://github.com/maplesond/portcullis/releases](https://github.com/maplesond/portcullis/releases).  NOTE: Please make sure not to download the github source code zips.  The portcullis distributables have the following filename format ```portcullis-<version>.tar.gz```.
+ - Decompress and untar: ```tar -xvf portcullis-<version>.tar.gz```
+ - Change into directory: ```cd portcullis-x.x.x```
+ - Generate makefiles and confirm dependencies: ```./configure```
+ - Compile software: ```make```
+ - Run tests (optional) ```make check```
+ - Install: ```sudo make install```
 
 Should you wish to install from a cloned git repository instead, do the following:
 
@@ -56,12 +68,6 @@ located in non-standard locations are:
 
 Type ```./configure --help``` for full details.
 
-The Makefile for portcullis can take several goals.  Full details of common make 
-goals can be found in the INSTALL file.  Typically, the following options can optionally be used:
-
-  - ```make check``` - runs all unit tests.  This includes unit tests for htslib and samtools which are embedded in the portcullis source tree.  To run only portcullis unit tests go into the ``tests`` subdirectory and run ``make check`` there.
-  - ```make pdf``` - generates a PDF copy of the manual (requires sphinx to be installed)
-  
 
 ##Operating Instructions:
 
@@ -78,6 +84,8 @@ These modes are available:
  - **full**    - Runs prep, junc, filter and optionally bamfilt as a complete pipeline
 
 Typing ```portcullis <mode> --help``` will bring up help and usage information specific to that mode.
+
+In addition to portcullis, we provide a tool-suite for manipulating junction files
 
 An online version of the manual can be found here: [https://portcullis.readthedocs.org/en/latest/](https://portcullis.readthedocs.org/en/latest/).
 
