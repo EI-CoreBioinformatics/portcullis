@@ -26,12 +26,13 @@ Contents:
     :numbered:
     :maxdepth: 2
 
+    requirements
     installation
     quickstart
     using
     metrics
-    scripts
-    requirements
+    junctools
+    
     
 
 

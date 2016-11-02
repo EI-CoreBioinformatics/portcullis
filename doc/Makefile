@@ -10,7 +10,7 @@ MKDIR_P	      = mkdir -p
 INSTALL	      = /usr/bin/install -c -m 644
 
 # Set autoconf variables
-prefix	      = /home/maplesod/software/portcullis-1.0.0_beta2
+prefix	      = /usr/local
 PACKAGE_TARNAME = portcullis
 top_srcdir    = ..
 srcdir	      = .
@@ -46,7 +46,7 @@ DISTFILES = $(DPS)/index.rst \
 	    $(DPS)/metrics.rst \
 	    $(DPS)/quickstart.rst \
 	    $(DPS)/requirements.rst \
-	    $(DPS)/scripts.rst \
+	    $(DPS)/junctools.rst \
 	    $(DPS)/using.rst \
 	    $(DPI)/hamming.png \
 	    $(DPI)/portcullis_logo.png \

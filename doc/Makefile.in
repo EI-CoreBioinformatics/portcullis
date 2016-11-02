@@ -46,7 +46,7 @@ DISTFILES = $(DPS)/index.rst \
 	    $(DPS)/metrics.rst \
 	    $(DPS)/quickstart.rst \
 	    $(DPS)/requirements.rst \
-	    $(DPS)/scripts.rst \
+	    $(DPS)/junctools.rst \
 	    $(DPS)/using.rst \
 	    $(DPI)/hamming.png \
 	    $(DPI)/portcullis_logo.png \

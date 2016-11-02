@@ -12,7 +12,7 @@ def compare(args):
 		rn = set()
 		ref_entries = 0
 
-		if args.labels:
+		if not args.labels:
 			rp, ref_entries = Junction.createJuncSet(args.reference[0], use_strand=args.use_strand)
 		else:
 			rp, rn, ref_entries = Junction.createMarkedupJuncSets(args.reference[0], use_strand=args.use_strand)
@@ -60,9 +60,10 @@ def compare(args):
 			f1 += p.F1()
 
 		if len(args.input) > 1:
-			print("Mean recall: ", recall / len(args.input))
-			print("Mean precision: ", precision / len(args.input))
-			print("Mean f1: ", f1 / len(args.input))
+			print()
+			print("Mean recall: ", format(recall / len(args.input), '.2f'))
+			print("Mean precision: ", format(precision / len(args.input), '.2f'))
+			print("Mean f1: ", format(f1 / len(args.input), '.2f'))
 
 	else:
 

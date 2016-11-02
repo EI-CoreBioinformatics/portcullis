@@ -105,7 +105,7 @@ is_disjoint  = Returns True if there is a null intersection between both files''
 	set_parser.set_defaults(func=set.setops)
 
 	split_parser = subparsers.add_parser("split",
-										 help="Marks whether each junction in the input can be found in the reference or not.")
+										 help="Splits portcullis pass and fail juncs into 4 sets (TP, TN, FP, FN) based on whether or not the junctions are found in the reference or not.")
 	split.add_options(split_parser)
 	split_parser.set_defaults(func=split.split)
 
