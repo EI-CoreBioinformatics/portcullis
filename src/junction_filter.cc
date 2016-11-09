@@ -364,7 +364,7 @@ void portcullis::JunctionFilter::filter() {
         }
     }
 
-    if (maxLength > 0 || this->doCanonicalFiltering()) {
+    if (maxLength > 0 || this->doCanonicalFiltering() || minCov > 1) {
 
         JunctionList passJuncs;
         JunctionList failJuncs;
