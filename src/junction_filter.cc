@@ -389,6 +389,10 @@ void portcullis::JunctionFilter::filter() {
                     pass = false;
                 }
             }
+            
+            if (pass && this->getMinCov() > j->getNbJunctionAlignments()) {
+                pass = false;
+            }
 
             if (pass) {
                 passJuncs.push_back(j);
@@ -944,6 +948,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     bool introngff;
     int32_t max_length;
     string canonical;
+    uint32_t mincov;
     string source;
     bool no_smote;
     bool enn;
@@ -988,10 +993,12 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             "Reference annotation of junctions in BED format.  Any junctions found by the junction analysis tool will be preserved if found in this reference file regardless of any other filtering criteria.  If you need to convert a reference annotation from GTF or GFF to BED format portcullis contains scripts for this.")
             ("no_ml,n", po::bool_switch(&no_ml)->default_value(false),
             "Disables machine learning filtering")
-            ("max_length,l", po::value<int32_t>(&max_length)->default_value(0),
+            ("max_length", po::value<int32_t>(&max_length)->default_value(0),
             "Filter junctions longer than this value.  Default (0) is to not filter based on length.")
-            ("canonical,c", po::value<string>(&canonical)->default_value("OFF"),
+            ("canonical", po::value<string>(&canonical)->default_value("OFF"),
             "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GT-AG), S = Semi-canonical junctions (AT-AC, or GC-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")
+            ("min_cov", po::value<uint32_t>(&mincov)->default_value(1),
+            "Only keep junctions with a number of split reads greater than or equal to this number")
             ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD),
                 "The threshold score at which we determine a junction to be genuine or not.  Increase value towards 1.0 to increase precision, decrease towards 0.0 to increase sensitivity.  We generally find that increasing sensitivity helps when using high coverage data, or when the aligner has already performed some form of junction filtering.")
             ;
@@ -1053,6 +1060,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     filter.setThreads(threads);
     filter.setMaxLength(max_length);
     filter.setCanonical(canonical);
+    filter.setMinCov(mincov);
     filter.setOutputExonGFF(exongff);
     filter.setOutputIntronGFF(introngff);
 

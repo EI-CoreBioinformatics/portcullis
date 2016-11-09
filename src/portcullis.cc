@@ -157,6 +157,7 @@ int mainFull(int argc, char *argv[]) {
     bool bamFilter;
     string source;
     uint32_t max_length;
+    uint32_t mincov;
     string canonical;
     bool verbose;
     bool help;
@@ -207,8 +208,10 @@ int mainFull(int argc, char *argv[]) {
                 "Reference annotation of junctions in BED format.  Any junctions found by the junction analysis tool will be preserved if found in this reference file regardless of any other filtering criteria.  If you need to convert a reference annotation from GTF or GFF to BED format portcullis contains scripts for this.")
             ("max_length", po::value<uint32_t>(&max_length)->default_value(0),
                 "Filter junctions longer than this value.  Default (0) is to not filter based on length.")
-            ("canonical,c", po::value<string>(&canonical)->default_value("OFF"),
+            ("canonical", po::value<string>(&canonical)->default_value("OFF"),
                 "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GT-AG), S = Semi-canonical junctions (AT-AC, or  GC-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")
+            ("min_cov", po::value<uint32_t>(&mincov)->default_value(1),
+                "Only keep junctions with a number of split reads greater than or equal to this number")
             ("save_bad", po::bool_switch(&saveBad)->default_value(false),
                 "Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)") 
             ;
@@ -331,6 +334,7 @@ int mainFull(int argc, char *argv[]) {
     filter.setSource(source);
     filter.setMaxLength(max_length);
     filter.setCanonical(canonical);
+    filter.setMinCov(mincov);
     filter.setTrain(true);
     filter.setThreads(threads);
     filter.setENN(false);
