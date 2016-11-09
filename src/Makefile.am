@@ -15,17 +15,18 @@ portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 			@AM_CPPFLAGS@ \
 			@CPPFLAGS@
 
-portcullis_LDFLAGS =	-L../lib \
-			-L../deps/htslib-1.3 \
-			-L../deps/ranger-0.3.8 \
+portcullis_LDFLAGS =	-L../lib/.libs \
+			-L../deps/htslib-1.3/.libs \
+			-L../deps/ranger-0.3.8/.libs \
 			@AM_LDFLAGS@ \
 			@LDFLAGS@
 
-portcullis_LDADD =	-lportcullis \
-			-lphts \
-			-lranger \
-			@AM_LIBS@
-
+portcullis_LDADD =	@AM_LIBS@ \
+			-l:libportcullis.a \
+			-l:libranger.a \
+			-l:libphts.a \
+			-lz
+						
 
 noinst_HEADERS =	prepare.hpp \
 			junction_builder.hpp \

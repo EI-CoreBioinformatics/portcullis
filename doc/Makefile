@@ -40,11 +40,18 @@ I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) -c source $(top_srcdir)/doc
 
 DPS=$(top_srcdir)/doc/source
 DPI=$(DPS)/images
+DPA=$(DPS)/assets
 DISTFILES = $(DPS)/index.rst \
 	    $(DPS)/installation.rst \
 	    $(DPS)/metrics.rst \
-	    $(DPS)/using.rst
-
+	    $(DPS)/quickstart.rst \
+	    $(DPS)/requirements.rst \
+	    $(DPS)/junctools.rst \
+	    $(DPS)/using.rst \
+	    $(DPI)/hamming.png \
+	    $(DPI)/portcullis_logo.png \
+	    $(DPA)/portcullis_genomescience2016_poster.pdf \
+	    $(DPA)/portcullis_genomescience2016_slides.pdf
 	
 
 help:

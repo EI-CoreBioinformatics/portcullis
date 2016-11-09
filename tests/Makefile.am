@@ -11,23 +11,29 @@ EXTRA_DIST = \
 	resources/ecoli.fa \
 	resources/sorted.bam \
 	resources/sorted.bam.bai \
-	resources/unsorted.bam
+	resources/unsorted.bam \
+	resources/spombe.III.fa \
+	resources/spombe.gsnap.III.25K.bam \
+	test_full.sh \
+	test_substeps.sh
 	
+TEST_EXTENSIONS = .sh
+SH_LOG_COMPILER = $(SHELL)
+AM_SH_LOG_FLAGS =
+
+TESTS = check_unit_tests test_substeps.sh test_full.sh
+check_PROGRAMS = check_unit_tests
 
 noinst_HEADERS =    gtest/gtest.h \
 		    gtest/src/gtest-all.cc \
 		    gtest/src/gtest_main.cc
-
-
-TESTS = check_unit_tests
-check_PROGRAMS = check_unit_tests
 
 check_unit_tests_SOURCES =	bam_tests.cpp \
 				seq_utils_tests.cpp \
 				kmer_tests.cpp \
 				smote_tests.cpp \
 				intron_tests.cpp \
-				junction_tests.cpp \	
+				junction_tests.cpp \
 				check_portcullis.cc
 
 check_unit_tests_CXXFLAGS = -O0 @AM_CXXFLAGS@ @CXXFLAGS@
@@ -47,6 +53,7 @@ check_unit_tests_LDFLAGS =	-L../lib \
 				@LDFLAGS@
 	
 check_unit_tests_LDADD =	libgtest.la \
+				-lz \
 				-lportcullis \
 				-lphts \
 				-lranger \

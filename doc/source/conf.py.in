@@ -46,7 +46,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'@PACKAGE_TARNAME@'
-copyright = u'2014, Daniel Mapleson, Luca Venturini and David Swarbreck'
+copyright = u'2016, Daniel Mapleson, Luca Venturini and David Swarbreck'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

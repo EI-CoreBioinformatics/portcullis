@@ -154,31 +154,34 @@ public:
     
     void sort();
     
+    void index();
+    
     void saveAll(const path& outputPrefix, const string& source);
+    
+    void saveAll(const path& outputPrefix, const string& source, bool bedscore, bool outputExonGFF, bool outputIntronGFF);
     
     void outputDescription(std::ostream &strm);
     
     friend std::ostream& operator<<(std::ostream &strm, const JunctionSystem& js) {
         
-        strm << "index\t" << Junction::junctionOutputHeader() << endl;
+        strm << Junction::junctionOutputHeader() << endl;
         
-        uint64_t i = 0;
         for(const auto& j : js.junctionList) {
-            strm << i++ << "\t" << *j << endl;
+            strm << *j << endl;
         }
         
         return strm;
     }
     
-    void outputJunctionGFF(std::ostream &strm, const string& source);
+    void writeExonGFF(std::ostream &strm, const string& source);
     
-    void outputIntronGFF(std::ostream &strm, const string& source);
+    void writeIntronGFF(std::ostream &strm, const string& source);
     
-    void outputGTF(std::ostream &strm) {}
+    //void outputGTF(std::ostream &strm) {}
     
-    void outputBED(string& path, CanonicalSS type, const string& prefix);
+    void outputBED(string& path, CanonicalSS type, const string& prefix, bool bedscore);
     
-    void outputBED(std::ostream &strm, CanonicalSS type, const string& prefix);
+    void outputBED(std::ostream &strm, CanonicalSS type, const string& prefix, bool bedscore);
     
     void load(const path& junctionTabFile);
     void load(const path& junctionTabFile, const bool simple);

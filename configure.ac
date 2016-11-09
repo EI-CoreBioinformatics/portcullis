@@ -4,12 +4,12 @@
 
 # Autoconf setup
 AC_PREREQ([2.68])
-AC_INIT([portcullis],[0.17.3],[daniel.mapleson@tgac.ac.uk],[portcullis],[http://www.tgac.ac.uk])
+AC_INIT([portcullis],[1.0.0_beta3],[daniel.mapleson@earlham.ac.uk],[portcullis],[http://www.earlham.ac.uk])
 AC_CONFIG_SRCDIR([src/portcullis.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile])
+AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile scripts/setup.py scripts/junctools/__init__.py scripts/Makefile])
 AC_CONFIG_SUBDIRS([deps/htslib-1.3 deps/ranger-0.3.8])
 AC_LANG([C++])
 AC_PROG_INSTALL
@@ -95,7 +95,7 @@ if test "$with_samtools" == no ; then
     AC_MSG_ERROR([samtools not found])
 fi 
 
-AM_PATH_PYTHON([], [], AC_MSG_ERROR([Python interpreter not found.]))
+#AM_PATH_PYTHON([], [], AC_MSG_ERROR([Python interpreter not found.]))
 
 AX_PYTHON_DEVEL([>= '3.1'])
 
@@ -107,12 +107,14 @@ if [[ -z "${PYTHON_EXTRA_LIBS}" ]]; then
     AC_MSG_ERROR([Python3 detected but Python3 development library was not found. If running on a debian system try "sudo apt-get install python3-dev".])
 fi
 
+pybin=python${PYTHON_VERSION}
+
 # Check for required python libraries
-AX_PYTHON_MODULE(numpy, [AC_MSG_ERROR([numpy not found])], python3)
-AX_PYTHON_MODULE(matplotlib, [AC_MSG_ERROR([matplotlib not found])], python3)
-AX_PYTHON_MODULE(scipy, [AC_MSG_ERROR([scipy not found])], python3)
-AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], python3)
-AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], python3)     
+AX_PYTHON_MODULE(numpy, [AC_MSG_ERROR([numpy not found])], ${pybin})
+AX_PYTHON_MODULE(matplotlib, [AC_MSG_ERROR([matplotlib not found])], ${pybin})
+AX_PYTHON_MODULE(scipy, [AC_MSG_ERROR([scipy not found])], ${pybin})
+AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], ${pybin})
+AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], ${pybin})     
 
 
 # Check for sphinx executable to build documentation
@@ -127,10 +129,12 @@ if [[ "${sphinx}" == "yes" ]]; then
     minor_size=${#sphinx_minor_version}
     if (( ("${major_size}" > 2) || ("${minor_size}" > 2) )); then sphinx_major_version=0; sphinx_minor_version=0; fi
     if (( ("${sphinx_major_version}" < 1 ) || (  ( "${sphinx_major_version}" >= 1 ) && ( "${sphinx_minor_version}" < 3 ) ) )); then
-        AC_MSG_ERROR([Sphinx detected, but version is too old.  Cant create documentation.])
+        AC_MSG_WARN([Sphinx detected, but version is too old.  Cant create documentation.])
+        sphinx="no"
     fi
 else
-    AC_MSG_ERROR([Sphinx not detected, cant create documentation.])    
+    AC_MSG_WARN([Sphinx not detected, cant create documentation.])
+    sphinx="no"  
 fi
 AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
 AC_SUBST([MAKE_DOCS])
@@ -156,14 +160,23 @@ LIBS="${SAVED_LIBS}"
 AM_CXXFLAGS="-g -g3 -gdwarf-4"
 AC_SUBST([AM_CXXFLAGS])
 
-AM_CPPFLAGS="${BOOST_CPPFLAGS} ${PYTHON_CPPFLAGS} ${DLIB_CPPFLAGS} ${ZLIB_CPPFLAGS}"
+#AM_CPPFLAGS="${BOOST_CPPFLAGS} ${PYTHON_CPPFLAGS} ${DLIB_CPPFLAGS} ${ZLIB_CPPFLAGS}"
+AM_CPPFLAGS="${BOOST_CPPFLAGS} ${ZLIB_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
-AM_LDFLAGS="${BOOST_LDFLAGS} ${PYTHON_EXTRA_LDFLAGS} ${ZLIB_LDFLAGS} ${PTHREAD_CFLAGS}"
+#AM_LDFLAGS="${BOOST_LDFLAGS} ${PYTHON_EXTRA_LDFLAGS} ${ZLIB_LDFLAGS} ${PTHREAD_CFLAGS}"
+AM_LDFLAGS="${BOOST_LDFLAGS} ${PTHREAD_CFLAGS} ${ZLIB_LDFLAGS}"
 AC_SUBST([AM_LDFLAGS])
 
 # Order is important!
-AM_LIBS="${M_LIB} ${DL_LIB} ${BOOST_LIBS} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS} ${RT_LIB} ${ZLIB_LIB} ${PTHREAD_LIBS}"
+#AM_LIBS="${M_LIB} ${DL_LIB} ${BOOST_LIBS} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS} ${RT_LIB} ${ZLIB_LIB} ${PTHREAD_LIBS}"
+AM_LIBS="${M_LIB} ${DL_LIB} ${BOOST_LIBS} ${RT_LIB} ${ZLIB_LIB} ${PTHREAD_LIBS}"
 AC_SUBST([AM_LIBS])
 
 AC_OUTPUT
+
+if [[ "${sphinx}" == "no" ]]; then
+    AC_MSG_WARN([Sphinx not detected, or version is too old.  Wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.io/en/latest/])    
+else
+    AC_MSG_NOTICE([Building documentation with sphinx])
+fi

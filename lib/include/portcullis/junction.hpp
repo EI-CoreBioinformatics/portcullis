@@ -284,6 +284,7 @@ private:
     Strand readStrand;      // Strand derived from alignments
     Strand ssStrand;        // Strand derived from splice sites    
     Strand consensusStrand; // If readStrand and ssStrand agree then strand is the same, otherwise UNKNOWN
+    double score;           // Only applied if the random forest makes a prediction
     
     bool genuine;           // Used as a hidden variable for use with cross validating a trained model instance.
     
@@ -293,6 +294,7 @@ private:
     int32_t rightAncEnd;
     string da1, da2;                    // These store the dinucleotides found at the predicted donor / acceptor sites in the intron
     
+    uint32_t id;
     
 protected:
     
@@ -498,7 +500,14 @@ public:
     size_t size() const {
         return rightAncEnd - leftAncStart + 1;
     }
-
+    
+    uint32_t getId() const {
+        return id;
+    }
+    
+    void setId(uint32_t id) {
+        this->id = id;
+    }
     
     size_t getNbJunctionAlignmentFromVector() const {
         return this->alignments.size();
@@ -867,6 +876,15 @@ public:
         this->genuine = genuine;
     }
     
+    double getScore() const {
+        return score;
+    }
+
+    void setScore(double score) {
+        this->score = score;
+    }
+
+    
     string locationAsString() const {
         return this->intron->toString() + strandToChar(this->consensusStrand);
     }
@@ -918,19 +936,19 @@ public:
      * Complete human readable description of this intron (for augustus hints)
      * @param strm
      */
-    void outputIntronGFF(std::ostream &strm, uint32_t id, const string& source);
+    void outputIntronGFF(std::ostream &strm, const string& source);
     
     /**
      * Complete human readable description of this junction
      * @param strm
      */
-    void outputJunctionGFF(std::ostream &strm, uint32_t id, const string& source);
+    void outputJunctionGFF(std::ostream &strm, const string& source);
     
     /**
      * Complete human readable description of this junction
      * @param strm
      */
-    void outputBED(std::ostream &strm, const string& prefix, uint32_t id);
+    void outputBED(std::ostream &strm, const string& prefix, bool bedscore);
     
     
     /**
@@ -940,46 +958,47 @@ public:
      * @return 
      */
     friend ostream& operator<<(ostream &strm, Junction& j) {
-        strm << *(j.intron) << "\t"
-                    << j.leftAncStart << "\t"
-                    << j.rightAncEnd << "\t"
-                    << j.da1 << "\t"
-                    << j.da2 << "\t"
-                    << strandToChar(j.readStrand) << "\t"
-                    << strandToChar(j.ssStrand) << "\t"
-                    << strandToChar(j.consensusStrand) << "\t"
-                    << cssToChar(j.canonicalSpliceSites) << "\t"
-                    << j.getNbJunctionAlignments() << "\t"
-                    << j.nbDistinctAlignments << "\t"
-                    << j.nbReliableAlignments << "\t"
-                    << j.getIntronSize() << "\t"
-                    << j.getLeftAnchorSize() << "\t"
-                    << j.getRightAnchorSize() << "\t"
-                    << j.maxMinAnchor << "\t"
-                    << j.diffAnchor << "\t"
-                    << j.nbDistinctAnchors << "\t"
-                    << j.entropy << "\t"
-                    << j.maxMMES << "\t"
-                    << j.hammingDistance5p << "\t"
-                    << j.hammingDistance3p << "\t"
-                    << j.coverage << "\t"
-                    << j.uniqueJunction << "\t"
-                    << j.primaryJunction << "\t"
-                    << j.multipleMappingScore << "\t"
-                    << j.meanMismatches << "\t"
-                    << j.getNbUniquelySplicedReads() << "\t"
-                    << j.nbMultipleSplicedReads << "\t"
-                    << j.getReliable2RawRatio() << "\t"
-                    << j.nbDownstreamJunctions << "\t"
-                    << j.nbUpstreamJunctions << "\t"
-                    << j.nbUpstreamFlankingAlignments << "\t"
-                    << j.nbDownstreamFlankingAlignments << "\t"
-                    << j.distanceToNextUpstreamJunction << "\t"
-                    << j.distanceToNextDownstreamJunction << "\t"
-                    << j.distanceToNearestJunction << "\t"
-                    << j.meanQueryLength << "\t"
-                    << j.suspicious << "\t"
-                    << j.pfp;
+        strm << j.id << "\t" 
+                << *(j.intron) << "\t"
+                << j.leftAncStart << "\t"
+                << j.rightAncEnd << "\t"
+                << j.da1 << "\t"
+                << j.da2 << "\t"
+                << strandToChar(j.readStrand) << "\t"
+                << strandToChar(j.ssStrand) << "\t"
+                << strandToChar(j.consensusStrand) << "\t"
+                << cssToChar(j.canonicalSpliceSites) << "\t"
+                << j.getNbJunctionAlignments() << "\t"
+                << j.nbDistinctAlignments << "\t"
+                << j.nbReliableAlignments << "\t"
+                << j.getIntronSize() << "\t"
+                << j.getLeftAnchorSize() << "\t"
+                << j.getRightAnchorSize() << "\t"
+                << j.maxMinAnchor << "\t"
+                << j.diffAnchor << "\t"
+                << j.nbDistinctAnchors << "\t"
+                << j.entropy << "\t"
+                << j.maxMMES << "\t"
+                << j.hammingDistance5p << "\t"
+                << j.hammingDistance3p << "\t"
+                << j.coverage << "\t"
+                << j.uniqueJunction << "\t"
+                << j.primaryJunction << "\t"
+                << j.multipleMappingScore << "\t"
+                << j.meanMismatches << "\t"
+                << j.getNbUniquelySplicedReads() << "\t"
+                << j.nbMultipleSplicedReads << "\t"
+                << j.getReliable2RawRatio() << "\t"
+                << j.nbDownstreamJunctions << "\t"
+                << j.nbUpstreamJunctions << "\t"
+                << j.nbUpstreamFlankingAlignments << "\t"
+                << j.nbDownstreamFlankingAlignments << "\t"
+                << j.distanceToNextUpstreamJunction << "\t"
+                << j.distanceToNextDownstreamJunction << "\t"
+                << j.distanceToNearestJunction << "\t"
+                << j.meanQueryLength << "\t"
+                << j.suspicious << "\t"
+                << j.pfp;
         
         for(size_t i = 0; i < JO_NAMES.size(); i++) {            
             strm << "\t" << j.junctionOverhangs[i];

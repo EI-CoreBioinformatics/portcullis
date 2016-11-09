@@ -24,3 +24,7 @@ check_seq*
 /check_unit_tests.trs
 *.la
 /compat.sh
+/test_full.log
+/test_full.trs
+/test_substeps.log
+/test_substeps.trs

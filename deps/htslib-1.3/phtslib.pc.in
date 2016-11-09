@@ -3,7 +3,7 @@ exec_prefix=@exec_prefix@
 includedir=@includedir@
 libdir=@libdir@
 
-Name: htslib
+Name: phts
 Description: C library for high-throughput sequencing data formats
 Version: @PACKAGE_VERSION@
 Cflags: -I${includedir}
