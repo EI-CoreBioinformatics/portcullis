@@ -119,8 +119,7 @@ string modes() {
                   " - full    - Full pipeline.  Runs prep, junc, filt (and optionally bamfilt) in sequence\n") +
                   " - prep    - Step 1: Prepares a genome and bam file(s) ready for junction analysis\n" +
                   " - junc    - Step 2: Perform junction analysis on prepared data\n" +
-                  " - filt    - Step 3: Discard unlikely junctions and produce BAM containing alignments\n" +
-                  "             to genuine junctions\n" +
+                  " - filt    - Step 3: Discard unlikely junctions\n" +
                   " - bamfilt - Step 4: Filters a BAM to remove any reads associated with invalid\n" +
                   "             junctions";
 }
