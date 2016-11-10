@@ -1,4 +1,4 @@
-.. _markup
+.. _junctools:
 
 Junctools
 =========
@@ -199,7 +199,8 @@ The usage information for the conversion tool looks like this::
 
 .. note:: The user can also use the conversion tool to deduplicate, sort and reindex junction files.
 
-.. _markup
+.. _markup:
+
 Markup
 ------
 

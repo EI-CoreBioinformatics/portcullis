@@ -102,6 +102,7 @@ private:
     bool outputIntronGFF;
     int32_t maxLength;
     bool filterCanonical;
+    uint32_t minCov;
     bool filterSemi;
     bool filterNovel;    
     string source;
@@ -306,6 +307,15 @@ public:
     void setMaxLength(int32_t maxLength) {
         this->maxLength = maxLength;
     }
+    
+    uint32_t getMinCov() const {
+        return minCov;
+    }
+
+    void setMinCov(uint32_t minCov) {
+        this->minCov = minCov;
+    }
+
     
     path getIntitalPosRulesFile(uint16_t index) const {
         return path(dataDir.string() + "/" + ST_IPOS_RULES_FILE + ".layer" + std::to_string(index) + ".json");

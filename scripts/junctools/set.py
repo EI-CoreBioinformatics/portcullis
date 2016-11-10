@@ -178,12 +178,10 @@ def setops(args):
 
 			res = {}
 			if mode.SUBTRACT:
-				res = dicts[0] - dicts[1]
+				res = dict((_, dicts[0][_]) for _ in set.difference(set(dicts[0].keys()), set(dicts[1].keys())))
 			elif mode.SYMMETRIC_DIFFERENCE:
-				infirst = dicts[0] - dicts[1]
-				insecond = dicts[1] - dicts[0]
-				infirst.update(insecond)
-				res = infirst
+				res = dict((_, dicts[0][_]) for _ in set.symmetric_difference(set(dicts[0].keys()), set(dicts[1].keys())))
+
 
 			print("Output contains", len(res), entries)
 
@@ -193,7 +191,7 @@ def setops(args):
 				print(header, file=out)
 
 				for b in sorted(res):
-					print(res[b], file=out)
+					print(res[b].rstrip(), file=out)
 
 			print("Output saved to", args.output)
 

@@ -76,8 +76,10 @@ Metric 4 - Number of Reliable Alignments
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This is the number of spliced reads supporting this junction that probably do
-not map elsewhere in the genome.  For us we try to gauge this by treating all spliced
-alignments with a mapping score of 30 or greater as reliable alignments.
+not map elsewhere in the genome and are properly paired.  For us we assume that the read is
+uniquely mapped if it has a mapping score of 30 or greater.  This should be a reliable threshold as
+most aligners will output MAPQ scores of 0, 1, 2 or 3 and then another high value, e.g. 50 or 60 to
+represent a unique read.
 
 
 Metric 5 - Intron size

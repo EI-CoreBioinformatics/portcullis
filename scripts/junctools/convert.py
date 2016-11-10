@@ -5,8 +5,20 @@ from .junction import JuncFactory, Junction, BedJunction
 
 
 def decstart(junctions):
+	last_id = ""
+	index = 1
 	for j in junctions:
 		j.start -= 1
+
+		if last_id == "" or last_id != j.id:
+			last_id = j.id
+			index = 1
+
+		j.id += "_junc" + str(index)
+		index += 1
+
+
+
 
 
 def gtf2bed(filepath):
@@ -19,6 +31,7 @@ def gtf2bed(filepath):
 		curr_transcript_start = 0
 		curr_transcript_end = 0
 		curr_transcript_strand = ""
+		curr_transcript_id = ""
 
 		last_exon_seq = ""
 		last_exon_start = 0
@@ -29,7 +42,7 @@ def gtf2bed(filepath):
 		for line in f:
 
 			if not line.startswith("#"):
-				words = line.split()
+				words = line.split('\t')
 
 				start = int(words[3])
 				end = int(words[4])
@@ -42,6 +55,14 @@ def gtf2bed(filepath):
 					curr_transcript_start = start
 					curr_transcript_end = end
 					curr_transcript_strand = words[6]
+
+					tags = words[8].split(';')
+					for tag in tags:
+						t = tag.strip()
+						if t:
+							tag_parts = t.split()
+							if tag_parts[0] == "transcript_id":
+								curr_transcript_id = tag_parts[1].strip()[1:-1]
 
 					# Wipe last exon
 					last_exon_seq = ""
@@ -59,6 +80,9 @@ def gtf2bed(filepath):
 						j.start = last_exon_end + 1
 						j.end = start - 1
 						j.strand = words[6]
+
+						if curr_transcript_id:
+							j.id = curr_transcript_id
 
 						if j.key not in junction_set:
 							junctions.append(j)
