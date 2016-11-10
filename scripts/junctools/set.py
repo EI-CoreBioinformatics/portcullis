@@ -168,32 +168,61 @@ def setops(args):
 	else:
 		if mode.makes_output():
 
-			print("\t".join(["File", "Total", "Distinct"]))
-			dicts = []
-			for f in args.input:
-				juncs, entries = Junction.createDict(f, use_strand=not args.ignore_strand, fullparse=False)
-				dicts.append(juncs)
-				print("\t".join([f, str(entries), str(len(juncs))]))
-			print()
-
-			res = {}
-			if mode.SUBTRACT:
-				res = dict((_, dicts[0][_]) for _ in set.difference(set(dicts[0].keys()), set(dicts[1].keys())))
-			elif mode.SYMMETRIC_DIFFERENCE:
-				res = dict((_, dicts[0][_]) for _ in set.symmetric_difference(set(dicts[0].keys()), set(dicts[1].keys())))
-
-
-			print("Output contains", len(res), entries)
 
 			with open(args.output, "wt") as out:
 				description = "Set operation on junction files. Mode: {0}".format(mode.name)
-				header = ExonJunction.create(last_ext).file_header(description=description)
+				header = JuncFactory.create_from_ext(last_ext).file_header(description=description)
 				print(header, file=out)
 
-				for b in sorted(res):
-					print(res[b].rstrip(), file=out)
+				out_count = 0
+				if mode == Mode.SUBTRACT:
+					print("Loading second input file into a set")
+					ref, entries = Junction.createJuncSet(args.input[1], use_strand=not args.ignore_strand, fullparse=False)
+					print("\t".join(["File", "Total", "Distinct"]))
+					print("\t".join([f, str(entries), str(len(ref))]))
 
-			print("Output saved to", args.output)
+					with open(args.input[0]) as f:
+						for line in f:
+							junc = JuncFactory.create_from_file(args.input[0], use_strand=not args.ignore_strand).parse_line(line,
+																											fullparse=False)
+							if junc:
+								if not junc.key in ref:
+									print(line.rstrip(), file=out)
+									out_count += 1
+
+
+				elif mode == Mode.SYMMETRIC_DIFFERENCE:
+					print("Loading input files into sets")
+					print("\t".join(["File", "Total", "Distinct"]))
+					sets = []
+					for f in args.input:
+						juncs, entries = Junction.createJuncSet(f, use_strand=not args.ignore_strand, fullparse=False)
+						sets.append(juncs)
+						print("\t".join([f, str(entries), str(len(juncs))]))
+					print()
+
+					with open(args.input[0]) as f:
+						for line in f:
+							junc = JuncFactory.create_from_file(args.input[0], use_strand=not args.ignore_strand).parse_line(line,
+																											fullparse=False)
+							if junc:
+								if not junc.key in sets[1]:
+									print(line.rstrip(), file=out)
+									out_count += 1
+
+					with open(args.input[1]) as f:
+						for line in f:
+							junc = JuncFactory.create_from_file(args.input[1], use_strand=not args.ignore_strand).parse_line(line,
+																											fullparse=False)
+							if junc:
+								if not junc.key in sets[0]:
+									print(line.rstrip(), file=out)
+									out_count += 1
+
+
+				print()
+				print("Output contains ", out_count, " junctions")
+				print("Output saved to", args.output)
 
 		elif mode.is_test():
 
