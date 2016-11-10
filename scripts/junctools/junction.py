@@ -538,7 +538,7 @@ class GFFJunction(ExonJunction):
 		if parts[2] != "intron":
 			return None
 
-		self.seq = parts[0]
+		self.refseq = parts[0]
 		self.start = int(parts[3]) - 1
 		self.end = int(parts[4]) - 1
 		self.strand = parts[6]
