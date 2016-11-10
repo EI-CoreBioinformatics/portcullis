@@ -9,6 +9,7 @@ def decstart(junctions):
 	index = 1
 	for j in junctions:
 		j.start -= 1
+		j.end -= 1
 
 		if last_id == "" or last_id != j.id:
 			last_id = j.id
