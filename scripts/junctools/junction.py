@@ -402,7 +402,7 @@ class BedJunction(ExonJunction):
 		return "\t".join([str(_) for _ in line])
 
 	def accepts_ext(ext):
-		return ext == ".bed"
+		return ext == ".bed" or ext == ".ibed" or ext == ".ebed" or ext == ".bed6"
 
 	def file_header(self, description=None):
 		d = ""
