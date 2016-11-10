@@ -1,13 +1,18 @@
 language: cpp
 
 matrix:
-	include:
-		- os: linux
-		  sudo: required
-		  compiler: gcc
-		- os: osx
-		  compiler: clang
+    include:
+        - os: linux
+          sudo: required
+          compiler: gcc
+        - os: osx
+          compiler: clang
 
+# safelist
+branches:
+  only:
+  - master
+  - develop
 
 # Setup compiler
 before_install:
@@ -23,9 +28,9 @@ before_script:
 
 # Build portcullis and run tests
 script:
-- export PATH="$HOME/exdeps/miniconda/bin:$PATH"
+- export PATH="$TRAVIS_BUILD_DIR/exdeps/miniconda/bin:$PATH"
 - source activate test-environment
-- export LD_LIBRARY_PATH="$HOME/miniconda/envs/test-environment/lib:$LD_LIBRARY_PATH"
+- export LD_LIBRARY_PATH="$TRAVIS_BUILD_DIR/exdeps/miniconda/envs/test-environment/lib:$LD_LIBRARY_PATH"
 - ./configure --disable-silent-rules
 - make
 - make check

@@ -370,21 +370,30 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
 
 
 void portcullis::JunctionSystem::sort() {
-
     std::sort(junctionList.begin(), junctionList.end(), JunctionComparator());
 }
 
+void portcullis::JunctionSystem::index() {
+    for (size_t i = 0; i < this->size(); i++) {
+        junctionList[i]->setId(i);
+    }
+}
+
 void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string& source) {
+    saveAll(outputPrefix, source, false, false, false);
+}
+
+void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string& source, bool bedscore, bool outputExonGFF, bool outputIntronGFF) {
 
     auto_cpu_timer timer(1, " = Wall time taken: %ws\n\n");
 
     string junctionReportPath = outputPrefix.string() + ".junctions.txt";
     string junctionFilePath = outputPrefix.string() + ".junctions.tab";
-    string junctionGFFPath = outputPrefix.string() + ".junctions.gff3";
-    string intronGFFPath = outputPrefix.string() + ".introns.gff3";
+    string junctionGFFPath = outputPrefix.string() + ".junctions.exon.gff3";
+    string intronGFFPath = outputPrefix.string() + ".junctions.intron.gff3";
     string junctionBEDAllPath = outputPrefix.string() + ".junctions.bed";
 
-    cout << " - Saving junction report to: " << junctionReportPath << " ... ";
+    /*cout << " - Saving junction report to: " << junctionReportPath << " ... ";
     cout.flush();
 
     // Print descriptive output to file
@@ -392,8 +401,8 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string&
     outputDescription(junctionReportStream);
     junctionReportStream.close();
 
-    cout << "done." << endl
-            << " - Saving junction table to: " << junctionFilePath << " ... ";
+    cout << "done." << endl;*/
+    cout << " - Saving junction table to: " << junctionFilePath << " ... ";
     cout.flush();
 
     // Print junction stats to file
@@ -401,75 +410,77 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string&
     junctionFileStream << (*this) << endl;
     junctionFileStream.close();
 
-    cout << "done." << endl
-            << " - Saving junction GFF file to: " << junctionGFFPath << " ... ";
-    cout.flush();
+    cout << "done." << endl;
+    
+    if (outputExonGFF) {
+        cout << " - Saving junction GFF file to: " << junctionGFFPath << " ... ";
+        cout.flush();
 
-    // Print junction stats to file
-    ofstream junctionGFFStream(junctionGFFPath.c_str());
-    outputJunctionGFF(junctionGFFStream, source);
-    junctionGFFStream.close();
+        // Print junction stats to file
+        ofstream junctionGFFStream(junctionGFFPath.c_str());
+        writeExonGFF(junctionGFFStream, source);
+        junctionGFFStream.close();
 
-    cout << "done." << endl
-            << " - Saving intron GFF file to: " << intronGFFPath << " ... ";
-    cout.flush();
+        cout << "done." << endl;
+    }
+    
+    if (outputIntronGFF) {
+        cout << " - Saving intron GFF file to: " << intronGFFPath << " ... ";
+        cout.flush();
 
-    // Print junction stats to file
-    ofstream intronGFFStream(intronGFFPath.c_str());
-    outputIntronGFF(intronGFFStream, source);
-    intronGFFStream.close();
-
-    // Output BED files
-
-    cout << "done." << endl
-            << " - Saving BED file with all junctions to: " << junctionBEDAllPath << " ... ";
+        // Print junction stats to file
+        ofstream intronGFFStream(intronGFFPath.c_str());
+        writeIntronGFF(intronGFFStream, source);
+        intronGFFStream.close();
+        
+        cout << "done." << endl;
+    }
+    
+    // Output BED files            
+    cout << " - Saving BED file with all junctions to: " << junctionBEDAllPath << " ... ";
     cout.flush();
 
     // Print junctions in BED format to file
-    outputBED(junctionBEDAllPath, ALL, source);
+    outputBED(junctionBEDAllPath, ALL, source, bedscore);
 
     cout << "done." << endl;
 }
 
 void portcullis::JunctionSystem::outputDescription(std::ostream &strm) {
 
-    uint64_t i = 0;
     for (JunctionPtr j : junctionList) {
-        strm << "Junction " << i++ << ":" << endl;
+        strm << "Junction " << j->getId() << ":" << endl;
         j->outputDescription(strm);
         strm << endl;
     }
 }
 
-void portcullis::JunctionSystem::outputJunctionGFF(std::ostream &strm, const string& source) {
+void portcullis::JunctionSystem::writeExonGFF(std::ostream &strm, const string& source) {
 
-    uint64_t i = 0;
     for (JunctionPtr j : junctionList) {
-        j->outputJunctionGFF(strm, i++, source);
+        j->outputJunctionGFF(strm, source);
     }
 }
 
-void portcullis::JunctionSystem::outputIntronGFF(std::ostream &strm, const string& source) {
+void portcullis::JunctionSystem::writeIntronGFF(std::ostream &strm, const string& source) {
 
-    uint64_t i = 0;
     for (JunctionPtr j : junctionList) {
-        j->outputIntronGFF(strm, i++, source);
+        j->outputIntronGFF(strm, source);
     }
 }
 
-void portcullis::JunctionSystem::outputBED(string& path, CanonicalSS type, const string& prefix) {
+void portcullis::JunctionSystem::outputBED(string& path, CanonicalSS type, const string& prefix, bool bedscore) {
 
     ofstream junctionBEDStream(path.c_str());
-    outputBED(junctionBEDStream, type, prefix);
+    outputBED(junctionBEDStream, type, prefix, bedscore);
     junctionBEDStream.close();
 }
 
-void portcullis::JunctionSystem::outputBED(std::ostream &strm, CanonicalSS type, const string& prefix) {
+void portcullis::JunctionSystem::outputBED(std::ostream &strm, CanonicalSS type, const string& prefix, bool bedscore) {
     strm << "track name=\"junctions\" description=\"Portcullis V" << (version.empty() ? "X.X.X" : version) << " junctions\"" << endl;
-    uint64_t i = 1;
     for (JunctionPtr j : junctionList) {
         if (type == ALL || j->getSpliceSiteType() == type) {
-            j->outputBED(strm, prefix, i++);
+            j->outputBED(strm, prefix, bedscore);
         }
     }
 }

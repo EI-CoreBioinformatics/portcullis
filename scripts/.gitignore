@@ -1,2 +1,7 @@
 /Makefile
 /*.swp
+/build/
+/dist/
+/junctools.egg-info/
+setup.py
+/Makefile.in

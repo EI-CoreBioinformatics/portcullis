@@ -213,15 +213,18 @@ public:
     
     bool outputDetails();
 
+    static string title() {
+        return string("Portcullis Prepare Mode Help.");
+    }
   
-    static string helpMessage() {
-        return string("\nPortcullis Prepare Mode Help.\n\n") +
-                      "Prepares a genome and bam file(s) ready for junction analysis.  This involves\n" +
-                      "ensuring the bam file is sorted and indexed and the genome file is indexed.\n"
-                      "Usage: portcullis prep [options] <genome-file> (<bam-file>)+ \n\n" +
-                      "Options";
+    static string description() {
+        return string("Prepares a genome and bam file(s) ready for junction analysis.  This involves\n") +
+                      "ensuring the bam file is sorted and indexed and the genome file is indexed.";
     }
     
+    static string usage() {
+        return string("portcullis prep [options] <genome-file> (<bam-file>)+");
+    }
     
     
     static int main(int argc, char *argv[]);

@@ -98,8 +98,11 @@ private:
     bool train;
     uint16_t threads;
     bool saveBad;
+    bool outputExonGFF;
+    bool outputIntronGFF;
     int32_t maxLength;
     bool filterCanonical;
+    uint32_t minCov;
     bool filterSemi;
     bool filterNovel;    
     string source;
@@ -111,7 +114,6 @@ private:
     
 public:
     
-    static path scriptsDir;
     static path dataDir;
     
     JunctionFilter( const path& _prepDir, 
@@ -196,6 +198,22 @@ public:
 
     void setSaveBad(bool saveBad) {
         this->saveBad = saveBad;
+    }
+        
+    bool isOutputExonGFF() const {
+        return outputExonGFF;
+    }
+
+    void setOutputExonGFF(bool outputExonGFF) {
+        this->outputExonGFF = outputExonGFF;
+    }
+
+    bool isOutputIntronGFF() const {
+        return outputIntronGFF;
+    }
+
+    void setOutputIntronGFF(bool outputIntronGFF) {
+        this->outputIntronGFF = outputIntronGFF;
     }
 
     bool isVerbose() const {
@@ -290,6 +308,15 @@ public:
         this->maxLength = maxLength;
     }
     
+    uint32_t getMinCov() const {
+        return minCov;
+    }
+
+    void setMinCov(uint32_t minCov) {
+        this->minCov = minCov;
+    }
+
+    
     path getIntitalPosRulesFile(uint16_t index) const {
         return path(dataDir.string() + "/" + ST_IPOS_RULES_FILE + ".layer" + std::to_string(index) + ".json");
     }
@@ -326,17 +353,24 @@ protected:
     
 public:
   
-    static string helpMessage() {
-        return string("\nPortcullis Filter Mode Help.\n\n") +
-                      "Filters out junctions that are unlikely to be genuine or that have too little\n" +
+    static string title() {
+        return string("Portcullis Filter Mode Help");
+    }
+    
+    static string description() {
+        return string("Filters out junctions that are unlikely to be genuine or that have too little\n") +
                       "supporting evidence.  The user can control three stages of the filtering\n" +
                       "process.  First the user can perform filtering based on a random forest model\n" + 
                       "self-trained on the provided data, alternatively the user can provide a pre-\n" +
                       "trained model.  Second the user can specify a configuration file describing a\n" +
                       "set of filtering rules to apply.  Third, the user can directly through the\n" +
                       "command line filter based on junction (intron) length, or the canonical label.\n\n" +
-                      "Usage: portcullis filter [options] <prep_data_dir> <junction_file>\n\n" +
-                      "Options";
+                      "This stage requires the prep directory and the tab file generated from the\n" +
+                      "stage as input.";
+    }
+    
+    static string usage() {
+        return string("portcullis filter [options] <prep_data_dir> <junction_tab_file>");
     }
     
     static int main(int argc, char *argv[]);
