@@ -20,7 +20,7 @@ def decstart(junctions):
 		index += 1
 
 
-def loadgtf(filepath):
+def loadgtf(filepath, dedup=False):
 	'''
 	Assumes that GTF is sorted (doesn't matter if it's sorted by transcript or exon first though)
 	:param filepath:
@@ -45,7 +45,7 @@ def loadgtf(filepath):
 								transcript_id = t[1:-1] if t[0] == '\"' else t
 								transcripts[transcript_id].append([parts[0], parts[3], parts[4], parts[6]])
 
-	junctions = set()
+	junctions = set() if dedup else []
 
 	for t, exons in transcripts.items():
 		le = None
@@ -58,15 +58,19 @@ def loadgtf(filepath):
 				j.strand = e[3]
 				j.id = t
 
-				junctions.add(j)
+				if dedup:
+					junctions.add(j)
+				else:
+					junctions.append(j)
 
 			le = e
 
-	sorted_junctions = sorted(list(junctions))
+	if dedup:
+		junctions = list(junctions)
 
-	decstart(sorted_junctions)
+	decstart(junctions)
 
-	return sorted_junctions
+	return junctions
 
 
 def convert(args):
@@ -105,7 +109,8 @@ def convert(args):
 	index = args.index_start
 
 	if in_type == JuncFactory.GTF:
-		junctions = loadgtf(args.input)
+		junctions = loadgtf(args.input, dedup=args.dedup)
+		args.sort = True	# Make sure we sort the output
 	else:
 		with open(args.input) as f:
 			for line in f:
