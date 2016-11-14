@@ -88,7 +88,7 @@ def setops(args):
 		raise ValueError("Invalid value for min_entry.  Please enter a value of 2 or more.")
 
 	# Check all input files have the same extension
-	if mode.needsConsistentExt():
+	if mode.needs_consistent_ext():
 		last_ext = None
 		for f in args.input:
 			filename, ext = os.path.splitext(f)
