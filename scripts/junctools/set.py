@@ -38,6 +38,9 @@ class Mode(Enum):
 	def is_test(self):
 		return self.value >= 7
 
+	def needs_consistent_ext(self):
+		return self.multifile() or self.name == Mode.SYMMETRIC_DIFFERENCE.name
+
 
 @unique
 class CalcOp(Enum):
@@ -57,6 +60,7 @@ class CalcOp(Enum):
 			return sum(vals) / float(len(vals))
 		else:
 			raise ValueError("CalcOp Error - Should never happen")
+
 
 
 def setops(args):
@@ -84,14 +88,15 @@ def setops(args):
 		raise ValueError("Invalid value for min_entry.  Please enter a value of 2 or more.")
 
 	# Check all input files have the same extension
-	last_ext = None
-	for f in args.input:
-		filename, ext = os.path.splitext(f)
-		if last_ext != None:
-			if last_ext != ext:
-				raise ValueError("Not all input files have the same extension.")
-		else:
-			last_ext = ext
+	if mode.needsConsistentExt():
+		last_ext = None
+		for f in args.input:
+			filename, ext = os.path.splitext(f)
+			if last_ext != None:
+				if last_ext != ext:
+					raise ValueError("Not all input files have the same extension.")
+			else:
+				last_ext = ext
 
 	if mode.makes_output():
 
