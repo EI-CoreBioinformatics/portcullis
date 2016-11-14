@@ -24,18 +24,19 @@ class Mode(Enum):
 	CONSENSUS = 3
 	SUBTRACT = 4
 	SYMMETRIC_DIFFERENCE = 5
-	IS_SUBSET = 6
-	IS_SUPERSET = 7
-	IS_DISJOINT = 8
+	FILTER = 6
+	IS_SUBSET = 7
+	IS_SUPERSET = 8
+	IS_DISJOINT = 9
 
 	def multifile(self):
 		return self.value <= 3
 
 	def makes_output(self):
-		return self.value <= 5
+		return self.value <= 6
 
 	def is_test(self):
-		return self.value >= 6
+		return self.value >= 7
 
 
 @unique
@@ -119,8 +120,9 @@ def setops(args):
 					if junc:
 						counter += 1
 						key = junc.key
-						found.add(key)
-						merged[key].append(line)
+						if not key in found:
+							found.add(key)
+							merged[key].append(line)
 
 			print("\t".join([f, str(len(found)), str(counter)]))
 
@@ -175,7 +177,7 @@ def setops(args):
 				print(header, file=out)
 
 				out_count = 0
-				if mode == Mode.SUBTRACT:
+				if mode == Mode.SUBTRACT or mode == Mode.FILTER:
 					print("Loading second input file into a set")
 					ref, entries = Junction.createJuncSet(args.input[1], use_strand=not args.ignore_strand, fullparse=False)
 					print("\t".join(["File", "Total", "Distinct"]))
@@ -185,11 +187,9 @@ def setops(args):
 						for line in f:
 							junc = JuncFactory.create_from_file(args.input[0], use_strand=not args.ignore_strand).parse_line(line,
 																											fullparse=False)
-							if junc:
-								if not junc.key in ref:
-									print(line.rstrip(), file=out)
-									out_count += 1
-
+							if junc and ((mode == Mode.SUBTRACT and not junc.key in ref) or (mode == Mode.FILTER and junc.key in ref)):
+								print(line.rstrip(), file=out)
+								out_count += 1
 
 				elif mode == Mode.SYMMETRIC_DIFFERENCE:
 					print("Loading input files into sets")
@@ -275,6 +275,7 @@ Available values:
  - union
  - consensus
  - subtract
+ - filter
  - symmetric_difference
  - is_subset
  - is_superset
