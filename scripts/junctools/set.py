@@ -87,9 +87,9 @@ def setops(args):
 	if min_entry <= 0:
 		raise ValueError("Invalid value for min_entry.  Please enter a value of 2 or more.")
 
-	# Check all input files have the same extension
+	# Check all input files have the same extension if required
+	last_ext = None
 	if mode.needs_consistent_ext():
-		last_ext = None
 		for f in args.input:
 			filename, ext = os.path.splitext(f)
 			if last_ext != None:
@@ -97,6 +97,9 @@ def setops(args):
 					raise ValueError("Not all input files have the same extension.")
 			else:
 				last_ext = ext
+	else:
+		filename, ext = os.path.splitext(args.input[0])
+		last_ext = ext
 
 	if mode.makes_output():
 
@@ -178,7 +181,7 @@ def setops(args):
 
 			with open(args.output, "wt") as out:
 				description = "Set operation on junction files. Mode: {0}".format(mode.name)
-				header = JuncFactory.create_from_ext(last_ext).file_header(description=description)
+				header = JuncFactory.create_from_file(args.input[0]).file_header(description=description)
 				print(header, file=out)
 
 				out_count = 0
@@ -186,7 +189,7 @@ def setops(args):
 					print("Loading second input file into a set")
 					ref, entries = Junction.createJuncSet(args.input[1], use_strand=not args.ignore_strand, fullparse=False)
 					print("\t".join(["File", "Total", "Distinct"]))
-					print("\t".join([f, str(entries), str(len(ref))]))
+					print("\t".join([args.input[1], str(entries), str(len(ref))]))
 
 					with open(args.input[0]) as f:
 						for line in f:
