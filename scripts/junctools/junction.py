@@ -797,7 +797,7 @@ class HisatJunction(Junction):
 
 	def parse_line(self, line, fullparse=True):
 
-		parts = line.split("\t")
+		parts = line.strip().split("\t")
 
 		if len(parts) <= 1:
 			return None
