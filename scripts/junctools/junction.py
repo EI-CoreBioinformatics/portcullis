@@ -402,7 +402,7 @@ class BedJunction(ExonJunction):
 		return "\t".join([str(_) for _ in line])
 
 	def accepts_ext(ext):
-		return ext == ".bed"
+		return ext == ".bed" or ext == ".ibed" or ext == ".ebed" or ext == ".bed6"
 
 	def file_header(self, description=None):
 		d = ""
@@ -797,7 +797,7 @@ class HisatJunction(Junction):
 
 	def parse_line(self, line, fullparse=True):
 
-		parts = line.split("\t")
+		parts = line.strip().split("\t")
 
 		if len(parts) <= 1:
 			return None

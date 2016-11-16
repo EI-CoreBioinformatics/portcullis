@@ -2,11 +2,11 @@
 	"parameters": {
                 "M12-maxmmes": {
                         "operator": "lt",
-                        "value": 7
+                        "value": 15
                 },
                 "M22-rel2raw": {
                         "operator": "lt",
-                        "value": 0.5
+                        "value": 0.3
                 }
 	},
 	"expression": "( M12-maxmmes & M22-rel2raw )"

@@ -139,11 +139,20 @@ enum Operator {
     NOT_IN
 };
 
+const std::map<string, Operator> String2OperatorMap = {
+    {"EQ", Operator::EQ},
+    {"GT", Operator::GT},
+    {"LT", Operator::LT},
+    {"GTE", Operator::GTE},
+    {"LTE", Operator::LTE},
+    {"IN", Operator::IN},
+    {"NOT_IN", Operator::NOT_IN}
+};
+
 typedef unordered_map<string, pair<Operator, double>> NumericFilterMap;
 typedef unordered_map<string, pair<Operator, unordered_set<string>>> SetFilterMap;
 typedef map<Intron, vector<string>, IntronComparator> JuncResultMap;
 
-Operator stringToOp(const string& str);
 
 string opToString(const Operator op);
 
@@ -151,7 +160,7 @@ bool isNumericOp(Operator op);
 
 struct eval : boost::static_visitor<bool> {
     
-    eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap, const JunctionPtr _junc, JuncResultMap* _juncMap);
+    eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap, const unordered_map<string, uint16_t>& _namemap, const JunctionPtr _junc, JuncResultMap* _juncMap);
 
     //
     bool operator()(const var& v) const;
@@ -182,6 +191,7 @@ struct eval : boost::static_visitor<bool> {
         
     NumericFilterMap numericmap;
     SetFilterMap stringmap;
+    unordered_map<string, uint16_t> namemap;
     JunctionPtr junc;
     JuncResultMap* juncMap;
     
@@ -227,11 +237,14 @@ protected:
      * @param param Value
      * @return True if parameter passes operation and threshold, false otherwise
      */
-    static bool parse(const string& expression, JunctionPtr junc, NumericFilterMap& numericFilters, SetFilterMap& stringFilters, JuncResultMap* results);
+    static bool parse(const string& expression, JunctionPtr junc, 
+            NumericFilterMap& numericFilters, SetFilterMap& stringFilters, 
+            const unordered_map<string, uint16_t>& namemap, JuncResultMap* results);
 
 public:
     
-    static map<string,int> filter(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap);
+    static map<string,int> filter(const path& ruleFile, const JunctionList& all, 
+            JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap);
     
     static void saveResults(const path& outputFile, const JunctionSystem& js, JuncResultMap& results);
 };

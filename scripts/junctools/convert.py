@@ -1,75 +1,75 @@
 import argparse
 import sys
+import collections
 
 from .junction import JuncFactory, Junction, BedJunction
 
 
 def decstart(junctions):
+	last_id = ""
+	index = 1
 	for j in junctions:
 		j.start -= 1
+		j.end -= 1
+
+		if last_id == "" or last_id != j.id:
+			last_id = j.id
+			index = 1
+
+		j.id += "_junc" + str(index)
+		index += 1
 
 
-def gtf2bed(filepath):
-	junction_set = set()
-	junctions = []
+def loadgtf(filepath, dedup=False):
+	'''
+	Assumes that GTF is sorted (doesn't matter if it's sorted by transcript or exon first though)
+	:param filepath:
+	:return:
+	'''
 
+
+	# Create dict of transcripts with all exons in memory
+	transcripts = collections.defaultdict(list)
 	with open(filepath) as f:
-
-		curr_transcript_seq = ""
-		curr_transcript_start = 0
-		curr_transcript_end = 0
-		curr_transcript_strand = ""
-
-		last_exon_seq = ""
-		last_exon_start = 0
-		last_exon_end = 0
-		last_exon_strand = ""
-
-		index = 0;
 		for line in f:
-
 			if not line.startswith("#"):
-				words = line.split()
+				parts = line.split('\t')
+				if parts[2] == "exon":
+					tags = parts[8].split(';')
+					for tag in tags:
+						t = tag.strip()
+						if t:
+							tag_parts = t.split()
+							if tag_parts[0] == "transcript_id":
+								t = tag_parts[1].strip()
+								transcript_id = t[1:-1] if t[0] == '\"' else t
+								transcripts[transcript_id].append([parts[0], parts[3], parts[4], parts[6]])
 
-				start = int(words[3])
-				end = int(words[4])
+	junctions = set() if dedup else []
 
-				dif = end - start
+	for t, exons in transcripts.items():
+		le = None
+		for i, e in enumerate(exons):
+			if i > 0:
+				j = BedJunction()
+				j.refseq = e[0]
+				j.start = int(le[2]) + 1
+				j.end = int(e[1]) - 1
+				j.strand = e[3]
+				j.id = t
 
-				if words[2] == "transcript":
+				if dedup:
+					junctions.add(j)
+				else:
+					junctions.append(j)
 
-					curr_transcript_seq = words[0]
-					curr_transcript_start = start
-					curr_transcript_end = end
-					curr_transcript_strand = words[6]
+			le = e
 
-					# Wipe last exon
-					last_exon_seq = ""
-					last_exon_start = 0
-					last_exon_end = 0
-					last_exon_strand = ""
-
-				elif words[2] == "exon":
-
-					# Double check we are still in the current transcript and there has already been an exon in this transcript
-					if curr_transcript_end >= last_exon_end and curr_transcript_seq == last_exon_seq and curr_transcript_strand == last_exon_strand:
-
-						j = BedJunction()
-						j.refseq = words[0]
-						j.start = last_exon_end + 1
-						j.end = start - 1
-						j.strand = words[6]
-
-						if j.key not in junction_set:
-							junctions.append(j)
-							junction_set.add(j.key)
-
-					last_exon_seq = words[0]
-					last_exon_start = start
-					last_exon_end = end
-					last_exon_strand = words[6]
+	if dedup:
+		junctions = list(junctions)
 
 	decstart(junctions)
+
 	return junctions
 
 
@@ -109,7 +109,8 @@ def convert(args):
 	index = args.index_start
 
 	if in_type == JuncFactory.GTF:
-		junctions = gtf2bed(args.input)
+		junctions = loadgtf(args.input, dedup=args.dedup)
+		args.sort = True	# Make sure we sort the output
 	else:
 		with open(args.input) as f:
 			for line in f:

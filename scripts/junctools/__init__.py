@@ -9,7 +9,7 @@ _title__ = "junctools"
 __author__ = 'Daniel Mapleson'
 __license__ = 'GPLV3'
 __copyright__ = 'Copyright 2016 Daniel Mapleson'
-__version__ = '1.0.0_beta3'
+__version__ = '1.0.0_beta4'
 
 import argparse
 import sys
@@ -80,6 +80,8 @@ truesight  = Truesight style tab delimited format.''')
 # These modes support 2 or more input files.
 # The output contains junctions with extended anchors representing the most
 # extreme extents found across all inputs
+# Note: Any duplicates within a single input are removed from the output, only
+# the first entry is retained
 intersection = Produces the intersection of junctions from multiple input files
 union        = Produces the union of junctions from multiple input files
 consensus    = If there are 3 or more input files, the consensus operation produces
@@ -87,8 +89,13 @@ consensus    = If there are 3 or more input files, the consensus operation produ
                a user-defined number of input files
 
 # These modes only support 2 input files and produce an output file
+# The output file may retain any duplicated junctions passing the set operation
 subtract     = Produces an output set of junctions containing all junctions present
                in the first input file that also are not found in the second file
+filter       = Produces an output set of junctions containing all junctions present
+               in the first input file that are also found in the second file.  This
+               is similar to an intersection on two files except that duplicates and
+               additional content assigned to junctions in the first file are retained
 symmetric_difference =
                Produces an output set containing junctions from both input files
                that are not present in the intersection of both

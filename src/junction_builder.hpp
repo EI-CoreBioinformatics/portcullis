@@ -75,6 +75,7 @@ struct RegionResult {
     uint64_t sumQueryLengths = 0;
     int32_t minQueryLength = 100000;
     int32_t maxQueryLength = 0;
+    string name;
     JunctionSystem js;
 };
 

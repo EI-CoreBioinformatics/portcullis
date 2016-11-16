@@ -18,6 +18,7 @@
 #include <sys/ioctl.h>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <vector>
 #include <memory>
 #include <mutex>
@@ -264,43 +265,53 @@ void portcullis::JunctionBuilder::findJunctions() {
     cout << " - Processing: " << endl;
     for(size_t i = 0; i < refs->size(); i++) {
         results[i].js.setRefs(refs);    // Make sure junction system has reference sequence list available        
+        results[i].name = refs->at(i)->name;
         pool.enqueue(refs->at(i)->index);
     }
     
     // Waits for all threads to complete
     pool.shutDown();
     
-    cout << " - All threads completed." << endl << " - Combining results from threads ...";
-    cout.flush();
+    cout << " - All threads completed." << endl << " - Combining results from threads." << endl << endl;
     
     uint64_t unsplicedCount = 0;
     uint64_t splicedCount = 0;
     uint64_t sumQueryLengths = 0;
     int32_t minQueryLength = INT32_MAX;
     int32_t maxQueryLength = 0;
+    cout << std::left << std::setw(12) << "Sequence" << "\t" 
+         << std::right << std::setw(12) << "unspliced" << "\t"
+         << std::right << std::setw(12) << "spliced" << "\t" 
+         << std::right << std::setw(12) << "total" << endl;
     for(auto& res : results) {
         junctionSystem.append(res.js);
         unsplicedCount += res.unsplicedCount;
         splicedCount += res.splicedCount;
         sumQueryLengths += res.sumQueryLengths;
         minQueryLength = min(minQueryLength, res.minQueryLength);
-        maxQueryLength = max(maxQueryLength, res.maxQueryLength);        
+        maxQueryLength = max(maxQueryLength, res.maxQueryLength);
+        
+        cout << std::left << std::setw(12) << res.name << "\t" 
+             << std::right << std::setw(12) << res.unsplicedCount << "\t" 
+             << std::right << std::setw(12) << res.splicedCount << "\t" 
+             << std::right << std::setw(12) << res.splicedCount + res.unsplicedCount << endl;
     }
 
-    // Make sure the output is properly ordered
-    junctionSystem.sort();
+    cout << endl << "Sorting and reindexing merged junctions...";
+    cout.flush();
+        
+    junctionSystem.sort();  // Make sure the output is properly ordered    
+    junctionSystem.index(); // Add unique identifiers to each junction
     
-    // Add unique identifiers to each junction
-    junctionSystem.index();
-    
-    cout << " done." << endl;
+    cout << " done." << endl << endl;
     
     // Calculate some alignment stats
     uint64_t totalAlignments = splicedCount + unsplicedCount;
     double meanQueryLength = (double)sumQueryLengths / (double)totalAlignments;
     junctionSystem.setQueryLengthStats(minQueryLength, meanQueryLength, maxQueryLength);
 
-    cout << " - Processed " << totalAlignments << " alignments." << endl
+    cout << "Final stats:" << endl
+         << " - Processed " << totalAlignments << " alignments." << endl
          << " - Alignment query length statistics: min: " << minQueryLength << "; mean: " << meanQueryLength << "; max: " << maxQueryLength << ";" << endl
          << " - Found " << junctionSystem.size() << " junctions from " << splicedCount << " spliced alignments." << endl
          << " - Found " << unsplicedCount << " unspliced alignments." << endl;

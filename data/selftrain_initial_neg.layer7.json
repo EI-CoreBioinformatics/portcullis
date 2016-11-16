@@ -1,9 +1,5 @@
 {
 	"parameters": {
-                "M2-nb_reads": {
-                        "operator": "gt",
-                        "value": 100
-                },
                 "M22-rel2raw": {
                         "operator": "eq",
                         "value": 0.0
@@ -17,5 +13,5 @@
                         "value": 3
                 }
 	},
-	"expression": "( M2-nb_reads & M22-rel2raw & M13-hamming5p & M14-hamming3p )"  
+	"expression": "( M22-rel2raw & M13-hamming5p & M14-hamming3p )"  
 }

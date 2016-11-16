@@ -71,7 +71,11 @@
         "M22-rel2raw.2": {
             "operator": "gte",
             "value": 0.75
-        }
+        },
+	"M17-primary_junc": {
+	    "operator": "eq",
+	    "value": 1
+	}
     },
-    "expression": "( M1-canonical_ss ) | ( M1-canonical_ss.2 & M22-rel2raw & M13-hamming5p & M14-hamming3p ) | ( M1-canonical_ss.3 & M22-rel2raw.2 & M13-hamming5p.2 & M14-hamming3p.2 & M19-mean_mismatches & M11-entropy.2 )"
+    "expression": "(( M1-canonical_ss ) | ( M1-canonical_ss.2 & M22-rel2raw & M13-hamming5p & M14-hamming3p ) | ( M1-canonical_ss.3 & M22-rel2raw.2 & M13-hamming5p.2 & M14-hamming3p.2 & M19-mean_mismatches & M11-entropy.2 )) & (M17-primary_junc)"
 }

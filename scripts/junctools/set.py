@@ -24,18 +24,22 @@ class Mode(Enum):
 	CONSENSUS = 3
 	SUBTRACT = 4
 	SYMMETRIC_DIFFERENCE = 5
-	IS_SUBSET = 6
-	IS_SUPERSET = 7
-	IS_DISJOINT = 8
+	FILTER = 6
+	IS_SUBSET = 7
+	IS_SUPERSET = 8
+	IS_DISJOINT = 9
 
 	def multifile(self):
 		return self.value <= 3
 
 	def makes_output(self):
-		return self.value <= 5
+		return self.value <= 6
 
 	def is_test(self):
-		return self.value >= 6
+		return self.value >= 7
+
+	def needs_consistent_ext(self):
+		return self.multifile() or self.name == Mode.SYMMETRIC_DIFFERENCE.name
 
 
 @unique
@@ -56,6 +60,7 @@ class CalcOp(Enum):
 			return sum(vals) / float(len(vals))
 		else:
 			raise ValueError("CalcOp Error - Should never happen")
+
 
 
 def setops(args):
@@ -82,15 +87,19 @@ def setops(args):
 	if min_entry <= 0:
 		raise ValueError("Invalid value for min_entry.  Please enter a value of 2 or more.")
 
-	# Check all input files have the same extension
+	# Check all input files have the same extension if required
 	last_ext = None
-	for f in args.input:
-		filename, ext = os.path.splitext(f)
-		if last_ext != None:
-			if last_ext != ext:
-				raise ValueError("Not all input files have the same extension.")
-		else:
-			last_ext = ext
+	if mode.needs_consistent_ext():
+		for f in args.input:
+			filename, ext = os.path.splitext(f)
+			if last_ext != None:
+				if last_ext != ext:
+					raise ValueError("Not all input files have the same extension.")
+			else:
+				last_ext = ext
+	else:
+		filename, ext = os.path.splitext(args.input[0])
+		last_ext = ext
 
 	if mode.makes_output():
 
@@ -119,8 +128,9 @@ def setops(args):
 					if junc:
 						counter += 1
 						key = junc.key
-						found.add(key)
-						merged[key].append(line)
+						if not key in found:
+							found.add(key)
+							merged[key].append(line)
 
 			print("\t".join([f, str(len(found)), str(counter)]))
 
@@ -168,32 +178,59 @@ def setops(args):
 	else:
 		if mode.makes_output():
 
-			print("\t".join(["File", "Total", "Distinct"]))
-			dicts = []
-			for f in args.input:
-				juncs, entries = Junction.createDict(f, use_strand=not args.ignore_strand, fullparse=False)
-				dicts.append(juncs)
-				print("\t".join([f, str(entries), str(len(juncs))]))
-			print()
-
-			res = {}
-			if mode.SUBTRACT:
-				res = dict((_, dicts[0][_]) for _ in set.difference(set(dicts[0].keys()), set(dicts[1].keys())))
-			elif mode.SYMMETRIC_DIFFERENCE:
-				res = dict((_, dicts[0][_]) for _ in set.symmetric_difference(set(dicts[0].keys()), set(dicts[1].keys())))
-
-
-			print("Output contains", len(res), entries)
 
 			with open(args.output, "wt") as out:
 				description = "Set operation on junction files. Mode: {0}".format(mode.name)
-				header = ExonJunction.create(last_ext).file_header(description=description)
+				header = JuncFactory.create_from_file(args.input[0]).file_header(description=description)
 				print(header, file=out)
 
-				for b in sorted(res):
-					print(res[b].rstrip(), file=out)
+				out_count = 0
+				if mode == Mode.SUBTRACT or mode == Mode.FILTER:
+					print("Loading second input file into a set")
+					ref, entries = Junction.createJuncSet(args.input[1], use_strand=not args.ignore_strand, fullparse=False)
+					print("\t".join(["File", "Total", "Distinct"]))
+					print("\t".join([args.input[1], str(entries), str(len(ref))]))
 
-			print("Output saved to", args.output)
+					with open(args.input[0]) as f:
+						for line in f:
+							junc = JuncFactory.create_from_file(args.input[0], use_strand=not args.ignore_strand).parse_line(line,
+																											fullparse=False)
+							if junc and ((mode == Mode.SUBTRACT and not junc.key in ref) or (mode == Mode.FILTER and junc.key in ref)):
+								print(line.rstrip(), file=out)
+								out_count += 1
+
+				elif mode == Mode.SYMMETRIC_DIFFERENCE:
+					print("Loading input files into sets")
+					print("\t".join(["File", "Total", "Distinct"]))
+					sets = []
+					for f in args.input:
+						juncs, entries = Junction.createJuncSet(f, use_strand=not args.ignore_strand, fullparse=False)
+						sets.append(juncs)
+						print("\t".join([f, str(entries), str(len(juncs))]))
+					print()
+
+					with open(args.input[0]) as f:
+						for line in f:
+							junc = JuncFactory.create_from_file(args.input[0], use_strand=not args.ignore_strand).parse_line(line,
+																											fullparse=False)
+							if junc:
+								if not junc.key in sets[1]:
+									print(line.rstrip(), file=out)
+									out_count += 1
+
+					with open(args.input[1]) as f:
+						for line in f:
+							junc = JuncFactory.create_from_file(args.input[1], use_strand=not args.ignore_strand).parse_line(line,
+																											fullparse=False)
+							if junc:
+								if not junc.key in sets[0]:
+									print(line.rstrip(), file=out)
+									out_count += 1
+
+
+				print()
+				print("Output contains ", out_count, " junctions")
+				print("Output saved to", args.output)
 
 		elif mode.is_test():
 
@@ -246,6 +283,7 @@ Available values:
  - union
  - consensus
  - subtract
+ - filter
  - symmetric_difference
  - is_subset
  - is_superset

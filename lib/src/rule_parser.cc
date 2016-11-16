@@ -56,34 +56,8 @@ namespace qi    = boost::spirit::qi;
 namespace phx   = boost::phoenix;
 
 #include <portcullis/rule_parser.hpp>
+#include <boost/algorithm/string/case_conv.hpp>
 
-portcullis::Operator portcullis::stringToOp(const string& str) {
-    if (boost::iequals(str, "EQ")) {
-        return EQ;
-    }
-    else if (boost::iequals(str, "GT")) {
-        return GT;
-    }
-    else if (boost::iequals(str, "LT")) {
-        return LT;
-    }
-    else if (boost::iequals(str, "GTE")) {
-        return GTE;
-    }
-    else if (boost::iequals(str, "LTE")) {
-        return LTE;
-    }
-    else if (boost::iequals(str, "IN")) {
-        return IN;
-    }
-    else if (boost::iequals(str, "NOT_IN")) {
-        return NOT_IN;
-    }
-    else {
-        BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-                        "Unrecognised operation: ") + str));
-    }
-}
 
 string portcullis::opToString(const Operator op) {
     switch (op) {
@@ -112,10 +86,12 @@ bool portcullis::isNumericOp(Operator op) {
 }
 
 
-portcullis::eval::eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap, const JunctionPtr _junc, JuncResultMap* _juncMap) : 
+portcullis::eval::eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap, 
+        const unordered_map<string, uint16_t>& _namemap, const JunctionPtr _junc, JuncResultMap* _juncMap) : 
         boost::static_visitor<bool>() {
     numericmap = _numericmap;
     stringmap = _stringmap;
+    namemap = _namemap;
     junc = _junc;
     juncMap = _juncMap;
 }
@@ -166,18 +142,15 @@ double portcullis::eval::getNumericFromJunc(const var& fullname) const {
     size_t pos = fullname.find(".");
 
     string name = pos == string::npos ? fullname : fullname.substr(0, pos);
+    
+    boost::to_upper(name);
 
-    uint16_t metric_index = -1;
-    for(size_t i = 0; i < METRIC_NAMES.size(); i++) {
-        if (boost::iequals(name, METRIC_NAMES[i])) {
-            metric_index = i;
-        }
-    }
-
-    if (metric_index == -1) {
+    if (namemap.count(name) <= 0) {
         BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
                 "Unrecognised metric: ") + name));
     }
+    
+    uint16_t metric_index = namemap.at(name);
 
     switch(metric_index) {
         case 0:
@@ -232,16 +205,12 @@ double portcullis::eval::getNumericFromJunc(const var& fullname) const {
             return junc->getNbUpstreamFlankingAlignments();
         case 25:
             return junc->getNbDownstreamFlankingAlignments();
+        case 100:
+            return junc->isSuspicious();
+        case 101:
+            return junc->isPotentialFalsePositive();
     }
     
-    if (boost::iequals(name, "Suspect")) {
-        return junc->isSuspicious();
-    } 
-    else if (boost::iequals(name, "PFP")) {
-        return junc->isPotentialFalsePositive();
-    } 
-
-
     BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
                         "Unrecognised metric")));        
 }
@@ -300,7 +269,9 @@ bool portcullis::eval::evalSetLeaf(Operator op, unordered_set<string>& set, stri
  * @param param Value
  * @return True if parameter passes operation and threshold, false otherwise
  */
-bool portcullis::RuleFilter::parse(const string& expression, JunctionPtr junc, NumericFilterMap& numericFilters, SetFilterMap& stringFilters, JuncResultMap* results) {
+bool portcullis::RuleFilter::parse(const string& expression, JunctionPtr junc, 
+        NumericFilterMap& numericFilters, SetFilterMap& stringFilters, 
+        const unordered_map<string, uint16_t>& namemap, JuncResultMap* results) {
 
     typedef std::string::const_iterator it;
     it f(expression.begin()), l(expression.end());
@@ -315,20 +286,33 @@ bool portcullis::RuleFilter::parse(const string& expression, JunctionPtr junc, N
     }
 
     // Evaluate results
-    return boost::apply_visitor(eval(numericFilters, stringFilters, junc, results), result);
+    return boost::apply_visitor(eval(numericFilters, stringFilters, namemap, junc, results), result);
 }
 
 map<string,int> portcullis::RuleFilter::filter(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap) {
     ptree pt;
     boost::property_tree::read_json(ruleFile.string(), pt);
-
+    
     NumericFilterMap numericFilters;
     SetFilterMap stringFilters;
     JuncResultMap junctionResultMap;
+    
+    unordered_map<string, uint16_t> METRIC_LOOKUP;
+    for(size_t i = 0; i < METRIC_NAMES.size(); i++) {
+        METRIC_LOOKUP[boost::to_upper_copy(METRIC_NAMES[i])] = i;
+    }
+    METRIC_LOOKUP["SUSPECT"] = 100;
+    METRIC_LOOKUP["PFP"] = 101;
+    
 
     for(ptree::value_type& v : pt.get_child("parameters")) {
         string name = v.first;
-        Operator op = stringToOp(v.second.get_child("operator").data());
+        string op_str = boost::to_upper_copy(v.second.get_child("operator").data());
+        if (String2OperatorMap.count(op_str) <= 0) {
+            BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
+                    "Invalid operator: ") + op_str));
+        }
+        Operator op = String2OperatorMap.at(op_str);
         if (isNumericOp(op)) {
             double threshold = lexical_cast<double>(v.second.get_child("value").data());     
             numericFilters[name] = pair<Operator,double>(op, threshold);
@@ -352,7 +336,7 @@ map<string,int> portcullis::RuleFilter::filter(const path& ruleFile, const Junct
 
         junctionResultMap[*(junc->getIntron())] = vector<string>();
 
-        if (RuleFilter::parse(expression, junc, numericFilters, stringFilters, &junctionResultMap)) {
+        if (RuleFilter::parse(expression, junc, numericFilters, stringFilters, METRIC_LOOKUP, &junctionResultMap)) {
             pass.push_back(junc);
         }
         else {
