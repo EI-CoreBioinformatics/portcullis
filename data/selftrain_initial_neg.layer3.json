@@ -4,14 +4,10 @@
 			"operator": "in",
 			"value": ["N", "S"]
 		},
-                "M11-entropy": {
-			"operator": "gt",
-			"value": 3.0
-		},
-                "Suspect": {
+                "PFP": {
 			"operator": "eq",
 			"value": 1
 		}
 	},
-	"expression": "( M1-canonical_ss & Suspect & M11-entropy )"  
+	"expression": "( M1-canonical_ss & PFP )"  
 }
