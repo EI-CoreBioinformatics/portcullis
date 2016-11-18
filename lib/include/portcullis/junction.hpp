@@ -403,6 +403,7 @@ public:
     
     
     void calcMetrics();
+    void calcMetrics(bool properPairedCheck);
     
     void updateAlignmentInfo();
     
@@ -454,7 +455,7 @@ public:
      * Metrics: # Distinct Alignments, # Unique/Reliable Alignments, #mismatches
      * @return 
      */
-    void calcAlignmentStats();
+    void calcAlignmentStats(bool properPairedCheck);
     
     /**
      * Metric 13 and 14: Calculates the 5' and 3' hamming distances from a genomic

@@ -150,6 +150,7 @@ int mainFull(int argc, char *argv[]) {
     bool copy;
     bool force;
     bool useCsi;
+    bool properPairedCheck;
     bool saveBad;
     bool exongff;
     bool introngff;
@@ -221,6 +222,8 @@ int mainFull(int argc, char *argv[]) {
     hidden_options.add_options()
             ("bam-files", po::value< std::vector<path> >(&bamFiles), "Path to the BAM files to process.")
             ("genome-file", po::value<path>(&genomeFile), "Path to the genome file to process.")
+            ("pp", po::bool_switch(&properPairedCheck)->default_value(false),
+                "Proper paired check for reliable alignments.  Do NOT use this if input data is single-end, or if the input aligner is tophat.  This is important to ensure you get a sensible number of reliable split read counts and getting good filtering behaviour.")
             ;
 
     // Positional option for the input bam file
@@ -310,6 +313,7 @@ int mainFull(int argc, char *argv[]) {
     jb.setThreads(threads);
     jb.setExtra(false);     // Run in fast mode
     jb.setSeparate(false);  // Run in fast mode
+    jb.setProperPairedCheck(properPairedCheck);
     jb.setStrandSpecific(strandednessFromString(strandSpecific));
     jb.setSource(source);
     jb.setUseCsi(useCsi);

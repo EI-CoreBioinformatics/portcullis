@@ -552,14 +552,17 @@ void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t re
 
     this->setFlankingAlignmentCounts(nbLeftFlankingAlignments, nbRightFlankingAlignments);
 }
-    
-    
+
 void portcullis::Junction::calcMetrics() {
+    this->calcMetrics(false);
+}
+    
+void portcullis::Junction::calcMetrics(bool properPairedCheck) {
     
     determineStrandFromReads();
     calcAnchorStats();      // Metrics 5 and 7
     calcEntropy();          // Metric 6
-    calcAlignmentStats();   // Metrics 8, 9 and 19
+    calcAlignmentStats(properPairedCheck);   // Metrics 8, 9 and 19
 }
 
 
@@ -687,7 +690,7 @@ double portcullis::Junction::calcEntropy(const vector<int32_t> junctionPositions
  * Metrics: # Distinct Alignments, # Unique/Reliable Alignments, #mismatches
  * @return 
  */
-void portcullis::Junction::calcAlignmentStats() {
+void portcullis::Junction::calcAlignmentStats(bool properPairedCheck) {
 
     int32_t lastStart = -1, lastEnd = -1;
 
@@ -714,8 +717,8 @@ void portcullis::Junction::calcAlignmentStats() {
         // This doesn't seem intuitive but this is how they recommend finding
         // "reliable" (i.e. unique) alignments in samtools.  They do this
         // because apparently "uniqueness" is not a well defined concept.
-        // We also require a "reliably" aligned read to be properly paired.
-        if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD && ba->isProperPair()) {
+        // We also require, if specified by the user, a "reliably" aligned read to be properly paired.
+        if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD && (!properPairedCheck || ba->isProperPair())) {
             nbReliableAlignments++;
         }
 

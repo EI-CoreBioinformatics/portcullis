@@ -26,6 +26,7 @@ class JuncFactory(Enum):
 	SOAPSPLICE = 14
 	SPANKI = 15
 	TRUESIGHT = 16
+	MAPSPLICE = 17
 
 	def isStreamable(self):
 		return False if self == JuncFactory.GFF or self == JuncFactory.EGFF or self == JuncFactory.GTF else True
@@ -77,6 +78,8 @@ class JuncFactory(Enum):
 			return SpankiJunction(use_strand=use_strand, junc_to_copy=junc_to_copy)
 		elif type == JuncFactory.TRUESIGHT:
 			return TruesightJunction(junc_to_copy=junc_to_copy)
+		elif type == JuncFactory.MAPSPLICE:
+			return MapspliceJunction(junc_to_copy=junc_to_copy)
 		raise "Unknown type"
 
 
@@ -916,6 +919,35 @@ class SoapspliceJunction(Junction):
 		self.start = int(parts[1])
 		self.end = int(parts[2]) - 2
 		self.strand = "+" if parts[3] == "fwd" else "-" if parts[3] == "rev" else "."
+
+		if fullparse:
+			self.score = int(parts[4])
+
+		return self
+
+
+class MapspliceJunction(Junction):
+	def __init__(self, use_strand=True, junc_to_copy=None):
+		Junction.__init__(self, use_strand=use_strand, junc_to_copy=junc_to_copy)
+
+	def __str__(self):
+		raise ValueError("Can't represent Mapsplice junctions as string")
+
+
+	def parse_line(self, line, fullparse=True):
+		parts = line.split("\t")
+
+		if len(parts) <= 1:
+			return None
+
+		if len(parts) != 29 and len(parts) > 1:
+			msg = "Unexpected number of columns in Mapsplice junction file.  Expected 29, found " + str(len(parts))
+			raise ValueError(msg)
+
+		self.refseq = parts[0]
+		self.start = int(parts[1])
+		self.end = int(parts[2]) - 1
+		self.strand = parts[5]
 
 		if fullparse:
 			self.score = int(parts[4])

@@ -90,6 +90,7 @@ private:
     Strandedness strandSpecific;
     bool extra;
     bool separate;
+    bool properPairedCheck;
     bool useCsi;
     bool outputExonGFF;
     bool outputIntronGFF;
@@ -180,6 +181,15 @@ public:
     void setSeparate(bool separate) {
         this->separate = separate;
     }
+    
+    bool doProperPairedCheck() const {
+        return properPairedCheck;
+    }
+
+    void setProperPairedCheck(bool singleEnd) {
+        this->properPairedCheck = singleEnd;
+    }
+
 
     string getSource() const {
         return source;

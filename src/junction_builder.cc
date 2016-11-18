@@ -369,7 +369,7 @@ void portcullis::JunctionBuilder::findJuncs(BamReader& reader, GenomeMapper& gma
 
             JunctionPtr j = results[seq].js.getJunctionAt(lastCalculatedJunctionIndex);
 
-            j->calcMetrics();
+            j->calcMetrics(this->properPairedCheck);
             j->processJunctionWindow(gmap);
             j->clearAlignments();
             
@@ -393,7 +393,7 @@ void portcullis::JunctionBuilder::findJuncs(BamReader& reader, GenomeMapper& gma
     while (results[seq].js.size() > 0 && lastCalculatedJunctionIndex < results[seq].js.size()) {
 
         JunctionPtr j = results[seq].js.getJunctionAt(lastCalculatedJunctionIndex);
-        j->calcMetrics();
+        j->calcMetrics(this->properPairedCheck);
         j->processJunctionWindow(gmap);
         j->clearAlignments();
         lastCalculatedJunctionIndex++;
@@ -415,6 +415,7 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
     uint16_t threads;
     bool extra;
     bool separate;
+    bool properPairedCheck;
     string strandSpecific;
     bool useCsi;
     bool exongff;
@@ -462,6 +463,8 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
             ("prep_data_dir,i", po::value<string>(&prepDir), "Path to directory containing prepared data.")
             ("extra,e", po::bool_switch(&extra)->default_value(false),
                 "Calculate additional metrics that take some time to generate.  Automatically activates BAM splitting mode.")
+            ("pp", po::bool_switch(&properPairedCheck)->default_value(false),
+                "Proper paired check for reliable alignments.  Do NOT use this if input data is single-end, or if the input aligner is tophat.  This is important to ensure you get a sensible number of reliable split read counts and getting good filtering behaviour.")
             ;
 
     // Positional option for the input bam file
@@ -508,6 +511,7 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
     jb.setSeparate(separate);
     jb.setSource(source);
     jb.setStrandSpecific(strandednessFromString(strandSpecific));
+    jb.setProperPairedCheck(properPairedCheck);
     jb.setUseCsi(useCsi);
     jb.setOutputExonGFF(exongff);
     jb.setOutputIntronGFF(introngff);
