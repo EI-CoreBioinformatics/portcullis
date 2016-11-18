@@ -65,7 +65,7 @@ const uint32_t DEFAULT_GAP_SIZE = 100;
 // Global variable! :(
 portcullis::PortcullisFS portcullis::pfs;
 
-enum Mode {
+enum class Mode {
     PREP,
     JUNC,
     FILTER,
@@ -79,22 +79,22 @@ Mode parseMode(string mode) {
     string upperMode = boost::to_upper_copy(mode);
     
     if (upperMode == string("PREP") || upperMode == string("PREPARE")) {
-        return PREP;                
+        return Mode::PREP;                
     }
     else if (upperMode == string("JUNC") || upperMode == string("ANALYSE") || upperMode == string("ANALYZE")) {
-        return JUNC;
+        return Mode::JUNC;
     }
     else if (upperMode == string("FILTER") || upperMode == string("FILT")) {
-        return FILTER;
+        return Mode::FILTER;
     }
     else if (upperMode == string("BAMFILT")) {
-        return BAM_FILT;
+        return Mode::BAM_FILT;
     }
     else if (upperMode == string("FULL")) {
-        return FULL;
+        return Mode::FULL;
     }
     else if (upperMode == string("TRAIN")) {
-        return TRAIN;
+        return Mode::TRAIN;
     }
     else {
         BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
@@ -146,6 +146,7 @@ int mainFull(int argc, char *argv[]) {
     path outputDir;
     path referenceFile;
     string strandSpecific;
+    string orientation;
     uint16_t threads;
     bool copy;
     bool force;
@@ -190,10 +191,12 @@ int mainFull(int argc, char *argv[]) {
                 "The value to enter into the \"source\" field in GFF files.")
             ;
     
-    po::options_description prepare_options("Preparation options", w.ws_col, (unsigned)((double)w.ws_col/1.5));
+    po::options_description prepare_options("Input options", w.ws_col, (unsigned)((double)w.ws_col/1.5));
     prepare_options.add_options()    
-            ("strand_specific,ss", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
-                "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unknown\"")
+            ("orientation", po::value<string>(&orientation)->default_value(orientationToString(Orientation::UNKNOWN)), 
+                "The orientation of the reads that produced the BAM alignments: \"F\" (Single-end forward orientation); \"R\" (single-end reverse orientation); \"FR\" (paired-end, with reads sequenced towards center of fragment -> <-.  This is usual setting for most Illumina paired end sequencing); \"RF\" (paired-end, reads sequenced away from center of fragment <- ->); \"FF\" (paired-end, reads both sequenced in forward orientation); \"RR\" (paired-end, reads both sequenced in reverse orientation);  Default: \"unknown\"")
+            ("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
+                "Whether BAM alignments were generated using a type of strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unknown\"")
             ("force", po::bool_switch(&force)->default_value(false), 
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
             ("copy", po::bool_switch(&copy)->default_value(false), 
@@ -293,7 +296,12 @@ int mainFull(int argc, char *argv[]) {
     path prepDir = path(outputDir.string() + "/1-prep");
 
     // Create the prepare class
-    Prepare prep(prepDir, strandednessFromString(strandSpecific), force, !copy, useCsi, threads, verbose);
+    Prepare prep(prepDir);
+    prep.setForce(force);
+    prep.setUseLinks(!copy);
+    prep.setUseCsi(useCsi);
+    prep.setThreads(threads);
+    prep.setVerbose(verbose);    
     
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information
@@ -315,6 +323,7 @@ int mainFull(int argc, char *argv[]) {
     jb.setSeparate(false);  // Run in fast mode
     jb.setProperPairedCheck(properPairedCheck);
     jb.setStrandSpecific(strandednessFromString(strandSpecific));
+    jb.setOrientation(orientationFromString(orientation));
     jb.setSource(source);
     jb.setUseCsi(useCsi);
     jb.setOutputExonGFF(exongff);
@@ -358,6 +367,7 @@ int mainFull(int argc, char *argv[]) {
 
         BamFilter bamFilter(filtJuncTab.string(), bamFile.string(), filteredBam.string());
         bamFilter.setStrandSpecific(strandednessFromString(strandSpecific));
+        bamFilter.setOrientation(orientationFromString(orientation));
         bamFilter.setUseCsi(useCsi);
         bamFilter.setVerbose(verbose);
         bamFilter.filter();
@@ -466,22 +476,22 @@ int main(int argc, char *argv[]) {
         JunctionFilter::dataDir = portcullis::pfs.getDataDir();
         JunctionSystem::version = portcullis::pfs.getVersion();
         
-        if (mode == PREP) {
+        if (mode == Mode::PREP) {
             Prepare::main(modeArgC, modeArgV);
         }
-        else if(mode == JUNC) {
+        else if(mode == Mode::JUNC) {
             JunctionBuilder::main(modeArgC, modeArgV);
         }
-        else if (mode == FILTER) {
+        else if (mode == Mode::FILTER) {
             JunctionFilter::main(modeArgC, modeArgV);
         }
-        else if (mode == BAM_FILT) {
+        else if (mode == Mode::BAM_FILT) {
             BamFilter::main(modeArgC, modeArgV);
         }
-        else if (mode == TRAIN) {
+        else if (mode == Mode::TRAIN) {
             Train::main(modeArgC, modeArgV);
         }
-        else if (mode == FULL) {
+        else if (mode == Mode::FULL) {
             mainFull(modeArgC, modeArgV);
         }
         else {

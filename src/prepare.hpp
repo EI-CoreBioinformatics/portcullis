@@ -153,7 +153,6 @@ class Prepare {
 private:
     
     shared_ptr<PreparedFiles> output;
-    Strandedness strandSpecific;
     bool force;
     bool useLinks;
     uint16_t threads;
@@ -163,10 +162,56 @@ private:
     
 public:
     
-    Prepare(const path& _outputPrefix) : Prepare(_outputPrefix, Strandedness::UNKNOWN, false, false, false, 1, false) {
-    }
+    Prepare(const path& _outputPrefix);
     
-    Prepare(const path& _outputPrefix, Strandedness _strandSpecific, bool _force, bool _useLinks, bool useCsi, uint16_t _threads, bool _verbose);
+    bool isForce() const {
+        return force;
+    }
+
+    void setForce(bool force) {
+        this->force = force;
+    }
+
+    shared_ptr<PreparedFiles> getOutput() const {
+        return output;
+    }
+
+    void setOutput(shared_ptr<PreparedFiles> output) {
+        this->output = output;
+    }
+
+    uint16_t getThreads() const {
+        return threads;
+    }
+
+    void setThreads(uint16_t threads) {
+        this->threads = threads;
+    }
+
+    bool isUseCsi() const {
+        return useCsi;
+    }
+
+    void setUseCsi(bool useCsi) {
+        this->useCsi = useCsi;
+    }
+
+    bool isUseLinks() const {
+        return useLinks;
+    }
+
+    void setUseLinks(bool useLinks) {
+        this->useLinks = useLinks;
+    }
+
+    bool isVerbose() const {
+        return verbose;
+    }
+
+    void setVerbose(bool verbose) {
+        this->verbose = verbose;
+    }
+
     
     virtual ~Prepare() {       
     }

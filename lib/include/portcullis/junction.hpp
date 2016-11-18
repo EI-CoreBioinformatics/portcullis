@@ -133,48 +133,48 @@ const string SEMI_CANONICAL_SEQ2_RC = SeqUtils::reverseComplement(SEMI_CANONICAL
 // equal and to avoid any issues.
 const uint32_t TRIMMED_COVERAGE_LENGTH = 50;
 
-enum CanonicalSS {
+enum class CanonicalSS {
     CANONICAL,
     SEMI_CANONICAL,
     NO,
     ALL
 };
 
-static CanonicalSS cssFromChar(char css) {
+inline CanonicalSS cssFromChar(char css) {
     switch(css) {
         case 'C':
-            return CANONICAL;
+            return CanonicalSS::CANONICAL;
         case 'S':
-            return SEMI_CANONICAL;
+            return CanonicalSS::SEMI_CANONICAL;
         case 'N':
-            return NO;
+            return CanonicalSS::NO;
     }
 
-    return NO;
+    return CanonicalSS::NO;
 }
 
-static char cssToChar(CanonicalSS css) {
+inline char cssToChar(CanonicalSS css) {
     
     switch(css) {
-        case CANONICAL:
+        case CanonicalSS::CANONICAL:
             return 'C';
-        case SEMI_CANONICAL:
+        case CanonicalSS::SEMI_CANONICAL:
             return 'S';
-        case NO:
+        case CanonicalSS::NO:
             return 'N';
     }
 
     return 'N';
 }
 
-static string cssToString(CanonicalSS css) {
+inline string cssToString(CanonicalSS css) {
     
     switch(css) {
-        case CANONICAL:
+        case CanonicalSS::CANONICAL:
             return "Canonical";
-        case SEMI_CANONICAL:
+        case CanonicalSS::SEMI_CANONICAL:
             return "Semi-canonical";
-        case NO:
+        case CanonicalSS::NO:
             return "No";
     }
 
@@ -546,7 +546,7 @@ public:
      * @return 
      */
     bool hasCanonicalSpliceSites() const {
-        return this->canonicalSpliceSites;
+        return this->canonicalSpliceSites == CanonicalSS::CANONICAL;
     }
     
     CanonicalSS getSpliceSiteType() const {

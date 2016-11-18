@@ -59,31 +59,6 @@ namespace phx   = boost::phoenix;
 #include <boost/algorithm/string/case_conv.hpp>
 
 
-string portcullis::opToString(const Operator op) {
-    switch (op) {
-        case EQ:
-            return "EQ";                
-        case GT:
-            return "GT";
-        case LT:
-            return "LT";
-        case GTE:
-            return "GTE";
-        case LTE:
-            return "LTE";
-        case IN:
-            return "IN";
-        case NOT_IN:
-            return "NOT_IN";
-        default:
-            BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-                    "Unrecognised operation")));        
-    }    
-}
-
-bool portcullis::isNumericOp(Operator op) {
-    return (op != IN && op != NOT_IN);
-}
 
 
 portcullis::eval::eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap, 
@@ -234,15 +209,15 @@ string portcullis::eval::getStringFromJunc(const var& fullname) const {
     
 bool portcullis::eval::evalNumberLeaf(Operator op, double threshold, double value) const {
     switch (op) {
-        case EQ:
+        case Operator::EQ:
             return value == threshold;                
-        case GT:
+        case Operator::GT:
             return value > threshold;
-        case LT:
+        case Operator::LT:
             return value < threshold;
-        case GTE:
+        case Operator::GTE:
             return value >= threshold;
-        case LTE:
+        case Operator::LTE:
             return value <= threshold;
         default:
             BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
@@ -252,9 +227,9 @@ bool portcullis::eval::evalNumberLeaf(Operator op, double threshold, double valu
     
 bool portcullis::eval::evalSetLeaf(Operator op, unordered_set<string>& set, string value) const {
     switch (op) {
-        case IN:
+        case Operator::IN:
             return set.find(value) != set.end();
-        case NOT_IN:
+        case Operator::NOT_IN:
             return set.find(value) == set.end();
         default:
             BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(

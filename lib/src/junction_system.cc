@@ -441,7 +441,7 @@ void portcullis::JunctionSystem::saveAll(const path& outputPrefix, const string&
     cout.flush();
 
     // Print junctions in BED format to file
-    outputBED(junctionBEDAllPath, ALL, source, bedscore);
+    outputBED(junctionBEDAllPath, CanonicalSS::ALL, source, bedscore);
 
     cout << "done." << endl;
 }
@@ -479,7 +479,7 @@ void portcullis::JunctionSystem::outputBED(string& path, CanonicalSS type, const
 void portcullis::JunctionSystem::outputBED(std::ostream &strm, CanonicalSS type, const string& prefix, bool bedscore) {
     strm << "track name=\"junctions\" description=\"Portcullis V" << (version.empty() ? "X.X.X" : version) << " junctions\"" << endl;
     for (JunctionPtr j : junctionList) {
-        if (type == ALL || j->getSpliceSiteType() == type) {
+        if (type == CanonicalSS::ALL || j->getSpliceSiteType() == type) {
             j->outputBED(strm, prefix, bedscore);
         }
     }

@@ -93,31 +93,13 @@ void portcullis::PreparedFiles::clean() {
 }
     
     
-portcullis::Prepare::Prepare(const path& _outputPrefix, Strandedness _strandSpecific, bool _force, bool _useLinks, bool _useCsi, uint16_t _threads, bool _verbose) {
+portcullis::Prepare::Prepare(const path& _outputPrefix) {
     output = make_shared<PreparedFiles>(_outputPrefix);
-    strandSpecific = _strandSpecific;
-    force = _force;
-    useLinks = _useLinks;
-    useCsi = _useCsi;
-    threads = _threads;
-    verbose = _verbose;
-
-    if (verbose) {
-        cout << "Configured portcullis prep to use the following settings: " << endl
-             << " - Output directory: " << output->getPrepDir() << endl
-             << " - Strand specific library: " << strandednessToString(strandSpecific) << endl
-             << " - Force prep (cleans output directory): " << boolalpha << force << endl
-             << " - Use symbolic links instead of copy where possible: " << boolalpha << useLinks << endl
-             << " - Indexing type: " << (useCsi ? "CSI" : "BAI") << endl
-             << " - Threads (for sorting BAM): " << threads << endl << endl;
-    }
-
-    if (force) {
-        cout << "Cleaning output dir " << _outputPrefix << " ... ";
-        cout.flush();
-        output->clean();
-        cout << "done." << endl << endl;
-    }
+    force = false;
+    useLinks = true;
+    useCsi = false;
+    threads = 1;
+    verbose = false;
 }
     
 bool portcullis::Prepare::copy(const path& from, const path& to, const string& msg, const bool requireInputFileExists) {
@@ -344,6 +326,22 @@ bool portcullis::Prepare::bamIndex(const bool copied) {
     
 void portcullis::Prepare::prepare(vector<path> bamFiles, const path& originalGenomeFile) {
 
+    if (verbose) {
+        cout << "Configured portcullis prep to use the following settings: " << endl
+             << " - Output directory: " << output->getPrepDir() << endl
+             << " - Force prep (cleans output directory): " << boolalpha << force << endl
+             << " - Use symbolic links instead of copy where possible: " << boolalpha << useLinks << endl
+             << " - Indexing type: " << (useCsi ? "CSI" : "BAI") << endl
+             << " - Threads (for sorting BAM): " << threads << endl << endl;
+    }
+
+    if (force) {
+        cout << "Cleaning output dir: " << output->getPrepDir() << " ... ";
+        cout.flush();
+        output->clean();
+        cout << "done." << endl << endl;
+    }
+    
     // Copy / Symlink the genome file to the output dir
     if (!copy(originalGenomeFile, output->getGenomeFilePath(), "genome", true)) {
         BOOST_THROW_EXCEPTION(PrepareException() << PrepareErrorInfo(string(
@@ -481,8 +479,6 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
                 "Output directory for prepared files.")
             ("force", po::bool_switch(&force)->default_value(false), 
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
-            ("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
-                "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads).  By default we assume the user does not know the strand specific protocol used for this BAM file.  This has the affect that strand information is derived from splice site information alone, assuming junctions are either canonical or semi-canonical in form.  Default: \"unknown\"")
             ("copy", po::bool_switch(&copy)->default_value(false), 
                 "Whether to copy files from input data to prepared data where possible, otherwise will use symlinks.  Will require more time and disk space to prepare input but is potentially more robust.")
             ("use_csi,c", po::bool_switch(&useCsi)->default_value(false), 
@@ -555,7 +551,12 @@ int portcullis::Prepare::main(int argc, char *argv[]) {
          << "----------------------------------" << endl << endl;
 
     // Create the prepare class
-    Prepare prep(outputDir, strandednessFromString(strandSpecific), force, !copy, useCsi, threads, verbose);
+    Prepare prep(outputDir);
+    prep.setForce(force);
+    prep.setUseLinks(!copy);
+    prep.setUseCsi(useCsi);
+    prep.setThreads(threads);
+    prep.setVerbose(verbose);    
     
     // Prep the input to produce a usable indexed and sorted bam plus, indexed
     // genome and queryable coverage information

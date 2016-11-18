@@ -47,7 +47,7 @@ namespace portcullis {
 typedef boost::error_info<struct BamFilterError,string> BamFilterErrorInfo;
 struct BamFilterException: virtual boost::exception, virtual std::exception { };
 
-enum ClipMode {
+enum class ClipMode {
     HARD,
     SOFT,
     COMPLETE
@@ -56,11 +56,11 @@ enum ClipMode {
 static string clipToString(ClipMode cm) {
     
     switch(cm) {
-        case HARD:
+        case ClipMode::HARD:
             return "HARD";
-        case SOFT:
+        case ClipMode::SOFT:
             return "SOFT";
-        case COMPLETE:
+        case ClipMode::COMPLETE:
             return "COMPLETE";
     }
 
@@ -70,13 +70,13 @@ static string clipToString(ClipMode cm) {
 static ClipMode clipFromString(string cm) {
     
     if (boost::iequals(cm, "HARD")) {
-        return HARD;
+        return ClipMode::HARD;
     }
     else if (boost::iequals(cm, "SOFT")) {
-        return SOFT;
+        return ClipMode::SOFT;
     }
     else if (boost::iequals(cm, "COMPLETE")) {
-        return COMPLETE;
+        return ClipMode::COMPLETE;
     }
     
     BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
@@ -91,6 +91,7 @@ private:
     path bamFile;
     path outputBam;
     Strandedness strandSpecific;
+    Orientation orientation;
     ClipMode clipMode;
     bool saveMSRs;
     bool useCsi;
@@ -150,6 +151,14 @@ public:
 
     void setStrandSpecific(Strandedness strandSpecific) {
         this->strandSpecific = strandSpecific;
+    }
+    
+    Orientation getOrientation() const {
+        return orientation;
+    }
+
+    void setOrientation(Orientation orientation) {
+        this->orientation = orientation;
     }
     
     ClipMode getClipMode() const {

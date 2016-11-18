@@ -88,6 +88,7 @@ private:
     string outputPrefix;
     uint16_t threads;
     Strandedness strandSpecific;
+    Orientation orientation;
     bool extra;
     bool separate;
     bool properPairedCheck;
@@ -206,6 +207,15 @@ public:
     void setStrandSpecific(Strandedness strandSpecific) {
         this->strandSpecific = strandSpecific;
     }
+    
+    Orientation getOrientation() const {
+        return orientation;
+    }
+
+    void setOrientation(Orientation orientation) {
+        this->orientation = orientation;
+    }
+
 
     bool isUseCsi() const {
         return useCsi;

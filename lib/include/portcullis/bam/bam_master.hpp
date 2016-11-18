@@ -46,37 +46,37 @@ typedef boost::error_info<struct BamError,string> BamErrorInfo;
 struct BamException: virtual boost::exception, virtual std::exception { };
 
     
-enum Strand {
+enum class Strand {
     POSITIVE,
     NEGATIVE,
     UNKNOWN
 };
     
 static Strand strandFromBool(bool reverseStrand) {
-    return reverseStrand ? NEGATIVE : POSITIVE;
+    return reverseStrand ? Strand::NEGATIVE : Strand::POSITIVE;
 }
 
 static Strand strandFromChar(char strand) {
     switch(strand) {
         case '+':
-            return POSITIVE;
+            return Strand::POSITIVE;
         case '-':
-            return NEGATIVE;
+            return Strand::NEGATIVE;
         case '?':
-            return UNKNOWN;
+            return Strand::UNKNOWN;
     }
 
-    return UNKNOWN;
+    return Strand::UNKNOWN;
 }
 
 static char strandToChar(Strand strand) {
     
     switch(strand) {
-        case POSITIVE:
+        case Strand::POSITIVE:
             return '+';
-        case NEGATIVE:
+        case Strand::NEGATIVE:
             return '-';
-        case UNKNOWN:
+        case Strand::UNKNOWN:
             return '?';
     }
 
@@ -86,11 +86,11 @@ static char strandToChar(Strand strand) {
 static string strandToString(Strand strand) {
     
     switch(strand) {
-        case POSITIVE:
+        case Strand::POSITIVE:
             return string("POSITIVE");
-        case NEGATIVE:
+        case Strand::NEGATIVE:
             return string("NEGATIVE");
-        case UNKNOWN:
+        case Strand::UNKNOWN:
             return string("UNKNOWN");
     }
 
@@ -98,20 +98,10 @@ static string strandToString(Strand strand) {
 }
 
 enum class Strandedness : std::uint8_t {
-    UNSTRANDED = 0,
-    FIRSTSTRAND = 1,
-    SECONDSTRAND = 2,
-    UNKNOWN = 3
-};
-
-enum class Orientation : std::uint8_t {
-    F = 0,
-    R = 1,
-    FR = 2,
-    RF = 3,
-    FF = 4,
-    RR = 5,
-    UNKNOWN = 6
+    UNSTRANDED,
+    FIRSTSTRAND,
+    SECONDSTRAND,
+    UNKNOWN
 };
 
 inline const string strandednessToString(Strandedness ss) {
@@ -141,6 +131,57 @@ inline const Strandedness strandednessFromString(string& ss) {
         
     return Strandedness::UNKNOWN;
 }
+
+enum class Orientation : std::uint8_t {
+    F,
+    R,
+    FR,
+    RF,
+    FF,
+    RR,
+    UNKNOWN
+};
+
+inline const string orientationToString(Orientation orientation) {
+    switch (orientation) {
+        case Orientation::F:    return "F";
+        case Orientation::R:    return "R";
+        case Orientation::FR:   return "FR";
+        case Orientation::RF:   return "RF";
+        case Orientation::FF:   return "FF";
+        case Orientation::RR:   return "RR";
+        default:      return "[Unknown Orientation type]";
+    }
+}
+
+inline const Orientation orientationFromString(string& ss) {
+    
+    if (boost::iequals(ss, "F")) {
+        return Orientation::F;
+    }
+    else if (boost::iequals(ss, "R")) {
+        return Orientation::R;
+    }
+    else if (boost::iequals(ss, "FR")) {
+        return Orientation::FR;
+    }
+    else if (boost::iequals(ss, "RF")) {
+        return Orientation::RF;
+    }
+    else if (boost::iequals(ss, "FF")) {
+        return Orientation::FF;
+    }
+    else if (boost::iequals(ss, "RR")) {
+        return Orientation::RR;
+    }
+    else if (boost::iequals(ss, "UNKNOWN")) {
+        return Orientation::UNKNOWN;
+    }
+        
+    return Orientation::UNKNOWN;
+}
+
+
 
 struct RefSeq {
     int32_t index;

@@ -129,7 +129,7 @@ template <typename tag> struct unop
     expr oper1;
 };
 
-enum Operator {
+enum class Operator {
     EQ,
     GT,
     LT,
@@ -148,6 +148,33 @@ const std::map<string, Operator> String2OperatorMap = {
     {"IN", Operator::IN},
     {"NOT_IN", Operator::NOT_IN}
 };
+
+
+inline string opToString(const Operator op) {
+    switch (op) {
+        case Operator::EQ:
+            return "EQ";                
+        case Operator::GT:
+            return "GT";
+        case Operator::LT:
+            return "LT";
+        case Operator::GTE:
+            return "GTE";
+        case Operator::LTE:
+            return "LTE";
+        case Operator::IN:
+            return "IN";
+        case Operator::NOT_IN:
+            return "NOT_IN";
+        default:
+            BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
+                    "Unrecognised operation")));        
+    }    
+}
+
+inline bool isNumericOp(Operator op) {
+    return (op != Operator::IN && op != Operator::NOT_IN);
+}
 
 typedef unordered_map<string, pair<Operator, double>> NumericFilterMap;
 typedef unordered_map<string, pair<Operator, unordered_set<string>>> SetFilterMap;

@@ -417,6 +417,7 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
     bool separate;
     bool properPairedCheck;
     string strandSpecific;
+    string orientation;
     bool useCsi;
     bool exongff;
     bool introngff;
@@ -435,6 +436,8 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
                 "The number of threads to use.  Note that increasing the number of threads will also increase memory requirements.")
             ("separate,s", po::bool_switch(&separate)->default_value(false),
                 "Separate spliced from unspliced reads.")
+            ("orientation", po::value<string>(&orientation)->default_value(orientationToString(Orientation::UNKNOWN)), 
+                "The orientation of the reads that produced the BAM alignments: \"F\" (Single-end forward orientation); \"R\" (single-end reverse orientation); \"FR\" (paired-end, with reads sequenced towards center of fragment -> <-.  This is usual setting for most Illumina paired end sequencing); \"RF\" (paired-end, reads sequenced away from center of fragment <- ->); \"FF\" (paired-end, reads both sequenced in forward orientation); \"RR\" (paired-end, reads both sequenced in reverse orientation);  Default: \"unknown\"")
             ("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
                 "Whether BAM alignments were generated using a strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads).  By default we assume the user does not know the strand specific protocol used for this BAM file.  This has the affect that strand information is derived from splice site information alone, assuming junctions are either canonical or semi-canonical in form.  Default: \"unknown\"")
             ("use_csi,c", po::bool_switch(&useCsi)->default_value(false), 
@@ -511,6 +514,7 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
     jb.setSeparate(separate);
     jb.setSource(source);
     jb.setStrandSpecific(strandednessFromString(strandSpecific));
+    jb.setOrientation(orientationFromString(orientation));
     jb.setProperPairedCheck(properPairedCheck);
     jb.setUseCsi(useCsi);
     jb.setOutputExonGFF(exongff);

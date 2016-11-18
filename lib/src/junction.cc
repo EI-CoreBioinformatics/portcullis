@@ -147,14 +147,14 @@ portcullis::CanonicalSS portcullis::Junction::hasCanonicalSpliceSites(const stri
     const string seq = string(seq1 + seq2);
 
     if (seq == CANONICAL_SEQ || seq == CANONICAL_SEQ_RC) {
-        return CANONICAL;
+        return CanonicalSS::CANONICAL;
     }
     else if (seq == SEMI_CANONICAL_SEQ1 || seq == SEMI_CANONICAL_SEQ1_RC ||
              seq == SEMI_CANONICAL_SEQ2 || seq == SEMI_CANONICAL_SEQ2_RC) {
-        return SEMI_CANONICAL;
+        return CanonicalSS::SEMI_CANONICAL;
     }
     else {
-        return NO;
+        return CanonicalSS::NO;
     }
 }
     
@@ -193,7 +193,7 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
     suspicious = false;
     pfp = false;
     genuine = false;
-    canonicalSpliceSites = NO;
+    canonicalSpliceSites = CanonicalSS::NO;
     maxMinAnchor = intron->minAnchorLength(_leftAncStart, _rightAncEnd);
     diffAnchor = 0;
     entropy = 0;
@@ -764,7 +764,7 @@ void portcullis::Junction::calcHammingScores(   const string& leftAnchor, const 
     
     // TODO, might want to modify this logic later, but worst case is that the 5' and
     // 3' results are swapped
-    Strand s = consensusStrand != UNKNOWN ? consensusStrand : Strand::UNKNOWN;
+    Strand s = consensusStrand != Strand::UNKNOWN ? consensusStrand : Strand::UNKNOWN;
 
     const string la = leftAnchor.size() > leftLen ? leftAnchor.substr(leftOffset, leftLen) : leftAnchor;
     const string li = leftIntron.size() > rightLen ? leftIntron.substr(0, rightLen) : leftIntron;
@@ -776,7 +776,7 @@ void portcullis::Junction::calcHammingScores(   const string& leftAnchor, const 
     string intron3p;
     string anchor3p;
     
-    if (s == NEGATIVE) {
+    if (s == Strand::NEGATIVE) {
         anchor5p = SeqUtils::reverseComplement(ra);
         intron5p = SeqUtils::reverseComplement(ri);
         intron3p = SeqUtils::reverseComplement(li);
@@ -1008,7 +1008,7 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, const string& sou
 
     // Use intron strand if known, otherwise use the predicted strand,
     // if predicted strand is also unknown then use "." to indicated unstranded
-    const char strand = consensusStrand == UNKNOWN ? '.' : strandToChar(consensusStrand);
+    const char strand = consensusStrand == Strand::UNKNOWN ? '.' : strandToChar(consensusStrand);
 
     string juncId = string("junc_") + lexical_cast<string>(id);
 
