@@ -189,18 +189,16 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
     intron(_location) {
     leftAncStart = _leftAncStart;
     rightAncEnd = _rightAncEnd;
-    meanQueryLength = 0;
+    meanReadLength = 0;
     suspicious = false;
     pfp = false;
     genuine = false;
     canonicalSpliceSites = CanonicalSS::NO;
     maxMinAnchor = intron->minAnchorLength(_leftAncStart, _rightAncEnd);
-    diffAnchor = 0;
     entropy = 0;
-    nbDistinctAnchors = 0;
-    nbJunctionAlignments = 0;
-    nbDistinctAlignments = 0;
-    nbReliableAlignments = 0;
+    nbAlRaw = 0;
+    nbAlDistinct = 0;
+    nbAlReliable = 0;
     nbUpstreamFlankingAlignments = 0;
     nbDownstreamFlankingAlignments = 0;
     leftAncSize = 0;
@@ -213,7 +211,9 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
     primaryJunction = false;
     multipleMappingScore = 0.0;
     meanMismatches = 0;
-    nbMultipleSplicedReads = 0;
+    nbAlMultiplySpliced = 0;
+    nbAlUniquelyMapped = 0;
+    nbAlProperlyPaired = 0;
     distanceToNextUpstreamJunction = 0;
     distanceToNextDownstreamJunction = 0;
     distanceToNearestJunction = 0;
@@ -248,18 +248,16 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
     intron = make_shared<Intron>(*(j.intron));        
     leftAncStart = j.leftAncStart;
     rightAncEnd = j.rightAncEnd;
-    meanQueryLength = j.meanQueryLength;
+    meanReadLength = j.meanReadLength;
     suspicious = j.suspicious;
     pfp = j.pfp;
     genuine = j.genuine;
     canonicalSpliceSites = j.canonicalSpliceSites;
     maxMinAnchor = j.maxMinAnchor;
-    diffAnchor = j.diffAnchor;
     entropy = j.entropy;
-    nbDistinctAnchors = j.nbDistinctAnchors;
-    nbJunctionAlignments = j.nbJunctionAlignments;
-    nbDistinctAlignments = j.nbDistinctAlignments;
-    nbReliableAlignments = j.nbReliableAlignments;
+    nbAlRaw = j.nbAlRaw;
+    nbAlDistinct = j.nbAlDistinct;
+    nbAlReliable = j.nbAlReliable;
     leftAncSize = j.leftAncSize;
     rightAncSize = j.rightAncSize;
     nbUpstreamFlankingAlignments = j.nbUpstreamFlankingAlignments;
@@ -272,8 +270,10 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
     primaryJunction = j.primaryJunction;
     multipleMappingScore = j.multipleMappingScore;
     meanMismatches = j.meanMismatches;
-    nbMultipleSplicedReads = j.nbMultipleSplicedReads;
-
+    nbAlMultiplySpliced = j.nbAlMultiplySpliced;
+    nbAlUniquelyMapped = j.nbAlUniquelyMapped;
+    nbAlProperlyPaired = j.nbAlProperlyPaired;
+            
     readStrand = j.readStrand;
     ssStrand = j.ssStrand;
     consensusStrand = j.consensusStrand;
@@ -326,10 +326,10 @@ void portcullis::Junction::addJunctionAlignment(const BamAlignment& al) {
     this->alignments.push_back(aip);
     this->alignmentCodes.push_back(aip->nameCode);
     
-    this->nbJunctionAlignments = this->alignments.size();
+    this->nbAlRaw = this->alignments.size();
 
     if (al.getNbJunctionsInRead() > 1) {
-        this->nbMultipleSplicedReads++;
+        this->nbAlMultiplySpliced++;
     }
 }
     
@@ -554,15 +554,15 @@ void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t re
 }
 
 void portcullis::Junction::calcMetrics() {
-    this->calcMetrics(false);
+    this->calcMetrics(Orientation::UNKNOWN);
 }
     
-void portcullis::Junction::calcMetrics(bool properPairedCheck) {
+void portcullis::Junction::calcMetrics(Orientation orientation) {
     
     determineStrandFromReads();
     calcAnchorStats();      // Metrics 5 and 7
     calcEntropy();          // Metric 6
-    calcAlignmentStats(properPairedCheck);   // Metrics 8, 9 and 19
+    calcAlignmentStats(orientation);   // Metrics 8, 9 and 19
 }
 
 
@@ -577,8 +577,6 @@ void portcullis::Junction::calcAnchorStats() {
     int32_t maxLeftSize = 0, maxRightSize = 0;
     int32_t lastLStart = -1, lastREnd = -1;
 
-    nbDistinctAnchors = 0;    
-    
     for(const auto& a : alignments) {
         
         BamAlignmentPtr ba = a->ba;
@@ -595,7 +593,6 @@ void portcullis::Junction::calcAnchorStats() {
         minRightSize = min(minRightSize, rightSize);
         
         if (lStart != lastLStart || rEnd != lastREnd) {
-            nbDistinctAnchors++;
             lastLStart = lStart;
             lastREnd = rEnd;
         }        
@@ -605,8 +602,7 @@ void portcullis::Junction::calcAnchorStats() {
     int32_t diffRightSize = maxRightSize - minRightSize; diffLeftSize = diffRightSize < 0 ? 0 : diffRightSize;   
     
     leftAncSize = maxLeftSize;
-    rightAncSize = maxRightSize;            
-    diffAnchor = min(diffLeftSize, diffRightSize);    
+    rightAncSize = maxRightSize;
 }
     
 
@@ -690,14 +686,16 @@ double portcullis::Junction::calcEntropy(const vector<int32_t> junctionPositions
  * Metrics: # Distinct Alignments, # Unique/Reliable Alignments, #mismatches
  * @return 
  */
-void portcullis::Junction::calcAlignmentStats(bool properPairedCheck) {
+void portcullis::Junction::calcAlignmentStats(Orientation orientation) {
 
     int32_t lastStart = -1, lastEnd = -1;
 
-    nbDistinctAlignments = 0;
-    nbReliableAlignments = 0;
+    nbAlDistinct = 0;
+    nbAlReliable = 0;
     nbUpstreamJunctions = 0;
     nbDownstreamJunctions = 0;
+    
+    const bool properPairedCheck = doProperPairCheck(orientation);
 
     //cout << junctionAlignments.size() << endl;
 
@@ -709,7 +707,7 @@ void portcullis::Junction::calcAlignmentStats(bool properPairedCheck) {
         const int32_t end = ba->getEnd();
 
         if (start != lastStart || end != lastEnd ) {
-            nbDistinctAlignments++;                
+            nbAlDistinct++;                
             lastStart = start;
             lastEnd = end;
         }
@@ -718,9 +716,35 @@ void portcullis::Junction::calcAlignmentStats(bool properPairedCheck) {
         // "reliable" (i.e. unique) alignments in samtools.  They do this
         // because apparently "uniqueness" is not a well defined concept.
         // We also require, if specified by the user, a "reliably" aligned read to be properly paired.
+        //if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD && (!properPairedCheck || ba->calcIfProperPair(orientation))) {
         if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD && (!properPairedCheck || ba->isProperPair())) {
-            nbReliableAlignments++;
+            nbAlReliable++;
         }
+        
+        bool reliable = true;
+        if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD) {
+            nbAlUniquelyMapped++;
+        }
+        else {
+            reliable = false;
+        }
+        
+        if (properPairedCheck) {
+            bool pp = ba->calcIfProperPair(orientation);
+            if (pp) {
+                nbAlProperlyPaired++;
+            }
+            else {
+                reliable = false;
+            }
+        }
+        
+        if (reliable) {
+            nbAlReliable++;
+        }
+        
+        
+        
 
         uint16_t upjuncs = 0;
         uint16_t downjuncs = 0;
@@ -928,9 +952,9 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
          << "Consensus Strand: " << strandToString(consensusStrand) << delimiter
          << "Junction Metrics:" << delimiter
          << "M1:  Canonical?: " << boolalpha << cssToString(canonicalSpliceSites) << "; Sequences: (" << da1 << " " << da2 << ")" << delimiter
-         << "M2:  # Junction Alignments: " << getNbJunctionAlignments() << delimiter
-         << "M3:  # Distinct Alignments: " << nbDistinctAlignments << delimiter
-         << "M4:  # Reliable (MP >=" << MAP_QUALITY_THRESHOLD << ") Alignments: " << nbReliableAlignments << delimiter
+         << "M2:  # Junction Alignments: " << getNbSplicedAlignments() << delimiter
+         << "M3:  # Distinct Alignments: " << nbAlDistinct << delimiter
+         << "M4:  # Reliable (MP >=" << MAP_QUALITY_THRESHOLD << ") Alignments: " << nbAlReliable << delimiter
          << "M5:  Intron Size: " << getIntronSize() << delimiter
          << "M6:  Left Anchor Size: " << leftAncSize << delimiter
          << "M7:  Right Anchor Size: " << rightAncSize << delimiter
@@ -946,8 +970,8 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
          << "M17: Primary Junction: " << boolalpha << primaryJunction << delimiter
          << "M18: Multiple mapping score: " << multipleMappingScore << delimiter
          << "M19: Mean mismatches: " << meanMismatches << delimiter
-         << "M20: # Uniquely Spliced Reads: " << getNbUniquelySplicedReads() << delimiter
-         << "M21: # Multiple Spliced Reads: " << nbMultipleSplicedReads << delimiter
+         << "M20: # Uniquely Spliced Reads: " << getNbUniquelySplicedAlignments() << delimiter
+         << "M21: # Multiple Spliced Reads: " << nbAlMultiplySpliced << delimiter
          << "M22: # Upstream Junctions: " << nbUpstreamJunctions << delimiter
          << "M23: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
          << "M24: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
@@ -967,9 +991,9 @@ void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string
          << "Splice Site Strand: " << strandToString(ssStrand) << delimiter
          << "Consensus Strand: " << strandToString(consensusStrand) << delimiter
          << "M1-Canonical?=" << cssToString(canonicalSpliceSites) << delimiter
-         << "M2-NbAlignments=" << getNbJunctionAlignments() << delimiter
-         << "M3-NbDistinctAlignments=" << nbDistinctAlignments << delimiter
-         << "M4-NbReliableAlignments=" << nbReliableAlignments << delimiter
+         << "M2-NbAlignments=" << getNbSplicedAlignments() << delimiter
+         << "M3-NbDistinctAlignments=" << nbAlDistinct << delimiter
+         << "M4-NbReliableAlignments=" << nbAlReliable << delimiter
          << "M5-IntronSize=" << getIntronSize() << delimiter
          << "M6-LeftAnchorSize=" << leftAncSize << delimiter
          << "M7-RightAnchorSize=" << rightAncSize << delimiter
@@ -985,9 +1009,9 @@ void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string
          << "M17-PrimaryJunction=" << boolalpha << primaryJunction << delimiter
          << "M18-MultipleMappingScore=" << multipleMappingScore << delimiter
          << "M19-MeanMismatches=" << meanMismatches << delimiter
-         << "M20-NbUniquelySplicedReads=" << getNbUniquelySplicedReads() << delimiter
-         << "M21-NbMultipleSplicedReads=" << nbMultipleSplicedReads << delimiter
-         << "M22-Reliable2RawRatio=" << getReliable2RawRatio() << delimiter
+         << "M20-NbUniquelySplicedReads=" << getNbUniquelySplicedAlignments() << delimiter
+         << "M21-NbMultipleSplicedReads=" << nbAlMultiplySpliced << delimiter
+         << "M22-Reliable2RawRatio=" << getReliable2RawAlignmentRatio() << delimiter
          << "M23-NbUpstreamJunctions=" << nbUpstreamJunctions << delimiter
          << "M24-NbDownstreamJunctions=" << nbDownstreamJunctions << delimiter
          << "M25-NbUpstreamNonSplicedAlignments=" << nbUpstreamFlankingAlignments << delimiter
@@ -1020,7 +1044,7 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, const string& sou
          << "intron" << "\t"        // type (may change later)
          << intron->start + 1 << "\t"   // start
          << intron->end  + 1<< "\t"     // end
-         << nbJunctionAlignments << "\t"           // No score for the moment
+         << nbAlRaw << "\t"           // No score for the moment
          << strand << "\t"          // strand
          << "." << "\t"             // Just put "." for the phase
          // Removing this as it causes issues with PASA downstream
@@ -1029,7 +1053,7 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, const string& sou
                         << "|ent:" << std::setprecision(4) << this->entropy << std::setprecision(9) 
                         << "|maxmmes:" << this->maxMMES
                         << "|ham:" << min(this->hammingDistance3p, this->hammingDistance5p) << ";"  // Number of times it was seen**/
-         << "mult=" << nbJunctionAlignments << ";"  // Coverage for augustus
+         << "mult=" << nbAlRaw << ";"  // Coverage for augustus
          << "grp=" << juncId << ";"  // ID for augustus
          << "src=E";                // Source for augustus
     strm << endl;
@@ -1061,12 +1085,12 @@ void portcullis::Junction::outputJunctionGFF(std::ostream &strm, const string& s
          << "." << "\t"             // Just put "." for the phase
          << "ID=" << juncId << ";"  // ID of the intron
          << "Name=" << juncId << ";"  // ID of the intron
-         << "Note=cov:" << nbJunctionAlignments 
-                        << "|rel:" << this->nbReliableAlignments 
+         << "Note=cov:" << nbAlRaw 
+                        << "|rel:" << this->nbAlReliable 
                         << "|ent:" << std::setprecision(4) << this->entropy << std::setprecision(9)
                         << "|maxmmes:" << this->maxMMES
                         << "|ham:" << min(this->hammingDistance3p, this->hammingDistance5p) << ";"  // Number of times it was seen
-         << "mult=" << nbJunctionAlignments << ";"  // Coverage for augustus
+         << "mult=" << nbAlRaw << ";"  // Coverage for augustus
          << "grp=" << juncId << ";"  // ID for augustus
          << "src=E;";                // Source for augustus
     condensedOutputDescription(strm, ";");
@@ -1125,7 +1149,7 @@ void portcullis::Junction::outputBED(std::ostream &strm, const string& prefix, b
          << leftAncStart << "\t"  // chromstart
          << rightAncEnd + 1 << "\t"   // chromend (adding 1 as end position is exclusive)
          << juncId << "\t"          // name
-         << (bedscore ? this->getScore() : this->getNbJunctionAlignments()) << "\t"           // Use the depth as the score for the moment
+         << (bedscore ? this->getScore() : this->getNbSplicedAlignments()) << "\t"           // Use the depth as the score for the moment
          << strand << "\t"          // strand
          << intron->start << "\t"   // thickstart
          << intron->end + 1 << "\t"     // thickend  (adding 1 as end position is exclusive)
@@ -1195,7 +1219,7 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     j->consensusStrand = strandFromChar(parts[12][0]);
 
     // Add metrics to junction
-    j->setDonorAndAcceptorMotif(cssFromChar(parts[13][0]));
+    j->canonicalSpliceSites = cssFromChar(parts[13][0]);
     j->setNbJunctionAlignments(lexical_cast<uint32_t>(parts[14]));
     j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[15]));
     j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[16]));
@@ -1226,7 +1250,7 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
     j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[41]));
     
     // Read Junction overhangs
-    j->setMeanQueryLength(lexical_cast<uint32_t>(parts[42]));
+    j->meanReadLength = lexical_cast<uint32_t>(parts[42]);
     j->setSuspicious(lexical_cast<bool>(parts[43]));
     j->setPotentialFalsePositive(lexical_cast<bool>(parts[44]));
     for(size_t i = 0; i < JO_NAMES.size(); i++) {

@@ -91,7 +91,6 @@ private:
     Orientation orientation;
     bool extra;
     bool separate;
-    bool properPairedCheck;
     bool useCsi;
     bool outputExonGFF;
     bool outputIntronGFF;
@@ -183,15 +182,6 @@ public:
         this->separate = separate;
     }
     
-    bool doProperPairedCheck() const {
-        return properPairedCheck;
-    }
-
-    void setProperPairedCheck(bool singleEnd) {
-        this->properPairedCheck = singleEnd;
-    }
-
-
     string getSource() const {
         return source;
     }

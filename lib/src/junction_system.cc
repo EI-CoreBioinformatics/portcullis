@@ -297,8 +297,8 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
         bool uniqueJunction = junctionGroup.size() == 1;
         for (size_t j = 0; j < junctionGroup.size(); j++) {
             JunctionPtr junc = junctionGroup[j];
-            if (maxReads < junc->getNbJunctionAlignments()) {
-                maxReads = junc->getNbJunctionAlignments();
+            if (maxReads < junc->getNbSplicedAlignments()) {
+                maxReads = junc->getNbSplicedAlignments();
                 maxIndex = j;
             }
             junc->setUniqueJunction(uniqueJunction);
@@ -356,11 +356,11 @@ void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
 
         junc->setDistanceToNearestJunction(down == -1 || up == -1 ? max(down, up) : min(down, up));
 
-        junc->setMeanQueryLength(this->meanQueryLength);
+        junc->setMeanReadLength(this->meanQueryLength);
 
         // Now we know the mean query length, confirm if this junction really is suspicious
         if (junc->isSuspicious()) {
-            double prob = 1.0 - std::pow((junc->getMaxMMES() / (this->meanQueryLength / 2.0)), junc->getNbJunctionAlignments());
+            double prob = 1.0 - std::pow((junc->getMaxMMES() / (this->meanQueryLength / 2.0)), junc->getNbSplicedAlignments());
             if (prob > 0.99) {
                 junc->setPotentialFalsePositive(true);
             }

@@ -390,7 +390,7 @@ void portcullis::JunctionFilter::filter() {
                 }
             }
             
-            if (pass && this->getMinCov() > j->getNbJunctionAlignments()) {
+            if (pass && this->getMinCov() > j->getNbSplicedAlignments()) {
                 pass = false;
             }
 

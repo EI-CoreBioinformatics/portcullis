@@ -64,7 +64,7 @@ bool portcullis::Intron::sharesDonorOrAcceptor(const Intron& other) {
  * @param rightAnchorEnd The end position of the right anchor (inclusive)
  * @return The minimum of the left anchor length and the right anchor length
  */
-int32_t portcullis::Intron::minAnchorLength(int32_t leftAnchorStart, int32_t rightAnchorEnd) {
+uint32_t portcullis::Intron::minAnchorLength(int32_t leftAnchorStart, int32_t rightAnchorEnd) {
 
     if (leftAnchorStart > start)
         BOOST_THROW_EXCEPTION(IntronException() << IntronErrorInfo(string(

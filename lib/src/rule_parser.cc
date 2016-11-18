@@ -131,7 +131,7 @@ double portcullis::eval::getNumericFromJunc(const var& fullname) const {
         case 0:
             return 0.0;
         case 1:
-            return (double)junc->getNbJunctionAlignments();
+            return (double)junc->getNbSplicedAlignments();
         case 2:
             return (double)junc->getNbDistinctAlignments();
         case 3:
@@ -167,11 +167,11 @@ double portcullis::eval::getNumericFromJunc(const var& fullname) const {
         case 18:
             return junc->getMeanMismatches();
         case 19:
-            return junc->getNbUniquelySplicedReads();
+            return junc->getNbUniquelySplicedAlignments();
         case 20:
-            return junc->getNbMultipleSplicedReads();
+            return junc->getNbMultiplySplicedAlignments();
         case 21:
-            return junc->getReliable2RawRatio();
+            return junc->getReliable2RawAlignmentRatio();
         case 22:
             return junc->getNbUpstreamJunctions();
         case 23:

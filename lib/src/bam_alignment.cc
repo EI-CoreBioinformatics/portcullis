@@ -78,6 +78,8 @@ void portcullis::bam::BamAlignment::init() {
     alFlag = b->core.flag;
     position = b->core.pos;
     refId = b->core.tid;
+    mateId = b->core.mtid;
+    matePos = b->core.mpos;
     uint32_t* c = bam_get_cigar(b);
     alignedLength = 0;
 
@@ -134,8 +136,10 @@ portcullis::bam::BamAlignment::BamAlignment() {
     managed = true;
     alFlag = 0;
     position = -1;
+    matePos = -1;
     alignedLength = 0;
     refId = -1;
+    mateId = -1;
     strandedness = Strandedness::UNKNOWN;
 }
 
@@ -241,6 +245,41 @@ string portcullis::bam::BamAlignment::getQuerySeqAfterClipping(const string& seq
     return seq.substr(deltaStart, seq.size() - deltaStart - deltaEnd + 1);
 }
 
+/**
+ * We assume that orientatio
+ * @param orientation
+ * @return 
+ */
+bool portcullis::bam::BamAlignment::calcIfProperPair(Orientation orientation) const {
+    
+    if (!this->isPaired() || !this->isMateMapped()) {
+        return false;
+    }
+    
+    if (this->refId != this->mateId) {
+        return false;
+    }
+    
+    bool diffStrand = this->strand == Strand::NEGATIVE && !this->isMateReverseStrand() || 
+                    this->strand == Strand::POSITIVE && this->isMateReverseStrand();
+    bool posGap = this->strand == Strand::POSITIVE ? this->position < this->matePos : this->position > this->matePos;
+    
+    if (orientation == Orientation::FR) {
+        return diffStrand && posGap;
+    }
+    else if (orientation == Orientation::RF) {
+        return diffStrand && !posGap;
+    }
+    else if (orientation == Orientation::FF) {
+        return !diffStrand && posGap;
+    }
+    else if (orientation == Orientation::RR) {
+        return !diffStrand && !posGap;
+    }
+    else {
+        return false;
+    }
+}
 
 bool portcullis::bam::BamAlignment::isSplicedRead() const {
     for(const auto& op : cigar) {

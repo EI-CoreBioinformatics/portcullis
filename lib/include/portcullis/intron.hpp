@@ -103,7 +103,7 @@ public:
      * @param rightAnchorEnd The end position of the right anchor (inclusive)
      * @return The minimum of the left anchor length and the right anchor length
      */
-    int32_t minAnchorLength(int32_t leftAnchorStart, int32_t rightAnchorEnd);
+    uint32_t minAnchorLength(int32_t leftAnchorStart, int32_t rightAnchorEnd);
     
     void outputDescription(ostream& strm) {
         outputDescription(strm, "; ");

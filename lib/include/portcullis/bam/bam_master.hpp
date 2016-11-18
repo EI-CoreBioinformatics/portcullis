@@ -64,9 +64,11 @@ static Strand strandFromChar(char strand) {
             return Strand::NEGATIVE;
         case '?':
             return Strand::UNKNOWN;
+        case '.':
+            return Strand::UNKNOWN;
     }
 
-    return Strand::UNKNOWN;
+    BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string("Unknown strand: ") + strand));
 }
 
 static char strandToChar(Strand strand) {
@@ -129,7 +131,7 @@ inline const Strandedness strandednessFromString(string& ss) {
         return Strandedness::UNKNOWN;
     }
         
-    return Strandedness::UNKNOWN;
+    BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string("Unknown strandedness: ") + ss));
 }
 
 enum class Orientation : std::uint8_t {
@@ -141,6 +143,13 @@ enum class Orientation : std::uint8_t {
     RR,
     UNKNOWN
 };
+
+inline bool doProperPairCheck(Orientation orientation) {
+    return orientation == Orientation::FR ||
+            orientation == Orientation::FF ||
+            orientation == Orientation::RF ||
+            orientation == Orientation::RR;
+}
 
 inline const string orientationToString(Orientation orientation) {
     switch (orientation) {
@@ -179,7 +188,7 @@ inline const Orientation orientationFromString(string& ss) {
         return Orientation::UNKNOWN;
     }
         
-    return Orientation::UNKNOWN;
+    BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string("Unknown orientation: ") + ss));
 }
 
 

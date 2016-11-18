@@ -114,6 +114,8 @@ private:
     int32_t position;
     int32_t alignedLength;
     int32_t refId;
+    int32_t mateId;
+    int32_t matePos;
     vector<CigarOp> cigar;
     Strandedness strandedness;
     Strand strand;
@@ -189,6 +191,14 @@ public:
     void setRefId(int32_t refId) {
         this->refId = refId;
     }
+    
+    void setMateId(int32_t mateId) {
+        this->mateId = mateId;
+    }
+
+    void setMatePos(int32_t matePos) {
+        this->matePos = matePos;
+    }
 
     
     const CigarOp& getCigarOpAt(uint32_t index) const {
@@ -203,6 +213,11 @@ public:
         return position;
     }
     
+    int32_t getMatePos() const {
+        return matePos;
+    }
+
+    
     int32_t getStart() const {
         return position;
     }
@@ -213,6 +228,10 @@ public:
         
     int32_t getReferenceId() const {
         return refId;
+    }
+    
+    int32_t getMateReferenceId() const {
+        return mateId;
     }
         
     int32_t getLength() const {
@@ -259,6 +278,10 @@ public:
         return (alFlag & BAM_FSECONDARY) == 0;
     }
 
+    /**
+     * Uses properly paired flag to determine if template is properly paired
+     * @return 
+     */
     bool isProperPair() const {
         return (alFlag & BAM_FPROPER_PAIR) != 0;
     }
@@ -273,6 +296,13 @@ public:
     
     portcullis::bam::Strand getXSStrand() const;
     
+    /**
+     * Calculate if the template is properly paired based on the orientations of
+     * the alignments and the configuration passed in by the user.
+     * @param orientation How the reads are supposed to be oriented
+     * @return Returns true if properly paired, false otherwise
+     */
+    bool calcIfProperPair(Orientation orientation) const;
     
     
     string deriveName() const;

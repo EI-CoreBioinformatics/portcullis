@@ -321,7 +321,6 @@ int mainFull(int argc, char *argv[]) {
     jb.setThreads(threads);
     jb.setExtra(false);     // Run in fast mode
     jb.setSeparate(false);  // Run in fast mode
-    jb.setProperPairedCheck(properPairedCheck);
     jb.setStrandSpecific(strandednessFromString(strandSpecific));
     jb.setOrientation(orientationFromString(orientation));
     jb.setSource(source);

@@ -243,58 +243,67 @@ private:
     vector<size_t> alignmentCodes;
     vector<uint32_t> trimmedCoverage;
     vector<double> trimmedLogDevCov;
-    uint32_t meanQueryLength;
     bool suspicious;
     bool pfp;
+    vector<uint32_t> junctionOverhangs;
+    
     
     // **** Junction metrics ****
+    
     CanonicalSS canonicalSpliceSites;           // Metric 1
-    uint32_t nbJunctionAlignments;              // Metric 2
-    uint32_t nbDistinctAlignments;              // Metric 3
-    uint32_t nbReliableAlignments;              // Metric 4
-                                                // Metric 5 (intron size) calculated via location properties
-    uint32_t leftAncSize;                       // Metric 6
-    uint32_t rightAncSize;                      // Metric 7
-    int32_t  maxMinAnchor;                      // Metric 8
-    int32_t  diffAnchor;                        // Metric 9
-    uint32_t nbDistinctAnchors;                 // Metric 10
+    
+    // Alignment counts
+    uint32_t nbAlRaw;                           // Metric 2
+    uint32_t nbAlDistinct;                      // Metric 3
+    uint32_t nbAlMultiplySpliced;               // Metric 5 (Metric 4 - uniquely spliced = split - multiply spliced) 
+    uint32_t nbAlUniquelyMapped;                // Metric 6 (Metric 7 - multiply mapped = split - uniquely_mapped)
+    uint32_t nbAlProperlyPaired;                // Metric 8
+    uint32_t nbAlReliable;                      // Metric 9 (Metric 10 - reliable to raw ratio = reliable / split)
+    
+    // Derived alignment stats
     double   entropy;                           // Metric 11
-    uint32_t maxMMES;                           // Metric 12
-    int16_t  hammingDistance5p;                 // Metric 13
-    int16_t  hammingDistance3p;                 // Metric 14
-    double   coverage;                          // Metric 15
-    bool     uniqueJunction;                    // Metric 16
-    bool     primaryJunction;                   // Metric 17    
-    double   multipleMappingScore;              // Metric 18
-    double   meanMismatches;                    // Metric 19
-    //uint32_t nbUniquelySplicedReads;          // Metric 20 (Use getter)
-    uint32_t nbMultipleSplicedReads;            // Metric 21
-    //double   reliableVsRawReadRatio;            // Metric 22 (Use getter)
-    uint16_t nbUpstreamJunctions;               // Metric 23
-    uint16_t nbDownstreamJunctions;             // Metric 24
-    uint32_t nbUpstreamFlankingAlignments;      // Metric 25
-    uint32_t nbDownstreamFlankingAlignments;    // Metric 26
-    int32_t distanceToNextUpstreamJunction;     // Metric 27
-    int32_t distanceToNextDownstreamJunction;   // Metric 28
-    int32_t distanceToNearestJunction;          // Metric 29
-    vector<uint32_t> junctionOverhangs;         // Metric 30-49
+    double   meanMismatches;                    // Metric 12
+    double   meanReadLength;                    // Metric 13
+    
+    // Anchor stats    
+    uint32_t maxMinAnchor;                      // Metric 14
+    uint32_t maxMMES;                           // Metric 15
+    
+    // Genome properties
+    int16_t  hammingDistance5p;                 // Metric 16
+    int16_t  hammingDistance3p;                 // Metric 17
+    
+    // Junction relationships
+    bool     uniqueJunction;                    // Metric 18
+    bool     primaryJunction;                   // Metric 19        
+    uint16_t nbUpstreamJunctions;               // Metric 20
+    uint16_t nbDownstreamJunctions;             // Metric 21
+    int32_t distanceToNextUpstreamJunction;     // Metric 22
+    int32_t distanceToNextDownstreamJunction;   // Metric 23
+    int32_t distanceToNearestJunction;          // Metric 24
+    
+    // Metrics derived from extra processing
+    double   multipleMappingScore;              // Metric 25
+    double   coverage;                          // Metric 26
+    uint32_t nbUpstreamFlankingAlignments;      // Metric 27
+    uint32_t nbDownstreamFlankingAlignments;    // Metric 28
+    
     
     // **** Predictions ****
     
-    Strand readStrand;      // Strand derived from alignments
-    Strand ssStrand;        // Strand derived from splice sites    
-    Strand consensusStrand; // If readStrand and ssStrand agree then strand is the same, otherwise UNKNOWN
-    double score;           // Only applied if the random forest makes a prediction
+    Strand readStrand;          // Strand derived from alignments
+    Strand ssStrand;            // Strand derived from splice sites    
+    Strand consensusStrand;     // If readStrand and ssStrand agree then strand is the same, otherwise UNKNOWN
+    double score;               // Only applied if the random forest makes a prediction
     
-    bool genuine;           // Used as a hidden variable for use with cross validating a trained model instance.
     
     // **** Additional properties ****
     
     int32_t leftAncStart;
     int32_t rightAncEnd;
-    string da1, da2;                    // These store the dinucleotides found at the predicted donor / acceptor sites in the intron
-    
-    uint32_t id;
+    string da1, da2;            // These store the dinucleotides found at the predicted donor / acceptor sites in the intron    
+    uint32_t id;                // Unique identifier for the junction
+    bool genuine;               // Used as a hidden variable for use with cross validating a trained model instance.
     
 protected:
     
@@ -346,43 +355,400 @@ public:
     void setLocation(shared_ptr<Intron> location) {
         this->intron = location;
     }
+    
+    
+    
+    // ***** Getters *****
 
-    uint32_t getMeanQueryLength() const {
-        return meanQueryLength;
-    }
+    /**
+     * The strand according to 95% of alignments in this junction.  Only
+     * used if strand-specific mode is provided by the user.  Otherwise unknown
+     * strand.
+     * @return 
+     */
+    Strand getReadStrand() const { return readStrand; }
 
-    void setMeanQueryLength(uint32_t meanQueryLength) {
-        this->meanQueryLength = meanQueryLength;
-    }
+    /**
+     * The strand according to the splice sites of this junction.  Only set if
+     * the splice sites are canonical or semi-canonical
+     * @return 
+     */
+    Strand getSpliceSiteStrand() const { return ssStrand; }
+
+    /**
+     * The strand according to a consensus or read strand and splice site strand.
+     * If there is disagreement then this is set to unknown strand.
+     * @return 
+     */
+    Strand getConsensusStrand() const { return consensusStrand; }
+    
+    /**
+     * The intron represented by this junction
+     * @return 
+     */
+    shared_ptr<Intron> getIntron() const { return intron; }
+
+    /**
+     * The intron size
+     * @return 
+     */
+    int32_t getIntronSize() const { return intron != nullptr ? intron->size() : 0; }
+    
+    /**
+     * The start site of the left anchor represented by this junction
+     * @return 
+     */
+    int32_t getLeftAncStart() const { return leftAncStart; }
+
+    /**
+     * The end site of the right anchor represented by this junction
+     * @return 
+     */    
+    int32_t getRightAncEnd() const { return rightAncEnd; }
+    
+    /**
+     * The size of this junction from the start of the left exon anchor to the end
+     * of the right exon anchor
+     * @return 
+     */
+    size_t size() const { return rightAncEnd - leftAncStart + 1; }
+    
+    /**
+     * The size of the left exon anchor
+     * @return 
+     */
+    int32_t getLeftAnchorSize() const { return intron != nullptr ? intron->start - leftAncStart : 0; }
+    
+    /**
+     * The size of the right exon anchor
+     * @return 
+     */
+    int32_t getRightAnchorSize() const { return intron != nullptr ? rightAncEnd - intron->end : 0; }
+    
+    
+    /**
+     * The unique identifier assigned to this junction
+     * @return 
+     */
+    uint32_t getId() const { return id; }
+    
+    /**
+     * Whether or not the user has marked this junction as genuine or not
+     * @return 
+     */
+    bool isGenuine() const { return genuine; }
+    
+    /**
+     * The score assigned to this junction.  This could either be user-defined
+     * or set by the filtering tool.
+     * @return 
+     */
+    double getScore() const { return score; }
 
     
+    /**
+     * Whether or not there is a canonical donor and acceptor motif at the two base
+     * pairs at the start and end of the junction / intron
+     * @return 
+     */
+    bool hasCanonicalSpliceSites() const { return this->canonicalSpliceSites == CanonicalSS::CANONICAL; }
     
-    void addJunctionAlignment(const BamAlignment& al);
+    /**
+     * The type of junction this is: canonical, semi-canonical or non-canonical
+     * @return 
+     */
+    CanonicalSS getSpliceSiteType() const { return this->canonicalSpliceSites; }
     
-    void setNbJunctionAlignments(uint32_t nbJunctionAlignments) {
-        this->nbJunctionAlignments = nbJunctionAlignments;
-    }
+    /**
+     * The total number of spliced alignments directly supporting this junction
+     * @return 
+     */
+    uint32_t getNbSplicedAlignments() const { return this->nbAlRaw; }
     
-    void setDonorAndAcceptorMotif(CanonicalSS canonicalSS) {
-        this->canonicalSpliceSites = canonicalSS;
-    }
+    /**
+     * The number of distinct alignments supporting this junction
+     * @return 
+     */
+    uint32_t getNbDistinctAlignments() const { return this->nbAlDistinct; }
     
-    CanonicalSS setDonorAndAcceptorMotif(string seq1, string seq2);
+    /**
+     * The number of alignments convering only a single intron
+     * @return 
+     */
+    uint32_t getNbUniquelySplicedAlignments() const { return this->nbAlRaw - this->nbAlMultiplySpliced; }
     
-    void setFlankingAlignmentCounts(uint32_t nbUpstream, uint32_t nbDownstream);
+    /**
+     * The number of alignments covering 2 or more introns
+     * @return 
+     */
+    uint32_t getNbMultiplySplicedAlignments() const { return this->nbAlMultiplySpliced; }
     
-    void setPrimaryJunction(bool primaryJunction) {
-        this->primaryJunction = primaryJunction;
-    }
+    /**
+     * The number of reads that probably align uniquely to the genome
+     * @return 
+     */
+    uint32_t getNbUniquelyMappedAlignments() const { return this->nbAlUniquelyMapped; }
+    
+    /**
+     * The number of reads that probably align to multiple sites on the genome
+     * @return 
+     */
+    uint32_t getNbMultiplyMappedAlignments() const { return this->nbAlRaw - this->nbAlUniquelyMapped; }
+    
+    /**
+     * The number of alignments that have a properly aligned pair.  If running on
+     * single end data this will always be 0.
+     * @return 
+     */
+    uint32_t getNbProperlyPairedAlignments() const { return this->nbAlProperlyPaired; }
+    
+    /**
+     * The number of reliable split alignments supporting this junction.  With
+     * paired end data this will include split alignments that are both uniquely 
+     * mapping as well as properly paired.  For single end data this will be the 
+     * same as the number of uniquely mapping split alignments
+     * @return 
+     */
+    uint32_t getNbReliableAlignments() const { return this->nbAlReliable; }
 
+    /**
+     * The ratio of reliable alignments to raw alignments that support this junction
+     * @return 
+     */
+    double getReliable2RawAlignmentRatio() const { return (double)this->nbAlReliable / (double)this->nbAlRaw; }
+        
+  
+    /**
+     * The Shannon Entropy of this junction.  This is a measure of how well distributed
+     * the reads are around the junction.  The closely the alignment distribution
+     * is to a uniform distribution the higher the entropy score.
+     * @return 
+     */
+    double getEntropy() const { return this->entropy; }
+    
+    /**
+     * The average number of mismatches of supporting alignments in this junction.
+     * @return 
+     */
+    double getMeanMismatches() const { return this->meanMismatches; }
+    
+    /**
+     * The average read length of supporting alignments in this junction.
+     * @return 
+     */    
+    uint32_t getMeanReadLength() const { return this->meanReadLength; }
+    
+    /**
+     * The maximum of the shortest anchors from each supporting alignment
+     * @return
+     */
+    uint32_t getMaxMinAnchor() const { return this->maxMinAnchor; }
+    
+    /**
+     * The maximum of the minimum matches on either side of the exon junction.
+     * This is similar to maxMinAnchor, except that it also includes mismatches
+     * into the calculation.
+     * @return 
+     */
+    uint32_t getMaxMMES() const { return this->maxMMES; }
+    
+    /**
+     * Hamming distance at the 3' end
+     * @return 
+     */
+    int16_t getHammingDistance3p() const { return this->hammingDistance3p; }
+
+    /**
+     * Hamming distance at the 5' end
+     * @return 
+     */
+    int16_t getHammingDistance5p() const { return this->hammingDistance5p; }
+
+    /**
+     * If true this junction shares no splice sites with other junctions in this
+     * dataset
+     * @return 
+     */
+    bool isUniqueJunction() const { return this->uniqueJunction; }
+
+    /**
+     * If true this junction is either unique (i.e. shares no splice sites with
+     * other junctions) or has the highest expression compared to other junctions
+     * that it shares splice sites with
+     * @return 
+     */
+    bool isPrimaryJunction() const { return this->primaryJunction; }  
+    
+    /**
+     * The number of junctions that can be directly traced upstream through spliced
+     * alignments
+     * @return 
+     */
+    uint16_t getNbUpstreamJunctions() const { return nbUpstreamJunctions; }
+    
+    /**
+     * The number of junctions that can be directly traced downstream through spliced
+     * alignments
+     * @return 
+     */
+    uint16_t getNbDownstreamJunctions() const { return nbDownstreamJunctions; }
+
+    /**
+     * The distance to the next upstream junction that can be directly traced via 
+     * split alignments, or 0 if there no junctions directly upstream or if the
+     * next upstream junction is located within this junction
+     * @return 
+     */
+    uint32_t getDistanceToNextUpstreamJunction() const { return distanceToNextUpstreamJunction; }
+    
+    /**
+     * The distance to the next downstream junction that can be directly traced via 
+     * split alignments, or 0 if there no junctions directly downstream or if the
+     * next downstream junction is located within this junction
+     * @return 
+     */    
+    uint32_t getDistanceToNextDownstreamJunction() const { return distanceToNextDownstreamJunction; }
+    
+    /**
+     * The distance to the nearest junction
+     * @return 
+     */
+    uint32_t getDistanceToNearestJunction() const { return distanceToNearestJunction; }
+
+    
+    /**
+     * The Multiple mapping score (reflects mapping ambiguity.  Small score
+     * implies reads in this junction could align to other splice junctions across the
+     * genome).  This will be 0 unless the user requested extra processing.
+     * @return 
+     */
+    double getMultipleMappingScore() const { return multipleMappingScore; }
+    
+    /**
+     * A score reflecting the coverage of flanking alignments around the junction.  Uses unspliced reads
+     * around both donor and acceptor sites.  If this is geniune junction you expect
+     * unspliced reads to drop off closer to the donor and acceptor sites you get
+     * (relative to read length).  We compare a window one read away from the d/a
+     * site and one read up to the d/a site.  We then substract the mean coverage from
+     * the more distant window to the close window.  We then add these score from
+     * both donor and acceptor sites together.  For genuine junctions this should be
+     * the score should be relatively large.  See TrueSight paper for more info.
+     * Only used if the user requested extra processing.
+     * @return 
+     */
+    double getCoverage() const { return coverage; }
+
+    /**
+     * The number of upstream non-spliced supporting reads.  Only used if the 
+     * user requested extra processing.
+     * @return 
+     */
+    uint32_t getNbUpstreamFlankingAlignments() const { return nbUpstreamFlankingAlignments; }
+    
+    /**
+     * The number of downstream non-spliced supporting reads.  Only used if the
+     * user requested extra processing.
+     * @return 
+     */
+    uint32_t getNbDownstreamFlankingAlignments() const { return nbDownstreamFlankingAlignments; }
+
+    /**
+     * Whether or not this junction looks suspicious (i.e. it may not be genuine)
+     * due to no overhangs extending beyond the first mismatch and if that location
+     * in either anchor is within 20bp of the junction.
+     * @return 
+     */
+    bool isSuspicious() const { return this->suspicious; }
+    
+    /**
+     * Whether or not this junction is a potential false positive (i.e. may not be
+     * genuine).  For this to be true the junction must first be marked as suspicious
+     * then it must also be more than 99% likely that the maxmmes should have exceeded
+     * a given length, given the number of junctions supporting the junction but didn't.
+     * @return 
+     */
+    bool isPotentialFalsePositive() const { return this->pfp; }
+    
+    /**
+     * Gets the junction overhang at the given distance from the intron
+     * @param index
+     * @return 
+     */
+    uint32_t getJunctionOverhangs(size_t index) const { return junctionOverhangs[index]; }
+    
+    
+    
+    
+    
+    
+    // ***** Setters *****
+    // Not all variables have setters
+    
+    void setMeanReadLength(uint32_t meanQueryLength) {
+        this->meanReadLength = meanQueryLength;
+    }
+    
     void setUniqueJunction(bool uniqueJunction) {
         this->uniqueJunction = uniqueJunction;
     }
 
+    void setPrimaryJunction(bool primaryJunction) {
+        this->primaryJunction = primaryJunction;
+    }
     
+     
+    
+    void setId(uint32_t id) {
+        this->id = id;
+    }
+       
+    
+    void setSuspicious(bool suspicious) {
+        this->suspicious = suspicious;
+    }
+    
+    void setPotentialFalsePositive(bool pfp) {
+        this->pfp = pfp;
+    }
+    
+    
+   
+    void setDistanceToNearestJunction(uint32_t distanceToNearestJunction) {
+        this->distanceToNearestJunction = distanceToNearestJunction;
+    }
+    
+    void setDistanceToNextDownstreamJunction(uint32_t distanceToNextDownstreamJunction) {
+        this->distanceToNextDownstreamJunction = distanceToNextDownstreamJunction;
+    }
+    
+    void setDistanceToNextUpstreamJunction(uint32_t distanceToNextUpstreamJunction) {
+        this->distanceToNextUpstreamJunction = distanceToNextUpstreamJunction;
+    }
+    
+    
+    
+    // ****** Methods ******
+    
+    void addJunctionAlignment(const BamAlignment& al);
+        
+    CanonicalSS setDonorAndAcceptorMotif(string seq1, string seq2);
+    
+    void setFlankingAlignmentCounts(uint32_t nbUpstream, uint32_t nbDownstream);
+    
+    
+
+    /**
+     * Whether or not the provided junction shares any splice sites with this
+     * junction
+     * @param other
+     * @return 
+     */
     bool sharesDonorOrAcceptor(shared_ptr<Junction> other) {
         return this->intron->sharesDonorOrAcceptor(*(other->intron));
     }
+
+    
+    
     
     
 
@@ -403,7 +769,7 @@ public:
     
     
     void calcMetrics();
-    void calcMetrics(bool properPairedCheck);
+    void calcMetrics(Orientation orientation);
     
     void updateAlignmentInfo();
     
@@ -455,7 +821,7 @@ public:
      * Metrics: # Distinct Alignments, # Unique/Reliable Alignments, #mismatches
      * @return 
      */
-    void calcAlignmentStats(bool properPairedCheck);
+    void calcAlignmentStats(Orientation orientation);
     
     /**
      * Metric 13 and 14: Calculates the 5' and 3' hamming distances from a genomic
@@ -486,282 +852,26 @@ public:
     
     // **** Core property getters ****
     
-    shared_ptr<Intron> getIntron() const {
-        return intron;
-    }
-
-    int32_t getLeftAncStart() const {
-        return leftAncStart;
-    }
-
-    int32_t getRightAncEnd() const {
-        return rightAncEnd;
-    }
-    
-    size_t size() const {
-        return rightAncEnd - leftAncStart + 1;
-    }
-    
-    uint32_t getId() const {
-        return id;
-    }
-    
-    void setId(uint32_t id) {
-        this->id = id;
-    }
-    
-    size_t getNbJunctionAlignmentFromVector() const {
-        return this->alignments.size();
-    }
-    
-    bool isSuspicious() const {
-        return this->suspicious;
-    }
-    
-    void setSuspicious(bool suspicious) {
-        this->suspicious = suspicious;
-    }
-    
-    bool isPotentialFalsePositive() const {
-        return this->pfp;
-    }
-    
-    void setPotentialFalsePositive(bool pfp) {
-        this->pfp = pfp;
-    }
+   
     
     // **** Metric getters ****
     
-    /**
-     * The number of alignments directly supporting this junction
-     * @return 
-     */
-    size_t getNbJunctionAlignments() const {
-        return this->nbJunctionAlignments;
-    }
-    
-    /**
-     * Whether or not there is a donor and acceptor motif at the two base
-     * pairs at the start and end of the junction / intron
-     * @return 
-     */
-    bool hasCanonicalSpliceSites() const {
-        return this->canonicalSpliceSites == CanonicalSS::CANONICAL;
-    }
-    
-    CanonicalSS getSpliceSiteType() const {
-        return this->canonicalSpliceSites;
-    }
-    
-    /**
-     * The intron size
-     * @return 
-     */
-    int32_t getIntronSize() const {
-        return intron != nullptr ? intron->size() : 0;
-    }
-    
-    int32_t getLeftAnchorSize() const {
-        return leftAncSize;
-    }
-    
-    int32_t getRightAnchorSize() const {
-        return rightAncSize;                
-    }
-    
-    /**
-     * The maximum anchor distance from the shortest side of each supporting 
-     * alignment
-     * @return
-     */
-    int32_t getMaxMinAnchor() const {
-        return this->maxMinAnchor;
-    }
-    
-    /**
-     * Diff Anchor
-     * @return 
-     */
-    int32_t getDiffAnchor() const {        
-        return this->diffAnchor;
-    }
-    
-    /**
-     * Entropy (definition from "Graveley et al, The developmental 
-     * transcriptome of Drosophila melanogaster, Nature, 2011")
-     * 
-     * We measured the entropy of the reads that mapped to the splice junction. 
-     * The entropy score is a function of both the total number of reads 
-     * that map to a given junction and the number of different offsets to which 
-     * those reads map and the number that map at each offset. Thus, junctions 
-     * with multiple reads mapping at each of the possible windows across the junction 
-     * will be assigned a higher entropy score, than junctions where many reads 
-     * map to only one or two positions. For this analysis we required that a junction 
-     * have an entropy score of two or greater in at least two biological samples 
-     * for junctions with canonical splice sites, and an entropy score of three 
-     * or greater in at least three biological samples for junctions with non-canonical 
-     * splice sites. Entropy was calculated using the following equations: 
-     * 
-     * pi = reads at offset i / total reads to junction window 
-     * 
-     * Entopy = - sumi(pi * log(pi) / log2) 
-     * 
-     * @return 
-     */
-    double getEntropy() const {        
-        return this->entropy;
-    }
     
     
-    uint32_t getNbDistinctAnchors() const {
-        return nbDistinctAnchors;
-    }
     
-    uint32_t getNbDistinctAlignments() const {
-        return nbDistinctAlignments;
-    }
+    
+    
+   
+    
+    
+    
+    
+    
+    
 
-    uint32_t getNbReliableAlignments() const {
-        return nbReliableAlignments;
-    }
-
-    /**
-     * The number of upstream non-spliced supporting reads
-     * @return 
-     */
-    uint32_t getNbUpstreamFlankingAlignments() const {
-        return nbUpstreamFlankingAlignments;
-    }
     
-    /**
-     * The number of downstream non-spliced supporting reads
-     * @return 
-     */
-    uint32_t getNbDownstreamFlankingAlignments() const {
-        return nbDownstreamFlankingAlignments;
-    }
 
-    /**
-     * The maximum of the minimal mismatches exon sequences
-     * @return 
-     */
-    uint32_t getMaxMMES() const {
-        return maxMMES;
-    }
     
-    /**
-     * Hamming distance between the 
-     * @return 
-     */
-    int16_t getHammingDistance3p() const {
-        return hammingDistance3p;
-    }
-
-    int16_t getHammingDistance5p() const {
-        return hammingDistance5p;
-    }
-
-    /**
-     * Metric 15: The coverage score around the junction.  Uses unspliced reads
-     * around both donor and acceptor sites.  If this is geniune junction you expect
-     * unspliced reads to drop off closer to the donor and acceptor sites you get
-     * (relative to read length).  We compare a window one read away from the d/a
-     * site and one read up to the d/a site.  We then substract the mean coverage from
-     * the more distant window to the close window.  We then add these score from
-     * both donor and acceptor sites together.  For genuine junctions this should be
-     * the score should be relatively large.  See TrueSight paper for more info.
-     * @return 
-     */
-    double getCoverage() const {
-        return coverage;
-    }
-    
-    bool isUniqueJunction() const {
-        return uniqueJunction;
-    }
-
-    bool isPrimaryJunction() const {
-        return primaryJunction;
-    }
-    
-    /**
-     * Metric 18: Multiple mapping score (reflects mapping ambiguity.  Small score
-     * implies reads in this junction align to other splice junctions across the
-     * genome).  From TrueSight paper.
-     * @return 
-     */
-    double getMultipleMappingScore() const {
-        return multipleMappingScore;
-    }
-    
-    /**
-     * Metric 19: Number of mismatches.  The total number of mismatches from all
-     * splice aligned reads in this junction.  From TrueSight paper.
-     * @return 
-     */
-    double getMeanMismatches() const {
-        return meanMismatches;
-    }
-    
-    /**
-     * The number of spliced reads in this junction that also cover additional junctions
-     * @return 
-     */
-    uint32_t getNbMultipleSplicedReads() const {
-        return nbMultipleSplicedReads;
-    }
-    
-    uint32_t getNbUniquelySplicedReads() const {
-        return nbJunctionAlignments - nbMultipleSplicedReads;
-    }
-    
-    double getReliable2RawRatio() const {
-        return (double)nbReliableAlignments / (double)nbJunctionAlignments;
-    }
-    
-    uint16_t getNbDownstreamJunctions() const {
-        return nbDownstreamJunctions;
-    }
-
-    uint16_t getNbUpstreamJunctions() const {
-        return nbUpstreamJunctions;
-    }
-    
-    uint32_t getDistanceToNearestJunction() const {
-        return distanceToNearestJunction;
-    }
-
-    void setDistanceToNearestJunction(uint32_t distanceToNearestJunction) {
-        this->distanceToNearestJunction = distanceToNearestJunction;
-    }
-
-    uint32_t getDistanceToNextDownstreamJunction() const {
-        return distanceToNextDownstreamJunction;
-    }
-
-    void setDistanceToNextDownstreamJunction(uint32_t distanceToNextDownstreamJunction) {
-        this->distanceToNextDownstreamJunction = distanceToNextDownstreamJunction;
-    }
-
-    uint32_t getDistanceToNextUpstreamJunction() const {
-        return distanceToNextUpstreamJunction;
-    }
-
-    void setDistanceToNextUpstreamJunction(uint32_t distanceToNextUpstreamJunction) {
-        this->distanceToNextUpstreamJunction = distanceToNextUpstreamJunction;
-    }
-
-    Strand getReadStrand() const {
-        return readStrand;
-    }
-
-    Strand getSpliceSiteStrand() const {
-        return ssStrand;
-    }
-
-    Strand getConsensusStrand() const {
-        return consensusStrand;
-    }
 
     void setDa1(string da1) {
         this->da1 = da1;
@@ -771,10 +881,6 @@ public:
         this->da2 = da2;
     }
     
-    void setLeftAncSize(uint16_t leftAncSize) {
-        this->leftAncSize = leftAncSize;
-    }
-
     void setNbDownstreamJunctions(uint16_t nbDownstreamJunctions) {
         this->nbDownstreamJunctions = nbDownstreamJunctions;
     }
@@ -783,17 +889,8 @@ public:
         this->nbUpstreamJunctions = nbUpstreamJunctions;
     }
 
-    void setRightAncSize(uint16_t rightAncSize) {
-        this->rightAncSize = rightAncSize;
-    }
-
-    
     void setCoverage(double coverage) {
         this->coverage = coverage;
-    }
-
-    void setDiffAnchor(int32_t diffAnchor) {
-        this->diffAnchor = diffAnchor;
     }
 
     void setEntropy(double entropy) {
@@ -817,11 +914,7 @@ public:
     }
 
     void setNbDistinctAlignments(uint32_t nbDistinctAlignments) {
-        this->nbDistinctAlignments = nbDistinctAlignments;
-    }
-
-    void setNbDistinctAnchors(uint32_t nbDistinctAnchors) {
-        this->nbDistinctAnchors = nbDistinctAnchors;
+        this->nbAlDistinct = nbDistinctAlignments;
     }
 
     void setNbDownstreamFlankingAlignments(uint32_t nbDownstreamFlankingAlignments) {
@@ -829,7 +922,7 @@ public:
     }
 
     void setNbReliableAlignments(uint32_t nbReliableAlignments) {
-        this->nbReliableAlignments = nbReliableAlignments;
+        this->nbAlReliable = nbReliableAlignments;
     }
 
     void setNbUpstreamFlankingAlignments(uint32_t nbUpstreamFlankingAlignments) {
@@ -845,16 +938,23 @@ public:
     }
         
     void setNbMultipleSplicedReads(uint32_t nbMultipleSplicedReads) {
-        this->nbMultipleSplicedReads = nbMultipleSplicedReads;
+        this->nbAlMultiplySpliced = nbMultipleSplicedReads;
     }
+    
+    void setNbProperlyPairedReads(uint32_t nbProperlyPairedReads) {
+        this->nbAlProperlyPaired = nbProperlyPairedReads;
+    }
+
+    void setNbUniquelyMappedReads(uint32_t nbUniquelyMappedReads) {
+        this->nbAlUniquelyMapped = nbUniquelyMappedReads;
+    }
+
 
     void setTrimmedLogDevCov(vector<double> trimmedLogDevCov) {
         this->trimmedLogDevCov = trimmedLogDevCov;
     }
     
-    uint32_t getJunctionOverhangs(size_t index) const {
-        return junctionOverhangs[index];
-    }
+    
     
     void setJunctionOverhangs(size_t index, uint32_t val) {
         junctionOverhangs[index] = val;
@@ -863,23 +963,18 @@ public:
     double getJunctionOverhangLogDeviation(size_t i) const {
         double Ni = junctionOverhangs[i];                 // Actual count at this position
         if (Ni == 0.0) Ni = 0.000000000001;                     // Ensure some value > 0 here otherwise we get -infinity later.
-        double Pi = 1.0 - ((double)i / (double)(this->meanQueryLength / 2.0));       // Likely scale at this position
-        double Ei = (double)this->getNbJunctionAlignments() * Pi;  // Expected count at this position
+        double Pi = 1.0 - ((double)i / (double)(this->meanReadLength / 2.0));       // Likely scale at this position
+        double Ei = (double)this->getNbSplicedAlignments() * Pi;  // Expected count at this position
         double Xi = log2(Ni / Ei);
         return Xi;
     }
 
-    bool isGenuine() const {
-        return genuine;
-    }
-
+    
     void setGenuine(bool genuine) {
         this->genuine = genuine;
     }
     
-    double getScore() const {
-        return score;
-    }
+    
 
     void setScore(double score) {
         this->score = score;
@@ -969,9 +1064,9 @@ public:
                 << strandToChar(j.ssStrand) << "\t"
                 << strandToChar(j.consensusStrand) << "\t"
                 << cssToChar(j.canonicalSpliceSites) << "\t"
-                << j.getNbJunctionAlignments() << "\t"
-                << j.nbDistinctAlignments << "\t"
-                << j.nbReliableAlignments << "\t"
+                << j.getNbSplicedAlignments() << "\t"
+                << j.nbAlDistinct << "\t"
+                << j.nbAlReliable << "\t"
                 << j.getIntronSize() << "\t"
                 << j.getLeftAnchorSize() << "\t"
                 << j.getRightAnchorSize() << "\t"
@@ -987,9 +1082,9 @@ public:
                 << j.primaryJunction << "\t"
                 << j.multipleMappingScore << "\t"
                 << j.meanMismatches << "\t"
-                << j.getNbUniquelySplicedReads() << "\t"
-                << j.nbMultipleSplicedReads << "\t"
-                << j.getReliable2RawRatio() << "\t"
+                << j.getNbUniquelySplicedAlignments() << "\t"
+                << j.nbAlMultiplySpliced << "\t"
+                << j.getReliable2RawAlignmentRatio() << "\t"
                 << j.nbDownstreamJunctions << "\t"
                 << j.nbUpstreamJunctions << "\t"
                 << j.nbUpstreamFlankingAlignments << "\t"
