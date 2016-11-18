@@ -150,6 +150,7 @@ inline const string orientationToString(Orientation orientation) {
         case Orientation::RF:   return "RF";
         case Orientation::FF:   return "FF";
         case Orientation::RR:   return "RR";
+        case Orientation::UNKNOWN:   return "UNKNOWN";
         default:      return "[Unknown Orientation type]";
     }
 }

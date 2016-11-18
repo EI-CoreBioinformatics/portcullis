@@ -90,8 +90,8 @@ private:
     path junctionFile;
     path bamFile;
     path outputBam;
-    Strandedness strandSpecific;
-    Orientation orientation;
+    //Strandedness strandSpecific;
+    //Orientation orientation;
     ClipMode clipMode;
     bool saveMSRs;
     bool useCsi;
@@ -144,7 +144,7 @@ public:
     void setOutputBam(path outputBam) {
         this->outputBam = outputBam;
     }
-
+/*
     Strandedness getStrandSpecific() const {
         return strandSpecific;
     }
@@ -160,7 +160,7 @@ public:
     void setOrientation(Orientation orientation) {
         this->orientation = orientation;
     }
-    
+*/    
     ClipMode getClipMode() const {
         return clipMode;
     }

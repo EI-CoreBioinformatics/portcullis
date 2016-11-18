@@ -194,9 +194,9 @@ int mainFull(int argc, char *argv[]) {
     po::options_description prepare_options("Input options", w.ws_col, (unsigned)((double)w.ws_col/1.5));
     prepare_options.add_options()    
             ("orientation", po::value<string>(&orientation)->default_value(orientationToString(Orientation::UNKNOWN)), 
-                "The orientation of the reads that produced the BAM alignments: \"F\" (Single-end forward orientation); \"R\" (single-end reverse orientation); \"FR\" (paired-end, with reads sequenced towards center of fragment -> <-.  This is usual setting for most Illumina paired end sequencing); \"RF\" (paired-end, reads sequenced away from center of fragment <- ->); \"FF\" (paired-end, reads both sequenced in forward orientation); \"RR\" (paired-end, reads both sequenced in reverse orientation);  Default: \"unknown\"")
+                "The orientation of the reads that produced the BAM alignments: \"F\" (Single-end forward orientation); \"R\" (single-end reverse orientation); \"FR\" (paired-end, with reads sequenced towards center of fragment -> <-.  This is usual setting for most Illumina paired end sequencing); \"RF\" (paired-end, reads sequenced away from center of fragment <- ->); \"FF\" (paired-end, reads both sequenced in forward orientation); \"RR\" (paired-end, reads both sequenced in reverse orientation); \"UNKNOWN\" (default, portcullis will workaround any calculations requiring orientation information)")
             ("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)), 
-                "Whether BAM alignments were generated using a type of strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads)  Default: \"unknown\"")
+                "Whether BAM alignments were generated using a type of strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads); \"UNKNOWN\" (default, portcullis will workaround any calculations requiring strandedness information)")
             ("force", po::bool_switch(&force)->default_value(false), 
                 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
             ("copy", po::bool_switch(&copy)->default_value(false), 
@@ -366,8 +366,8 @@ int mainFull(int argc, char *argv[]) {
         path filteredBam = path(outputDir.string() + "/portcullis.filtered.bam");
 
         BamFilter bamFilter(filtJuncTab.string(), bamFile.string(), filteredBam.string());
-        bamFilter.setStrandSpecific(strandednessFromString(strandSpecific));
-        bamFilter.setOrientation(orientationFromString(orientation));
+        //bamFilter.setStrandSpecific(strandednessFromString(strandSpecific));
+        //bamFilter.setOrientation(orientationFromString(orientation));
         bamFilter.setUseCsi(useCsi);
         bamFilter.setVerbose(verbose);
         bamFilter.filter();
