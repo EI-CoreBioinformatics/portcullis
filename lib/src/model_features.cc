@@ -226,7 +226,7 @@ void portcullis::ml::ModelFeatures::setRow(Data* d, size_t row, JunctionPtr j, b
     //Junction overhang values at each position are first converted into deviation from expected distributions       
     for(size_t joi = 0; joi < JO_NAMES.size(); joi++) {
         if (features[joi + 14].active) {
-            d->set(i++, row, j->getJunctionOverhangLogDeviation(joi), error);
+            d->set(i++, row, j->calcJunctionOverhangLogDeviation(joi), error);
         }
     }
 }
