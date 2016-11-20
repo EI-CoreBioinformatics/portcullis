@@ -49,6 +49,9 @@ using portcullis::bam::Strand;
 
 const vector<string> portcullis::Junction::METRIC_NAMES({
 	"canonical_ss",
+	"score",
+	"suspicious",
+	"pfp",
 	"nb_raw_aln",
 	"nb_dist_aln",
 	"nb_us_aln",
@@ -67,13 +70,16 @@ const vector<string> portcullis::Junction::METRIC_NAMES({
 	"intron_score",
 	"hamming5p",
 	"hamming3p",
+	"coding",
+	"pws",
+	"splice_sig",
 	"uniq_junc",
 	"primary_junc",
 	"nb_up_juncs",
 	"nb_down_juncs",
 	"dist_2_up_junc",
 	"dist_2_down_junc",
-	"dist_nearest_junc"
+	"dist_nearest_junc",
 	"mm_score",
 	"coverage",
 	"up_aln",
@@ -242,6 +248,8 @@ Strand portcullis::Junction::predictedStrandFromSpliceSites(const string& seq1, 
 portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncStart, int32_t _rightAncEnd) :
 intron(_location) {
 
+	id = 0;
+	
 	leftAncStart = _leftAncStart;
 	rightAncEnd = _rightAncEnd;
 
@@ -250,9 +258,11 @@ intron(_location) {
 	consensusStrand = Strand::UNKNOWN;
 
 	genuine = false;
+	
 	score = 0.0;
-	id = 0;
-
+	suspicious = false;
+	pfp = false;
+	
 	canonicalSpliceSites = CanonicalSS::NO;
 
 	nbAlRaw = 0;
@@ -270,8 +280,11 @@ intron(_location) {
 	maxMMES = 0;
 	intronScore = 0.0;
 	
-	hammingDistance5p = -1;
-	hammingDistance3p = -1;
+	hammingDistance5p = 10;
+	hammingDistance3p = 10;
+	codingPotential = 0.0;
+	positionWeightScore = 0.0;
+	splicingSignal = 0.0;
 
 	uniqueJunction = false;
 	primaryJunction = false;
@@ -285,9 +298,6 @@ intron(_location) {
 	multipleMappingScore = 0.0;
 	nbUpstreamFlankingAlignments = 0;
 	nbDownstreamFlankingAlignments = 0;
-
-	suspicious = false;
-	pfp = false;
 
 	junctionAnchorDepth.clear();
 	for (size_t i = 0; i < JAD_NAMES.size(); i++) {
@@ -340,6 +350,9 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 
 	hammingDistance5p = j.hammingDistance5p;
 	hammingDistance3p = j.hammingDistance3p;
+	codingPotential = j.codingPotential;
+	positionWeightScore = j.positionWeightScore;
+	splicingSignal = j.splicingSignal;
 
 	uniqueJunction = j.uniqueJunction;
 	primaryJunction = j.primaryJunction;
@@ -740,7 +753,9 @@ void portcullis::Junction::calcAlignmentStats(Orientation orientation) {
 		}
 		
 		// Get properly paired BAM flag regardless
-		nbAlBamProperlyPaired = ba->isProperPair();
+		if (ba->isProperPair()) {
+			nbAlBamProperlyPaired++;
+		}
 
 		if (properPairedCheck) {			
 			bool pp = ba->calcIfProperPair(orientation);
@@ -755,11 +770,8 @@ void portcullis::Junction::calcAlignmentStats(Orientation orientation) {
 			nbAlReliable++;
 		}
 
-
-
-
-		uint16_t upjuncs = 0;
-		uint16_t downjuncs = 0;
+		uint32_t upjuncs = 0;
+		uint32_t downjuncs = 0;
 		int32_t pos = start;
 
 		for (CigarOp op : ba->getCigar()) {
@@ -934,21 +946,26 @@ double portcullis::Junction::calcCoverage(const vector<uint32_t>& coverageLevels
 
 double portcullis::Junction::getValueFromName(const string& name) const {
 	
-	string uname = boost::to_upper_copy(name);
+	string uname = boost::to_lower_copy(name);
 
 	double val = 0.0;
 	
-	JuncUintFuncMap::const_iterator uif = JunctionUintFunctionMap.find(uname);
-	if (uif == JunctionUintFunctionMap.end()) {
+	JuncUint32FuncMap::const_iterator uif = JunctionUint32FunctionMap.find(uname);
+	if (uif == JunctionUint32FunctionMap.end()) {
 		JuncDoubleFuncMap::const_iterator df = JunctionDoubleFunctionMap.find(uname);
 		if (df == JunctionDoubleFunctionMap.end()) {
-			BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-			"Unrecognised junction property: ") + name));
+			JuncBoolFuncMap::const_iterator bf = JunctionBoolFunctionMap.find(uname);
+			if (bf == JunctionBoolFunctionMap.end()) {
+				BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+				"Unrecognised junction property: ") + name));
+			}
+			else {
+				val = (double)(this->*(bf->second))();
+			}
 		}
 		else {
 			val = (this->*(df->second))();
 		}
-		
 	}
 	else{
 		val = (double)(this->*(uif->second))();
@@ -1200,7 +1217,7 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
 	vector<string> parts; // #2: Search for tokens
 	boost::split(parts, line, boost::is_any_of("\t"), boost::token_compress_on);
 
-	uint32_t expected_cols = 13 + Junction::STRAND_NAMES.size() + Junction::METRIC_NAMES.size() + Junction::JAD_NAMES.size();
+	uint32_t expected_cols = 11 + Junction::STRAND_NAMES.size() + Junction::METRIC_NAMES.size() + Junction::JAD_NAMES.size();
 
 	if (parts.size() != expected_cols) {
 		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -1271,6 +1288,9 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
 	// Genome derived junction stats
 	j->setHammingDistance5p(lexical_cast<uint32_t>(parts[i++]));
 	j->setHammingDistance3p(lexical_cast<uint32_t>(parts[i++]));
+	j->setCodingPotential(lexical_cast<double>(parts[i++]));
+	j->setPositionWeightScore(lexical_cast<double>(parts[i++]));
+	j->setSplicingSignal(lexical_cast<double>(parts[i++]));	
 	
 	// Junction group properties
 	j->setUniqueJunction(lexical_cast<bool>(parts[i++]));

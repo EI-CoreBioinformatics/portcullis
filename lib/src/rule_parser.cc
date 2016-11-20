@@ -195,14 +195,6 @@ map<string, int> portcullis::RuleFilter::filter(const path& ruleFile, const Junc
 	SetFilterMap stringFilters;
 	JuncResultMap junctionResultMap;
 
-	/*unordered_map<string, uint16_t> METRIC_LOOKUP;
-	for(size_t i = 0; i < Junction::METRIC_NAMES.size(); i++) {
-		METRIC_LOOKUP[boost::to_upper_copy(Junction::METRIC_NAMES[i])] = i;
-	}
-	METRIC_LOOKUP["SUSPECT"] = 100;
-	METRIC_LOOKUP["PFP"] = 101;*/
-
-
 	for (ptree::value_type& v : pt.get_child("parameters")) {
 		string name = v.first;
 		string op_str = boost::to_upper_copy(v.second.get_child("operator").data());

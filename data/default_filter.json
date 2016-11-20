@@ -1,25 +1,25 @@
 {
-	"parameters": {
-		"M4-nb_rel_aln": {
-                        "operator": "gte",
-                        "value": 2
-                },
-                "M12-maxmmes": {
-                        "operator": "gte",
-                        "value": 10
-                },
-		"M11-entropy": {
-			"operator": "gte",
-			"value": 1.5
-		},
-                "M13-hamming5p": {
-                        "operator": "gte",
-                        "value": 2
-                },
-                "M14-hamming3p": {
-                        "operator": "gte",
-                        "value": 2
-                }
-	},
-	"expression": "M4-nb_rel_aln & M11-entropy & M12-maxmmes & M13-hamming5p & M14-hamming3p"  
+    "parameters": {
+        "nb_rel_aln": {
+            "operator": "gte",
+            "value": 2
+        },
+        "maxmmes": {
+            "operator": "gte",
+            "value": 10
+        },
+        "entropy": {
+            "operator": "gte",
+            "value": 1.5
+        },
+        "hamming5p": {
+            "operator": "gte",
+            "value": 2
+        },
+        "hamming3p": {
+            "operator": "gte",
+            "value": 2
+        }
+    },
+    "expression": "nb_rel_aln & entropy & maxmmes & hamming5p & hamming3p"
 }

@@ -58,7 +58,7 @@ public:
         return sequp;
     }
     
-    static int16_t hammingDistance(const string& s1, const string& s2) {
+    static uint32_t hammingDistance(const string& s1, const string& s2) {
 
         if (s1.size() != s2.size())
             BOOST_THROW_EXCEPTION(SeqUtilsException() << SeqUtilsErrorInfo(string(
@@ -69,7 +69,7 @@ public:
         string s1u = boost::to_upper_copy(s1);
         string s2u = boost::to_upper_copy(s2);
 
-        int16_t sum = 0;
+        uint32_t sum = 0;
         for(size_t i = 0; i < s1u.size(); i++) {
             if (s1u[i] != s2u[i]) {
                 sum++;

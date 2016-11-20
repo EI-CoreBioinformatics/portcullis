@@ -69,40 +69,6 @@ namespace portcullis {
 typedef boost::error_info<struct RuleParserError,string> RuleParserErrorInfo;
 struct RuleParserException: virtual boost::exception, virtual std::exception { };
     
-const unordered_set<string> numericParams = {
-    "M2-nb_reads",
-    "M3-nb_dist_aln",
-    "M4-nb_rel_aln",
-    "M5-intron_size",
-    "M6-left_anc_size",
-    "M7-right_anc_size",
-    "M8-max_min_anc",
-    "M9-dif_anc",
-    "M10-dist_anc",
-    "M11-entropy",
-    "M12-maxmmes",
-    "M13-hamming5p",
-    "M14-hamming3p",
-    "M15-coverage",
-    "M16-uniq_junc",
-    "M17-primary_junc",
-    "M18-mm_score",
-    "M19-nb_mismatches",
-    "M20-nb_usrs",
-    "M21-nb_msrs",
-    "M22-rel2raw",
-    "M23-nb_up_juncs",
-    "M24-nb_down_juncs",
-    "M25-up_aln",
-    "M26-down_aln"        
-};
-
-const unordered_set<string> stringParams = {
-    "M1-canonical_ss",
-    "refname"
-};
-
-
 struct op_or  {};
 struct op_and {};
 struct op_not {};

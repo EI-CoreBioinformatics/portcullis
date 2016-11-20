@@ -213,23 +213,26 @@ private:
 	double intronScore;
 
 	// Genome properties
-	int16_t hammingDistance5p; // Metric 16
-	int16_t hammingDistance3p; // Metric 17
+	uint32_t hammingDistance5p;
+	uint32_t hammingDistance3p;
+	double codingPotential;
+        double positionWeightScore;
+        double splicingSignal;
 
 	// Junction relationships
-	bool uniqueJunction; // Metric 18
-	bool primaryJunction; // Metric 19        
-	uint16_t nbDownstreamJunctions; // Metric 20
-	uint16_t nbUpstreamJunctions; // Metric 21
-	int32_t distanceToNextDownstreamJunction; // Metric 22
-	int32_t distanceToNextUpstreamJunction; // Metric 23
-	int32_t distanceToNearestJunction; // Metric 24
+	bool uniqueJunction;
+	bool primaryJunction;       
+	uint32_t nbDownstreamJunctions;
+	uint32_t nbUpstreamJunctions;
+	uint32_t distanceToNextDownstreamJunction;
+	uint32_t distanceToNextUpstreamJunction;
+	uint32_t distanceToNearestJunction;
 
 	// Metrics derived from extra processing
-	double multipleMappingScore; // Metric 25
-	double coverage; // Metric 26
-	uint32_t nbDownstreamFlankingAlignments; // Metric 27
-	uint32_t nbUpstreamFlankingAlignments; // Metric 28
+	double multipleMappingScore;
+	double coverage;
+	uint32_t nbDownstreamFlankingAlignments;
+	uint32_t nbUpstreamFlankingAlignments;
 
 	// Junction anchor depth metrics
 	vector<uint32_t> trimmedCoverage;
@@ -581,7 +584,7 @@ public:
 	 * Hamming distance at the 3' end
 	 * @return 
 	 */
-	int16_t getHammingDistance3p() const {
+	uint32_t getHammingDistance3p() const {
 		return this->hammingDistance3p;
 	}
 
@@ -589,9 +592,35 @@ public:
 	 * Hamming distance at the 5' end
 	 * @return 
 	 */
-	int16_t getHammingDistance5p() const {
+	uint32_t getHammingDistance5p() const {
 		return this->hammingDistance5p;
 	}
+
+	/**
+	 * A value representing the liklihood that this junction has coding potential
+	 * @return 
+	 */	
+	double getCodingPotential() const {
+		return this->codingPotential;
+	}
+
+	/**
+	 * A score reflecting the liklihood that the base ordering around this junction
+	 * is consistent with a genuine junction for this dataset
+	 * @return 
+	 */
+	double getPositionWeightScore() const {
+		return this->positionWeightScore;
+	}
+
+	/**
+	 * The strength of the splicing signal for this junction
+	 * @return 
+	 */
+	double getSplicingSignal() const {
+		return this->splicingSignal;
+	}
+
 
 	/**
 	 * If true this junction shares no splice sites with other junctions in this
@@ -617,7 +646,7 @@ public:
 	 * alignments
 	 * @return 
 	 */
-	uint16_t getNbDownstreamJunctions() const {
+	uint32_t getNbDownstreamJunctions() const {
 		return nbDownstreamJunctions;
 	}
 
@@ -626,7 +655,7 @@ public:
 	 * alignments
 	 * @return 
 	 */
-	uint16_t getNbUpstreamJunctions() const {
+	uint32_t getNbUpstreamJunctions() const {
 		return nbUpstreamJunctions;
 	}
 
@@ -817,12 +846,24 @@ public:
 		this->intronScore = intronScore;
 	}
 
-	void setHammingDistance3p(int16_t hammingDistance3p) {
+	void setHammingDistance3p(uint32_t hammingDistance3p) {
 		this->hammingDistance3p = hammingDistance3p;
 	}
 
-	void setHammingDistance5p(int16_t hammingDistance5p) {
+	void setHammingDistance5p(uint32_t hammingDistance5p) {
 		this->hammingDistance5p = hammingDistance5p;
+	}
+	
+	void setCodingPotential(double codingPotential) {
+		this->codingPotential = codingPotential;
+	}
+
+	void setPositionWeightScore(double positionWeightScore) {
+		this->positionWeightScore = positionWeightScore;
+	}
+
+	void setSplicingSignal(double splicingSignal) {
+		this->splicingSignal = splicingSignal;
 	}
 
 	void setUniqueJunction(bool uniqueJunction) {
@@ -833,11 +874,11 @@ public:
 		this->primaryJunction = primaryJunction;
 	}
 
-	void setNbDownstreamJunctions(uint16_t nbDownstreamJunctions) {
+	void setNbDownstreamJunctions(uint32_t nbDownstreamJunctions) {
 		this->nbDownstreamJunctions = nbDownstreamJunctions;
 	}
 
-	void setNbUpstreamJunctions(uint16_t nbUpstreamJunctions) {
+	void setNbUpstreamJunctions(uint32_t nbUpstreamJunctions) {
 		this->nbUpstreamJunctions = nbUpstreamJunctions;
 	}
 
@@ -1157,6 +1198,9 @@ public:
 
 				<< j.hammingDistance5p << "\t"
 				<< j.hammingDistance3p << "\t"
+				<< j.codingPotential << "\t"
+				<< j.positionWeightScore << "\t"
+				<< j.splicingSignal << "\t"
 
 				<< j.uniqueJunction << "\t"
 				<< j.primaryJunction << "\t"
@@ -1195,14 +1239,22 @@ public:
 };
 
 
-
-
 typedef double (Junction::*junction_double_method_t)() const;
-typedef uint32_t (Junction::*junction_uint_method_t)() const;
-typedef std::map<std::string, junction_double_method_t> JuncDoubleFuncMap;
-typedef std::map<std::string, junction_uint_method_t> JuncUintFuncMap;
+typedef uint32_t (Junction::*junction_uint32_method_t)() const;
+typedef bool (Junction::*junction_bool_method_t)() const;
 
-const JuncUintFuncMap JunctionUintFunctionMap = {
+typedef std::map<std::string, junction_double_method_t> JuncDoubleFuncMap;
+typedef std::map<std::string, junction_uint32_method_t> JuncUint32FuncMap;
+typedef std::map<std::string, junction_bool_method_t> JuncBoolFuncMap;
+
+const JuncBoolFuncMap JunctionBoolFunctionMap = {
+	{"suspicious", &Junction::isSuspicious},
+	{"pfp", &Junction::isPotentialFalsePositive},
+	{"uniq_junc", &Junction::isUniqueJunction},
+	{"primary_junc", &Junction::isPrimaryJunction}	
+};
+
+const JuncUint32FuncMap JunctionUint32FunctionMap = {
 	{"nb_raw_aln", &Junction::getNbSplicedAlignments},
 	{"nb_dist_aln", &Junction::getNbDistinctAlignments},
 	{"nb_us_aln", &Junction::getNbUniquelySplicedAlignments},
@@ -1212,32 +1264,31 @@ const JuncUintFuncMap JunctionUintFunctionMap = {
 	{"nb_bpp_aln", &Junction::getNbBamProperlyPairedAlignments},
 	{"nb_ppp_aln", &Junction::getNbPortcullisProperlyPairedAlignments},
 	{"nb_rel_aln", &Junction::getNbReliableAlignments},
+	{"mean_readlen", &Junction::getMeanReadLength},
 	{"max_min_anc", &Junction::getMaxMinAnchor},
-	{"maxmmes", &Junction::getMaxMMES}
-	/*{"hamming5p", 
-	"hamming3p",
-	"uniq_junc",
-	"primary_junc",
-	"nb_up_juncs",
-	"nb_down_juncs",
-	"dist_2_up_junc",
-	"dist_2_down_junc",
-	"dist_nearest_junc"
-	"mm_score",
-	"coverage",
-	"up_aln",
-	"down_aln"	*/
+	{"maxmmes", &Junction::getMaxMMES},
+	{"hamming5p", &Junction::getHammingDistance5p},
+	{"hamming3p", &Junction::getHammingDistance3p},
+	{"nb_up_juncs", &Junction::getNbUpstreamJunctions},
+	{"nb_down_juncs", &Junction::getNbDownstreamJunctions},
+	{"dist_2_up_junc", &Junction::getDistanceToNextUpstreamJunction},
+	{"dist_2_down_junc", &Junction::getDistanceToNextDownstreamJunction},
+	{"dist_nearest_junc", &Junction::getDistanceToNearestJunction},
+	{"nb_up_aln", &Junction::getNbUpstreamFlankingAlignments},
+	{"nb_down_aln", &Junction::getNbDownstreamFlankingAlignments}
 };
 
 const JuncDoubleFuncMap JunctionDoubleFunctionMap = {
 	{"rel2raw", &Junction::getReliable2RawAlignmentRatio},
 	{"entropy", &Junction::getEntropy},
-	{"mean_mismatches", &Junction::getMeanMismatches},
-	{"mean_readlen", &Junction::getMeanReadLength},
-	{"intron_score", &Junction::getIntronScore}	
+	{"mean_mismatches", &Junction::getMeanMismatches},	
+	{"intron_score", &Junction::getIntronScore},
+	{"coding", &Junction::getCodingPotential},
+	{"pws", &Junction::getPositionWeightScore},
+	{"splice_sig", &Junction::getSplicingSignal},
+	{"mm_score", &Junction::getMultipleMappingScore},
+	{"coverage", &Junction::getCoverage}	
 };
-
-
 
 struct JunctionComparator {
 
