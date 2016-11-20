@@ -23,6 +23,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <map>
 using std::ostream;
 using std::cout;
 using std::endl;
@@ -31,6 +32,7 @@ using std::max;
 using std::string;
 using std::size_t;
 using std::vector;
+using std::map;
 using std::shared_ptr;
 
 typedef std::unordered_map<size_t, uint16_t> SplicedAlignmentMap;
@@ -54,6 +56,12 @@ using portcullis::Intron;
 
 namespace portcullis {
 
+/**
+ *  Value of 30 is selected as it appears to be a good cutoff for distinguishing 
+ * alignments likely to be uniquely mapped from those that have a high probability of
+ * mapping to multiple locations.  This cutoff seems to work for most RNAseq mappers
+ * that we are aware of.
+ */ 
 const uint16_t MAP_QUALITY_THRESHOLD = 30;
 
 typedef boost::error_info<struct JunctionError, string> JunctionErrorInfo;
@@ -61,66 +69,6 @@ typedef boost::error_info<struct JunctionError, string> JunctionErrorInfo;
 struct JunctionException : virtual boost::exception, virtual std::exception {
 };
 
-const vector<string> JO_NAMES = {
-	"JO01",
-	"JO02",
-	"JO03",
-	"JO04",
-	"JO05",
-	"JO06",
-	"JO07",
-	"JO08",
-	"JO09",
-	"JO10",
-	"JO11",
-	"JO12",
-	"JO13",
-	"JO14",
-	"JO15",
-	"JO16",
-	"JO17",
-	"JO18",
-	"JO19",
-	"JO20"
-};
-
-const vector<string> METRIC_NAMES = {
-	"M1-canonical_ss",
-	"M2-nb_raw_aln",
-	"M3-nb_dist_aln",
-	"M4-nb_us_aln",
-	"M5-nb_ms_aln",
-	"M6-nb_um_aln",
-	"M7-nb_mm_aln",
-	"M8-nb_rel_aln",
-	"M9-rel2raw",
-	"M10-entropy",
-	"M11-mean_mismatches",
-	"M12-mean_readlen",
-	"M13-max_min_anc",
-	"M14-maxmmes",
-	"M15-hamming5p",
-	"M16-hamming3p",
-	"M17-uniq_junc",
-	"M18-primary_junc",
-	"M19-nb_up_juncs",
-	"M20-nb_down_juncs",
-	"M21-dist_2_up_junc",
-	"M22-dist_2_down_junc",
-	"M23-dist_nearest_junc"
-	"M24-mm_score",
-	"M25-coverage",
-	"M26-up_aln",
-	"M27-down_aln",
-	"M28-suspicious",
-	"M29-pfp"	
-};
-
-const vector<string> STRAND_NAMES = {
-	"read-strand",
-	"ss-strand",
-	"consensus-strand"
-};
 
 const string CANONICAL_SEQ = "GTAG";
 const string SEMI_CANONICAL_SEQ1 = "ATAC";
@@ -245,24 +193,24 @@ private:
 
 	// **** Junction metrics ****
 
-	CanonicalSS canonicalSpliceSites; // Metric 1
+	CanonicalSS canonicalSpliceSites; 
 
 	// Alignment counts
-	uint32_t nbAlRaw; // Metric 2
-	uint32_t nbAlDistinct; // Metric 3
-	uint32_t nbAlMultiplySpliced; // Metric 5 (Metric 4 - uniquely spliced = split - multiply spliced) 
-	uint32_t nbAlUniquelyMapped; // Metric 6 (Metric 7 - multiply mapped = split - uniquely_mapped)
-	uint32_t nbAlProperlyPaired; // Metric 8
-	uint32_t nbAlReliable; // Metric 9 (Metric 10 - reliable to raw ratio = reliable / split)
+	uint32_t nbAlRaw;
+	uint32_t nbAlDistinct;
+	uint32_t nbAlMultiplySpliced; // uniquely spliced = split - multiply spliced
+	uint32_t nbAlUniquelyMapped; // multiply mapped = split - uniquely_mapped
+	uint32_t nbAlBamProperlyPaired;
+	uint32_t nbAlPortcullisProperlyPaired;
+	uint32_t nbAlReliable; // reliable to raw ratio = reliable / split
 
-	// Derived alignment stats
-	double entropy; // Metric 11
-	double meanMismatches; // Metric 12
-	double meanReadLength; // Metric 13
-
-	// Anchor stats    
-	uint32_t maxMinAnchor; // Metric 14
-	uint32_t maxMMES; // Metric 15
+	// RNAseq Derived Stats
+	double entropy;
+	double meanMismatches;
+	double meanReadLength;
+	uint32_t maxMinAnchor;
+	uint32_t maxMMES;
+	double intronScore;
 
 	// Genome properties
 	int16_t hammingDistance5p; // Metric 16
@@ -283,12 +231,12 @@ private:
 	uint32_t nbDownstreamFlankingAlignments; // Metric 27
 	uint32_t nbUpstreamFlankingAlignments; // Metric 28
 
-	// Junction overhang metrics
+	// Junction anchor depth metrics
 	vector<uint32_t> trimmedCoverage;
 	vector<double> trimmedLogDevCov;
 	bool suspicious;
 	bool pfp;
-	vector<uint32_t> junctionOverhangs;
+	vector<uint32_t> junctionAnchorDepth;
 
 
 	// **** Predictions ****
@@ -538,12 +486,22 @@ public:
 	}
 
 	/**
-	 * The number of alignments that have a properly aligned pair.  If running on
-	 * single end data this will always be 0.
+	 * The number of alignments that have a properly aligned pair as signalled
+	 * by the properly paired SAM flag.  If running on single end data this will 
+	 * always be 0.
 	 * @return 
 	 */
-	uint32_t getNbProperlyPairedAlignments() const {
-		return this->nbAlProperlyPaired;
+	uint32_t getNbBamProperlyPairedAlignments() const {
+		return this->nbAlBamProperlyPaired;
+	}
+
+	/**
+	 * The number of alignments that have a properly aligned pair as determined
+	 * by portcullis.  If running on single end data this will always be 0.
+	 * @return 
+	 */
+	uint32_t getNbPortcullisProperlyPairedAlignments() const {
+		return this->nbAlPortcullisProperlyPaired;
 	}
 
 	/**
@@ -607,6 +565,16 @@ public:
 	 */
 	uint32_t getMaxMMES() const {
 		return this->maxMMES;
+	}
+
+	/**
+	 * The intron score is only calculated after filtering and represents the liklihood that
+	 * the junction is invalid.  A score of 0 means the intron is around expected length.
+	 * Values greater than 0 indicate the intron exceeds expected length.
+	 * @return 
+	 */
+	double getIntronScore() const {
+		return intronScore;
 	}
 
 	/**
@@ -736,7 +704,7 @@ public:
 
 	/**
 	 * Whether or not this junction looks suspicious (i.e. it may not be genuine)
-	 * due to no overhangs extending beyond the first mismatch and if that location
+	 * due to no anchors extending beyond the first mismatch and if that location
 	 * in either anchor is within 20bp of the junction.
 	 * @return 
 	 */
@@ -756,16 +724,21 @@ public:
 	}
 
 	/**
-	 * Gets the junction overhang at the given distance from the intron
+	 * Gets the junction anchor depth at the given distance from the intron
 	 * @param index
 	 * @return 
 	 */
-	uint32_t getJunctionOverhangs(size_t index) const {
-		return junctionOverhangs[index];
+	uint32_t getJunctionAnchorDepth(size_t index) const {
+		return junctionAnchorDepth[index];
 	}
 
 
-
+	/**
+	 * This calls the relevant getter for the given name
+	 * @param name
+	 * @return 
+	 */
+	double getValueFromName(const string& name) const;
 
 
 
@@ -791,20 +764,28 @@ public:
 	void setDa2(string da2) {
 		this->da2 = da2;
 	}
+	
+	void setNbSplicedAlignments(uint32_t nbAlRaw) {
+		this->nbAlRaw = nbAlRaw;
+	}
 
 	void setNbDistinctAlignments(uint32_t nbDistinctAlignments) {
 		this->nbAlDistinct = nbDistinctAlignments;
 	}
 
-	void setNbMultipleSplicedReads(uint32_t nbMultipleSplicedReads) {
+	void setNbMultiplySplicedAlignments(uint32_t nbMultipleSplicedReads) {
 		this->nbAlMultiplySpliced = nbMultipleSplicedReads;
 	}
 
-	void setNbProperlyPairedReads(uint32_t nbProperlyPairedReads) {
-		this->nbAlProperlyPaired = nbProperlyPairedReads;
+	void setNbBamProperlyPairedAlignments(uint32_t nbProperlyPairedReads) {
+		this->nbAlBamProperlyPaired = nbProperlyPairedReads;
 	}
 
-	void setNbUniquelyMappedReads(uint32_t nbUniquelyMappedReads) {
+	void setNbPortcullisProperlyPairedAlignments(uint32_t nbProperlyPairedReads) {
+		this->nbAlPortcullisProperlyPaired = nbProperlyPairedReads;
+	}
+
+	void setNbUniquelyMappedAlignments(uint32_t nbUniquelyMappedReads) {
 		this->nbAlUniquelyMapped = nbUniquelyMappedReads;
 	}
 
@@ -830,6 +811,10 @@ public:
 
 	void setMaxMMES(uint32_t maxMMES) {
 		this->maxMMES = maxMMES;
+	}
+
+	void setIntronScore(double intronScore) {
+		this->intronScore = intronScore;
 	}
 
 	void setHammingDistance3p(int16_t hammingDistance3p) {
@@ -896,8 +881,8 @@ public:
 		this->trimmedLogDevCov = trimmedLogDevCov;
 	}
 
-	void setJunctionOverhangs(size_t index, uint32_t val) {
-		junctionOverhangs[index] = val;
+	void setJunctionAnchorDepth(size_t index, uint32_t val) {
+		junctionAnchorDepth[index] = val;
 	}
 
 
@@ -973,16 +958,8 @@ public:
 	 */
 	void calcMetrics(Orientation orientation);
 
-
 	/**
-	 * Metric 5 and 7: Diff Anchor and # Distinct Anchors
-	 * @return 
-	 */
-	void calcAnchorStats();
-
-
-	/**
-	 * Metric 6: Entropy (definition from "Graveley et al, The developmental 
+	 * Shannon Entropy (definition from "Graveley et al, The developmental 
 	 * transcriptome of Drosophila melanogaster, Nature, 2011")
 	 * 
 	 * Calculates the entropy score for this junction.  Higher entropy is generally
@@ -1076,11 +1053,11 @@ public:
 
 
 	/**
-	 * Calculate the log deviation for the junction overhang count at a given location
+	 * Calculate the log deviation for the junction anchor depth count at a given location
 	 * @param i
 	 * @return 
 	 */
-	double calcJunctionOverhangLogDeviation(size_t i) const;
+	double calcJunctionAnchorDepthLogDeviation(size_t i) const;
 
 
 
@@ -1155,6 +1132,10 @@ public:
 				<< j.da1 << "\t"
 				<< j.da2 << "\t"
 				<< cssToChar(j.canonicalSpliceSites) << "\t"
+				
+				<< j.score << "\t"
+				<< j.suspicious << "\t"
+				<< j.pfp << "\t"
 
 				<< j.nbAlRaw << "\t"
 				<< j.nbAlDistinct << "\t"
@@ -1162,16 +1143,17 @@ public:
 				<< j.nbAlMultiplySpliced << "\t"
 				<< j.nbAlUniquelyMapped << "\t"
 				<< j.getNbMultiplyMappedAlignments() << "\t"
-				<< j.nbAlProperlyPaired << "\t"
+				<< j.nbAlBamProperlyPaired << "\t"
+				<< j.nbAlPortcullisProperlyPaired << "\t"
 				<< j.nbAlReliable << "\t"
 				<< j.getReliable2RawAlignmentRatio() << "\t"
 
 				<< j.entropy << "\t"
 				<< j.meanMismatches << "\t"
 				<< j.meanReadLength << "\t"
-
 				<< j.maxMinAnchor << "\t"
 				<< j.maxMMES << "\t"
+				<< j.intronScore << "\t"
 
 				<< j.hammingDistance5p << "\t"
 				<< j.hammingDistance3p << "\t"
@@ -1187,13 +1169,10 @@ public:
 				<< j.multipleMappingScore << "\t"
 				<< j.coverage << "\t"
 				<< j.nbUpstreamFlankingAlignments << "\t"
-				<< j.nbDownstreamFlankingAlignments << "\t"
+				<< j.nbDownstreamFlankingAlignments;
 				
-				<< j.suspicious << "\t"
-				<< j.pfp;
-
-		for (size_t i = 0; i < JO_NAMES.size(); i++) {
-			strm << "\t" << j.junctionOverhangs[i];
+		for (size_t i = 0; i < JAD_NAMES.size(); i++) {
+			strm << "\t" << j.junctionAnchorDepth[i];
 		}
 
 		return strm;
@@ -1209,6 +1188,108 @@ public:
 	static string junctionOutputHeader();
 
 	static shared_ptr<Junction> parse(const string& line);
+	
+	static const vector<string> METRIC_NAMES;
+	static const vector<string> JAD_NAMES;
+	static const vector<string> STRAND_NAMES;	
+};
+
+
+const vector<string> Junction::METRIC_NAMES({
+	"canonical_ss",
+	"nb_raw_aln",
+	"nb_dist_aln",
+	"nb_us_aln",
+	"nb_ms_aln",
+	"nb_um_aln",
+	"nb_mm_aln",
+	"nb_bpp_aln",
+	"nb_ppp_aln",
+	"nb_rel_aln",
+	"rel2raw",
+	"entropy",
+	"mean_mismatches",
+	"mean_readlen",
+	"max_min_anc",
+	"maxmmes",
+	"intron_score",
+	"hamming5p",
+	"hamming3p",
+	"uniq_junc",
+	"primary_junc",
+	"nb_up_juncs",
+	"nb_down_juncs",
+	"dist_2_up_junc",
+	"dist_2_down_junc",
+	"dist_nearest_junc"
+	"mm_score",
+	"coverage",
+	"up_aln",
+	"down_aln"
+});
+
+typedef double (Junction::*junction_method_t)() const;
+typedef std::map<std::string, junction_method_t> JuncFuncMap;
+
+const JuncFuncMap JunctionFunctionMap = {
+	{"nb_raw_aln", &Junction::getNbSplicedAlignments},
+	{"nb_dist_aln", &Junction::getNbDistinctAlignments}
+	/*"nb_us_aln",
+	"nb_ms_aln",
+	"nb_um_aln",
+	"nb_mm_aln",
+	"nb_bpp_aln",
+	"nb_ppp_aln",
+	"nb_rel_aln",
+	"rel2raw",
+	"entropy",
+	"mean_mismatches",
+	"mean_readlen",
+	"max_min_anc",
+	"maxmmes",
+	"intron_score",
+	"hamming5p",
+	"hamming3p",
+	"uniq_junc",
+	"primary_junc",
+	"nb_up_juncs",
+	"nb_down_juncs",
+	"dist_2_up_junc",
+	"dist_2_down_junc",
+	"dist_nearest_junc"
+	"mm_score",
+	"coverage",
+	"up_aln",
+	"down_aln"	*/
+};
+
+const vector<string> Junction::JAD_NAMES({
+	"JAD01",
+	"JAD02",
+	"JAD03",
+	"JAD04",
+	"JAD05",
+	"JAD06",
+	"JAD07",
+	"JAD08",
+	"JAD09",
+	"JAD10",
+	"JAD11",
+	"JAD12",
+	"JAD13",
+	"JAD14",
+	"JAD15",
+	"JAD16",
+	"JAD17",
+	"JAD18",
+	"JAD19",
+	"JAD20"
+});
+
+const vector<string> STRAND_NAMES = {
+	"read-strand",
+	"ss-strand",
+	"consensus-strand"
 };
 
 struct JunctionComparator {

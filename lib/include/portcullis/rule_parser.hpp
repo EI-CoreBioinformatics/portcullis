@@ -187,7 +187,7 @@ bool isNumericOp(Operator op);
 
 struct eval : boost::static_visitor<bool> {
     
-    eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap, const unordered_map<string, uint16_t>& _namemap, const JunctionPtr _junc, JuncResultMap* _juncMap);
+    eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap, const JunctionPtr _junc, JuncResultMap* _juncMap);
 
     //
     bool operator()(const var& v) const;
@@ -218,7 +218,6 @@ struct eval : boost::static_visitor<bool> {
         
     NumericFilterMap numericmap;
     SetFilterMap stringmap;
-    unordered_map<string, uint16_t> namemap;
     JunctionPtr junc;
     JuncResultMap* juncMap;
     
@@ -266,7 +265,7 @@ protected:
      */
     static bool parse(const string& expression, JunctionPtr junc, 
             NumericFilterMap& numericFilters, SetFilterMap& stringFilters, 
-            const unordered_map<string, uint16_t>& namemap, JuncResultMap* results);
+            JuncResultMap* results);
 
 public:
     

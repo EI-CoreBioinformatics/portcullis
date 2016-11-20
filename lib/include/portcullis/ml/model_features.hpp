@@ -83,22 +83,7 @@ public:
     GenomeMapper gmap;
     vector<Feature> features;
     
-    ModelFeatures() : L95(0) {
-        fi = 1;
-        features.clear();
-        for(size_t i = 0; i < VAR_NAMES.size(); i++) {
-            Feature f;
-            f.name = VAR_NAMES[i];
-            f.active = true;
-            features.push_back(f);
-        }
-        for(size_t i = 0; i < JO_NAMES.size(); i++) {
-            Feature f;
-            f.name = JO_NAMES[i];
-            f.active = true;
-            features.push_back(f);
-        }        
-    }
+    ModelFeatures();
         
     bool isCodingPotentialModelEmpty() {
         return exonModel.size() == 0 || intronModel.size() == 0;

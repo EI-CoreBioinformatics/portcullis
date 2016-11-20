@@ -40,7 +40,22 @@ using portcullis::Junction;
 
 #include "portcullis/junction_system.hpp"
 
-
+portcullis::ml::ModelFeatures::ModelFeatures() : L95(0) {
+        fi = 1;
+        features.clear();
+        for(size_t i = 0; i < VAR_NAMES.size(); i++) {
+            Feature f;
+            f.name = VAR_NAMES[i];
+            f.active = true;
+            features.push_back(f);
+        }
+        for(size_t i = 0; i < Junction::JAD_NAMES.size(); i++) {
+            Feature f;
+            f.name = Junction::JAD_NAMES[i];
+            f.active = true;
+            features.push_back(f);
+        }        
+    }
 
 void portcullis::ml::ModelFeatures::initGenomeMapper(const path& genomeFile) {
 
@@ -184,7 +199,7 @@ void portcullis::ml::ModelFeatures::setRow(Data* d, size_t row, JunctionPtr j, b
     uint16_t i = 1;
 
     if (features[1].active) {
-        d->set(i++, row, j->getNbUniquelySplicedReads(), error);
+        d->set(i++, row, j->getNbUniquelySplicedAlignments(), error);
     }
     if (features[2].active) {
         d->set(i++, row, j->getNbDistinctAlignments(), error);
@@ -196,7 +211,7 @@ void portcullis::ml::ModelFeatures::setRow(Data* d, size_t row, JunctionPtr j, b
         d->set(i++, row, j->getEntropy(), error);
     }
     if (features[5].active) {
-        d->set(i++, row, j->getReliable2RawRatio(), error);
+        d->set(i++, row, j->getReliable2RawAlignmentRatio(), error);
     }        
     if (features[6].active) {
         d->set(i++, row, j->getMaxMinAnchor(), error);
@@ -224,9 +239,9 @@ void portcullis::ml::ModelFeatures::setRow(Data* d, size_t row, JunctionPtr j, b
     }
 
     //Junction overhang values at each position are first converted into deviation from expected distributions       
-    for(size_t joi = 0; joi < JO_NAMES.size(); joi++) {
+    for(size_t joi = 0; joi < Junction::JAD_NAMES.size(); joi++) {
         if (features[joi + 14].active) {
-            d->set(i++, row, j->calcJunctionOverhangLogDeviation(joi), error);
+            d->set(i++, row, j->calcJunctionAnchorDepthLogDeviation(joi), error);
         }
     }
 }

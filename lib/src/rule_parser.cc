@@ -52,189 +52,112 @@ using boost::filesystem::create_symlink;
 using boost::filesystem::create_directory;
 using boost::filesystem::symbolic_link_exists;
 using boost::property_tree::ptree;
-namespace qi    = boost::spirit::qi;
-namespace phx   = boost::phoenix;
+namespace qi = boost::spirit::qi;
+namespace phx = boost::phoenix;
 
 #include <portcullis/rule_parser.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 
-
-
-
-portcullis::eval::eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap, 
-        const unordered_map<string, uint16_t>& _namemap, const JunctionPtr _junc, JuncResultMap* _juncMap) : 
-        boost::static_visitor<bool>() {
-    numericmap = _numericmap;
-    stringmap = _stringmap;
-    namemap = _namemap;
-    junc = _junc;
-    juncMap = _juncMap;
+portcullis::eval::eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap,
+	const JunctionPtr _junc, JuncResultMap* _juncMap) :
+boost::static_visitor<bool>() {
+	numericmap = _numericmap;
+	stringmap = _stringmap;
+	junc = _junc;
+	juncMap = _juncMap;
 }
 
-bool portcullis::eval::operator()(const var& v) const { 
+bool portcullis::eval::operator()(const var& v) const {
 
-    if (v=="T" || v=="t" || v=="true" || v=="True")
-        return true;
-    else if (v=="F" || v=="f" || v=="false" || v=="False")
-        return false;
-    else {
-        // If it starts with an M then assume we are looking at a metric
-        if (numericmap.count(v) > 0) {
-            Operator op = numericmap.at(v).first;
-            double threshold = numericmap.at(v).second;
-            double value = getNumericFromJunc(v);
-            bool res = evalNumberLeaf(op, threshold, value);
-            if (!res) {
-                juncMap->at(*(junc->getIntron())).push_back(v + " " + opToString(op) + " " + lexical_cast<string>(threshold));
-            }
-            return res;
-        }
-        else if (stringmap.count(v) > 0) {
-            Operator op = stringmap.at(v).first;
-            unordered_set<string> set = stringmap.at(v).second;
+	if (v == "T" || v == "t" || v == "true" || v == "True")
+		return true;
+	else if (v == "F" || v == "f" || v == "false" || v == "False")
+		return false;
+	else {
+		// If it starts with an M then assume we are looking at a metric
+		if (numericmap.count(v) > 0) {
+			Operator op = numericmap.at(v).first;
+			double threshold = numericmap.at(v).second;
+			double value = getNumericFromJunc(v);
+			bool res = evalNumberLeaf(op, threshold, value);
+			if (!res) {
+				juncMap->at(*(junc->getIntron())).push_back(v + " " + opToString(op) + " " + lexical_cast<string>(threshold));
+			}
+			return res;
+		} else if (stringmap.count(v) > 0) {
+			Operator op = stringmap.at(v).first;
+			unordered_set<string> set = stringmap.at(v).second;
 
-            string setstring = boost::algorithm::join(set, ", ");
+			string setstring = boost::algorithm::join(set, ", ");
 
-            string value = getStringFromJunc(v);
-            bool res = evalSetLeaf(op, set, value);
-            if (!res) {
-                juncMap->at(*(junc->getIntron())).push_back(v + " " + opToString(op) + " " + setstring);
-            }
-            return res;
-        }
-        else {
-            BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-                "Unrecognised param: ") + v));
-        }
+			string value = getStringFromJunc(v);
+			bool res = evalSetLeaf(op, set, value);
+			if (!res) {
+				juncMap->at(*(junc->getIntron())).push_back(v + " " + opToString(op) + " " + setstring);
+			}
+			return res;
+		} else {
+			BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
+				"Unrecognised param: ") + v));
+		}
 
-    }
-    return boost::lexical_cast<bool>(v); 
+	}
+	return boost::lexical_cast<bool>(v);
 }
 
-    
 double portcullis::eval::getNumericFromJunc(const var& fullname) const {
 
-    size_t pos = fullname.find(".");
+	size_t pos = fullname.find(".");
 
-    string name = pos == string::npos ? fullname : fullname.substr(0, pos);
-    
-    boost::to_upper(name);
+	string name = pos == string::npos ? fullname : fullname.substr(0, pos);
 
-    if (namemap.count(name) <= 0) {
-        BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-                "Unrecognised metric: ") + name));
-    }
-    
-    uint16_t metric_index = namemap.at(name);
-
-    switch(metric_index) {
-        case 0:
-            return 0.0;
-        case 1:
-            return (double)junc->getNbSplicedAlignments();
-        case 2:
-            return (double)junc->getNbDistinctAlignments();
-        case 3:
-            return (double)junc->getNbReliableAlignments();
-        case 4:
-            return (double)junc->getIntronSize();
-        case 5:
-            return (double)junc->getLeftAnchorSize();
-        case 6:
-            return (double)junc->getRightAnchorSize();
-        case 7:
-            return (double)junc->getMaxMinAnchor();
-        case 8:
-            return (double)junc->getDiffAnchor();
-        case 9:
-            return (double)junc->getNbDistinctAnchors();
-        case 10:
-            return junc->getEntropy();
-        case 11:
-            return (double)junc->getMaxMMES();
-        case 12:
-            return (double)junc->getHammingDistance5p();
-        case 13:
-            return (double)junc->getHammingDistance3p();
-        case 14:
-            return junc->getCoverage();
-        case 15:
-            return junc->isUniqueJunction() ? 1.0 : 0.0;
-        case 16:
-            return junc->isPrimaryJunction() ? 1.0 : 0.0;
-        case 17:
-            return junc->getMultipleMappingScore();
-        case 18:
-            return junc->getMeanMismatches();
-        case 19:
-            return junc->getNbUniquelySplicedAlignments();
-        case 20:
-            return junc->getNbMultiplySplicedAlignments();
-        case 21:
-            return junc->getReliable2RawAlignmentRatio();
-        case 22:
-            return junc->getNbUpstreamJunctions();
-        case 23:
-            return junc->getNbDownstreamJunctions();
-        case 24:
-            return junc->getNbUpstreamFlankingAlignments();
-        case 25:
-            return junc->getNbDownstreamFlankingAlignments();
-        case 100:
-            return junc->isSuspicious();
-        case 101:
-            return junc->isPotentialFalsePositive();
-    }
-    
-    BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-                        "Unrecognised metric")));        
+	return junc->getValueFromName(name);	
 }
-    
+
 string portcullis::eval::getStringFromJunc(const var& fullname) const {
 
-    size_t pos = fullname.find(".");
+	size_t pos = fullname.find(".");
 
-    string name = pos == string::npos ? fullname : fullname.substr(0, pos);
+	string name = pos == string::npos ? fullname : fullname.substr(0, pos);
 
-    if (boost::iequals(name, "refname")) {
-        return junc->getIntron()->ref.name;
-    }
-    else if (boost::iequals(name, "M1-canonical_ss")) {
-        return string() + cssToChar(junc->getSpliceSiteType());
-    }    
+	if (boost::iequals(name, "refname")) {
+		return junc->getIntron()->ref.name;
+	} else if (boost::iequals(name, "M1-canonical_ss")) {
+		return string() + cssToChar(junc->getSpliceSiteType());
+	}
 
-    BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-                        "Unrecognised param: ") + name));
+	BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
+		"Unrecognised param: ") + name));
 }
-    
+
 bool portcullis::eval::evalNumberLeaf(Operator op, double threshold, double value) const {
-    switch (op) {
-        case Operator::EQ:
-            return value == threshold;                
-        case Operator::GT:
-            return value > threshold;
-        case Operator::LT:
-            return value < threshold;
-        case Operator::GTE:
-            return value >= threshold;
-        case Operator::LTE:
-            return value <= threshold;
-        default:
-            BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-                    "Unrecognised operation")));
-    }
+	switch (op) {
+	case Operator::EQ:
+		return value == threshold;
+	case Operator::GT:
+		return value > threshold;
+	case Operator::LT:
+		return value < threshold;
+	case Operator::GTE:
+		return value >= threshold;
+	case Operator::LTE:
+		return value <= threshold;
+	default:
+		BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
+			"Unrecognised operation")));
+	}
 }
-    
+
 bool portcullis::eval::evalSetLeaf(Operator op, unordered_set<string>& set, string value) const {
-    switch (op) {
-        case Operator::IN:
-            return set.find(value) != set.end();
-        case Operator::NOT_IN:
-            return set.find(value) == set.end();
-        default:
-            BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-                    "Unrecognised operation")));
-    }
+	switch (op) {
+	case Operator::IN:
+		return set.find(value) != set.end();
+	case Operator::NOT_IN:
+		return set.find(value) == set.end();
+	default:
+		BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
+			"Unrecognised operation")));
+	}
 }
 
 /**
@@ -244,115 +167,112 @@ bool portcullis::eval::evalSetLeaf(Operator op, unordered_set<string>& set, stri
  * @param param Value
  * @return True if parameter passes operation and threshold, false otherwise
  */
-bool portcullis::RuleFilter::parse(const string& expression, JunctionPtr junc, 
-        NumericFilterMap& numericFilters, SetFilterMap& stringFilters, 
-        const unordered_map<string, uint16_t>& namemap, JuncResultMap* results) {
+bool portcullis::RuleFilter::parse(const string& expression, JunctionPtr junc,
+	NumericFilterMap& numericFilters, SetFilterMap& stringFilters,
+	JuncResultMap* results) {
 
-    typedef std::string::const_iterator it;
-    it f(expression.begin()), l(expression.end());
-    parser<it> p;
+	typedef std::string::const_iterator it;
+	it f(expression.begin()), l(expression.end());
+	parser<it> p;
 
-    expr result;
-    bool ok = qi::phrase_parse(f,l,p,qi::space,result);
+	expr result;
+	bool ok = qi::phrase_parse(f, l, p, qi::space, result);
 
-    if (!ok) {
-        BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-                    "Invalid expression: ") + expression));
-    }
+	if (!ok) {
+		BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
+			"Invalid expression: ") + expression));
+	}
 
-    // Evaluate results
-    return boost::apply_visitor(eval(numericFilters, stringFilters, namemap, junc, results), result);
+	// Evaluate results
+	return boost::apply_visitor(eval(numericFilters, stringFilters, junc, results), result);
 }
 
-map<string,int> portcullis::RuleFilter::filter(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap) {
-    ptree pt;
-    boost::property_tree::read_json(ruleFile.string(), pt);
-    
-    NumericFilterMap numericFilters;
-    SetFilterMap stringFilters;
-    JuncResultMap junctionResultMap;
-    
-    unordered_map<string, uint16_t> METRIC_LOOKUP;
-    for(size_t i = 0; i < METRIC_NAMES.size(); i++) {
-        METRIC_LOOKUP[boost::to_upper_copy(METRIC_NAMES[i])] = i;
-    }
-    METRIC_LOOKUP["SUSPECT"] = 100;
-    METRIC_LOOKUP["PFP"] = 101;
-    
+map<string, int> portcullis::RuleFilter::filter(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap) {
+	ptree pt;
+	boost::property_tree::read_json(ruleFile.string(), pt);
 
-    for(ptree::value_type& v : pt.get_child("parameters")) {
-        string name = v.first;
-        string op_str = boost::to_upper_copy(v.second.get_child("operator").data());
-        if (String2OperatorMap.count(op_str) <= 0) {
-            BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-                    "Invalid operator: ") + op_str));
-        }
-        Operator op = String2OperatorMap.at(op_str);
-        if (isNumericOp(op)) {
-            double threshold = lexical_cast<double>(v.second.get_child("value").data());     
-            numericFilters[name] = pair<Operator,double>(op, threshold);
-        }
-        else {
+	NumericFilterMap numericFilters;
+	SetFilterMap stringFilters;
+	JuncResultMap junctionResultMap;
 
-            unordered_set<string> set;
-            for (auto& item : v.second.get_child("value")) {
-                string val = item.second.get_value<string>();
-                set.insert(val); 
-            }
-            stringFilters[name] = pair<Operator,unordered_set<string>>(op, set);
-        }
-    }
+	/*unordered_map<string, uint16_t> METRIC_LOOKUP;
+	for(size_t i = 0; i < Junction::METRIC_NAMES.size(); i++) {
+		METRIC_LOOKUP[boost::to_upper_copy(Junction::METRIC_NAMES[i])] = i;
+	}
+	METRIC_LOOKUP["SUSPECT"] = 100;
+	METRIC_LOOKUP["PFP"] = 101;*/
 
-    const string expression = pt.get_child("expression").data();
 
-    map<string,int> filterCounts;
+	for (ptree::value_type& v : pt.get_child("parameters")) {
+		string name = v.first;
+		string op_str = boost::to_upper_copy(v.second.get_child("operator").data());
+		if (String2OperatorMap.count(op_str) <= 0) {
+			BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
+				"Invalid operator: ") + op_str));
+		}
+		Operator op = String2OperatorMap.at(op_str);
+		if (isNumericOp(op)) {
+			double threshold = lexical_cast<double>(v.second.get_child("value").data());
+			numericFilters[name] = pair<Operator, double>(op, threshold);
+		} else {
 
-    for (auto& junc : all) {
+			unordered_set<string> set;
+			for (auto& item : v.second.get_child("value")) {
+				string val = item.second.get_value<string>();
+				set.insert(val);
+			}
+			stringFilters[name] = pair<Operator, unordered_set < string >> (op, set);
+		}
+	}
 
-        junctionResultMap[*(junc->getIntron())] = vector<string>();
+	const string expression = pt.get_child("expression").data();
 
-        if (RuleFilter::parse(expression, junc, numericFilters, stringFilters, METRIC_LOOKUP, &junctionResultMap)) {
-            pass.push_back(junc);
-        }
-        else {
-            fail.push_back(junc);
-            
-            vector<string> failed = junctionResultMap[*(junc->getIntron())];
+	map<string, int> filterCounts;
 
-            for(string s : failed) {
-                filterCounts[s]++;
-            }
-        }
-    }
+	for (auto& junc : all) {
 
-    // Just make a copy of this... it won't be called often and should be small
-    return filterCounts;
+		junctionResultMap[*(junc->getIntron())] = vector<string>();
+
+		if (RuleFilter::parse(expression, junc, numericFilters, stringFilters, &junctionResultMap)) {
+			pass.push_back(junc);
+		} else {
+			fail.push_back(junc);
+
+			vector<string> failed = junctionResultMap[*(junc->getIntron())];
+
+			for (string s : failed) {
+				filterCounts[s]++;
+			}
+		}
+	}
+
+	// Just make a copy of this... it won't be called often and should be small
+	return filterCounts;
 }
 
 void portcullis::RuleFilter::saveResults(const path& outputFile, const JunctionSystem& js, JuncResultMap& results) {
 
-    // Print descriptive output to file
-    ofstream out(outputFile.string());
+	// Print descriptive output to file
+	ofstream out(outputFile.string());
 
-    out << Intron::locationOutputHeader() << "\tconsensus_strand\t" << "filter_results..." << endl;
+	out << Intron::locationOutputHeader() << "\tconsensus_strand\t" << "filter_results..." << endl;
 
-    for(auto& kv: results) {
+	for (auto& kv : results) {
 
-        Intron i = kv.first;
+		Intron i = kv.first;
 
-        out << i << "\t";
+		out << i << "\t";
 
-        out << strandToChar(js.getJunction(i)->getConsensusStrand()) << "\t";
-        
-        if (kv.second.empty()) {
-            out << "PASS";
-        }
-        else {
-            out << boost::algorithm::join(kv.second, "\t");
-        }
-        out << endl;
-    }
+		out << strandToChar(js.getJunction(i)->getConsensusStrand()) << "\t";
 
-    out.close();
+		if (kv.second.empty()) {
+			out << "PASS";
+		} else {
+			out << boost::algorithm::join(kv.second, "\t");
+		}
+		out << endl;
+	}
+
+	out.close();
 }
 

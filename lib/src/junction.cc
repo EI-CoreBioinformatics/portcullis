@@ -197,16 +197,17 @@ intron(_location) {
 	nbAlDistinct = 0;
 	nbAlMultiplySpliced = 0;
 	nbAlUniquelyMapped = 0;
-	nbAlProperlyPaired = 0;
+	nbAlBamProperlyPaired = 0;
+	nbAlPortcullisProperlyPaired = 0;
 	nbAlReliable = 0;
-
-	maxMinAnchor = intron->minAnchorLength(_leftAncStart, _rightAncEnd);
-	maxMMES = 0;
 
 	entropy = 0;
 	meanMismatches = 0;
 	meanReadLength = 0;
-
+	maxMinAnchor = intron->minAnchorLength(_leftAncStart, _rightAncEnd);
+	maxMMES = 0;
+	intronScore = 0.0;
+	
 	hammingDistance5p = -1;
 	hammingDistance3p = -1;
 
@@ -226,9 +227,9 @@ intron(_location) {
 	suspicious = false;
 	pfp = false;
 
-	junctionOverhangs.clear();
-	for (size_t i = 0; i < JO_NAMES.size(); i++) {
-		junctionOverhangs.push_back(0);
+	junctionAnchorDepth.clear();
+	for (size_t i = 0; i < JAD_NAMES.size(); i++) {
+		junctionAnchorDepth.push_back(0);
 	}
 
 	alignments.clear();
@@ -264,15 +265,16 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 	nbAlDistinct = j.nbAlDistinct;
 	nbAlMultiplySpliced = j.nbAlMultiplySpliced;
 	nbAlUniquelyMapped = j.nbAlUniquelyMapped;
-	nbAlProperlyPaired = j.nbAlProperlyPaired;
+	nbAlBamProperlyPaired = j.nbAlBamProperlyPaired;
+	nbAlPortcullisProperlyPaired = j.nbAlPortcullisProperlyPaired;
 	nbAlReliable = j.nbAlReliable;
 
 	entropy = j.entropy;
 	meanMismatches = j.meanMismatches;
 	meanReadLength = j.meanReadLength;
-
 	maxMinAnchor = j.maxMinAnchor;
 	maxMMES = j.maxMMES;
+	intronScore = j.intronScore;
 
 	hammingDistance5p = j.hammingDistance5p;
 	hammingDistance3p = j.hammingDistance3p;
@@ -308,9 +310,9 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 		trimmedLogDevCov.push_back(x);
 	}
 
-	junctionOverhangs.clear();
-	for (size_t i = 0; i < JO_NAMES.size(); i++) {
-		junctionOverhangs.push_back(j.getJunctionOverhangs(i));
+	junctionAnchorDepth.clear();
+	for (size_t i = 0; i < JAD_NAMES.size(); i++) {
+		junctionAnchorDepth.push_back(j.getJunctionAnchorDepth(i));
 	}
 }
 
@@ -318,7 +320,7 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 
 portcullis::Junction::~Junction() {
 	alignments.clear();
-	junctionOverhangs.clear();
+	junctionAnchorDepth.clear();
 }
 
 void portcullis::Junction::clearAlignments() {
@@ -366,7 +368,7 @@ void portcullis::Junction::extendAnchors(int32_t otherStart, int32_t otherEnd) {
 	leftAncStart = min(leftAncStart, otherStart);
 	rightAncEnd = max(rightAncEnd, otherEnd);
 
-	int32_t otherMinAnchor = intron->minAnchorLength(otherStart, otherEnd);
+	uint32_t otherMinAnchor = intron->minAnchorLength(otherStart, otherEnd);
 
 	maxMinAnchor = max(maxMinAnchor, otherMinAnchor);
 }
@@ -558,53 +560,13 @@ void portcullis::Junction::calcMetrics() {
 void portcullis::Junction::calcMetrics(Orientation orientation) {
 
 	determineStrandFromReads();
-	calcAnchorStats(); // Metrics 5 and 7
-	calcEntropy(); // Metric 6
-	calcAlignmentStats(orientation); // Metrics 8, 9 and 19
+	calcEntropy();
+	calcAlignmentStats(orientation);
 }
 
-/**
- * Metric 5 and 7: Diff Anchor and # Distinct Anchors
- * @return 
- */
-void portcullis::Junction::calcAnchorStats() {
-
-	int32_t minLeftSize = INT32_MAX, minRightSize = INT32_MAX;
-	int32_t maxLeftSize = 0, maxRightSize = 0;
-	int32_t lastLStart = -1, lastREnd = -1;
-
-	for (const auto& a : alignments) {
-
-		BamAlignmentPtr ba = a->ba;
-
-		const int32_t lStart = ba->getStart();
-		const int32_t rEnd = ba->getEnd();
-
-		int32_t leftSize = ba->calcNbAlignedBases(lStart, intron->start - 1, false);
-		int32_t rightSize = ba->calcNbAlignedBases(intron->end + 1, rEnd, false); // Will auto crop for end of alignment
-
-		maxLeftSize = max(maxLeftSize, leftSize);
-		minLeftSize = min(minLeftSize, leftSize);
-		maxRightSize = max(maxRightSize, rightSize);
-		minRightSize = min(minRightSize, rightSize);
-
-		if (lStart != lastLStart || rEnd != lastREnd) {
-			lastLStart = lStart;
-			lastREnd = rEnd;
-		}
-	}
-
-	int32_t diffLeftSize = maxLeftSize - minLeftSize;
-	diffLeftSize = diffLeftSize < 0 ? 0 : diffLeftSize;
-	int32_t diffRightSize = maxRightSize - minRightSize;
-	diffLeftSize = diffRightSize < 0 ? 0 : diffRightSize;
-
-	leftAncSize = maxLeftSize;
-	rightAncSize = maxRightSize;
-}
 
 /**
- * Metric 6: Entropy (definition from "Graveley et al, The developmental 
+ * Shannon Entropy (definition from "Graveley et al, The developmental 
  * transcriptome of Drosophila melanogaster, Nature, 2011")
  *
  * Calculates the entropy score for this junction.  Higher entropy is generally
@@ -708,26 +670,20 @@ void portcullis::Junction::calcAlignmentStats(Orientation orientation) {
 			lastEnd = end;
 		}
 
-		// This doesn't seem intuitive but this is how they recommend finding
-		// "reliable" (i.e. unique) alignments in samtools.  They do this
-		// because apparently "uniqueness" is not a well defined concept.
-		// We also require, if specified by the user, a "reliably" aligned read to be properly paired.
-		//if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD && (!properPairedCheck || ba->calcIfProperPair(orientation))) {
-		if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD && (!properPairedCheck || ba->isProperPair())) {
-			nbAlReliable++;
-		}
-
 		bool reliable = true;
 		if (ba->getMapQuality() >= MAP_QUALITY_THRESHOLD) {
 			nbAlUniquelyMapped++;
 		} else {
 			reliable = false;
 		}
+		
+		// Get properly paired BAM flag regardless
+		nbAlBamProperlyPaired = ba->isProperPair();
 
-		if (properPairedCheck) {
+		if (properPairedCheck) {			
 			bool pp = ba->calcIfProperPair(orientation);
 			if (pp) {
-				nbAlProperlyPaired++;
+				nbAlPortcullisProperlyPaired++;
 			} else {
 				reliable = false;
 			}
@@ -833,8 +789,8 @@ void portcullis::Junction::calcMismatchStats() {
 		}
 
 		// Update junction overhang vector
-		for (uint16_t i = 0; i < JO_NAMES.size() && i < a->minMatch; i++) {
-			junctionOverhangs[i]++;
+		for (uint16_t i = 0; i < JAD_NAMES.size() && i < a->minMatch; i++) {
+			junctionAnchorDepth[i]++;
 		}
 	}
 
@@ -914,7 +870,19 @@ double portcullis::Junction::calcCoverage(const vector<uint32_t>& coverageLevels
 	return coverage;
 }
 
+double portcullis::Junction::getValueFromName(const string& name) const {
+	
+	string uname = boost::to_upper_copy(name);
 
+	JuncFuncMap::iterator x = JunctionFunctionMap.find(uname);
+	if (x == JunctionFunctionMap.end()) {
+		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+			"Unrecognised junction property: ") + name));
+	}
+
+	// Use function pointer to get result
+	return (this->*(x->second))();
+}
 
 
 
@@ -927,47 +895,61 @@ double portcullis::Junction::calcCoverage(const vector<uint32_t>& coverageLevels
  */
 void portcullis::Junction::outputDescription(std::ostream &strm, string delimiter) {
 
+	strm << "*** Intron ***" << delimiter;
 	if (intron != nullptr) {
 		intron->outputDescription(strm, delimiter);
+		strm << delimiter << "Intron Size: " << getIntronSize();
 	} else {
 		strm << "No location set";
 	}
 
 	strm << delimiter
+		<< "*** Anchors ***" << delimiter
 		<< "Anchor limits: (" << leftAncStart << ", " << rightAncEnd << ")" << delimiter
-		<< "Junction Predictions:" << delimiter
+		<< "Anchor sizes: (" << getLeftAnchorSize() << ", " << getRightAnchorSize() << ")" << delimiter
+		<< "*** Strand ***" << delimiter
 		<< "Reads Strand: " << strandToString(readStrand) << delimiter
 		<< "Splice Site Strand: " << strandToString(ssStrand) << delimiter
 		<< "Consensus Strand: " << strandToString(consensusStrand) << delimiter
-		<< "Junction Metrics:" << delimiter
-		<< "M1:  Canonical?: " << boolalpha << cssToString(canonicalSpliceSites) << "; Sequences: (" << da1 << " " << da2 << ")" << delimiter
-		<< "M2:  # Junction Alignments: " << getNbSplicedAlignments() << delimiter
-		<< "M3:  # Distinct Alignments: " << nbAlDistinct << delimiter
-		<< "M4:  # Reliable (MP >=" << MAP_QUALITY_THRESHOLD << ") Alignments: " << nbAlReliable << delimiter
-		<< "M5:  Intron Size: " << getIntronSize() << delimiter
-		<< "M6:  Left Anchor Size: " << leftAncSize << delimiter
-		<< "M7:  Right Anchor Size: " << rightAncSize << delimiter
-		<< "M8:  MaxMinAnchor: " << maxMinAnchor << delimiter
-		<< "M9:  DiffAnchor: " << diffAnchor << delimiter
-		<< "M10: # Distinct Anchors: " << nbDistinctAnchors << delimiter
-		<< "M11: Entropy: " << entropy << delimiter
-		<< "M12: MaxMMES: " << maxMMES << delimiter
-		<< "M13: Hamming Distance 5': " << hammingDistance5p << delimiter
-		<< "M14: Hamming Distance 3': " << hammingDistance3p << delimiter
-		<< "M15: Coverage: " << coverage << delimiter
-		<< "M16: Unique Junction: " << boolalpha << uniqueJunction << delimiter
-		<< "M17: Primary Junction: " << boolalpha << primaryJunction << delimiter
-		<< "M18: Multiple mapping score: " << multipleMappingScore << delimiter
-		<< "M19: Mean mismatches: " << meanMismatches << delimiter
-		<< "M20: # Uniquely Spliced Reads: " << getNbUniquelySplicedAlignments() << delimiter
-		<< "M21: # Multiple Spliced Reads: " << nbAlMultiplySpliced << delimiter
-		<< "M22: # Upstream Junctions: " << nbUpstreamJunctions << delimiter
-		<< "M23: # Downstream Junctions: " << nbDownstreamJunctions << delimiter
-		<< "M24: # Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
-		<< "M25: # Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
-		<< "M26: Distance to next upstream junction: " << distanceToNextUpstreamJunction << delimiter
-		<< "M27: Distance to next downstream junction: " << distanceToNextDownstreamJunction << delimiter
-		<< "M28: Distance to nearest junction: " << distanceToNearestJunction;
+		<< "*** Confidence ***" << delimiter
+		<< "Canonical?: " << boolalpha << cssToString(canonicalSpliceSites) << "; Sequences: (" << da1 << " " << da2 << ")" << delimiter
+		<< "Filter score: " << score << delimiter
+		<< "Suspicious? (no anchors extending beyond first mismatch): "  << boolalpha  << suspicious << delimiter
+		<< "Potential False Positive? (Suspicious and MaxMMES should have been greater given junction depth): " << boolalpha << pfp << delimiter
+		<< "*** Alignment counts ***" << delimiter
+		<< "# Total Spliced Alignments: " << nbAlRaw << delimiter
+		<< "# Distinct Alignments: " << nbAlDistinct << delimiter
+		<< "# Uniquely Spliced Alignments: " << getNbUniquelySplicedAlignments() << delimiter
+		<< "# Multiply Spliced Alignments: " << nbAlMultiplySpliced << delimiter
+		<< "# Uniquely Mapped Alignments: " << nbAlUniquelyMapped << delimiter
+		<< "# Multiply Mapped Alignments: " << getNbMultiplyMappedAlignments() << delimiter
+		<< "# Properly paired (bam flag): " << nbAlBamProperlyPaired << delimiter
+		<< "# Properly paired (portcullis): " << nbAlPortcullisProperlyPaired << delimiter
+		<< "# Reliable (MapQ >=" << MAP_QUALITY_THRESHOLD << " + portcullis properly paired) Alignments: " << nbAlReliable << delimiter
+		<< "*** RNA seq derived Junction stats ***" << delimiter
+		<< "Entropy: " << entropy << delimiter
+		<< "Mean mismatches: " << meanMismatches << delimiter
+		<< "Mean read length: " << meanReadLength << delimiter
+		<< "MaxMinAnchor: " << maxMinAnchor << delimiter
+		<< "MaxMMES: " << maxMMES << delimiter
+		<< "Intron score: " << intronScore << delimiter
+		<< "*** Genome derived Junction stats ***" << delimiter
+		<< "Hamming Distance 5': " << hammingDistance5p << delimiter
+		<< "Hamming Distance 3': " << hammingDistance3p << delimiter
+		<< "*** Junction group properties ***" << delimiter
+		<< "Unique Junction: " << boolalpha << uniqueJunction << delimiter
+		<< "Primary Junction: " << boolalpha << primaryJunction << delimiter
+		<< "# Upstream Junctions: " << nbUpstreamJunctions << delimiter
+		<< "# Downstream Junctions: " << nbDownstreamJunctions << delimiter
+		<< "Distance to next upstream junction: " << distanceToNextUpstreamJunction << delimiter
+		<< "Distance to next downstream junction: " << distanceToNextDownstreamJunction << delimiter
+		<< "Distance to nearest junction: " << distanceToNearestJunction << delimiter
+		<< "*** Extra metrics ***" << delimiter
+		<< "Multiple mapping score: " << multipleMappingScore << delimiter
+		<< "Coverage: " << coverage << delimiter
+		<< "# Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
+		<< "# Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments;
+		
 }
 
 /**
@@ -976,40 +958,18 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
  */
 void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string delimiter) {
 
-	strm << "Reads Strand: " << strandToString(readStrand) << delimiter
-		<< "Splice Site Strand: " << strandToString(ssStrand) << delimiter
-		<< "Consensus Strand: " << strandToString(consensusStrand) << delimiter
-		<< "M1-Canonical?=" << cssToString(canonicalSpliceSites) << delimiter
-		<< "M2-NbAlignments=" << getNbSplicedAlignments() << delimiter
-		<< "M3-NbDistinctAlignments=" << nbAlDistinct << delimiter
-		<< "M4-NbReliableAlignments=" << nbAlReliable << delimiter
-		<< "M5-IntronSize=" << getIntronSize() << delimiter
-		<< "M6-LeftAnchorSize=" << leftAncSize << delimiter
-		<< "M7-RightAnchorSize=" << rightAncSize << delimiter
-		<< "M8-MaxMinAnchor=" << maxMinAnchor << delimiter
-		<< "M9-DiffAnchor=" << diffAnchor << delimiter
-		<< "M10-NbDistinctAnchors=" << nbDistinctAnchors << delimiter
-		<< "M11-Entropy=" << entropy << delimiter
-		<< "M12-MaxMMES=" << maxMMES << delimiter
-		<< "M13-HammingDistance5=" << hammingDistance5p << delimiter
-		<< "M14-HammingDistance3=" << hammingDistance3p << delimiter
-		<< "M15-Coverage=" << coverage << delimiter
-		<< "M16-UniqueJunction=" << boolalpha << uniqueJunction << delimiter
-		<< "M17-PrimaryJunction=" << boolalpha << primaryJunction << delimiter
-		<< "M18-MultipleMappingScore=" << multipleMappingScore << delimiter
-		<< "M19-MeanMismatches=" << meanMismatches << delimiter
-		<< "M20-NbUniquelySplicedReads=" << getNbUniquelySplicedAlignments() << delimiter
-		<< "M21-NbMultipleSplicedReads=" << nbAlMultiplySpliced << delimiter
-		<< "M22-Reliable2RawRatio=" << getReliable2RawAlignmentRatio() << delimiter
-		<< "M23-NbUpstreamJunctions=" << nbUpstreamJunctions << delimiter
-		<< "M24-NbDownstreamJunctions=" << nbDownstreamJunctions << delimiter
-		<< "M25-NbUpstreamNonSplicedAlignments=" << nbUpstreamFlankingAlignments << delimiter
-		<< "M26-NbDownstreamNonSplicedAlignments=" << nbDownstreamFlankingAlignments << delimiter
-		<< "M27-DistanceToNextUpstreamJunction=" << distanceToNextUpstreamJunction << delimiter
-		<< "M28-DistanceToNextDownstreamJunction=" << distanceToNextDownstreamJunction << delimiter
-		<< "M29-DistanceToNearestJunction=" << distanceToNearestJunction << delimiter
-		<< "Suspect=" << boolalpha << suspicious << delimiter
-		<< "PFP=" << boolalpha << pfp;
+	strm << "Strand: " << strandToString(consensusStrand) << delimiter
+		<< "Canonical?=" << cssToString(canonicalSpliceSites) << delimiter
+		<< "Score=" << score << delimiter
+		<< "NbAlignments=" << getNbSplicedAlignments() << delimiter
+		<< "NbDistinct=" << nbAlDistinct << delimiter
+		<< "NbReliable=" << nbAlReliable << delimiter
+		<< "Entropy=" << entropy << delimiter
+		<< "MaxMMES=" << maxMMES << delimiter
+		<< "HammingDistance5=" << hammingDistance5p << delimiter
+		<< "HammingDistance3=" << hammingDistance3p << delimiter
+		<< "UniqueJunction=" << boolalpha << uniqueJunction << delimiter
+		<< "PrimaryJunction=" << boolalpha << primaryJunction << delimiter;		
 }
 
 /**
@@ -1157,9 +1117,9 @@ void portcullis::Junction::outputBED(std::ostream &strm, const string& prefix, b
  */
 string portcullis::Junction::junctionOutputHeader() {
 	return string("index\t") + Intron::locationOutputHeader() + "\tsize\tleft\tright\t" +
-		boost::algorithm::join(STRAND_NAMES, "\t") + "\tss1\tss2\t" +
-		boost::algorithm::join(METRIC_NAMES, "\t") + "\t" +
-		boost::algorithm::join(JO_NAMES, "\t");
+		boost::algorithm::join(Junction::STRAND_NAMES, "\t") + "\tss1\tss2\t" +
+		boost::algorithm::join(Junction::METRIC_NAMES, "\t") + "\t" +
+		boost::algorithm::join(Junction::JAD_NAMES, "\t");
 }
 
 shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line) {
@@ -1167,7 +1127,7 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
 	vector<string> parts; // #2: Search for tokens
 	boost::split(parts, line, boost::is_any_of("\t"), boost::token_compress_on);
 
-	uint32_t expected_cols = 13 + STRAND_NAMES.size() + METRIC_NAMES.size() + JO_NAMES.size();
+	uint32_t expected_cols = 13 + Junction::STRAND_NAMES.size() + Junction::METRIC_NAMES.size() + Junction::JAD_NAMES.size();
 
 	if (parts.size() != expected_cols) {
 		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
@@ -1178,7 +1138,7 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
 
 	
 	// Create intron
-	IntronPtr i = make_shared<Intron>(
+	IntronPtr intron = make_shared<Intron>(
 		RefSeq(
 		lexical_cast<int32_t>(parts[1]),
 		parts[2],
@@ -1190,58 +1150,73 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
 
 	// Create basic junction
 	shared_ptr<Junction> j = make_shared<Junction>(
-		i,
+		intron,
 		lexical_cast<int32_t>(parts[7]),
 		lexical_cast<int32_t>(parts[8])
 		);
 
 	j->setId(lexical_cast<uint32_t>(parts[0]));
 
-	// Set predictions to junction
-	j->readStrand = strandFromChar(parts[9][0]);
-	j->ssStrand = strandFromChar(parts[10][0]);
-	j->consensusStrand = strandFromChar(parts[11][0]);
-
-	// Splice site strings
-	j->setDa1(parts[12]);
-	j->setDa2(parts[13]);
-	j->canonicalSpliceSites = cssFromChar(parts[14][0]);
+	// Index... saves having to remember the column numbers
+	uint16_t i = 9;
 	
-	j->setNbJunctionAlignments(lexical_cast<uint32_t>(parts[14]));
-	j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[15]));
-	j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[16]));
-	// Intron size not required
-	j->setLeftAncSize(lexical_cast<uint32_t>(parts[18]));
-	j->setRightAncSize(lexical_cast<uint32_t>(parts[19]));
-	j->setMaxMinAnchor(lexical_cast<int32_t>(parts[20]));
-	j->setDiffAnchor(lexical_cast<int32_t>(parts[21]));
-	j->setNbDistinctAnchors(lexical_cast<uint32_t>(parts[22]));
-	j->setEntropy(lexical_cast<double>(parts[23]));
-	j->setMaxMMES(lexical_cast<uint32_t>(parts[24]));
-	j->setHammingDistance5p(lexical_cast<uint32_t>(parts[25]));
-	j->setHammingDistance3p(lexical_cast<uint32_t>(parts[26]));
-	j->setCoverage(lexical_cast<double>(parts[27]));
-	j->setUniqueJunction(lexical_cast<bool>(parts[28]));
-	j->setPrimaryJunction(lexical_cast<bool>(parts[29]));
-	j->setMultipleMappingScore(lexical_cast<double>(parts[30]));
-	j->setMeanMismatches(lexical_cast<double>(parts[31]));
-	//j->setNbUniquelySplicedReads(lexical_cast<uint32_t>(parts[32]));
-	j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[33]));
-	//j->setNbMultipleSplicedReads(lexical_cast<uint32_t>(parts[33]));
-	j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[35]));
-	j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[36]));
-	j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[37]));
-	j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[38]));
-	j->setDistanceToNextUpstreamJunction(lexical_cast<uint32_t>(parts[39]));
-	j->setDistanceToNextDownstreamJunction(lexical_cast<uint32_t>(parts[40]));
-	j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[41]));
+	// Set predictions to junction
+	j->readStrand = strandFromChar(parts[i++][0]);
+	j->ssStrand = strandFromChar(parts[i++][0]);
+	j->consensusStrand = strandFromChar(parts[i++][0]);
 
-	// Read Junction overhangs
-	j->meanReadLength = lexical_cast<uint32_t>(parts[42]);
-	j->setSuspicious(lexical_cast<bool>(parts[43]));
-	j->setPotentialFalsePositive(lexical_cast<bool>(parts[44]));
-	for (size_t i = 0; i < JO_NAMES.size(); i++) {
-		j->setJunctionOverhangs(i, lexical_cast<uint32_t>(parts[45 + i]));
+	// Splice site properties
+	j->setDa1(parts[i++]);
+	j->setDa2(parts[i++]);
+	j->canonicalSpliceSites = cssFromChar(parts[i++][0]);
+	
+	// Confidence properties
+	j->setScore(lexical_cast<double>(parts[i++]));
+	j->setSuspicious(lexical_cast<bool>(parts[i++]));
+	j->setPotentialFalsePositive(lexical_cast<bool>(parts[i++]));
+	
+	// Alignment counts
+	j->setNbSplicedAlignments(lexical_cast<uint32_t>(parts[i++]));
+	j->setNbDistinctAlignments(lexical_cast<uint32_t>(parts[i++]));
+	i++; // uniquely spliced alignments not required
+	j->setNbMultiplySplicedAlignments(lexical_cast<uint32_t>(parts[i++]));
+	j->setNbUniquelyMappedAlignments(lexical_cast<uint32_t>(parts[i++]));
+	i++; // multiply mapped alignments not required
+	j->setNbBamProperlyPairedAlignments(lexical_cast<uint32_t>(parts[i++]));
+	j->setNbPortcullisProperlyPairedAlignments(lexical_cast<uint32_t>(parts[i++]));
+	j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[i++]));
+	i++; // reliable2raw ratio not required
+	
+	// RNAseq derived Junction stats
+	j->setEntropy(lexical_cast<double>(parts[i++]));
+	j->setMeanMismatches(lexical_cast<double>(parts[i++]));
+	j->setMeanReadLength(lexical_cast<double>(parts[i++]));
+	j->setMaxMinAnchor(lexical_cast<int32_t>(parts[i++]));
+	j->setMaxMMES(lexical_cast<uint32_t>(parts[i++]));
+	j->setIntronScore(lexical_cast<double>(parts[i++]));
+	
+	// Genome derived junction stats
+	j->setHammingDistance5p(lexical_cast<uint32_t>(parts[i++]));
+	j->setHammingDistance3p(lexical_cast<uint32_t>(parts[i++]));
+	
+	// Junction group properties
+	j->setUniqueJunction(lexical_cast<bool>(parts[i++]));
+	j->setPrimaryJunction(lexical_cast<bool>(parts[i++]));
+	j->setNbUpstreamJunctions(lexical_cast<uint16_t>(parts[i++]));
+	j->setNbDownstreamJunctions(lexical_cast<uint16_t>(parts[i++]));
+	j->setDistanceToNextUpstreamJunction(lexical_cast<uint32_t>(parts[i++]));
+	j->setDistanceToNextDownstreamJunction(lexical_cast<uint32_t>(parts[i++]));
+	j->setDistanceToNearestJunction(lexical_cast<uint32_t>(parts[i++]));
+	
+	// Extra metrics requiring additional processing
+	j->setMultipleMappingScore(lexical_cast<double>(parts[i++]));
+	j->setCoverage(lexical_cast<double>(parts[i++]));
+	j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[i++]));
+	j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[i++]));
+	
+	// Read Junction anchor depths
+	for (size_t k = 0; k < Junction::JAD_NAMES.size(); k++) {
+		j->setJunctionAnchorDepth(k, lexical_cast<uint32_t>(parts[i + k]));
 	}
 
 	return j;
@@ -1315,8 +1290,8 @@ portcullis::SplicingScores portcullis::Junction::calcSplicingScores(GenomeMapper
 	return ss;
 }
 
-double portcullis::Junction::calcJunctionOverhangLogDeviation(size_t i) const {
-	double Ni = junctionOverhangs[i]; // Actual count at this position
+double portcullis::Junction::calcJunctionAnchorDepthLogDeviation(size_t i) const {
+	double Ni = junctionAnchorDepth[i]; // Actual count at this position
 	if (Ni == 0.0) Ni = 0.000000000001; // Ensure some value > 0 here otherwise we get -infinity later.
 	double Pi = 1.0 - ((double) i / (double) (this->meanReadLength / 2.0)); // Likely scale at this position
 	double Ei = (double) this->getNbSplicedAlignments() * Pi; // Expected count at this position
