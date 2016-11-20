@@ -1195,60 +1195,26 @@ public:
 };
 
 
-const vector<string> Junction::METRIC_NAMES({
-	"canonical_ss",
-	"nb_raw_aln",
-	"nb_dist_aln",
-	"nb_us_aln",
-	"nb_ms_aln",
-	"nb_um_aln",
-	"nb_mm_aln",
-	"nb_bpp_aln",
-	"nb_ppp_aln",
-	"nb_rel_aln",
-	"rel2raw",
-	"entropy",
-	"mean_mismatches",
-	"mean_readlen",
-	"max_min_anc",
-	"maxmmes",
-	"intron_score",
-	"hamming5p",
-	"hamming3p",
-	"uniq_junc",
-	"primary_junc",
-	"nb_up_juncs",
-	"nb_down_juncs",
-	"dist_2_up_junc",
-	"dist_2_down_junc",
-	"dist_nearest_junc"
-	"mm_score",
-	"coverage",
-	"up_aln",
-	"down_aln"
-});
 
-typedef double (Junction::*junction_method_t)() const;
-typedef std::map<std::string, junction_method_t> JuncFuncMap;
 
-const JuncFuncMap JunctionFunctionMap = {
+typedef double (Junction::*junction_double_method_t)() const;
+typedef uint32_t (Junction::*junction_uint_method_t)() const;
+typedef std::map<std::string, junction_double_method_t> JuncDoubleFuncMap;
+typedef std::map<std::string, junction_uint_method_t> JuncUintFuncMap;
+
+const JuncUintFuncMap JunctionUintFunctionMap = {
 	{"nb_raw_aln", &Junction::getNbSplicedAlignments},
-	{"nb_dist_aln", &Junction::getNbDistinctAlignments}
-	/*"nb_us_aln",
-	"nb_ms_aln",
-	"nb_um_aln",
-	"nb_mm_aln",
-	"nb_bpp_aln",
-	"nb_ppp_aln",
-	"nb_rel_aln",
-	"rel2raw",
-	"entropy",
-	"mean_mismatches",
-	"mean_readlen",
-	"max_min_anc",
-	"maxmmes",
-	"intron_score",
-	"hamming5p",
+	{"nb_dist_aln", &Junction::getNbDistinctAlignments},
+	{"nb_us_aln", &Junction::getNbUniquelySplicedAlignments},
+	{"nb_ms_aln", &Junction::getNbMultiplySplicedAlignments},
+	{"nb_um_aln", &Junction::getNbUniquelyMappedAlignments},
+	{"nb_mm_aln", &Junction::getNbMultiplyMappedAlignments},
+	{"nb_bpp_aln", &Junction::getNbBamProperlyPairedAlignments},
+	{"nb_ppp_aln", &Junction::getNbPortcullisProperlyPairedAlignments},
+	{"nb_rel_aln", &Junction::getNbReliableAlignments},
+	{"max_min_anc", &Junction::getMaxMinAnchor},
+	{"maxmmes", &Junction::getMaxMMES}
+	/*{"hamming5p", 
 	"hamming3p",
 	"uniq_junc",
 	"primary_junc",
@@ -1263,34 +1229,15 @@ const JuncFuncMap JunctionFunctionMap = {
 	"down_aln"	*/
 };
 
-const vector<string> Junction::JAD_NAMES({
-	"JAD01",
-	"JAD02",
-	"JAD03",
-	"JAD04",
-	"JAD05",
-	"JAD06",
-	"JAD07",
-	"JAD08",
-	"JAD09",
-	"JAD10",
-	"JAD11",
-	"JAD12",
-	"JAD13",
-	"JAD14",
-	"JAD15",
-	"JAD16",
-	"JAD17",
-	"JAD18",
-	"JAD19",
-	"JAD20"
-});
-
-const vector<string> STRAND_NAMES = {
-	"read-strand",
-	"ss-strand",
-	"consensus-strand"
+const JuncDoubleFuncMap JunctionDoubleFunctionMap = {
+	{"rel2raw", &Junction::getReliable2RawAlignmentRatio},
+	{"entropy", &Junction::getEntropy},
+	{"mean_mismatches", &Junction::getMeanMismatches},
+	{"mean_readlen", &Junction::getMeanReadLength},
+	{"intron_score", &Junction::getIntronScore}	
 };
+
+
 
 struct JunctionComparator {
 

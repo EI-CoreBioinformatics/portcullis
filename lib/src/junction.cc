@@ -47,6 +47,68 @@ using portcullis::bam::Strand;
 
 #include <portcullis/junction.hpp>
 
+const vector<string> portcullis::Junction::METRIC_NAMES({
+	"canonical_ss",
+	"nb_raw_aln",
+	"nb_dist_aln",
+	"nb_us_aln",
+	"nb_ms_aln",
+	"nb_um_aln",
+	"nb_mm_aln",
+	"nb_bpp_aln",
+	"nb_ppp_aln",
+	"nb_rel_aln",
+	"rel2raw",
+	"entropy",
+	"mean_mismatches",
+	"mean_readlen",
+	"max_min_anc",
+	"maxmmes",
+	"intron_score",
+	"hamming5p",
+	"hamming3p",
+	"uniq_junc",
+	"primary_junc",
+	"nb_up_juncs",
+	"nb_down_juncs",
+	"dist_2_up_junc",
+	"dist_2_down_junc",
+	"dist_nearest_junc"
+	"mm_score",
+	"coverage",
+	"up_aln",
+	"down_aln"
+});
+
+const vector<string> portcullis::Junction::JAD_NAMES({
+	"JAD01",
+	"JAD02",
+	"JAD03",
+	"JAD04",
+	"JAD05",
+	"JAD06",
+	"JAD07",
+	"JAD08",
+	"JAD09",
+	"JAD10",
+	"JAD11",
+	"JAD12",
+	"JAD13",
+	"JAD14",
+	"JAD15",
+	"JAD16",
+	"JAD17",
+	"JAD18",
+	"JAD19",
+	"JAD20"
+});
+
+const vector<string> portcullis::Junction::STRAND_NAMES = {
+	"read-strand",
+	"ss-strand",
+	"consensus-strand"
+};
+
 void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t leftStart, const uint32_t rightEnd, const string& ancLeft, const string& ancRight) {
 
 	uint32_t leftEnd = i.start - 1;
@@ -874,14 +936,25 @@ double portcullis::Junction::getValueFromName(const string& name) const {
 	
 	string uname = boost::to_upper_copy(name);
 
-	JuncFuncMap::iterator x = JunctionFunctionMap.find(uname);
-	if (x == JunctionFunctionMap.end()) {
-		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+	double val = 0.0;
+	
+	JuncUintFuncMap::const_iterator uif = JunctionUintFunctionMap.find(uname);
+	if (uif == JunctionUintFunctionMap.end()) {
+		JuncDoubleFuncMap::const_iterator df = JunctionDoubleFunctionMap.find(uname);
+		if (df == JunctionDoubleFunctionMap.end()) {
+			BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 			"Unrecognised junction property: ") + name));
+		}
+		else {
+			val = (this->*(df->second))();
+		}
+		
 	}
-
-	// Use function pointer to get result
-	return (this->*(x->second))();
+	else{
+		val = (double)(this->*(uif->second))();
+	}
+		
+	return val;
 }
 
 
