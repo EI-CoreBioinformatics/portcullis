@@ -1,14 +1,14 @@
 {
     "parameters": {
-        "canonical_ss": {
+        "ss_type": {
             "operator": "in",
             "value": ["C"]
         },
-        "canonical_ss.2": {
+        "ss_type.2": {
             "operator": "in",
             "value": ["S"]
         },
-        "canonical_ss.3": {
+        "ss_type.3": {
             "operator": "in",
             "value": ["N"]
         },
@@ -77,5 +77,5 @@
             "value": 1
         }
     },
-    "expression": "(( canonical_ss ) | ( canonical_ss.2 & rel2raw & hamming5p & hamming3p ) | ( canonical_ss.3 & rel2raw.2 & hamming5p.2 & hamming3p.2 & mean_mismatches & entropy.2 )) & (primary_junc)"
+    "expression": "(( ss_type ) | ( ss_type.2 & rel2raw & hamming5p & hamming3p ) | ( ss_type.3 & rel2raw.2 & hamming5p.2 & hamming3p.2 & mean_mismatches & entropy.2 )) & (primary_junc)"
 }

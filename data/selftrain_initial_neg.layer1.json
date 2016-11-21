@@ -13,5 +13,5 @@
             "value": 0
         }
     },
-    "expression": "( M12-maxmmes & M20-nb_usrs & M22-rel2raw )"
+    "expression": "( maxmmes & nb_us_aln & rel2raw )"
 }

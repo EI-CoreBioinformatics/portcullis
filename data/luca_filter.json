@@ -8,7 +8,7 @@
             "operator": "gt",
             "value": 20
         },
-        "canonical_ss": {
+        "ss_type": {
             "operator": "in",
             "value": ["C"]
         },
@@ -29,5 +29,5 @@
             "value": ["I"]
         }
     },
-    "expression": "refname & canonical_ss & intron_size.2 & (nb_reads | (entropy & coverage & intron_size.1))"
+    "expression": "refname & ss_type & intron_size.2 & (nb_reads | (entropy & coverage & intron_size.1))"
 }

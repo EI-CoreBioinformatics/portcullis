@@ -74,23 +74,26 @@ bool portcullis::eval::operator()(const var& v) const {
 	else if (v == "F" || v == "f" || v == "false" || v == "False")
 		return false;
 	else {
+		string fullname = v;
+		size_t pos = fullname.find(".");
+		string name = pos == string::npos ? fullname : fullname.substr(0, pos);
+		string lname = boost::to_lower_copy(name);	
+		
 		// If it starts with an M then assume we are looking at a metric
-		if (numericmap.count(v) > 0) {
+		if (Junction::isNumericType(lname)) {
 			Operator op = numericmap.at(v).first;
 			double threshold = numericmap.at(v).second;
-			double value = getNumericFromJunc(v);
+			double value = junc->getValueFromName(lname);	
 			bool res = evalNumberLeaf(op, threshold, value);
 			if (!res) {
 				juncMap->at(*(junc->getIntron())).push_back(v + " " + opToString(op) + " " + lexical_cast<string>(threshold));
 			}
 			return res;
-		} else if (stringmap.count(v) > 0) {
+		} else if (Junction::isStringType(lname) > 0) {
 			Operator op = stringmap.at(v).first;
 			unordered_set<string> set = stringmap.at(v).second;
-
 			string setstring = boost::algorithm::join(set, ", ");
-
-			string value = getStringFromJunc(v);
+			string value = junc->getStringFromName(lname);
 			bool res = evalSetLeaf(op, set, value);
 			if (!res) {
 				juncMap->at(*(junc->getIntron())).push_back(v + " " + opToString(op) + " " + setstring);
@@ -105,30 +108,6 @@ bool portcullis::eval::operator()(const var& v) const {
 	return boost::lexical_cast<bool>(v);
 }
 
-double portcullis::eval::getNumericFromJunc(const var& fullname) const {
-
-	size_t pos = fullname.find(".");
-
-	string name = pos == string::npos ? fullname : fullname.substr(0, pos);
-
-	return junc->getValueFromName(name);	
-}
-
-string portcullis::eval::getStringFromJunc(const var& fullname) const {
-
-	size_t pos = fullname.find(".");
-
-	string name = pos == string::npos ? fullname : fullname.substr(0, pos);
-
-	if (boost::iequals(name, "refname")) {
-		return junc->getIntron()->ref.name;
-	} else if (boost::iequals(name, "M1-canonical_ss")) {
-		return string() + cssToChar(junc->getSpliceSiteType());
-	}
-
-	BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-		"Unrecognised param: ") + name));
-}
 
 bool portcullis::eval::evalNumberLeaf(Operator op, double threshold, double value) const {
 	switch (op) {

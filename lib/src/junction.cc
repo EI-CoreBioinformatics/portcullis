@@ -946,15 +946,13 @@ double portcullis::Junction::calcCoverage(const vector<uint32_t>& coverageLevels
 
 double portcullis::Junction::getValueFromName(const string& name) const {
 	
-	string uname = boost::to_lower_copy(name);
-
 	double val = 0.0;
 	
-	JuncUint32FuncMap::const_iterator uif = JunctionUint32FunctionMap.find(uname);
+	JuncUint32FuncMap::const_iterator uif = JunctionUint32FunctionMap.find(name);
 	if (uif == JunctionUint32FunctionMap.end()) {
-		JuncDoubleFuncMap::const_iterator df = JunctionDoubleFunctionMap.find(uname);
+		JuncDoubleFuncMap::const_iterator df = JunctionDoubleFunctionMap.find(name);
 		if (df == JunctionDoubleFunctionMap.end()) {
-			JuncBoolFuncMap::const_iterator bf = JunctionBoolFunctionMap.find(uname);
+			JuncBoolFuncMap::const_iterator bf = JunctionBoolFunctionMap.find(name);
 			if (bf == JunctionBoolFunctionMap.end()) {
 				BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 				"Unrecognised junction property: ") + name));
@@ -974,8 +972,37 @@ double portcullis::Junction::getValueFromName(const string& name) const {
 	return val;
 }
 
+bool portcullis::Junction::isNumericType(const string& name) {
+	JuncUint32FuncMap::const_iterator uif = JunctionUint32FunctionMap.find(name);
+	if (uif == JunctionUint32FunctionMap.end()) {
+		JuncDoubleFuncMap::const_iterator df = JunctionDoubleFunctionMap.find(name);
+		if (df == JunctionDoubleFunctionMap.end()) {
+			JuncBoolFuncMap::const_iterator bf = JunctionBoolFunctionMap.find(name);
+			if (bf == JunctionBoolFunctionMap.end()) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
 
+string portcullis::Junction::getStringFromName(const string& name) const {
+	JuncStringFuncMap::const_iterator sf = JunctionStringFunctionMap.find(name);
+	if (sf == JunctionStringFunctionMap.end()) {
+		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+				"Unrecognised junction property: ") + name));
+	}
+	
+	return (this->*(sf->second))();
+}
 
+bool portcullis::Junction::isStringType(const string& name) {
+	JuncStringFuncMap::const_iterator sf = JunctionStringFunctionMap.find(name);
+	if (sf == JunctionStringFunctionMap.end()) {
+		return false;
+	}
+	return true;
+}
 
 // **** Output methods ****
 

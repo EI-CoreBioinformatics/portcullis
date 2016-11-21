@@ -356,6 +356,14 @@ public:
 	int32_t getIntronSize() const {
 		return intron != nullptr ? intron->size() : 0;
 	}
+	
+	/**
+	 * Get the reference sequence name in which this junction is located
+	 * @return 
+	 */
+	string getReferenceName() const {
+		return this->intron->ref.name;
+	}
 
 	/**
 	 * The start site of the left anchor represented by this junction
@@ -438,6 +446,15 @@ public:
 	 */
 	CanonicalSS getSpliceSiteType() const {
 		return this->canonicalSpliceSites;
+	}
+	
+	/**
+	 * The type of junction this is: canonical, semi-canonical or non-canonical, represented in a string
+	 * : C, S, N
+	 * @return 
+	 */
+	string getSpliceSiteTypeAsString() const {
+		return string() + cssToChar(this->canonicalSpliceSites);
 	}
 
 	/**
@@ -763,13 +780,21 @@ public:
 
 
 	/**
-	 * This calls the relevant getter for the given name
+	 * This calls the relevant getter for the given name, assuming the name represents a property with
+	 * a numeric value that can be converted to a double.
 	 * @param name
 	 * @return 
 	 */
 	double getValueFromName(const string& name) const;
 
-
+	/**
+	 * This calls the relevant getter for the given name, assuming the name represents a property with
+	 * a string value
+	 * @param name
+	 * @return 
+	 */
+	string getStringFromName(const string& name) const;
+	
 
 	// ***** Setters *****
 	// Not all variables have setters
@@ -1235,24 +1260,35 @@ public:
 	
 	static const vector<string> METRIC_NAMES;
 	static const vector<string> JAD_NAMES;
-	static const vector<string> STRAND_NAMES;	
+	static const vector<string> STRAND_NAMES;
+	
+	/**
+	 * Returns true if the given property name represents a numeric type.  (Booleans count as a numeric
+	 * type)
+	 * @param name
+	 * @return 
+	 */
+	static bool isNumericType(const string& name);
+	
+	/**
+	 * Returns true is the given property name represents a string type
+	 * @param name
+	 * @return 
+	 */
+	static bool isStringType(const string& name);
 };
 
 
 typedef double (Junction::*junction_double_method_t)() const;
 typedef uint32_t (Junction::*junction_uint32_method_t)() const;
 typedef bool (Junction::*junction_bool_method_t)() const;
+typedef string (Junction::*junction_string_method_t)() const;
 
 typedef std::map<std::string, junction_double_method_t> JuncDoubleFuncMap;
 typedef std::map<std::string, junction_uint32_method_t> JuncUint32FuncMap;
 typedef std::map<std::string, junction_bool_method_t> JuncBoolFuncMap;
+typedef std::map<std::string, junction_string_method_t> JuncStringFuncMap;
 
-const JuncBoolFuncMap JunctionBoolFunctionMap = {
-	{"suspicious", &Junction::isSuspicious},
-	{"pfp", &Junction::isPotentialFalsePositive},
-	{"uniq_junc", &Junction::isUniqueJunction},
-	{"primary_junc", &Junction::isPrimaryJunction}	
-};
 
 const JuncUint32FuncMap JunctionUint32FunctionMap = {
 	{"nb_raw_aln", &Junction::getNbSplicedAlignments},
@@ -1288,6 +1324,19 @@ const JuncDoubleFuncMap JunctionDoubleFunctionMap = {
 	{"splice_sig", &Junction::getSplicingSignal},
 	{"mm_score", &Junction::getMultipleMappingScore},
 	{"coverage", &Junction::getCoverage}	
+};
+
+const JuncBoolFuncMap JunctionBoolFunctionMap = {
+	{"suspicious", &Junction::isSuspicious},
+	{"pfp", &Junction::isPotentialFalsePositive},
+	{"uniq_junc", &Junction::isUniqueJunction},
+	{"primary_junc", &Junction::isPrimaryJunction}	
+};
+
+
+const JuncStringFuncMap JunctionStringFunctionMap = {
+	{"ss_type", &Junction::getSpliceSiteTypeAsString},
+	{"refname", &Junction::getReferenceName}
 };
 
 struct JunctionComparator {
