@@ -61,7 +61,7 @@ namespace portcullis {
  * alignments likely to be uniquely mapped from those that have a high probability of
  * mapping to multiple locations.  This cutoff seems to work for most RNAseq mappers
  * that we are aware of.
- */ 
+ */
 const uint16_t MAP_QUALITY_THRESHOLD = 30;
 
 typedef boost::error_info<struct JunctionError, string> JunctionErrorInfo;
@@ -193,7 +193,7 @@ private:
 
 	// **** Junction metrics ****
 
-	CanonicalSS canonicalSpliceSites; 
+	CanonicalSS canonicalSpliceSites;
 
 	// Alignment counts
 	uint32_t nbAlRaw;
@@ -216,12 +216,12 @@ private:
 	uint32_t hammingDistance5p;
 	uint32_t hammingDistance3p;
 	double codingPotential;
-        double positionWeightScore;
-        double splicingSignal;
+	double positionWeightScore;
+	double splicingSignal;
 
 	// Junction relationships
 	bool uniqueJunction;
-	bool primaryJunction;       
+	bool primaryJunction;
 	uint32_t nbDownstreamJunctions;
 	uint32_t nbUpstreamJunctions;
 	uint32_t distanceToNextDownstreamJunction;
@@ -356,7 +356,7 @@ public:
 	int32_t getIntronSize() const {
 		return intron != nullptr ? intron->size() : 0;
 	}
-	
+
 	/**
 	 * Get the reference sequence name in which this junction is located
 	 * @return 
@@ -447,7 +447,7 @@ public:
 	CanonicalSS getSpliceSiteType() const {
 		return this->canonicalSpliceSites;
 	}
-	
+
 	/**
 	 * The type of junction this is: canonical, semi-canonical or non-canonical, represented in a string
 	 * : C, S, N
@@ -616,7 +616,7 @@ public:
 	/**
 	 * A value representing the liklihood that this junction has coding potential
 	 * @return 
-	 */	
+	 */
 	double getCodingPotential() const {
 		return this->codingPotential;
 	}
@@ -637,7 +637,6 @@ public:
 	double getSplicingSignal() const {
 		return this->splicingSignal;
 	}
-
 
 	/**
 	 * If true this junction shares no splice sites with other junctions in this
@@ -794,7 +793,7 @@ public:
 	 * @return 
 	 */
 	string getStringFromName(const string& name) const;
-	
+
 
 	// ***** Setters *****
 	// Not all variables have setters
@@ -818,7 +817,7 @@ public:
 	void setDa2(string da2) {
 		this->da2 = da2;
 	}
-	
+
 	void setNbSplicedAlignments(uint32_t nbAlRaw) {
 		this->nbAlRaw = nbAlRaw;
 	}
@@ -878,7 +877,7 @@ public:
 	void setHammingDistance5p(uint32_t hammingDistance5p) {
 		this->hammingDistance5p = hammingDistance5p;
 	}
-	
+
 	void setCodingPotential(double codingPotential) {
 		this->codingPotential = codingPotential;
 	}
@@ -1098,9 +1097,7 @@ public:
 	 * @param Length of threshold Intron size
 	 * @return A score for this intron size given the threshold value
 	 */
-	double calcIntronScore(const uint32_t threshold) const {
-		return this->intron->size() <= threshold ? 0.0 : log(this->intron->size() - threshold);
-	}
+	double calcIntronScore(const uint32_t threshold);
 
 
 	/**
@@ -1111,11 +1108,11 @@ public:
 	 * @param intron
 	 * @return 
 	 */
-	double calcCodingPotential(GenomeMapper& gmap, KmerMarkovModel& exon, KmerMarkovModel& intron) const;
+	double calcCodingPotential(GenomeMapper& gmap, KmerMarkovModel& exon, KmerMarkovModel& intron);
 
 	SplicingScores calcSplicingScores(GenomeMapper& gmap, KmerMarkovModel& donorT, KmerMarkovModel& donorF,
 			KmerMarkovModel& acceptorT, KmerMarkovModel& acceptorF,
-			PosMarkovModel& donorP, PosMarkovModel& acceptorP) const;
+			PosMarkovModel& donorP, PosMarkovModel& acceptorP);
 
 
 	/**
@@ -1198,7 +1195,7 @@ public:
 				<< j.da1 << "\t"
 				<< j.da2 << "\t"
 				<< cssToChar(j.canonicalSpliceSites) << "\t"
-				
+
 				<< j.score << "\t"
 				<< j.suspicious << "\t"
 				<< j.pfp << "\t"
@@ -1239,7 +1236,7 @@ public:
 				<< j.coverage << "\t"
 				<< j.nbUpstreamFlankingAlignments << "\t"
 				<< j.nbDownstreamFlankingAlignments;
-				
+
 		for (size_t i = 0; i < JAD_NAMES.size(); i++) {
 			strm << "\t" << j.junctionAnchorDepth[i];
 		}
@@ -1257,11 +1254,11 @@ public:
 	static string junctionOutputHeader();
 
 	static shared_ptr<Junction> parse(const string& line);
-	
+
 	static const vector<string> METRIC_NAMES;
 	static const vector<string> JAD_NAMES;
 	static const vector<string> STRAND_NAMES;
-	
+
 	/**
 	 * Returns true if the given property name represents a numeric type.  (Booleans count as a numeric
 	 * type)
@@ -1269,7 +1266,7 @@ public:
 	 * @return 
 	 */
 	static bool isNumericType(const string& name);
-	
+
 	/**
 	 * Returns true is the given property name represents a string type
 	 * @param name
@@ -1280,9 +1277,9 @@ public:
 
 
 typedef double (Junction::*junction_double_method_t)() const;
-typedef uint32_t (Junction::*junction_uint32_method_t)() const;
+typedef uint32_t(Junction::*junction_uint32_method_t)() const;
 typedef bool (Junction::*junction_bool_method_t)() const;
-typedef string (Junction::*junction_string_method_t)() const;
+typedef string(Junction::*junction_string_method_t)() const;
 
 typedef std::map<std::string, junction_double_method_t> JuncDoubleFuncMap;
 typedef std::map<std::string, junction_uint32_method_t> JuncUint32FuncMap;
@@ -1317,20 +1314,20 @@ const JuncUint32FuncMap JunctionUint32FunctionMap = {
 const JuncDoubleFuncMap JunctionDoubleFunctionMap = {
 	{"rel2raw", &Junction::getReliable2RawAlignmentRatio},
 	{"entropy", &Junction::getEntropy},
-	{"mean_mismatches", &Junction::getMeanMismatches},	
+	{"mean_mismatches", &Junction::getMeanMismatches},
 	{"intron_score", &Junction::getIntronScore},
 	{"coding", &Junction::getCodingPotential},
 	{"pws", &Junction::getPositionWeightScore},
 	{"splice_sig", &Junction::getSplicingSignal},
 	{"mm_score", &Junction::getMultipleMappingScore},
-	{"coverage", &Junction::getCoverage}	
+	{"coverage", &Junction::getCoverage}
 };
 
 const JuncBoolFuncMap JunctionBoolFunctionMap = {
 	{"suspicious", &Junction::isSuspicious},
 	{"pfp", &Junction::isPotentialFalsePositive},
 	{"uniq_junc", &Junction::isUniqueJunction},
-	{"primary_junc", &Junction::isPrimaryJunction}	
+	{"primary_junc", &Junction::isPrimaryJunction}
 };
 
 

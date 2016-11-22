@@ -54,8 +54,8 @@ using boost::filesystem::create_symlink;
 using boost::filesystem::create_directory;
 using boost::filesystem::symbolic_link_exists;
 using boost::property_tree::ptree;
-namespace qi    = boost::spirit::qi;
-namespace phx   = boost::phoenix;
+namespace qi = boost::spirit::qi;
+namespace phx = boost::phoenix;
 
 #include <portcullis/intron.hpp>
 #include <portcullis/junction.hpp>
@@ -65,81 +65,89 @@ using portcullis::Junction;
 using portcullis::JunctionSystem;
 
 namespace portcullis {
-    
-typedef boost::error_info<struct RuleParserError,string> RuleParserErrorInfo;
-struct RuleParserException: virtual boost::exception, virtual std::exception { };
-    
-struct op_or  {};
-struct op_and {};
-struct op_not {};
 
-typedef std::string var; 
+typedef boost::error_info<struct RuleParserError, string> RuleParserErrorInfo;
+
+struct RuleParserException : virtual boost::exception, virtual std::exception {
+};
+
+struct op_or {
+};
+
+struct op_and {
+};
+
+struct op_not {
+};
+
+typedef std::string var;
 template <typename tag> struct binop;
 template <typename tag> struct unop;
 
-typedef boost::variant<var, 
-        boost::recursive_wrapper<unop <op_not> >, 
-        boost::recursive_wrapper<binop<op_and> >,
-        boost::recursive_wrapper<binop<op_or> >
-        > expr;
+typedef boost::variant<var,
+boost::recursive_wrapper<unop <op_not> >,
+boost::recursive_wrapper<binop<op_and> >,
+boost::recursive_wrapper<binop<op_or> >
+> expr;
 
-template <typename tag> struct binop
-{
-    explicit binop(const expr& l, const expr& r) : oper1(l), oper2(r) { }
-    expr oper1, oper2;
+template <typename tag> struct binop {
+
+	explicit binop(const expr& l, const expr& r) : oper1(l), oper2(r) {
+	}
+	expr oper1, oper2;
 };
 
-template <typename tag> struct unop
-{
-    explicit unop(const expr& o) : oper1(o) { }
-    expr oper1;
+template <typename tag> struct unop {
+
+	explicit unop(const expr& o) : oper1(o) {
+	}
+	expr oper1;
 };
 
 enum class Operator {
-    EQ,
-    GT,
-    LT,
-    GTE,
-    LTE,
-    IN,
-    NOT_IN
+	EQ,
+	GT,
+	LT,
+	GTE,
+	LTE,
+	IN,
+	NOT_IN
 };
 
 const std::map<string, Operator> String2OperatorMap = {
-    {"EQ", Operator::EQ},
-    {"GT", Operator::GT},
-    {"LT", Operator::LT},
-    {"GTE", Operator::GTE},
-    {"LTE", Operator::LTE},
-    {"IN", Operator::IN},
-    {"NOT_IN", Operator::NOT_IN}
+	{"EQ", Operator::EQ},
+	{"GT", Operator::GT},
+	{"LT", Operator::LT},
+	{"GTE", Operator::GTE},
+	{"LTE", Operator::LTE},
+	{"IN", Operator::IN},
+	{"NOT_IN", Operator::NOT_IN}
 };
 
-
 inline string opToString(const Operator op) {
-    switch (op) {
-        case Operator::EQ:
-            return "EQ";                
-        case Operator::GT:
-            return "GT";
-        case Operator::LT:
-            return "LT";
-        case Operator::GTE:
-            return "GTE";
-        case Operator::LTE:
-            return "LTE";
-        case Operator::IN:
-            return "IN";
-        case Operator::NOT_IN:
-            return "NOT_IN";
-        default:
-            BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-                    "Unrecognised operation")));        
-    }    
+	switch (op) {
+	case Operator::EQ:
+		return "EQ";
+	case Operator::GT:
+		return "GT";
+	case Operator::LT:
+		return "LT";
+	case Operator::GTE:
+		return "GTE";
+	case Operator::LTE:
+		return "LTE";
+	case Operator::IN:
+		return "IN";
+	case Operator::NOT_IN:
+		return "NOT_IN";
+	default:
+		BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
+				"Unrecognised operation")));
+	}
 }
 
 inline bool isNumericOp(Operator op) {
-    return (op != Operator::IN && op != Operator::NOT_IN);
+	return (op != Operator::IN && op != Operator::NOT_IN);
 }
 
 typedef unordered_map<string, pair<Operator, double>> NumericFilterMap;
@@ -152,93 +160,94 @@ string opToString(const Operator op);
 bool isNumericOp(Operator op);
 
 struct eval : boost::static_visitor<bool> {
-    
-    eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap, const JunctionPtr _junc, JuncResultMap* _juncMap);
+	eval(const NumericFilterMap& _numericmap, const SetFilterMap& _stringmap, const JunctionPtr _junc, JuncResultMap* _juncMap);
 
-    //
-    bool operator()(const var& v) const;
+	//
+	bool operator()(const var& v) const;
 
-    bool operator()(const binop<op_and>& b) const {        
-        bool op1Res = recurse(b.oper1);
-        bool op2Res = recurse(b.oper2);
-        return op1Res && op2Res;
-    }
-    bool operator()(const binop<op_or>& b) const {
-        bool op1Res = recurse(b.oper1);
-        bool op2Res = recurse(b.oper2);
-        return op1Res || op2Res;
-    }
-    bool operator()(const unop<op_not>& u) const {
-        return !recurse(u.oper1);
-    } 
-    
-    double getNumericFromJunc(const var& fullname) const;
-    
-    string getStringFromJunc(const var& fullname) const;
-    
-    bool evalNumberLeaf(Operator op, double threshold, double value) const;
-    
-    bool evalSetLeaf(Operator op, unordered_set<string>& set, string value) const;
+	bool operator()(const binop<op_and>& b) const {
+		bool op1Res = recurse(b.oper1);
+		bool op2Res = recurse(b.oper2);
+		return op1Res && op2Res;
+	}
 
-    private:
-        
-    NumericFilterMap numericmap;
-    SetFilterMap stringmap;
-    JunctionPtr junc;
-    JuncResultMap* juncMap;
-    
-    template<typename T>
-        bool recurse(T const& v) const 
-        { return boost::apply_visitor(*this, v); }
+	bool operator()(const binop<op_or>& b) const {
+		bool op1Res = recurse(b.oper1);
+		bool op2Res = recurse(b.oper2);
+		return op1Res || op2Res;
+	}
+
+	bool operator()(const unop<op_not>& u) const {
+		return !recurse(u.oper1);
+	}
+
+	double getNumericFromJunc(const var& fullname) const;
+
+	string getStringFromJunc(const var& fullname) const;
+
+	bool evalNumberLeaf(Operator op, double threshold, double value) const;
+
+	bool evalSetLeaf(Operator op, unordered_set<string>& set, string value) const;
+
+private:
+
+	NumericFilterMap numericmap;
+	SetFilterMap stringmap;
+	JunctionPtr junc;
+	JuncResultMap* juncMap;
+
+	template<typename T>
+	bool recurse(T const& v) const {
+		return boost::apply_visitor(*this, v);
+	}
 };
 
-
 template <typename It, typename Skipper = qi::space_type>
-    struct parser : qi::grammar<It, expr(), Skipper>
-{
-        parser() : parser::base_type(expr_) {
-            
-            expr_  = or_.alias();
+struct parser : qi::grammar<It, expr(), Skipper> {
 
-            or_  = (and_ >> '|'  >> or_ ) [ qi::_val = phx::construct<binop<op_or > >(qi::_1_type(), qi::_2_type()) ] | and_   [ qi::_val = qi::_1_type() ];
-            and_ = (not_ >> '&' >> and_)  [ qi::_val = phx::construct<binop<op_and> >(qi::_1_type(), qi::_2_type()) ] | not_   [ qi::_val = qi::_1_type() ];
-            not_ = ('!' > simple       )  [ qi::_val = phx::construct<unop <op_not> >(qi::_1_type())     ] | simple [ qi::_val = qi::_1_type() ];
+	parser() : parser::base_type(expr_) {
 
-            simple = (('(' > expr_ > ')') | var_);
-            var_ = qi::lexeme[+(qi::alpha|qi::digit|qi::char_("-")|qi::char_("_")|qi::char_("."))];
+		expr_ = or_.alias();
 
-            BOOST_SPIRIT_DEBUG_NODE(expr_);
-            BOOST_SPIRIT_DEBUG_NODE(or_);
-            BOOST_SPIRIT_DEBUG_NODE(and_);
-            BOOST_SPIRIT_DEBUG_NODE(not_);
-            BOOST_SPIRIT_DEBUG_NODE(simple);
-            BOOST_SPIRIT_DEBUG_NODE(var_);
-        }
+		or_ = (and_ >> '|' >> or_) [ qi::_val = phx::construct<binop<op_or > >(qi::_1_type(), qi::_2_type()) ] | and_ [ qi::_val = qi::_1_type() ];
+		and_ = (not_ >> '&' >> and_) [ qi::_val = phx::construct<binop<op_and> >(qi::_1_type(), qi::_2_type()) ] | not_ [ qi::_val = qi::_1_type() ];
+		not_ = ('!' > simple) [ qi::_val = phx::construct<unop <op_not> >(qi::_1_type()) ] | simple [ qi::_val = qi::_1_type() ];
 
-        private:
-        qi::rule<It, var() , Skipper> var_;
-        qi::rule<It, expr(), Skipper> not_, and_, or_, simple, expr_; 
+		simple = (('(' > expr_ > ')') | var_);
+		var_ = qi::lexeme[+(qi::alpha | qi::digit | qi::char_("-") | qi::char_("_") | qi::char_("."))];
+
+		BOOST_SPIRIT_DEBUG_NODE(expr_);
+		BOOST_SPIRIT_DEBUG_NODE(or_);
+		BOOST_SPIRIT_DEBUG_NODE(and_);
+		BOOST_SPIRIT_DEBUG_NODE(not_);
+		BOOST_SPIRIT_DEBUG_NODE(simple);
+		BOOST_SPIRIT_DEBUG_NODE(var_);
+	}
+
+private:
+	qi::rule<It, var(), Skipper> var_;
+	qi::rule<It, expr(), Skipper> not_, and_, or_, simple, expr_;
 };
 
 class RuleFilter {
 protected:
-    /**
-     * This function evaluates the truth status of a row parameter given the configuration present in the JSON file.
-     * @param op Operation to be considered
-     * @param threshold Threshold
-     * @param param Value
-     * @return True if parameter passes operation and threshold, false otherwise
-     */
-    static bool parse(const string& expression, JunctionPtr junc, 
-            NumericFilterMap& numericFilters, SetFilterMap& stringFilters, 
-            JuncResultMap* results);
+	/**
+	 * This function evaluates the truth status of a row parameter given the configuration present in the JSON file.
+	 * @param op Operation to be considered
+	 * @param threshold Threshold
+	 * @param param Value
+	 * @return True if parameter passes operation and threshold, false otherwise
+	 */
+	static bool parse(const string& expression, JunctionPtr junc,
+			NumericFilterMap& numericFilters, SetFilterMap& stringFilters,
+			JuncResultMap* results);
 
 public:
-    
-    static map<string,int> filter(const path& ruleFile, const JunctionList& all, 
-            JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap);
-    
-    static void saveResults(const path& outputFile, const JunctionSystem& js, JuncResultMap& results);
+
+	static map<string, int> filter(const path& ruleFile, const JunctionList& all,
+			JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap);
+
+	static void saveResults(const path& outputFile, const JunctionSystem& js, JuncResultMap& results);
 };
 
 

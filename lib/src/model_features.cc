@@ -41,21 +41,21 @@ using portcullis::Junction;
 #include "portcullis/junction_system.hpp"
 
 portcullis::ml::ModelFeatures::ModelFeatures() : L95(0) {
-        fi = 1;
-        features.clear();
-        for(size_t i = 0; i < VAR_NAMES.size(); i++) {
-            Feature f;
-            f.name = VAR_NAMES[i];
-            f.active = true;
-            features.push_back(f);
-        }
-        for(size_t i = 0; i < Junction::JAD_NAMES.size(); i++) {
-            Feature f;
-            f.name = Junction::JAD_NAMES[i];
-            f.active = true;
-            features.push_back(f);
-        }        
+    fi = 1;
+    features.clear();
+    for (size_t i = 0; i < VAR_NAMES.size(); i++) {
+        Feature f;
+        f.name = VAR_NAMES[i];
+        f.active = true;
+        features.push_back(f);
     }
+    for (size_t i = 0; i < Junction::JAD_NAMES.size(); i++) {
+        Feature f;
+        f.name = Junction::JAD_NAMES[i];
+        f.active = true;
+        features.push_back(f);
+    }
+}
 
 void portcullis::ml::ModelFeatures::initGenomeMapper(const path& genomeFile) {
 
@@ -69,7 +69,7 @@ void portcullis::ml::ModelFeatures::initGenomeMapper(const path& genomeFile) {
 uint32_t portcullis::ml::ModelFeatures::calcIntronThreshold(const JunctionList& juncs) {
 
     vector<uint32_t> intron_sizes;
-    for(auto& j : juncs) {
+    for (auto& j : juncs) {
         intron_sizes.push_back(j->getIntronSize());
     }
 
@@ -84,14 +84,14 @@ void portcullis::ml::ModelFeatures::trainCodingPotentialModel(const JunctionList
 
     vector<string> exons;
     vector<string> introns;
-    for(auto& j : in) {
+    for (auto& j : in) {
 
         int len = 0;
 
         string left_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 202, j->getIntron()->start - 2, &len);
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             left_exon = SeqUtils::reverseComplement(left_exon);
-        }        
+        }
         exons.push_back(left_exon);
 
         /*string left_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->start+80, &len);
@@ -105,18 +105,18 @@ void portcullis::ml::ModelFeatures::trainCodingPotentialModel(const JunctionList
             right_intron = SeqUtils::reverseComplement(right_intron);
         }        
         introns.push_back(right_intron);*/
-        
+
         string intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->end, &len);
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             intron = SeqUtils::reverseComplement(intron);
-        }        
+        }
         introns.push_back(intron);
 
 
         string right_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end + 1, j->getIntron()->end + 201, &len);
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             right_exon = SeqUtils::reverseComplement(right_exon);
-        }        
+        }
         exons.push_back(right_exon);
     }
 
@@ -128,58 +128,56 @@ void portcullis::ml::ModelFeatures::trainSplicingModels(const JunctionList& pass
 
     vector<string> donors;
     vector<string> acceptors;
-    for(auto& j : pass) {
+    for (auto& j : pass) {
 
         int len = 0;
 
         string left = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 3, j->getIntron()->start + 20, &len);
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             left = SeqUtils::reverseComplement(left);
-        }        
-   
+        }
+
         string right = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end - 20, j->getIntron()->end + 2, &len);
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             right = SeqUtils::reverseComplement(right);
-        }        
-        
+        }
+
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             donors.push_back(right);
             acceptors.push_back(left);
-        }
-        else {
+        } else {
             donors.push_back(left);
-            acceptors.push_back(right);            
+            acceptors.push_back(right);
         }
-        
+
     }
 
     donorPWModel.train(donors, 1);
     acceptorPWModel.train(acceptors, 1);
     donorTModel.train(donors, 5);
     acceptorTModel.train(acceptors, 5);
-    
+
     donors.clear();
     acceptors.clear();
-    
-    for(auto& j : fail) {
+
+    for (auto& j : fail) {
 
         int len = 0;
 
         string left = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 3, j->getIntron()->start + 20, &len);
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             left = SeqUtils::reverseComplement(left);
-        }        
-   
+        }
+
         string right = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end - 20, j->getIntron()->end + 2, &len);
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             right = SeqUtils::reverseComplement(right);
-        }        
-        
+        }
+
         if (j->getConsensusStrand() == Strand::NEGATIVE) {
             donors.push_back(right);
             acceptors.push_back(left);
-        }
-        else {
+        } else {
             donors.push_back(left);
             acceptors.push_back(right);
         }
@@ -190,12 +188,12 @@ void portcullis::ml::ModelFeatures::trainSplicingModels(const JunctionList& pass
 }
 
 void portcullis::ml::ModelFeatures::setRow(Data* d, size_t row, JunctionPtr j, bool labelled) {
-    SplicingScores ss = j->calcSplicingScores(gmap, donorTModel, donorFModel, acceptorTModel, acceptorFModel, 
+    SplicingScores ss = j->calcSplicingScores(gmap, donorTModel, donorFModel, acceptorTModel, acceptorFModel,
             donorPWModel, acceptorPWModel);
 
     bool error = false;
     d->set(0, row, j->isGenuine(), error);
-    
+
     uint16_t i = 1;
 
     if (features[1].active) {
@@ -212,10 +210,10 @@ void portcullis::ml::ModelFeatures::setRow(Data* d, size_t row, JunctionPtr j, b
     }
     if (features[5].active) {
         d->set(i++, row, j->getReliable2RawAlignmentRatio(), error);
-    }        
+    }
     if (features[6].active) {
         d->set(i++, row, j->getMaxMinAnchor(), error);
-    }        
+    }
     if (features[7].active) {
         d->set(i++, row, j->getMaxMMES(), error);
     }
@@ -239,7 +237,7 @@ void portcullis::ml::ModelFeatures::setRow(Data* d, size_t row, JunctionPtr j, b
     }
 
     //Junction overhang values at each position are first converted into deviation from expected distributions       
-    for(size_t joi = 0; joi < Junction::JAD_NAMES.size(); joi++) {
+    for (size_t joi = 0; joi < Junction::JAD_NAMES.size(); joi++) {
         if (features[joi + 14].active) {
             d->set(i++, row, j->calcJunctionAnchorDepthLogDeviation(joi), error);
         }
@@ -247,108 +245,105 @@ void portcullis::ml::ModelFeatures::setRow(Data* d, size_t row, JunctionPtr j, b
 }
 
 Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& x) {
-        
+
     vector<string> headers;
-    for(auto& f : features) {
+    for (auto& f : features) {
         if (f.active) {
             headers.push_back(f.name);
         }
     }
-    
+
     // Convert junction list info to double*
     Data* d = new DataDouble(headers, x.size(), headers.size());
-    
+
     uint32_t row = 0;
-    for (const auto& j : x) {        
-        setRow(d, row, j, true);        
+    for (const auto& j : x) {
+        setRow(d, row, j, true);
         row++;
-    }    
-    
+    }
+
     return d;
 }
 
 Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& xl, const JunctionList& xu) {
-        
+
     vector<string> headers;
-    for(auto& f : features) {
+    for (auto& f : features) {
         if (f.active) {
             headers.push_back(f.name);
         }
     }
-    
+
     // Convert junction list info to double*
     Data* d = new DataDouble(headers, xl.size() + xu.size(), headers.size());
-    
+
     uint32_t row = 0;
-    for (const auto& j : xl) {        
-        setRow(d, row, j, true);        
+    for (const auto& j : xl) {
+        setRow(d, row, j, true);
         row++;
     }
-    
-    for (const auto& j : xu) {        
-        setRow(d, row, j, false);        
+
+    for (const auto& j : xu) {
+        setRow(d, row, j, false);
         row++;
-    }    
-    
+    }
+
     return d;
 }
 
-
-
 portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const JunctionList& pos, const JunctionList& neg,
         string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose, bool smote, bool enn) {
-    
+
     // Work out number of times to duplicate negative set
     const int N = (pos.size() / neg.size()) - 1;
-    
+
     // Duplicate pointers to negative set
     JunctionList neg2;
     neg2.reserve(neg.size());
     neg2.insert(neg2.end(), neg.begin(), neg.end());
-    
+
     uint32_t smote_rows = 0;
     double* smote_data = 0;
     if (N > 0 && smote) {
-    
+
         cout << "Oversampling negative set to balance with positive set using SMOTE" << endl;
         Data* negData = juncs2FeatureVectors(neg);
         const int SC = negData->getNumCols() - 1;
-    
-        size_t nelements = negData->getNumRows() * SC ;
+
+        size_t nelements = negData->getNumRows() * SC;
         double* nm = new double[nelements];
-        for( uint32_t baseidx = 0; baseidx < negData->getNumRows(); baseidx++ ) {        
+        for (uint32_t baseidx = 0; baseidx < negData->getNumRows(); baseidx++) {
             double* r = &nm[baseidx * SC];
-            for( size_t c = 1; c < negData->getNumCols(); c++) {
+            for (size_t c = 1; c < negData->getNumCols(); c++) {
                 r[c - 1] = negData->get(baseidx, c);
                 //cout << r[c-1];
             }
             //cout << endl;
         }
 
-        Smote smote(5, N, threads, nm, negData->getNumRows(), negData->getNumCols()-1);
+        Smote smote(5, N, threads, nm, negData->getNumRows(), negData->getNumCols() - 1);
         smote.execute();
         smote_rows = smote.getNbSynthRows();
         smote_data = new double[smote_rows * SC];
         double* sd = smote.getSynthetic();
-        for(size_t i = 0; i < smote_rows * SC; i++) {
+        for (size_t i = 0; i < smote_rows * SC; i++) {
             smote_data[i] = sd[i];
         }
         cout << "Number of synthesized entries: " << smote.getNbSynthRows() << endl;
-    }
-    else if (N <= 0 && smote) {
-        
+    } else if (N <= 0 && smote) {
+
         cout << "Undersampling negative set to balance with positive set" << endl;
         std::mt19937 rng(12345);
-        while(neg2.size() > pos.size()) {        
+        while (neg2.size() > pos.size()) {
             std::uniform_int_distribution<int> gen(0, neg2.size()); // uniform, unbiased
             int i = gen(rng);
-            neg2.erase(neg2.begin()+i);
+            neg2.erase(neg2.begin() + i);
         }
     }
-    
-    
+
+
     if (verbose) cout << endl << "Combining positive, negative " << (N > 0 ? "and synthetic negative " : "") << "datasets." << endl;
-    
+
     JunctionList training;
     training.reserve(pos.size() + neg2.size());
     training.insert(training.end(), pos.begin(), pos.end());
@@ -357,70 +352,68 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
     JunctionSystem trainingSystem(training);
     trainingSystem.sort();
     JunctionList x = trainingSystem.getJunctions();
-       
-    
+
+
     Data* otd = juncs2FeatureVectors(x);
-    
+
     // Create data to correct size
-    Data* trainingData = N > 0 && smote ? 
-        new DataDouble(
-            otd->getVariableNames(), 
-            x.size() + smote_rows, 
+    Data* trainingData = N > 0 && smote ?
+            new DataDouble(
+            otd->getVariableNames(),
+            x.size() + smote_rows,
             otd->getNumCols())
-        : otd;
-    
+            : otd;
+
     if (N > 0 && smote) {
         const int SC = trainingData->getNumCols() - 1;
         bool error = false;
-        for(size_t i = 0; i < otd->getNumRows(); i++) {
-            for(size_t j = 0; j < trainingData->getNumCols(); j++) {            
+        for (size_t i = 0; i < otd->getNumRows(); i++) {
+            for (size_t j = 0; j < trainingData->getNumCols(); j++) {
                 trainingData->set(j, i, otd->get(i, j), error);
-            }            
+            }
         }
-        
-        size_t k = x.size();    
-        for(size_t i = 0; i < smote_rows; i++) {
+
+        size_t k = x.size();
+        for (size_t i = 0; i < smote_rows; i++) {
             trainingData->set(0, k, 0.0, error); // Set genuine (i.e. not genuine) flag
-            for(size_t j = 1; j < trainingData->getNumCols(); j++) {            
-                trainingData->set(j, k, smote_data[(i * SC) + j-1], error);                
-            }            
+            for (size_t j = 1; j < trainingData->getNumCols(); j++) {
+                trainingData->set(j, k, smote_data[(i * SC) + j - 1], error);
+            }
             k++;
         }
         delete[] smote_data;
     }
 
     vector<bool> results;
-        
+
     if (enn) {
         if (verbose) cout << endl << "Converting training data for ENN" << endl;
-        size_t elements = trainingData->getNumRows()*(trainingData->getNumCols()-1);
+        size_t elements = trainingData->getNumRows()*(trainingData->getNumCols() - 1);
         double* m = new double[elements];
-        for( uint32_t baseidx = 0; baseidx < trainingData->getNumRows(); baseidx++ ) {        
-            double* r = &m[baseidx * (trainingData->getNumCols()-1)];
-            for( size_t c = 1; c < trainingData->getNumCols(); c++) {
+        for (uint32_t baseidx = 0; baseidx < trainingData->getNumRows(); baseidx++) {
+            double* r = &m[baseidx * (trainingData->getNumCols() - 1)];
+            for (size_t c = 1; c < trainingData->getNumCols(); c++) {
                 r[c - 1] = trainingData->get(baseidx, c);
             }
-        }    
+        }
 
         if (verbose) cout << "Extracting labels for ENN" << endl;
         vector<bool> labels;
         uint32_t p = 0, n = 0, o = 0;
-        for(size_t i = 0; i < trainingData->getNumRows(); i++) {
+        for (size_t i = 0; i < trainingData->getNumRows(); i++) {
             labels.push_back(trainingData->get(i, 0) == 1.0);
             if (trainingData->get(i, 0) == 1.0) {
                 p++;
-            }
-            else if (trainingData->get(i, 0) == 0.0) {
+            } else if (trainingData->get(i, 0) == 0.0) {
                 n++;
-            }
-            else {
+            } else {
                 o++;
             }
         }
         cout << "P: " << p << "; N: " << n << "; O: " << o << endl;
 
         cout << endl << "Starting Wilson's Edited Nearest Neighbour (ENN) to clean decision region" << endl;
-        ENN enn(3, threads, m, trainingData->getNumRows(), trainingData->getNumCols()-1, labels);
+        ENN enn(3, threads, m, trainingData->getNumRows(), trainingData->getNumCols() - 1, labels);
         enn.setThreshold(3);
         enn.setVerbose(true);
         uint32_t count = enn.execute(results);
@@ -429,40 +422,38 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
 
         uint32_t pcount = 0, ncount = 0;
         JunctionList x2;
-        for(size_t i = 0; i < trainingData->getNumRows(); i++) {
+        for (size_t i = 0; i < trainingData->getNumRows(); i++) {
             if (trainingData->get(i, 0) == 1.0 && !results[i]) {
                 pcount++;
-            }
-            else if (trainingData->get(i, 0) == 0.0 && !results[i]) {
+            } else if (trainingData->get(i, 0) == 0.0 && !results[i]) {
                 ncount++;
             }
         }
 
         cout << "Should discard " << pcount << " + entries and " << ncount << " - entries (Total=" << count << ")" << endl << endl;
     }
-    
+
     uint32_t pcount = 0, ncount = 0;
-    
-    Data* trainingData2 = enn ? 
-        new DataDouble(
-            trainingData->getVariableNames(), 
+
+    Data* trainingData2 = enn ?
+            new DataDouble(
+            trainingData->getVariableNames(),
             trainingData->getNumRows() - pcount,
             trainingData->getNumCols()) :
-        trainingData;
-    
+            trainingData;
+
     if (enn) {
         size_t new_index = 0;
-        for(size_t i = 0; i < trainingData->getNumRows(); i++) {
+        for (size_t i = 0; i < trainingData->getNumRows(); i++) {
             if (results[i]) { // || trainingData->get(i, 0) == 0.0) {
                 bool error = false;
-                for(size_t j = 0; j < trainingData->getNumCols(); j++) {            
+                for (size_t j = 0; j < trainingData->getNumCols(); j++) {
                     trainingData2->set(j, new_index, trainingData->get(i, j), error);
                 }
                 new_index++;
                 if (trainingData->get(i, 0) == 1) {
                     pcount++;
-                }
-                else {
+                } else {
                     ncount++;
                 }
             }
@@ -472,7 +463,7 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
 
         cout << "Final training set contains " << pcount << " positive entries and " << ncount << " negative entries" << endl;
     }
-    
+
     /*path feature_file = outputPrefix + ".features";
     if (verbose) cout << "Saving feature vector to disk: " << feature_file << endl;
     
@@ -482,44 +473,43 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
         fout << *(x2[i]->getIntron()) << "\t" << trainingData2->getRow(i) << endl;
     }    
     fout.close();*/
-         
+
     if (verbose) cout << "Initialising random forest" << endl;
     ForestPtr f = nullptr;
     if (probabilityMode) {
         f = make_shared<ForestProbability>();
-    }
-    else {
+    } else {
         f = make_shared<ForestClassification>();
     }
-    
+
     vector<string> catVars;
-    
+
     f->init(
-        "Genuine",                  // Dependant variable name
-        MEM_DOUBLE,                 // Memory mode
-        trainingData2,               // Data object
-        0,                          // M Try (0 == use default)
-        outputPrefix,               // Output prefix 
-        trees,                      // Number of trees
-        1236456789,                // Use fixed seed to avoid non-deterministic behaviour as much as possible
-        threads,                    // Number of threads
-        IMP_GINI,                   // Importance measure 
-        probabilityMode ? DEFAULT_MIN_NODE_SIZE_PROBABILITY : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION,  // Min node size
-        "",                         // Status var name 
-        false,                      // Prediction mode
-        false,                       // Replace 
-        catVars,                    // Unordered categorical variable names (vector<string>)
-        false,                      // Memory saving
-        AUC, //DEFAULT_SPLITRULE,          // Split rule
-        false,                      // predall
-        1.0);                       // Sample fraction
-            
+            "Genuine", // Dependant variable name
+            MEM_DOUBLE, // Memory mode
+            trainingData2, // Data object
+            0, // M Try (0 == use default)
+            outputPrefix, // Output prefix 
+            trees, // Number of trees
+            1236456789, // Use fixed seed to avoid non-deterministic behaviour as much as possible
+            threads, // Number of threads
+            IMP_GINI, // Importance measure 
+            probabilityMode ? DEFAULT_MIN_NODE_SIZE_PROBABILITY : DEFAULT_MIN_NODE_SIZE_CLASSIFICATION, // Min node size
+            "", // Status var name 
+            false, // Prediction mode
+            false, // Replace 
+            catVars, // Unordered categorical variable names (vector<string>)
+            false, // Memory saving
+            AUC, //DEFAULT_SPLITRULE,          // Split rule
+            false, // predall
+            1.0); // Sample fraction
+
     if (verbose) cout << "Training" << endl;
     f->setVerboseOut(&cerr);
     f->run(verbose);
     cout << "OOBE: " << f->getOverallPredictionError() << endl;
-    
+
     delete trainingData2;
-    
+
     return f;
 }

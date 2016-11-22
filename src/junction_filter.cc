@@ -154,10 +154,10 @@ void portcullis::JunctionFilter::filter() {
 
     unordered_set<string> ref;
     if (!referenceFile.empty()) {
-        
+
         cout << "Loading junctions from reference: " << referenceFile.string() << " ...";
         cout.flush();
-        
+
         ifstream ifs(referenceFile.c_str());
 
         string line;
@@ -175,9 +175,9 @@ void portcullis::JunctionFilter::filter() {
                 ref.insert(key);
             }
         }
-        
+
         cout << " done." << endl
-            << "Found " << ref.size() << " junctions in reference." << endl << endl;
+                << "Found " << ref.size() << " junctions in reference." << endl << endl;
     }
 
     vector<bool> genuine;
@@ -244,7 +244,7 @@ void portcullis::JunctionFilter::filter() {
     mf.features[27].active=false;
     mf.features[28].active=false;
     mf.features[29].active=false;
-    */
+     */
 
 
 
@@ -263,16 +263,16 @@ void portcullis::JunctionFilter::filter() {
 
         cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
 
-        ratio = 1.0 - ((double)pos.size() / (double)(pos.size() + neg.size()));
-        
+        ratio = 1.0 - ((double) pos.size() / (double) (pos.size() + neg.size()));
+
         cout << "Pos to neg ratio: " << ratio << endl << endl;
-        
+
         cout << "Training markov models ...";
         cout.flush();
         mf.trainCodingPotentialModel(pos);
         mf.trainSplicingModels(pos, neg);
         cout << " done." << endl << endl;
-        
+
         // Balance models for training
         /*if (pos.size() > neg.size()) {
             undersample(pos, neg.size());
@@ -283,10 +283,10 @@ void portcullis::JunctionFilter::filter() {
         cout << "Balanced datasets to size of smallest set: " << pos.size() << endl << endl;*/
 
         // Build the training set by combining the positive and negative sets
-        
+
         JunctionSystem posSystem(pos);
         posSystem.sort();
-        
+
         JunctionSystem negSystem(neg);
         negSystem.sort();
 
@@ -389,7 +389,7 @@ void portcullis::JunctionFilter::filter() {
                     pass = false;
                 }
             }
-            
+
             if (pass && this->getMinCov() > j->getNbSplicedAlignments()) {
                 pass = false;
             }
@@ -429,13 +429,13 @@ void portcullis::JunctionFilter::filter() {
 
         uint32_t inref = 0;
         if (!referenceFile.empty()) {
-            
+
             for (auto& j : currentJuncs) {
                 if (ref.count(j->locationAsString()) > 0) {
                     inref++;
                 }
             }
-            
+
             for (auto& j : discardedJuncs.getJunctions()) {
                 if (ref.count(j->locationAsString()) > 0) {
                     filteredJuncs.addJunction(j);
@@ -443,7 +443,7 @@ void portcullis::JunctionFilter::filter() {
                     inref++;
                 }
             }
-            
+
         }
 
         filteredJuncs.calcJunctionStats();
@@ -452,7 +452,7 @@ void portcullis::JunctionFilter::filter() {
 
         if (!referenceFile.empty()) {
             cout << "Brought back " << refKeptJuncs.size() << " junctions that were discarded by filters but were present in reference file." << endl;
-            cout << "Your sample contains " << inref << " / " << ref.size() << " (" << ((double)inref / (double)ref.size()) * 100.0 << "%) junctions from the reference." << endl << endl;
+            cout << "Your sample contains " << inref << " / " << ref.size() << " (" << ((double) inref / (double) ref.size()) * 100.0 << "%) junctions from the reference." << endl << endl;
         }
     }
 
@@ -479,13 +479,13 @@ void portcullis::JunctionFilter::filter() {
 }
 
 void portcullis::JunctionFilter::undersample(JunctionList& jl, size_t size) {
-    
+
     std::mt19937 rng(12345);
 
-    while(jl.size() > size) {        
+    while (jl.size() > size) {
         std::uniform_int_distribution<int> gen(0, jl.size()); // uniform, unbiased
         int i = gen(rng);
-        jl.erase(jl.begin()+i);
+        jl.erase(jl.begin() + i);
     }
 }
 
@@ -551,7 +551,7 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
 
     JunctionSystem isp(passJuncs);
     isp.sort();
-    
+
     cout << endl << endl << "Found " << isp.size() << " junctions for the positive set" << endl << endl;
 
     // Analyse positive set to get L0.05 of intron size
@@ -559,7 +559,7 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
 
 
     cout << "Saving initial positive set:" << endl;
-    
+
     isp.saveAll(output.string() + ".selftrain.initialset.pos", "portcullis_isp");
 
 
@@ -695,7 +695,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
     cout << "Final\t";
     if (!genuineFile.empty()) {
         cout << calcPerformance(isn.getJunctions(), failJuncs, true)->toLongString();
-    } 
+    }
     else {
         cout << isn.getJunctions().size() << "\t" << failJuncs.size();
     }
@@ -807,7 +807,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
     cout << "Initialising random forest" << endl;
 
     shared_ptr<Forest> f = make_shared<ForestProbability>();
-    
+
     vector<string> catVars;
 
     f->init(
@@ -839,25 +839,10 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
     cout << "Making predictions" << endl;
     f->run(verbose);
 
-    path scorepath = output.string() + ".scores";
-    ofstream scoreStream(scorepath.c_str());
-
-    scoreStream << "Score\t" << Intron::locationOutputHeader() << "\tStrand\tSS\t" << testingData->getHeader() << endl;
-
+    // Make sure score is saved back with the junction
     for (size_t i = 0; i < all.size(); i++) {
-
-        double score = 1.0 - f->getPredictions()[i][0];
-        
-        // Make sure score is saved back with the junction
-        all[i]->setScore(score);
-        
-        scoreStream << score << "\t" << *(all[i]->getIntron())
-                << "\t" << strandToChar(all[i]->getConsensusStrand())
-                << "\t" << cssToChar(all[i]->getSpliceSiteType())
-                << "\t" << testingData->getRow(i) << endl;
+        all[i]->setScore(1.0 - f->getPredictions()[i][0]);
     }
-
-    scoreStream.close();
 
 
     if (!genuineFile.empty() && exists(genuineFile)) {
@@ -893,14 +878,11 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
         cout << "The best MCC score of " << max_mcc << " is achieved with threshold set at " << best_t_mcc << endl;
         //threshold = best_t_mcc;
     }
-    
+
     //threshold = calcGoodThreshold(f, all);
-    
+
     cout << "Threshold set at " << threshold << endl;
     categorise(f, all, pass, fail, threshold);
-    
-    cout << "Saved junction scores to: " << scorepath << endl;
-
 
     delete testingData;
 }
@@ -920,7 +902,7 @@ double portcullis::JunctionFilter::calcGoodThreshold(shared_ptr<Forest> f, const
 
     uint32_t pos = 0;
     uint32_t neg = 0;
-    
+
     for (auto& p : f->getPredictions()) {
         if ((1.0 - p[0]) >= 0.5) {
             pos++;
@@ -928,8 +910,8 @@ double portcullis::JunctionFilter::calcGoodThreshold(shared_ptr<Forest> f, const
             neg++;
         }
     }
-    
-    return (double)pos / (double)(pos+neg);
+
+    return (double) pos / (double) (pos + neg);
 }
 
 int portcullis::JunctionFilter::main(int argc, char *argv[]) {
@@ -961,7 +943,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 
 
     // Declare the supported options.
-    
+
     po::options_description system_options("System options", w.ws_col, w.ws_col / 1.5);
     system_options.add_options()
             ("threads,t", po::value<uint16_t>(&threads)->default_value(DEFAULT_FILTER_THREADS),
@@ -970,7 +952,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             "Print extra information")
             ("help", po::bool_switch(&help)->default_value(false), "Produce help message")
             ;
-    
+
     po::options_description output_options("Output options", w.ws_col, w.ws_col / 1.5);
     output_options.add_options()
             ("output,o", po::value<path>(&output)->default_value(DEFAULT_FILTER_OUTPUT),
@@ -981,10 +963,10 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             "Output exon-based junctions in GFF format.")
             ("intron_gff", po::bool_switch(&introngff)->default_value(false),
             "Output intron-based junctions in GFF format.")
-             ("source", po::value<string>(&source)->default_value(DEFAULT_FILTER_SOURCE),
+            ("source", po::value<string>(&source)->default_value(DEFAULT_FILTER_SOURCE),
             "The value to enter into the \"source\" field in GFF files.")
             ;
-    
+
     po::options_description filtering_options("Filtering options", w.ws_col, w.ws_col / 1.5);
     filtering_options.add_options()
             ("filter_file,f", po::value<path>(&filterFile),
@@ -1000,20 +982,20 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             ("min_cov", po::value<uint32_t>(&mincov)->default_value(1),
             "Only keep junctions with a number of split reads greater than or equal to this number")
             ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD),
-                "The threshold score at which we determine a junction to be genuine or not.  Increase value towards 1.0 to increase precision, decrease towards 0.0 to increase sensitivity.  We generally find that increasing sensitivity helps when using high coverage data, or when the aligner has already performed some form of junction filtering.")
+            "The threshold score at which we determine a junction to be genuine or not.  Increase value towards 1.0 to increase precision, decrease towards 0.0 to increase sensitivity.  We generally find that increasing sensitivity helps when using high coverage data, or when the aligner has already performed some form of junction filtering.")
             ;
-    
-    
+
+
     // Hidden options, will be allowed both on command line and
     // in config file, but will not be shown to the user.
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
             ("prep_data_dir", po::value<path>(&prepDir), "Path to directory containing prepared data.")
-            ("junction_file", po::value<path>(&junctionFile), "Path to the junction tab file to process.")            
+            ("junction_file", po::value<path>(&junctionFile), "Path to the junction tab file to process.")
             ("no_smote", po::bool_switch(&no_smote)->default_value(false),
-                "Use this flag to disable synthetic oversampling")            
+            "Use this flag to disable synthetic oversampling")
             ("enn", po::bool_switch(&enn)->default_value(false),
-                "Use this flag to enable Edited Nearest Neighbour to clean decision region")
+            "Use this flag to enable Edited Nearest Neighbour to clean decision region")
             ("genuine,g", po::value<path>(&genuineFile),
             "If you have a list of line separated boolean values in a file, indicating whether each junction in your input is genuine or not, then we can use that information here to gauge the accuracy of the predictions. This option is only useful if you have access to simulated data.")
             ("model_file,m", po::value<path>(&modelFile),
@@ -1027,7 +1009,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 
     // Options to display to the user
     po::options_description display_options;
-    display_options.add(system_options).add(output_options).add(filtering_options);    
+    display_options.add(system_options).add(output_options).add(filtering_options);
 
     // Combine non-positional options
     po::options_description cmdline_options;
