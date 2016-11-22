@@ -66,238 +66,238 @@ const string DEFAULT_JUNC_OUTPUT = "portcullis_junc/portcullis";
 const string DEFAULT_JUNC_SOURCE = "portcullis";
 const uint16_t DEFAULT_JUNC_THREADS = 1;
 
-typedef boost::error_info<struct JunctionBuilderError,string> JunctionBuilderErrorInfo;
+typedef boost::error_info<struct JunctionBuilderError, string> JunctionBuilderErrorInfo;
 struct JunctionBuilderException: virtual boost::exception, virtual std::exception { };
 
 struct RegionResult {
-    uint64_t splicedCount = 0;
-    uint64_t unsplicedCount = 0;
-    uint64_t sumQueryLengths = 0;
-    int32_t minQueryLength = 100000;
-    int32_t maxQueryLength = 0;
-    string name;
-    JunctionSystem js;
+	uint64_t splicedCount = 0;
+	uint64_t unsplicedCount = 0;
+	uint64_t sumQueryLengths = 0;
+	int32_t minQueryLength = 100000;
+	int32_t maxQueryLength = 0;
+	string name;
+	JunctionSystem js;
 };
 
 class JunctionBuilder {
 private:
 
-    // Can set these from the outside via the constructor
-    PreparedFiles prepData;
-    path outputDir;
-    string outputPrefix;
-    uint16_t threads;
-    Strandedness strandSpecific;
-    Orientation orientation;
-    bool extra;
-    bool separate;
-    bool useCsi;
-    bool outputExonGFF;
-    bool outputIntronGFF;
-    string source;
-    bool verbose;
-    
-    // The set of distinct junctions found in the BAM file
-    JunctionSystem junctionSystem;
-    SplicedAlignmentMap splicedAlignmentMap;
-    
-    // List of reference sequences (might be shared amongst various objects)
-    shared_ptr<RefSeqPtrList> refs;
-    
-    // Map of reference sequence indicies to reference sequences
-    shared_ptr<RefSeqPtrIndexMap> refMap;
-    
-    // Results from threads
-    vector<RegionResult> results;
-    
-    
+	// Can set these from the outside via the constructor
+	PreparedFiles prepData;
+	path outputDir;
+	string outputPrefix;
+	uint16_t threads;
+	Strandedness strandSpecific;
+	Orientation orientation;
+	bool extra;
+	bool separate;
+	bool useCsi;
+	bool outputExonGFF;
+	bool outputIntronGFF;
+	string source;
+	bool verbose;
+
+	// The set of distinct junctions found in the BAM file
+	JunctionSystem junctionSystem;
+	SplicedAlignmentMap splicedAlignmentMap;
+
+	// List of reference sequences (might be shared amongst various objects)
+	shared_ptr<RefSeqPtrList> refs;
+
+	// Map of reference sequence indicies to reference sequences
+	shared_ptr<RefSeqPtrIndexMap> refMap;
+
+	// Results from threads
+	vector<RegionResult> results;
+
+
 
 protected:
-    
-    path getUnsplicedBamFile() {
-        return path(outputDir.string() + "/" + outputPrefix + ".unspliced.bam");
-    }
-    
-    path getSplicedBamFile() {
-        return path(outputDir.string() + "/" + outputPrefix + ".spliced.bam");
-    }
-    
-    path getUnmappedBamFile() {
-        return path(outputDir.string() + "/" + outputPrefix + ".unmapped.bam");
-    }
-    
-    path getAssociatedIndexFile(path bamFile) {
-        return path(bamFile.string() + ".bai");
-    }
-        
-    void separateBams();
-    
-    void findJunctions();
-    
-    void calcExtraMetrics();
-        
+
+	path getUnsplicedBamFile() {
+		return path(outputDir.string() + "/" + outputPrefix + ".unspliced.bam");
+	}
+
+	path getSplicedBamFile() {
+		return path(outputDir.string() + "/" + outputPrefix + ".spliced.bam");
+	}
+
+	path getUnmappedBamFile() {
+		return path(outputDir.string() + "/" + outputPrefix + ".unmapped.bam");
+	}
+
+	path getAssociatedIndexFile(path bamFile) {
+		return path(bamFile.string() + ".bai");
+	}
+
+	void separateBams();
+
+	void findJunctions();
+
+	void calcExtraMetrics();
+
 
 public:
 
-    
-    JunctionBuilder(const path& _prepDir, const path& _output);
-    
-    virtual ~JunctionBuilder();
-    
-    string getRefName(const int32_t seqId) { return refs->at(seqId)->name; }
-    
-    void findJuncs(BamReader& reader, GenomeMapper& gmap, const int32_t seq);
-    
-    PreparedFiles& getPreparedFiles() { return prepData; }
-    
-    bool isExtra() const {
-        return extra;
-    }
 
-    void setExtra(bool extra) {
-        this->extra = extra;
-    }
+	JunctionBuilder(const path& _prepDir, const path& _output);
 
-    uint16_t getThreads() const {
-        return threads;
-    }
+	virtual ~JunctionBuilder();
 
-    void setThreads(uint16_t threads) {
-        this->threads = threads;
-    }
+	string getRefName(const int32_t seqId) { return refs->at(seqId)->name; }
 
-    bool isVerbose() const {
-        return verbose;
-    }
+	void findJuncs(BamReader& reader, GenomeMapper& gmap, const int32_t seq);
 
-    void setVerbose(bool verbose) {
-        this->verbose = verbose;
-    }
-    
-    bool isSeparate() const {
-        return separate;
-    }
+	PreparedFiles& getPreparedFiles() { return prepData; }
 
-    void setSeparate(bool separate) {
-        this->separate = separate;
-    }
-    
-    string getSource() const {
-        return source;
-    }
+	bool isExtra() const {
+		return extra;
+	}
 
-    void setSource(string source) {
-        this->source = source;
-    }
-    
-    Strandedness getStrandSpecific() const {
-        return strandSpecific;
-    }
+	void setExtra(bool extra) {
+		this->extra = extra;
+	}
 
-    void setStrandSpecific(Strandedness strandSpecific) {
-        this->strandSpecific = strandSpecific;
-    }
-    
-    Orientation getOrientation() const {
-        return orientation;
-    }
+	uint16_t getThreads() const {
+		return threads;
+	}
 
-    void setOrientation(Orientation orientation) {
-        this->orientation = orientation;
-    }
+	void setThreads(uint16_t threads) {
+		this->threads = threads;
+	}
 
+	bool isVerbose() const {
+		return verbose;
+	}
 
-    bool isUseCsi() const {
-        return useCsi;
-    }
+	void setVerbose(bool verbose) {
+		this->verbose = verbose;
+	}
 
-    void setUseCsi(bool useCsi) {
-        this->useCsi = useCsi;
-    }
-            
-    bool isOutputExonGFF() const {
-        return outputExonGFF;
-    }
+	bool isSeparate() const {
+		return separate;
+	}
 
-    void setOutputExonGFF(bool outputExonGFF) {
-        this->outputExonGFF = outputExonGFF;
-    }
+	void setSeparate(bool separate) {
+		this->separate = separate;
+	}
 
-    bool isOutputIntronGFF() const {
-        return outputIntronGFF;
-    }
+	string getSource() const {
+		return source;
+	}
 
-    void setOutputIntronGFF(bool outputIntronGFF) {
-        this->outputIntronGFF = outputIntronGFF;
-    }
+	void setSource(string source) {
+		this->source = source;
+	}
+
+	Strandedness getStrandSpecific() const {
+		return strandSpecific;
+	}
+
+	void setStrandSpecific(Strandedness strandSpecific) {
+		this->strandSpecific = strandSpecific;
+	}
+
+	Orientation getOrientation() const {
+		return orientation;
+	}
+
+	void setOrientation(Orientation orientation) {
+		this->orientation = orientation;
+	}
 
 
-    
-    
-    /**
-     * Populates the set of distinct junctions.  
-     * 
-     * Also outputs all the unspliced alignments to a separate file if requested
-     */
-    void process();
-    
-    static string title() {
-        return string("Portcullis Junction Builder Mode Help");
-    }
-    
-    static string description() {
-        return string("Analyses all potential junctions found in the input BAM file.\n") +
-                      "Run \"portcullis prep ...\" to generate data suitable for junction finding\n" +
-                      "before running \"portcullis junc ...\"";
-    }
-    
-    static string usage() {
-        return string("portcullis junc [options] <prep_data_dir>");
-    }
-    
-    static int main(int argc, char *argv[]);
+	bool isUseCsi() const {
+		return useCsi;
+	}
+
+	void setUseCsi(bool useCsi) {
+		this->useCsi = useCsi;
+	}
+
+	bool isOutputExonGFF() const {
+		return outputExonGFF;
+	}
+
+	void setOutputExonGFF(bool outputExonGFF) {
+		this->outputExonGFF = outputExonGFF;
+	}
+
+	bool isOutputIntronGFF() const {
+		return outputIntronGFF;
+	}
+
+	void setOutputIntronGFF(bool outputIntronGFF) {
+		this->outputIntronGFF = outputIntronGFF;
+	}
+
+
+
+
+	/**
+	 * Populates the set of distinct junctions.
+	 *
+	 * Also outputs all the unspliced alignments to a separate file if requested
+	 */
+	void process();
+
+	static string title() {
+		return string("Portcullis Junction Builder Mode Help");
+	}
+
+	static string description() {
+		return string("Analyses all potential junctions found in the input BAM file.\n") +
+			   "Run \"portcullis prep ...\" to generate data suitable for junction finding\n" +
+			   "before running \"portcullis junc ...\"";
+	}
+
+	static string usage() {
+		return string("portcullis junc [options] <prep_data_dir>");
+	}
+
+	static int main(int argc, char *argv[]);
 };
 
 class JBThreadPool {
 public:
 
-    // Constructor.
-    JBThreadPool(JunctionBuilder* jb, const uint16_t threads);
+	// Constructor.
+	JBThreadPool(JunctionBuilder* jb, const uint16_t threads);
 
-    // Destructor.
-    ~JBThreadPool();
+	// Destructor.
+	~JBThreadPool();
 
-    // Adds task to a task queue.
-    void enqueue(const int32_t index);
+	// Adds task to a task queue.
+	void enqueue(const int32_t index);
 
-    // Shut down the pool.
-    void shutDown();
+	// Shut down the pool.
+	void shutDown();
 
 private:
-    
-    // JunctionBuider
-    JunctionBuilder* junctionBuilder;
-    
-    // Thread pool storage.
-    vector<thread> threadPool;
 
-    // Queue to keep track of incoming tasks and task index.
-    queue<int32_t> tasks;
+	// JunctionBuider
+	JunctionBuilder* junctionBuilder;
 
-    // Task queue mutex.
-    mutex tasksMutex;
+	// Thread pool storage.
+	vector<thread> threadPool;
 
-    // Condition variable.
-    condition_variable condition;
+	// Queue to keep track of incoming tasks and task index.
+	queue<int32_t> tasks;
 
-    // Indicates that pool needs to be shut down.
-    bool terminate;
+	// Task queue mutex.
+	mutex tasksMutex;
 
-    // Indicates that pool has been terminated.
-    bool stopped;
+	// Condition variable.
+	condition_variable condition;
 
-    // Function that will be invoked by our threads.
-    void invoke();
+	// Indicates that pool needs to be shut down.
+	bool terminate;
+
+	// Indicates that pool has been terminated.
+	bool stopped;
+
+	// Function that will be invoked by our threads.
+	void invoke();
 };
 
 }

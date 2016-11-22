@@ -39,26 +39,28 @@ using boost::lexical_cast;
 
 #include <portcullis/bam/bam_alignment.hpp>
 
-namespace portcullis { namespace bam {
+namespace portcullis {
+namespace bam {
 
 class BamWriter {
 private:
-    path bamFile;
-    
-    BGZF *fp;    
+	path bamFile;
+
+	BGZF *fp;
 
 public:
-    BamWriter(const path& _bamFile) {
-        bamFile = _bamFile;
-    }
-    
-    virtual ~BamWriter() {}
-    
-    void open(bam_hdr_t* header);
-    
-    int write(const BamAlignment& ba);
-    
-    void close();
+	BamWriter(const path& _bamFile) {
+		bamFile = _bamFile;
+	}
+
+	virtual ~BamWriter() {}
+
+	void open(bam_hdr_t* header);
+
+	int write(const BamAlignment& ba);
+
+	void close();
 };
 
-}}
+}
+}

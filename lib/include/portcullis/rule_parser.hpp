@@ -84,11 +84,11 @@ typedef std::string var;
 template <typename tag> struct binop;
 template <typename tag> struct unop;
 
-typedef boost::variant<var,
-boost::recursive_wrapper<unop <op_not> >,
-boost::recursive_wrapper<binop<op_and> >,
-boost::recursive_wrapper<binop<op_or> >
-> expr;
+typedef boost::variant < var,
+		boost::recursive_wrapper<unop <op_not> >,
+		boost::recursive_wrapper<binop<op_and> >,
+		boost::recursive_wrapper<binop<op_or> >
+		> expr;
 
 template <typename tag> struct binop {
 
@@ -142,7 +142,7 @@ inline string opToString(const Operator op) {
 		return "NOT_IN";
 	default:
 		BOOST_THROW_EXCEPTION(RuleParserException() << RuleParserErrorInfo(string(
-				"Unrecognised operation")));
+								  "Unrecognised operation")));
 	}
 }
 
@@ -206,27 +206,23 @@ template <typename It, typename Skipper = qi::space_type>
 struct parser : qi::grammar<It, expr(), Skipper> {
 
 	parser() : parser::base_type(expr_) {
-
-		expr_ = or_.alias();
-
-		or_ = (and_ >> '|' >> or_) [ qi::_val = phx::construct<binop<op_or > >(qi::_1_type(), qi::_2_type()) ] | and_ [ qi::_val = qi::_1_type() ];
-		and_ = (not_ >> '&' >> and_) [ qi::_val = phx::construct<binop<op_and> >(qi::_1_type(), qi::_2_type()) ] | not_ [ qi::_val = qi::_1_type() ];
-		not_ = ('!' > simple) [ qi::_val = phx::construct<unop <op_not> >(qi::_1_type()) ] | simple [ qi::_val = qi::_1_type() ];
-
-		simple = (('(' > expr_ > ')') | var_);
-		var_ = qi::lexeme[+(qi::alpha | qi::digit | qi::char_("-") | qi::char_("_") | qi::char_("."))];
-
-		BOOST_SPIRIT_DEBUG_NODE(expr_);
-		BOOST_SPIRIT_DEBUG_NODE(or_);
-		BOOST_SPIRIT_DEBUG_NODE(and_);
-		BOOST_SPIRIT_DEBUG_NODE(not_);
-		BOOST_SPIRIT_DEBUG_NODE(simple);
-		BOOST_SPIRIT_DEBUG_NODE(var_);
-	}
+	expr_ = or_.alias();
+	or_ = (and_ >> '|' >> or_) [ qi::_val = phx::construct<binop<op_or > >(qi::_1_type(), qi::_2_type()) ] | and_ [ qi::_val = qi::_1_type() ];
+	and_ = (not_ >> '&' >> and_) [ qi::_val = phx::construct<binop<op_and> >(qi::_1_type(), qi::_2_type()) ] | not_ [ qi::_val = qi::_1_type() ];
+	not_ = ('!' > simple) [ qi::_val = phx::construct<unop <op_not> >(qi::_1_type()) ] | simple [ qi::_val = qi::_1_type() ];
+	simple = (('(' > expr_ > ')') | var_);
+	var_ = qi::lexeme[+(qi::alpha | qi::digit | qi::char_("-") | qi::char_("_") | qi::char_("."))];
+	BOOST_SPIRIT_DEBUG_NODE(expr_);
+	BOOST_SPIRIT_DEBUG_NODE(or_);
+	BOOST_SPIRIT_DEBUG_NODE(and_);
+	BOOST_SPIRIT_DEBUG_NODE(not_);
+	BOOST_SPIRIT_DEBUG_NODE(simple);
+	BOOST_SPIRIT_DEBUG_NODE(var_);
+}
 
 private:
-	qi::rule<It, var(), Skipper> var_;
-	qi::rule<It, expr(), Skipper> not_, and_, or_, simple, expr_;
+qi::rule<It, var(), Skipper> var_;
+qi::rule<It, expr(), Skipper> not_, and_, or_, simple, expr_;
 };
 
 class RuleFilter {
@@ -239,13 +235,13 @@ protected:
 	 * @return True if parameter passes operation and threshold, false otherwise
 	 */
 	static bool parse(const string& expression, JunctionPtr junc,
-			NumericFilterMap& numericFilters, SetFilterMap& stringFilters,
-			JuncResultMap* results);
+					  NumericFilterMap& numericFilters, SetFilterMap& stringFilters,
+					  JuncResultMap* results);
 
 public:
 
 	static map<string, int> filter(const path& ruleFile, const JunctionList& all,
-			JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap);
+								   JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap);
 
 	static void saveResults(const path& outputFile, const JunctionSystem& js, JuncResultMap& results);
 };

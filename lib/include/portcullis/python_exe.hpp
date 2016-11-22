@@ -26,12 +26,12 @@ using std::vector;
 using boost::filesystem::path;
 
 namespace portcullis {
-    
+
 class PythonExe {
 protected:
-    static wchar_t* convertCharToWideChar(const char* c);    
-    
+	static wchar_t* convertCharToWideChar(const char* c);
+
 public:
-    static void executePythonScript(const path& scripts_dir, const string& script_name, const vector<string>& args);
+	static void executePythonScript(const path& scripts_dir, const string& script_name, const vector<string>& args);
 };
 }

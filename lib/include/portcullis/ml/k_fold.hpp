@@ -27,53 +27,52 @@ using std::random_shuffle;
 
 namespace portcullis {
 namespace ml {
-    
-typedef boost::error_info<struct KFoldError,string> KFoldErrorInfo;
+
+typedef boost::error_info<struct KFoldError, string> KFoldErrorInfo;
 struct KFoldException: virtual boost::exception, virtual std::exception { };
 
 // Derived from https://sureshamrita.wordpress.com/2011/08/24/c-implementation-of-k-fold-cross-validation/
 template<class In>
 class KFold {
 public:
-    KFold(int k, In _beg, In _end) :
-        beg(_beg), end(_end), K(k) {
-        if (K <= 0)
-            BOOST_THROW_EXCEPTION(KFoldException() << KFoldErrorInfo(string(
-                        "The supplied value of K is =") + lexical_cast<string>(K) + 
-                        ". One cannot create " + lexical_cast<string>(K) + "no of folds"));
+	KFold(int k, In _beg, In _end) :
+		beg(_beg), end(_end), K(k) {
+		if (K <= 0)
+			BOOST_THROW_EXCEPTION(KFoldException() << KFoldErrorInfo(string(
+									  "The supplied value of K is =") + lexical_cast<string>(K) +
+								  ". One cannot create " + lexical_cast<string>(K) + "no of folds"));
+		//create the vector of integers
+		int foldNo = 0;
+		for (In i = beg; i != end; i++) {
+			whichFoldToGo.push_back(++foldNo);
+			if (foldNo == K)
+				foldNo = 0;
+		}
+		if (!K)
+			BOOST_THROW_EXCEPTION(KFoldException() << KFoldErrorInfo(string(
+									  "With this value of k (=") + lexical_cast<string>(K) +
+								  ")Equal division of the data is not possible"));
+		random_shuffle(whichFoldToGo.begin(), whichFoldToGo.end());
+	}
 
-        //create the vector of integers
-        int foldNo = 0;
-        for (In i = beg; i != end; i++) {
-            whichFoldToGo.push_back(++foldNo);
-            if (foldNo == K)
-                foldNo = 0;
-        }
-        if (!K)
-            BOOST_THROW_EXCEPTION(KFoldException() << KFoldErrorInfo(string(
-                        "With this value of k (=") + lexical_cast<string>(K) + 
-                        ")Equal division of the data is not possible"));
+	template<class Out>
+	void getFold(int foldNo, Out training, Out testing) {
+		int k = 0;
+		In i = beg;
+		while (i != end) {
+			if (whichFoldToGo[k++] == foldNo) {
+				*testing++ = *i++;
+			}
+			else
+				*training++ = *i++;
+		}
+	}
 
-        random_shuffle(whichFoldToGo.begin(), whichFoldToGo.end());
-    }
-        
-    template<class Out>
-    void getFold(int foldNo, Out training, Out testing) {
-        int k = 0;
-        In i = beg;
-        while (i != end) {
-            if (whichFoldToGo[k++] == foldNo) {
-                *testing++ = *i++;
-            } else
-                *training++ = *i++;
-        }
-    }
-    
 private:
-    In beg;
-    In end;
-    int K; //how many folds in this
-    vector<int> whichFoldToGo; 
+	In beg;
+	In end;
+	int K; //how many folds in this
+	vector<int> whichFoldToGo;
 };
 
 }

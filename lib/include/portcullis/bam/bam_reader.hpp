@@ -48,55 +48,57 @@ using portcullis::bam::RefSeqPtrList;
 using portcullis::bam::RefSeqPtrIndexMap;
 
 
-namespace portcullis { namespace bam {
+namespace portcullis {
+namespace bam {
 
 
 class BamReader {
-        
+
 private:
-    
-    path bamFile;
-    uint16_t threads;
-    
-    BGZF *fp;
-    bam_hdr_t* header;
-    bam1_t* c;
-    hts_idx_t* index;
-    hts_itr_t * iter;
-    
-    BamAlignment b;
-    
+
+	path bamFile;
+	uint16_t threads;
+
+	BGZF *fp;
+	bam_hdr_t* header;
+	bam1_t* c;
+	hts_idx_t* index;
+	hts_itr_t * iter;
+
+	BamAlignment b;
+
 public:
-    
-    BamReader(const path& _bamFile);
-    
-    virtual ~BamReader();
-    
-    // **** Methods for extracting reference target sequences ********
-    
-    shared_ptr<RefSeqPtrList> createRefList();
-    
-    shared_ptr<RefSeqPtrIndexMap> createRefMap();
-    
-    shared_ptr<RefSeqPtrIndexMap> createRefMap(const RefSeqPtrList& refList);
-    
-    static inline int bam_iter_read(BGZF* fp, hts_itr_t* iter, bam1_t *b) { return iter? hts_itr_next(fp, iter, b, 0) : bam_read1(fp, b); }
-    
-    bam_hdr_t* getHeader() const { return header; }
-    
-    string bamDetails() const;
-    
-    void open();
-    
-    void close();
-    
-    bool next();
-    
-    const BamAlignment& current() const;
-        
-    void setRegion(const int32_t seqIndex, const int32_t start, const int32_t end);
-    
-    bool isCoordSortedBam();
+
+	BamReader(const path& _bamFile);
+
+	virtual ~BamReader();
+
+	// **** Methods for extracting reference target sequences ********
+
+	shared_ptr<RefSeqPtrList> createRefList();
+
+	shared_ptr<RefSeqPtrIndexMap> createRefMap();
+
+	shared_ptr<RefSeqPtrIndexMap> createRefMap(const RefSeqPtrList& refList);
+
+	static inline int bam_iter_read(BGZF* fp, hts_itr_t* iter, bam1_t *b) { return iter ? hts_itr_next(fp, iter, b, 0) : bam_read1(fp, b); }
+
+	bam_hdr_t* getHeader() const { return header; }
+
+	string bamDetails() const;
+
+	void open();
+
+	void close();
+
+	bool next();
+
+	const BamAlignment& current() const;
+
+	void setRegion(const int32_t seqIndex, const int32_t start, const int32_t end);
+
+	bool isCoordSortedBam();
 };
 
-}}
+}
+}

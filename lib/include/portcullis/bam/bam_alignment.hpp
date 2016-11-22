@@ -73,7 +73,6 @@ struct CigarOp {
 	static vector<CigarOp> createFullCigarFromString(const string& cigar);
 
 	static inline bool opConsumesQuery(char op) {
-
 		switch (op) {
 		case BAM_CIGAR_MATCH_CHAR:
 		case BAM_CIGAR_INS_CHAR:
@@ -87,7 +86,6 @@ struct CigarOp {
 	}
 
 	static inline bool opConsumesReference(char op) {
-
 		switch (op) {
 		case BAM_CIGAR_MATCH_CHAR:
 		case BAM_CIGAR_DEL_CHAR:
@@ -119,7 +117,7 @@ private:
 	Strand strand;
 
 	void init();
-	
+
 	Strand calcStrand();
 
 public:
@@ -151,7 +149,7 @@ public:
 	BamAlignment(const BamAlignment& other);
 
 	/**
-	 * Deletes the underlying samtools bam alignment only if it is managed (owned) 
+	 * Deletes the underlying samtools bam alignment only if it is managed (owned)
 	 * by this object
 	 */
 	virtual ~BamAlignment();
@@ -169,9 +167,8 @@ public:
 	}
 
 	const string getCigarAsString() const {
-
 		stringstream ss;
-		for (const auto& c : cigar) {
+		for (const auto & c : cigar) {
 			ss << c.toString();
 		}
 		return ss.str();
@@ -279,7 +276,7 @@ public:
 
 	/**
 	 * Uses properly paired flag to determine if template is properly paired
-	 * @return 
+	 * @return
 	 */
 	bool isProperPair() const {
 		return (alFlag & BAM_FPROPER_PAIR) != 0;

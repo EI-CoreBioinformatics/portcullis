@@ -40,86 +40,88 @@ using boost::lexical_cast;
 
 #include <portcullis/bam/bam_master.hpp>
 
-namespace portcullis { namespace bam {
+namespace portcullis {
+namespace bam {
 
 class GenomeMapper {
 private:
- 
-    // Path to the original genome file in fasta format
-    path genomeFile;
-    
-    // Handle to genome map.  Created by constructor.
-    faidx_t* fastaIndex;
-    
+
+	// Path to the original genome file in fasta format
+	path genomeFile;
+
+	// Handle to genome map.  Created by constructor.
+	faidx_t* fastaIndex;
+
 protected:
-    
-    
+
+
 public:
-    
-    GenomeMapper() : GenomeMapper(path()) {}
-    
-    /**
-     * Creates a Genome Mapper object for a genome file in fasta format.  This
-     * uses Samtools to create a fasta index for the genome file and then
-     * manages the data structure returned after loading the index.
-     */
-    GenomeMapper(path _genomeFile);
-    
-    virtual ~GenomeMapper();
-    
-    
-    path getGenomeFile() const {
-        return genomeFile;
-    }
 
-    void setGenomeFile(path genomeFile) {
-        this->genomeFile = genomeFile;
-    }
+	GenomeMapper() : GenomeMapper(path()) {}
 
-    
-    path getFastaIndexFile() const {
-        return path(genomeFile.parent_path()) /= path(genomeFile.leaf().string() + ".fai");
-    }
-        
-    
-    /**
-     * Constructs the index for this fasta genome file
-     */
-    void buildFastaIndex();
-    
-    /**
-     * Loads the index for this genome file.  This must be done before using any
-     * of the fetch commands.
-     */
-    void loadFastaIndex();
-    
-    
-    /**
-     * @abstract    Fetch the sequence in a region.
-     * @param  reg  Region in the format "chr2:20,000-30,000"
-     * @param  len  Length of the region returned
-     * @return      The sequence as a string; empty string if no seq found
-     */
-    string fetchBases(const char* reg, int* len) const;
-    
-    /**
-     * @abstract    Fetch the sequence in a region.
-     * @param  name Region name
-     * @param  start    Start location on region (zero-based, inclusive)
-     * @param  end  End position (zero-based, exclusive)
-     * @param  len  Length of the region returned
-     * @return      The sequence as a string; empty string if no seq found
-     */
-    string fetchBases(const char* name, int start, int end, int* len) const;
-    
-    /**
-     * Get the number of sequences / contigs / scaffolds in the genome
-     * @return 
-     */
-    int getNbSeqs() {
-        return faidx_nseq(fastaIndex); 
-    }
-    
+	/**
+	 * Creates a Genome Mapper object for a genome file in fasta format.  This
+	 * uses Samtools to create a fasta index for the genome file and then
+	 * manages the data structure returned after loading the index.
+	 */
+	GenomeMapper(path _genomeFile);
+
+	virtual ~GenomeMapper();
+
+
+	path getGenomeFile() const {
+		return genomeFile;
+	}
+
+	void setGenomeFile(path genomeFile) {
+		this->genomeFile = genomeFile;
+	}
+
+
+	path getFastaIndexFile() const {
+		return path(genomeFile.parent_path()) /= path(genomeFile.leaf().string() + ".fai");
+	}
+
+
+	/**
+	 * Constructs the index for this fasta genome file
+	 */
+	void buildFastaIndex();
+
+	/**
+	 * Loads the index for this genome file.  This must be done before using any
+	 * of the fetch commands.
+	 */
+	void loadFastaIndex();
+
+
+	/**
+	 * @abstract    Fetch the sequence in a region.
+	 * @param  reg  Region in the format "chr2:20,000-30,000"
+	 * @param  len  Length of the region returned
+	 * @return      The sequence as a string; empty string if no seq found
+	 */
+	string fetchBases(const char* reg, int* len) const;
+
+	/**
+	 * @abstract    Fetch the sequence in a region.
+	 * @param  name Region name
+	 * @param  start    Start location on region (zero-based, inclusive)
+	 * @param  end  End position (zero-based, exclusive)
+	 * @param  len  Length of the region returned
+	 * @return      The sequence as a string; empty string if no seq found
+	 */
+	string fetchBases(const char* name, int start, int end, int* len) const;
+
+	/**
+	 * Get the number of sequences / contigs / scaffolds in the genome
+	 * @return
+	 */
+	int getNbSeqs() {
+		return faidx_nseq(fastaIndex);
+	}
+
 };
 
-}}
+}
+}

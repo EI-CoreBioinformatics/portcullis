@@ -57,7 +57,7 @@ using portcullis::Intron;
 namespace portcullis {
 
 /**
- *  Value of 30 is selected as it appears to be a good cutoff for distinguishing 
+ *  Value of 30 is selected as it appears to be a good cutoff for distinguishing
  * alignments likely to be uniquely mapped from those that have a high probability of
  * mapping to multiple locations.  This cutoff seems to work for most RNAseq mappers
  * that we are aware of.
@@ -99,12 +99,10 @@ inline CanonicalSS cssFromChar(char css) {
 	case 'N':
 		return CanonicalSS::NO;
 	}
-
 	return CanonicalSS::NO;
 }
 
 inline char cssToChar(CanonicalSS css) {
-
 	switch (css) {
 	case CanonicalSS::CANONICAL:
 		return 'C';
@@ -113,12 +111,10 @@ inline char cssToChar(CanonicalSS css) {
 	case CanonicalSS::NO:
 		return 'N';
 	}
-
 	return 'N';
 }
 
 inline string cssToString(CanonicalSS css) {
-
 	switch (css) {
 	case CanonicalSS::CANONICAL:
 		return "Canonical";
@@ -127,7 +123,6 @@ inline string cssToString(CanonicalSS css) {
 	case CanonicalSS::NO:
 		return "No";
 	}
-
 	return string("No");
 }
 
@@ -148,16 +143,13 @@ struct AlignmentInfo {
 	uint32_t minMatch; // Distance to first mismatch (minimum of either upstream or downstream)
 	uint32_t maxMatch; // Distance to first mismatch (maximum of either upstream or downstream)
 	uint32_t nbMismatches; // Total number of mismatches in this junction window
-	uint32_t mmes; // Minimal Match on Either Side of exon junction    
+	uint32_t mmes; // Minimal Match on Either Side of exon junction
 
 	AlignmentInfo(BamAlignmentPtr _ba) {
-
 		// Copy alignment
 		ba = _ba;
-
 		// Calculate a hash of the alignment name
 		nameCode = std::hash<std::string>()(ba->deriveName());
-
 		totalUpstreamMatches = 0;
 		totalDownstreamMatches = 0;
 		totalUpstreamMismatches = 0;
@@ -245,7 +237,7 @@ private:
 	// **** Predictions ****
 
 	Strand readStrand; // Strand derived from alignments
-	Strand ssStrand; // Strand derived from splice sites    
+	Strand ssStrand; // Strand derived from splice sites
 	Strand consensusStrand; // If readStrand and ssStrand agree then strand is the same, otherwise UNKNOWN
 	double score; // Only applied if the random forest makes a prediction
 
@@ -254,7 +246,7 @@ private:
 
 	int32_t leftAncStart;
 	int32_t rightAncEnd;
-	string da1, da2; // These store the dinucleotides found at the predicted donor / acceptor sites in the intron    
+	string da1, da2; // These store the dinucleotides found at the predicted donor / acceptor sites in the intron
 	uint32_t id; // Unique identifier for the junction
 	bool genuine; // Used as a hidden variable for use with cross validating a trained model instance.
 
@@ -265,7 +257,7 @@ protected:
 	 * for this junction
 	 * @param seq1
 	 * @param seq2
-	 * @return 
+	 * @return
 	 */
 	CanonicalSS hasCanonicalSpliceSites(const string& seq1, const string& seq2);
 
@@ -317,7 +309,7 @@ public:
 	 * The strand according to 95% of alignments in this junction.  Only
 	 * used if strand-specific mode is provided by the user.  Otherwise unknown
 	 * strand.
-	 * @return 
+	 * @return
 	 */
 	Strand getReadStrand() const {
 		return readStrand;
@@ -326,7 +318,7 @@ public:
 	/**
 	 * The strand according to the splice sites of this junction.  Only set if
 	 * the splice sites are canonical or semi-canonical
-	 * @return 
+	 * @return
 	 */
 	Strand getSpliceSiteStrand() const {
 		return ssStrand;
@@ -335,7 +327,7 @@ public:
 	/**
 	 * The strand according to a consensus or read strand and splice site strand.
 	 * If there is disagreement then this is set to unknown strand.
-	 * @return 
+	 * @return
 	 */
 	Strand getConsensusStrand() const {
 		return consensusStrand;
@@ -343,7 +335,7 @@ public:
 
 	/**
 	 * The intron represented by this junction
-	 * @return 
+	 * @return
 	 */
 	shared_ptr<Intron> getIntron() const {
 		return intron;
@@ -351,7 +343,7 @@ public:
 
 	/**
 	 * The intron size
-	 * @return 
+	 * @return
 	 */
 	int32_t getIntronSize() const {
 		return intron != nullptr ? intron->size() : 0;
@@ -359,7 +351,7 @@ public:
 
 	/**
 	 * Get the reference sequence name in which this junction is located
-	 * @return 
+	 * @return
 	 */
 	string getReferenceName() const {
 		return this->intron->ref.name;
@@ -367,7 +359,7 @@ public:
 
 	/**
 	 * The start site of the left anchor represented by this junction
-	 * @return 
+	 * @return
 	 */
 	int32_t getLeftAncStart() const {
 		return leftAncStart;
@@ -375,7 +367,7 @@ public:
 
 	/**
 	 * The end site of the right anchor represented by this junction
-	 * @return 
+	 * @return
 	 */
 	int32_t getRightAncEnd() const {
 		return rightAncEnd;
@@ -384,7 +376,7 @@ public:
 	/**
 	 * The size of this junction from the start of the left exon anchor to the end
 	 * of the right exon anchor
-	 * @return 
+	 * @return
 	 */
 	size_t size() const {
 		return rightAncEnd - leftAncStart + 1;
@@ -392,7 +384,7 @@ public:
 
 	/**
 	 * The size of the left exon anchor
-	 * @return 
+	 * @return
 	 */
 	int32_t getLeftAnchorSize() const {
 		return intron != nullptr ? intron->start - leftAncStart : 0;
@@ -400,7 +392,7 @@ public:
 
 	/**
 	 * The size of the right exon anchor
-	 * @return 
+	 * @return
 	 */
 	int32_t getRightAnchorSize() const {
 		return intron != nullptr ? rightAncEnd - intron->end : 0;
@@ -408,7 +400,7 @@ public:
 
 	/**
 	 * The unique identifier assigned to this junction
-	 * @return 
+	 * @return
 	 */
 	uint32_t getId() const {
 		return id;
@@ -416,7 +408,7 @@ public:
 
 	/**
 	 * Whether or not the user has marked this junction as genuine or not
-	 * @return 
+	 * @return
 	 */
 	bool isGenuine() const {
 		return genuine;
@@ -425,7 +417,7 @@ public:
 	/**
 	 * The score assigned to this junction.  This could either be user-defined
 	 * or set by the filtering tool.
-	 * @return 
+	 * @return
 	 */
 	double getScore() const {
 		return score;
@@ -434,7 +426,7 @@ public:
 	/**
 	 * Whether or not there is a canonical donor and acceptor motif at the two base
 	 * pairs at the start and end of the junction / intron
-	 * @return 
+	 * @return
 	 */
 	bool hasCanonicalSpliceSites() const {
 		return this->canonicalSpliceSites == CanonicalSS::CANONICAL;
@@ -442,7 +434,7 @@ public:
 
 	/**
 	 * The type of junction this is: canonical, semi-canonical or non-canonical
-	 * @return 
+	 * @return
 	 */
 	CanonicalSS getSpliceSiteType() const {
 		return this->canonicalSpliceSites;
@@ -451,7 +443,7 @@ public:
 	/**
 	 * The type of junction this is: canonical, semi-canonical or non-canonical, represented in a string
 	 * : C, S, N
-	 * @return 
+	 * @return
 	 */
 	string getSpliceSiteTypeAsString() const {
 		return string() + cssToChar(this->canonicalSpliceSites);
@@ -459,7 +451,7 @@ public:
 
 	/**
 	 * The total number of spliced alignments directly supporting this junction
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbSplicedAlignments() const {
 		return this->nbAlRaw;
@@ -467,7 +459,7 @@ public:
 
 	/**
 	 * The number of distinct alignments supporting this junction
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbDistinctAlignments() const {
 		return this->nbAlDistinct;
@@ -475,7 +467,7 @@ public:
 
 	/**
 	 * The number of alignments convering only a single intron
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbUniquelySplicedAlignments() const {
 		return this->nbAlRaw - this->nbAlMultiplySpliced;
@@ -483,7 +475,7 @@ public:
 
 	/**
 	 * The number of alignments covering 2 or more introns
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbMultiplySplicedAlignments() const {
 		return this->nbAlMultiplySpliced;
@@ -491,7 +483,7 @@ public:
 
 	/**
 	 * The number of reads that probably align uniquely to the genome
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbUniquelyMappedAlignments() const {
 		return this->nbAlUniquelyMapped;
@@ -499,7 +491,7 @@ public:
 
 	/**
 	 * The number of reads that probably align to multiple sites on the genome
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbMultiplyMappedAlignments() const {
 		return this->nbAlRaw - this->nbAlUniquelyMapped;
@@ -507,9 +499,9 @@ public:
 
 	/**
 	 * The number of alignments that have a properly aligned pair as signalled
-	 * by the properly paired SAM flag.  If running on single end data this will 
+	 * by the properly paired SAM flag.  If running on single end data this will
 	 * always be 0.
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbBamProperlyPairedAlignments() const {
 		return this->nbAlBamProperlyPaired;
@@ -518,7 +510,7 @@ public:
 	/**
 	 * The number of alignments that have a properly aligned pair as determined
 	 * by portcullis.  If running on single end data this will always be 0.
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbPortcullisProperlyPairedAlignments() const {
 		return this->nbAlPortcullisProperlyPaired;
@@ -526,10 +518,10 @@ public:
 
 	/**
 	 * The number of reliable split alignments supporting this junction.  With
-	 * paired end data this will include split alignments that are both uniquely 
-	 * mapping as well as properly paired.  For single end data this will be the 
+	 * paired end data this will include split alignments that are both uniquely
+	 * mapping as well as properly paired.  For single end data this will be the
 	 * same as the number of uniquely mapping split alignments
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbReliableAlignments() const {
 		return this->nbAlReliable;
@@ -537,7 +529,7 @@ public:
 
 	/**
 	 * The ratio of reliable alignments to raw alignments that support this junction
-	 * @return 
+	 * @return
 	 */
 	double getReliable2RawAlignmentRatio() const {
 		return (double) this->nbAlReliable / (double) this->nbAlRaw;
@@ -547,7 +539,7 @@ public:
 	 * The Shannon Entropy of this junction.  This is a measure of how well distributed
 	 * the reads are around the junction.  The closely the alignment distribution
 	 * is to a uniform distribution the higher the entropy score.
-	 * @return 
+	 * @return
 	 */
 	double getEntropy() const {
 		return this->entropy;
@@ -555,7 +547,7 @@ public:
 
 	/**
 	 * The average number of mismatches of supporting alignments in this junction.
-	 * @return 
+	 * @return
 	 */
 	double getMeanMismatches() const {
 		return this->meanMismatches;
@@ -563,7 +555,7 @@ public:
 
 	/**
 	 * The average read length of supporting alignments in this junction.
-	 * @return 
+	 * @return
 	 */
 	uint32_t getMeanReadLength() const {
 		return this->meanReadLength;
@@ -581,7 +573,7 @@ public:
 	 * The maximum of the minimum matches on either side of the exon junction.
 	 * This is similar to maxMinAnchor, except that it also includes mismatches
 	 * into the calculation.
-	 * @return 
+	 * @return
 	 */
 	uint32_t getMaxMMES() const {
 		return this->maxMMES;
@@ -591,7 +583,7 @@ public:
 	 * The intron score is only calculated after filtering and represents the liklihood that
 	 * the junction is invalid.  A score of 0 means the intron is around expected length.
 	 * Values greater than 0 indicate the intron exceeds expected length.
-	 * @return 
+	 * @return
 	 */
 	double getIntronScore() const {
 		return intronScore;
@@ -599,7 +591,7 @@ public:
 
 	/**
 	 * Hamming distance at the 3' end
-	 * @return 
+	 * @return
 	 */
 	uint32_t getHammingDistance3p() const {
 		return this->hammingDistance3p;
@@ -607,7 +599,7 @@ public:
 
 	/**
 	 * Hamming distance at the 5' end
-	 * @return 
+	 * @return
 	 */
 	uint32_t getHammingDistance5p() const {
 		return this->hammingDistance5p;
@@ -615,7 +607,7 @@ public:
 
 	/**
 	 * A value representing the liklihood that this junction has coding potential
-	 * @return 
+	 * @return
 	 */
 	double getCodingPotential() const {
 		return this->codingPotential;
@@ -624,7 +616,7 @@ public:
 	/**
 	 * A score reflecting the liklihood that the base ordering around this junction
 	 * is consistent with a genuine junction for this dataset
-	 * @return 
+	 * @return
 	 */
 	double getPositionWeightScore() const {
 		return this->positionWeightScore;
@@ -632,7 +624,7 @@ public:
 
 	/**
 	 * The strength of the splicing signal for this junction
-	 * @return 
+	 * @return
 	 */
 	double getSplicingSignal() const {
 		return this->splicingSignal;
@@ -641,7 +633,7 @@ public:
 	/**
 	 * If true this junction shares no splice sites with other junctions in this
 	 * dataset
-	 * @return 
+	 * @return
 	 */
 	bool isUniqueJunction() const {
 		return this->uniqueJunction;
@@ -651,7 +643,7 @@ public:
 	 * If true this junction is either unique (i.e. shares no splice sites with
 	 * other junctions) or has the highest expression compared to other junctions
 	 * that it shares splice sites with
-	 * @return 
+	 * @return
 	 */
 	bool isPrimaryJunction() const {
 		return this->primaryJunction;
@@ -660,7 +652,7 @@ public:
 	/**
 	 * The number of junctions that can be directly traced downstream through spliced
 	 * alignments
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbDownstreamJunctions() const {
 		return nbDownstreamJunctions;
@@ -669,27 +661,27 @@ public:
 	/**
 	 * The number of junctions that can be directly traced upstream through spliced
 	 * alignments
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbUpstreamJunctions() const {
 		return nbUpstreamJunctions;
 	}
 
 	/**
-	 * The distance to the next downstream junction that can be directly traced via 
+	 * The distance to the next downstream junction that can be directly traced via
 	 * split alignments, or 0 if there no junctions directly downstream or if the
 	 * next downstream junction is located within this junction
-	 * @return 
+	 * @return
 	 */
 	uint32_t getDistanceToNextDownstreamJunction() const {
 		return distanceToNextDownstreamJunction;
 	}
 
 	/**
-	 * The distance to the next upstream junction that can be directly traced via 
+	 * The distance to the next upstream junction that can be directly traced via
 	 * split alignments, or 0 if there no junctions directly upstream or if the
 	 * next upstream junction is located within this junction
-	 * @return 
+	 * @return
 	 */
 	uint32_t getDistanceToNextUpstreamJunction() const {
 		return distanceToNextUpstreamJunction;
@@ -697,7 +689,7 @@ public:
 
 	/**
 	 * The distance to the nearest junction
-	 * @return 
+	 * @return
 	 */
 	uint32_t getDistanceToNearestJunction() const {
 		return distanceToNearestJunction;
@@ -707,7 +699,7 @@ public:
 	 * The Multiple mapping score (reflects mapping ambiguity.  Small score
 	 * implies reads in this junction could align to other splice junctions across the
 	 * genome).  This will be 0 unless the user requested extra processing.
-	 * @return 
+	 * @return
 	 */
 	double getMultipleMappingScore() const {
 		return multipleMappingScore;
@@ -723,16 +715,16 @@ public:
 	 * both donor and acceptor sites together.  For genuine junctions this should be
 	 * the score should be relatively large.  See TrueSight paper for more info.
 	 * Only used if the user requested extra processing.
-	 * @return 
+	 * @return
 	 */
 	double getCoverage() const {
 		return coverage;
 	}
 
 	/**
-	 * The number of upstream non-spliced supporting reads.  Only used if the 
+	 * The number of upstream non-spliced supporting reads.  Only used if the
 	 * user requested extra processing.
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbUpstreamFlankingAlignments() const {
 		return nbUpstreamFlankingAlignments;
@@ -741,7 +733,7 @@ public:
 	/**
 	 * The number of downstream non-spliced supporting reads.  Only used if the
 	 * user requested extra processing.
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbDownstreamFlankingAlignments() const {
 		return nbDownstreamFlankingAlignments;
@@ -751,7 +743,7 @@ public:
 	 * Whether or not this junction looks suspicious (i.e. it may not be genuine)
 	 * due to no anchors extending beyond the first mismatch and if that location
 	 * in either anchor is within 20bp of the junction.
-	 * @return 
+	 * @return
 	 */
 	bool isSuspicious() const {
 		return this->suspicious;
@@ -762,7 +754,7 @@ public:
 	 * genuine).  For this to be true the junction must first be marked as suspicious
 	 * then it must also be more than 99% likely that the maxmmes should have exceeded
 	 * a given length, given the number of junctions supporting the junction but didn't.
-	 * @return 
+	 * @return
 	 */
 	bool isPotentialFalsePositive() const {
 		return this->pfp;
@@ -771,7 +763,7 @@ public:
 	/**
 	 * Gets the junction anchor depth at the given distance from the intron
 	 * @param index
-	 * @return 
+	 * @return
 	 */
 	uint32_t getJunctionAnchorDepth(size_t index) const {
 		return junctionAnchorDepth[index];
@@ -782,7 +774,7 @@ public:
 	 * This calls the relevant getter for the given name, assuming the name represents a property with
 	 * a numeric value that can be converted to a double.
 	 * @param name
-	 * @return 
+	 * @return
 	 */
 	double getValueFromName(const string& name) const;
 
@@ -790,7 +782,7 @@ public:
 	 * This calls the relevant getter for the given name, assuming the name represents a property with
 	 * a string value
 	 * @param name
-	 * @return 
+	 * @return
 	 */
 	string getStringFromName(const string& name) const;
 
@@ -965,7 +957,7 @@ public:
 	 * sites.  This should also update the strand properties accordingly.
 	 * @param seq1
 	 * @param seq2
-	 * @return 
+	 * @return
 	 */
 	CanonicalSS setDonorAndAcceptorMotif(string seq1, string seq2);
 
@@ -973,14 +965,14 @@ public:
 	 * Whether or not the provided junction shares any splice sites with this
 	 * junction
 	 * @param other
-	 * @return 
+	 * @return
 	 */
 	bool sharesDonorOrAcceptor(shared_ptr<Junction> other) {
 		return this->intron->sharesDonorOrAcceptor(*(other->intron));
 	}
 
 	/**
-	 * Extends the anchor regions of the junction.  Also updates any relevant 
+	 * Extends the anchor regions of the junction.  Also updates any relevant
 	 * metrics.
 	 * @param otherStart The alternative start position of the left anchor
 	 * @param otherEnd The alternative end position of the right anchor
@@ -1024,30 +1016,30 @@ public:
 	void calcMetrics(Orientation orientation);
 
 	/**
-	 * Shannon Entropy (definition from "Graveley et al, The developmental 
+	 * Shannon Entropy (definition from "Graveley et al, The developmental
 	 * transcriptome of Drosophila melanogaster, Nature, 2011")
-	 * 
+	 *
 	 * Calculates the entropy score for this junction.  Higher entropy is generally
 	 * more indicative of a genuine junction than a lower score.
 	 *
 	 * This overridden version of the calcEntropy method, allows us to calculate
 	 * the entropy, without using BamAlignment objects that model the junction.
 	 * All we need are the alignment start positions instead.
-	 * 
-	 * We measured the entropy of the reads that mapped to the splice junction. 
-	 * The entropy score is a function of both the total number of reads 
-	 * that map to a given junction and the number of different offsets to which 
-	 * those reads map and the number that map at each offset. Thus, junctions 
-	 * with multiple reads mapping at each of the possible windows across the junction 
-	 * will be assigned a higher entropy score, than junctions where many reads 
-	 * map to only one or two positions. 
-	 * 
-	 * Entropy was calculated using the following equations: 
-	 * 
-	 * p_i = nb_reads_at_offset_i / total_reads_in_junction_window 
-	 * 
-	 * Entropy = - sum_i(p_i * log(pi) / log2) 
-	 * 
+	 *
+	 * We measured the entropy of the reads that mapped to the splice junction.
+	 * The entropy score is a function of both the total number of reads
+	 * that map to a given junction and the number of different offsets to which
+	 * those reads map and the number that map at each offset. Thus, junctions
+	 * with multiple reads mapping at each of the possible windows across the junction
+	 * will be assigned a higher entropy score, than junctions where many reads
+	 * map to only one or two positions.
+	 *
+	 * Entropy was calculated using the following equations:
+	 *
+	 * p_i = nb_reads_at_offset_i / total_reads_in_junction_window
+	 *
+	 * Entropy = - sum_i(p_i * log(pi) / log2)
+	 *
 	 * @return The entropy of this junction
 	 */
 	double calcEntropy();
@@ -1056,13 +1048,13 @@ public:
 	 * Provides a convienient way of get the shannon entropy score outside the
 	 * junction / junction system framework
 	 * @param offsets
-	 * @return 
+	 * @return
 	 */
 	double calcEntropy(const vector<int32_t> offsets);
 
 	/**
 	 * Metrics: # Distinct Alignments, # Unique/Reliable Alignments, #mismatches
-	 * @return 
+	 * @return
 	 */
 	void calcAlignmentStats(Orientation orientation);
 
@@ -1071,7 +1063,7 @@ public:
 	 * region represented by this junction
 	 */
 	void calcHammingScores(const string& leftAnchor, const string& leftIntron,
-			const string& rightIntron, const string& rightAnchor);
+						   const string& rightIntron, const string& rightAnchor);
 
 	/**
 	 * Calculates MaxMMES, mismatches, and junction overhangs.
@@ -1092,7 +1084,7 @@ public:
 	/**
 	 * Calculates a score for this intron size based on how this intron size fits
 	 * into an expected distribution specified by the length at the threhsold percentile
-	 * (threshold) provided by the user.  Introns of length < threshold have a score of 0. 
+	 * (threshold) provided by the user.  Introns of length < threshold have a score of 0.
 	 * Introns with length > threshold have score: -ln(size - length_threshold)
 	 * @param Length of threshold Intron size
 	 * @return A score for this intron size given the threshold value
@@ -1106,19 +1098,19 @@ public:
 	 * @param gmap
 	 * @param exon
 	 * @param intron
-	 * @return 
+	 * @return
 	 */
 	double calcCodingPotential(GenomeMapper& gmap, KmerMarkovModel& exon, KmerMarkovModel& intron);
 
 	SplicingScores calcSplicingScores(GenomeMapper& gmap, KmerMarkovModel& donorT, KmerMarkovModel& donorF,
-			KmerMarkovModel& acceptorT, KmerMarkovModel& acceptorF,
-			PosMarkovModel& donorP, PosMarkovModel& acceptorP);
+									  KmerMarkovModel& acceptorT, KmerMarkovModel& acceptorF,
+									  PosMarkovModel& donorP, PosMarkovModel& acceptorP);
 
 
 	/**
 	 * Calculate the log deviation for the junction anchor depth count at a given location
 	 * @param i
-	 * @return 
+	 * @return
 	 */
 	double calcJunctionAnchorDepthLogDeviation(size_t i) const;
 
@@ -1130,7 +1122,7 @@ public:
 
 	/**
 	 * Represent this junctions location as a string
-	 * @return 
+	 * @return
 	 */
 	string locationAsString() const {
 		return this->intron->toString() + strandToChar(this->consensusStrand);
@@ -1179,68 +1171,58 @@ public:
 	 * Represents this junction as a table row
 	 * @param seq1
 	 * @param seq2
-	 * @return 
+	 * @return
 	 */
 	friend ostream& operator<<(ostream &strm, Junction& j) {
 		strm << j.id << "\t"
-				<< *(j.intron) << "\t"
-				<< j.getIntronSize() << "\t"
-				<< j.leftAncStart << "\t"
-				<< j.rightAncEnd << "\t"
-
-				<< strandToChar(j.readStrand) << "\t"
-				<< strandToChar(j.ssStrand) << "\t"
-				<< strandToChar(j.consensusStrand) << "\t"
-
-				<< j.da1 << "\t"
-				<< j.da2 << "\t"
-				<< cssToChar(j.canonicalSpliceSites) << "\t"
-
-				<< j.score << "\t"
-				<< j.suspicious << "\t"
-				<< j.pfp << "\t"
-
-				<< j.nbAlRaw << "\t"
-				<< j.nbAlDistinct << "\t"
-				<< j.getNbUniquelySplicedAlignments() << "\t"
-				<< j.nbAlMultiplySpliced << "\t"
-				<< j.nbAlUniquelyMapped << "\t"
-				<< j.getNbMultiplyMappedAlignments() << "\t"
-				<< j.nbAlBamProperlyPaired << "\t"
-				<< j.nbAlPortcullisProperlyPaired << "\t"
-				<< j.nbAlReliable << "\t"
-				<< j.getReliable2RawAlignmentRatio() << "\t"
-
-				<< j.entropy << "\t"
-				<< j.meanMismatches << "\t"
-				<< j.meanReadLength << "\t"
-				<< j.maxMinAnchor << "\t"
-				<< j.maxMMES << "\t"
-				<< j.intronScore << "\t"
-
-				<< j.hammingDistance5p << "\t"
-				<< j.hammingDistance3p << "\t"
-				<< j.codingPotential << "\t"
-				<< j.positionWeightScore << "\t"
-				<< j.splicingSignal << "\t"
-
-				<< j.uniqueJunction << "\t"
-				<< j.primaryJunction << "\t"
-				<< j.nbUpstreamJunctions << "\t"
-				<< j.nbDownstreamJunctions << "\t"
-				<< j.distanceToNextUpstreamJunction << "\t"
-				<< j.distanceToNextDownstreamJunction << "\t"
-				<< j.distanceToNearestJunction << "\t"
-
-				<< j.multipleMappingScore << "\t"
-				<< j.coverage << "\t"
-				<< j.nbUpstreamFlankingAlignments << "\t"
-				<< j.nbDownstreamFlankingAlignments;
-
+			 << *(j.intron) << "\t"
+			 << j.getIntronSize() << "\t"
+			 << j.leftAncStart << "\t"
+			 << j.rightAncEnd << "\t"
+			 << strandToChar(j.readStrand) << "\t"
+			 << strandToChar(j.ssStrand) << "\t"
+			 << strandToChar(j.consensusStrand) << "\t"
+			 << j.da1 << "\t"
+			 << j.da2 << "\t"
+			 << cssToChar(j.canonicalSpliceSites) << "\t"
+			 << j.score << "\t"
+			 << j.suspicious << "\t"
+			 << j.pfp << "\t"
+			 << j.nbAlRaw << "\t"
+			 << j.nbAlDistinct << "\t"
+			 << j.getNbUniquelySplicedAlignments() << "\t"
+			 << j.nbAlMultiplySpliced << "\t"
+			 << j.nbAlUniquelyMapped << "\t"
+			 << j.getNbMultiplyMappedAlignments() << "\t"
+			 << j.nbAlBamProperlyPaired << "\t"
+			 << j.nbAlPortcullisProperlyPaired << "\t"
+			 << j.nbAlReliable << "\t"
+			 << j.getReliable2RawAlignmentRatio() << "\t"
+			 << j.entropy << "\t"
+			 << j.meanMismatches << "\t"
+			 << j.meanReadLength << "\t"
+			 << j.maxMinAnchor << "\t"
+			 << j.maxMMES << "\t"
+			 << j.intronScore << "\t"
+			 << j.hammingDistance5p << "\t"
+			 << j.hammingDistance3p << "\t"
+			 << j.codingPotential << "\t"
+			 << j.positionWeightScore << "\t"
+			 << j.splicingSignal << "\t"
+			 << j.uniqueJunction << "\t"
+			 << j.primaryJunction << "\t"
+			 << j.nbUpstreamJunctions << "\t"
+			 << j.nbDownstreamJunctions << "\t"
+			 << j.distanceToNextUpstreamJunction << "\t"
+			 << j.distanceToNextDownstreamJunction << "\t"
+			 << j.distanceToNearestJunction << "\t"
+			 << j.multipleMappingScore << "\t"
+			 << j.coverage << "\t"
+			 << j.nbUpstreamFlankingAlignments << "\t"
+			 << j.nbDownstreamFlankingAlignments;
 		for (size_t i = 0; i < JAD_NAMES.size(); i++) {
 			strm << "\t" << j.junctionAnchorDepth[i];
 		}
-
 		return strm;
 	}
 
@@ -1249,7 +1231,7 @@ public:
 
 	/**
 	 * Header for table output
-	 * @return 
+	 * @return
 	 */
 	static string junctionOutputHeader();
 
@@ -1263,14 +1245,14 @@ public:
 	 * Returns true if the given property name represents a numeric type.  (Booleans count as a numeric
 	 * type)
 	 * @param name
-	 * @return 
+	 * @return
 	 */
 	static bool isNumericType(const string& name);
 
 	/**
 	 * Returns true is the given property name represents a string type
 	 * @param name
-	 * @return 
+	 * @return
 	 */
 	static bool isStringType(const string& name);
 };

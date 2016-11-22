@@ -39,7 +39,8 @@ using boost::lexical_cast;
 #include <htslib/sam.h>
 #include <htslib/bgzf.h>
 
-namespace portcullis { namespace bam {
+namespace portcullis {
+namespace bam {
 
 
 typedef struct {     // auxiliary data structure
@@ -49,55 +50,56 @@ typedef struct {     // auxiliary data structure
 } aux_t;
 
 typedef struct {
-    int ref;
-    int32_t pos;
-    uint32_t depth;    
+	int ref;
+	int32_t pos;
+	uint32_t depth;
 } depth;
 
 class DepthParser {
 private:
- 
-    // Path to the original genome file in fasta format
-    path bamFile;
-    uint8_t strandSpecific;
-    bool allowGappedAlignments;
-    
-    bam_hdr_t *header;
-    aux_t** data;
-    bam_mplp_t mplp;
-        
-    depth last;
-    bool start;
-    int res;
-    
-protected:
-    
-    // This function reads a BAM alignment from one BAM file.
-    static int read_bam(void *data, bam1_t *b);
-    
-    // This function reads a BAM alignment from one BAM file.
-    static int read_bam_skip_gapped(void *data, bam1_t *b);
-    
-    
-public:
-    
-    DepthParser(path _bamFile, uint8_t _strandSpecific, bool _allowGappedAlignments);
-    
-    virtual ~DepthParser();
-    
-     
-    string getCurrentRefName() const {
-        return string(header->target_name[last.ref]);
-    }
-    
-    int32_t getCurrentRefIndex() const {
-        return last.ref;
-    }
-    
-    
 
-    bool loadNextBatch(vector<uint32_t>& depths);
-    
+	// Path to the original genome file in fasta format
+	path bamFile;
+	uint8_t strandSpecific;
+	bool allowGappedAlignments;
+
+	bam_hdr_t *header;
+	aux_t** data;
+	bam_mplp_t mplp;
+
+	depth last;
+	bool start;
+	int res;
+
+protected:
+
+	// This function reads a BAM alignment from one BAM file.
+	static int read_bam(void *data, bam1_t *b);
+
+	// This function reads a BAM alignment from one BAM file.
+	static int read_bam_skip_gapped(void *data, bam1_t *b);
+
+
+public:
+
+	DepthParser(path _bamFile, uint8_t _strandSpecific, bool _allowGappedAlignments);
+
+	virtual ~DepthParser();
+
+
+	string getCurrentRefName() const {
+		return string(header->target_name[last.ref]);
+	}
+
+	int32_t getCurrentRefIndex() const {
+		return last.ref;
+	}
+
+
+
+	bool loadNextBatch(vector<uint32_t>& depths);
+
 };
 
-}}
+}
+}

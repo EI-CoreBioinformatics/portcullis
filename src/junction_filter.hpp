@@ -117,8 +117,8 @@ public:
 	static path dataDir;
 
 	JunctionFilter(const path& _prepDir,
-			const path& _junctionFile,
-			const path& _output);
+				   const path& _junctionFile,
+				   const path& _output);
 
 	virtual ~JunctionFilter() {
 	}
@@ -258,32 +258,33 @@ public:
 	void setCanonical(const string& canonical) {
 		vector<string> modes;
 		boost::split(modes, canonical, boost::is_any_of(","), boost::token_compress_on);
-
 		if (modes.size() > 3) {
 			BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-					"Canonical filter mode contains too many modes.  Max is 2.")));
+									  "Canonical filter mode contains too many modes.  Max is 2.")));
 		}
-
 		if (modes.empty()) {
 			this->filterCanonical = false;
 			this->filterSemi = false;
 			this->filterNovel = false;
-		} else {
+		}
+		else {
 			this->filterCanonical = true;
 			this->filterSemi = true;
 			this->filterNovel = true;
-
-			for (auto& m : modes) {
+			for (auto & m : modes) {
 				string n = boost::to_upper_copy(m);
 				if (n == "OFF") {
 					this->filterCanonical = false;
 					this->filterSemi = false;
 					this->filterNovel = false;
-				} else if (n == "C") {
+				}
+				else if (n == "C") {
 					this->filterCanonical = false;
-				} else if (n == "S") {
+				}
+				else if (n == "S") {
 					this->filterSemi = false;
-				} else if (n == "N") {
+				}
+				else if (n == "N") {
 					this->filterNovel = false;
 				}
 			}
@@ -352,14 +353,14 @@ public:
 
 	static string description() {
 		return string("Filters out junctions that are unlikely to be genuine or that have too little\n") +
-				"supporting evidence.  The user can control three stages of the filtering\n" +
-				"process.  First the user can perform filtering based on a random forest model\n" +
-				"self-trained on the provided data, alternatively the user can provide a pre-\n" +
-				"trained model.  Second the user can specify a configuration file describing a\n" +
-				"set of filtering rules to apply.  Third, the user can directly through the\n" +
-				"command line filter based on junction (intron) length, or the canonical label.\n\n" +
-				"This stage requires the prep directory and the tab file generated from the\n" +
-				"stage as input.";
+			   "supporting evidence.  The user can control three stages of the filtering\n" +
+			   "process.  First the user can perform filtering based on a random forest model\n" +
+			   "self-trained on the provided data, alternatively the user can provide a pre-\n" +
+			   "trained model.  Second the user can specify a configuration file describing a\n" +
+			   "set of filtering rules to apply.  Third, the user can directly through the\n" +
+			   "command line filter based on junction (intron) length, or the canonical label.\n\n" +
+			   "This stage requires the prep directory and the tab file generated from the\n" +
+			   "stage as input.";
 	}
 
 	static string usage() {

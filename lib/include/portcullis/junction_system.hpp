@@ -120,7 +120,7 @@ public:
 	void append(JunctionSystem& other);
 
 	/**
-	 * Adds any new junctions found from the given alignment to the set managed 
+	 * Adds any new junctions found from the given alignment to the set managed
 	 * by this class
 	 * @param al The alignment to search for junctions
 	 * @return Whether a junction was found in this alignment or not
@@ -162,13 +162,10 @@ public:
 	void outputDescription(std::ostream &strm);
 
 	friend std::ostream& operator<<(std::ostream &strm, const JunctionSystem& js) {
-
 		strm << Junction::junctionOutputHeader() << endl;
-
-		for (const auto& j : js.junctionList) {
+		for (const auto & j : js.junctionList) {
 			strm << *j << endl;
 		}
-
 		return strm;
 	}
 

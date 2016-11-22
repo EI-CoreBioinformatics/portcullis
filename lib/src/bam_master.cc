@@ -46,41 +46,30 @@ using boost::lexical_cast;
 
 
 bool portcullis::bam::BamHelper::isCoordSortedBam(const path& bamFile) {
-
-    BGZF *fp;
-    
-    // split
-    fp = strcmp(bamFile.c_str(), "-")? bgzf_open(bamFile.c_str(), "r") : bgzf_dopen(fileno(stdin), "r");
-    if (fp == NULL) {
-        BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
-                "Could not open input BAM files: ") + bamFile.string()));
-    }
-    
-    bam_hdr_t* header = bam_hdr_read(fp);
-    
-    string headerText = header->text;
-   
-    bool found = false;
-    if (headerText.find("SO:coordinate") != std::string::npos) {
-        found = true;        
-    }
-    
-    bam_hdr_destroy(header);
-        
-    return found;
+	BGZF *fp;
+	// split
+	fp = strcmp(bamFile.c_str(), "-") ? bgzf_open(bamFile.c_str(), "r") : bgzf_dopen(fileno(stdin), "r");
+	if (fp == NULL) {
+		BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+								  "Could not open input BAM files: ") + bamFile.string()));
+	}
+	bam_hdr_t* header = bam_hdr_read(fp);
+	string headerText = header->text;
+	bool found = false;
+	if (headerText.find("SO:coordinate") != std::string::npos) {
+		found = true;
+	}
+	bam_hdr_destroy(header);
+	return found;
 }
 
 bool portcullis::bam::BamHelper::isNewerIndexPresent(const path& bamFile, bool useCsi) {
-    
-    path idxFile = path(bamFile.string() + (useCsi ? ".csi" : ".bai"));
-    
-    if (!exists(idxFile))
-        return false;
-    
-    time_t bamTime = last_write_time( bamFile ) ;    
-    time_t idxTime = last_write_time( bamFile ) ;
-    
-    return difftime(bamTime, idxTime) > 0;
+	path idxFile = path(bamFile.string() + (useCsi ? ".csi" : ".bai"));
+	if (!exists(idxFile))
+		return false;
+	time_t bamTime = last_write_time( bamFile ) ;
+	time_t idxTime = last_write_time( bamFile ) ;
+	return difftime(bamTime, idxTime) > 0;
 }
 
 /**
@@ -91,21 +80,19 @@ bool portcullis::bam::BamHelper::isNewerIndexPresent(const path& bamFile, bool u
  * @param threads Number of threads to use during merging
  * @return Command line
  */
-string portcullis::bam::BamHelper::createMergeBamCmd(const vector<path>& bamFiles, 
-                                                     const path& mergedBamFile, 
-                                                     uint16_t threads) {
-
-    stringstream inputFiles;
-    for(path p : bamFiles) {            
-        inputFiles << " " << p.c_str();
-    }
-
-    return string("samtools merge -f -@ ") + lexical_cast<string>(threads) + 
-            " " + mergedBamFile.string() + 
-            inputFiles.str();
+string portcullis::bam::BamHelper::createMergeBamCmd(const vector<path>& bamFiles,
+		const path& mergedBamFile,
+		uint16_t threads) {
+	stringstream inputFiles;
+	for (path p : bamFiles) {
+		inputFiles << " " << p.c_str();
+	}
+	return string("samtools merge -f -@ ") + lexical_cast<string>(threads) +
+		   " " + mergedBamFile.string() +
+		   inputFiles.str();
 }
-    
-    
+
+
 /**
  * Creates a samtools command that can be used to sort a bam file
  * @param samtoolsExe The path to samtools
@@ -116,17 +103,16 @@ string portcullis::bam::BamHelper::createMergeBamCmd(const vector<path>& bamFile
  * @param memory Amount of memory to request
  * @return The command that can be used to sort the bam file
  */
-string portcullis::bam::BamHelper::createSortBamCmd(const path& unsortedFile, 
-                                                    const path& sortedFile, 
-                                                    bool sortByName, 
-                                                    uint16_t threads, 
-                                                    const string& memory) {
-
-    return string("samtools sort -@ ") + lexical_cast<string>(threads) + 
-            " -m " + memory + " " + (sortByName ? "-n " : "") + unsortedFile.string() + 
-            " " + sortedFile.string();
+string portcullis::bam::BamHelper::createSortBamCmd(const path& unsortedFile,
+		const path& sortedFile,
+		bool sortByName,
+		uint16_t threads,
+		const string& memory) {
+	return string("samtools sort -@ ") + lexical_cast<string>(threads) +
+		   " -m " + memory + " " + (sortByName ? "-n " : "") + unsortedFile.string() +
+		   " " + sortedFile.string();
 }
-    
+
 /**
  * Creates a samtools command that can be used to index a sorted bam file
  * @param samtoolsExe The path to samtools
@@ -134,10 +120,8 @@ string portcullis::bam::BamHelper::createSortBamCmd(const path& unsortedFile,
  * @return The command that can be used to index the sorted bam file
  */
 string portcullis::bam::BamHelper::createIndexBamCmd(const path& sortedBam, bool useCsi) {
-
-    return string("samtools index ") + (useCsi ? "-c " : "") + sortedBam.string();        
+	return string("samtools index ") + (useCsi ? "-c " : "") + sortedBam.string();
 }
 
 
 
-    

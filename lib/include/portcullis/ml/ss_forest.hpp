@@ -42,41 +42,41 @@ using portcullis::SplicingScores;
 
 namespace portcullis {
 namespace ml {
-    
-typedef boost::error_info<struct SSRFError,string> SSRFErrorInfo;
+
+typedef boost::error_info<struct SSRFError, string> SSRFErrorInfo;
 struct SSRFException: virtual boost::exception, virtual std::exception {};
 
 const uint16_t REPEAT_LIMIT = 3;
-    
+
 class SemiSupervisedForest {
 private:
-    uint16_t trees;
-    Data* labelled;
-    Data* unlabelled;
-    Data* all;
-    ModelFeatures mf;
-    ForestPtr forest;
-    bool verbose;
-    uint16_t threads;
-    string outputPrefix;
-    double contribution;    // How much of a contribution unlabelled data should make to the decision making
-    
-    
-public:
-    SemiSupervisedForest(ModelFeatures& _mf, const JunctionList& labelled, const JunctionList& unlabelled,
-            string outputPrefix, uint16_t trees, uint16_t threads, double contribution, bool verbose);
-    
-    virtual ~SemiSupervisedForest();
-    
-    ForestPtr train();
-    
-    ForestPtr getForest() { return forest; };
-    
-    static Data* juncs2FeatureVectors(const JunctionList& x);
+	uint16_t trees;
+	Data* labelled;
+	Data* unlabelled;
+	Data* all;
+	ModelFeatures mf;
+	ForestPtr forest;
+	bool verbose;
+	uint16_t threads;
+	string outputPrefix;
+	double contribution;    // How much of a contribution unlabelled data should make to the decision making
 
-    
-    
-    
+
+public:
+	SemiSupervisedForest(ModelFeatures& _mf, const JunctionList& labelled, const JunctionList& unlabelled,
+						 string outputPrefix, uint16_t trees, uint16_t threads, double contribution, bool verbose);
+
+	virtual ~SemiSupervisedForest();
+
+	ForestPtr train();
+
+	ForestPtr getForest() { return forest; };
+
+	static Data* juncs2FeatureVectors(const JunctionList& x);
+
+
+
+
 };
 }
 }

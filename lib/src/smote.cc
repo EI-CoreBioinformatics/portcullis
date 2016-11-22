@@ -25,75 +25,62 @@ using portcullis::ml::KNN;
 #include <portcullis/ml/smote.hpp>
 
 portcullis::ml::Smote::Smote(uint16_t defaultK, uint16_t _smoteness, uint16_t _threads, double* _data, size_t _rows, size_t _cols) {
-    
-    data = _data;
-    rows = _rows;
-    cols = _cols;
-    if (_rows < defaultK && _rows < 100)
-        k = _rows;
-    else
-        k = defaultK;
-    smoteness = _smoteness < 1 ? 1 : _smoteness;
-    threads = _threads;
-    verbose = false;
-    
-    s_rows = smoteness * rows;
-    synthetic = new double[s_rows * cols];
+	data = _data;
+	rows = _rows;
+	cols = _cols;
+	if (_rows < defaultK && _rows < 100)
+		k = _rows;
+	else
+		k = defaultK;
+	smoteness = _smoteness < 1 ? 1 : _smoteness;
+	threads = _threads;
+	verbose = false;
+	s_rows = smoteness * rows;
+	synthetic = new double[s_rows * cols];
 }
 
 void portcullis::ml::Smote::execute() {
-
-    auto_cpu_timer timer(1, "SMOTE Time taken: %ws\n\n");
-
-    if (verbose) {
-        cout << "Starting Synthetic Minority Oversampling Technique (SMOTE)" << endl;
-    }
-    
-    uint32_t new_index = 0;
-    
-    KNN knn(k, threads, data, rows, cols);
-    knn.setVerbose(verbose);
-    knn.execute();
-    
-    std::mt19937 rng(12345);
-    std::uniform_int_distribution<uint16_t> igen(0, k);
-    std::uniform_real_distribution<double> dgen(0, 1);
-    
-    
-    for(size_t i = 0; i < rows; i++) {
-        uint16_t N = smoteness;
-        while(N > 0) {
-            const vector<uint32_t> nns = knn.getNNs(i);
-            uint32_t nn = nns[igen(rng)];    // Nearest neighbour row index
-
-            for(size_t j = 0; j < cols; j++) {
-                double dif = data[(nn * cols) + j] - data[(i * cols) + j];
-                double gap = dgen(rng);
-                synthetic[(new_index * cols) + j] = data[(i * cols) + j] + gap * dif;
-            }
-
-            new_index++;
-            N--;
-        }
-    }    
+	auto_cpu_timer timer(1, "SMOTE Time taken: %ws\n\n");
+	if (verbose) {
+		cout << "Starting Synthetic Minority Oversampling Technique (SMOTE)" << endl;
+	}
+	uint32_t new_index = 0;
+	KNN knn(k, threads, data, rows, cols);
+	knn.setVerbose(verbose);
+	knn.execute();
+	std::mt19937 rng(12345);
+	std::uniform_int_distribution<uint16_t> igen(0, k);
+	std::uniform_real_distribution<double> dgen(0, 1);
+	for (size_t i = 0; i < rows; i++) {
+		uint16_t N = smoteness;
+		while (N > 0) {
+			const vector<uint32_t> nns = knn.getNNs(i);
+			uint32_t nn = nns[igen(rng)];    // Nearest neighbour row index
+			for (size_t j = 0; j < cols; j++) {
+				double dif = data[(nn * cols) + j] - data[(i * cols) + j];
+				double gap = dgen(rng);
+				synthetic[(new_index * cols) + j] = data[(i * cols) + j] + gap * dif;
+			}
+			new_index++;
+			N--;
+		}
+	}
 }
 
 void portcullis::ml::Smote::print(ostream& out) const {
-    
-    out << "Input:" << endl;
-    for(size_t i = 0; i < rows; i++) {
-        for(size_t j = 0; j < cols; j++) {
-            out << data[(i * cols) + j] << " ";
-        }
-        out << endl;
-    }
-    
-    out << endl << "Synthetic:" << endl;
-    for(size_t i = 0; i < s_rows; i++) {
-        for(size_t j = 0; j < cols; j++) {
-            out << synthetic[(i * cols) + j] << " ";
-        }
-        out << endl;
-    }
-    out << endl;
+	out << "Input:" << endl;
+	for (size_t i = 0; i < rows; i++) {
+		for (size_t j = 0; j < cols; j++) {
+			out << data[(i * cols) + j] << " ";
+		}
+		out << endl;
+	}
+	out << endl << "Synthetic:" << endl;
+	for (size_t i = 0; i < s_rows; i++) {
+		for (size_t j = 0; j < cols; j++) {
+			out << synthetic[(i * cols) + j] << " ";
+		}
+		out << endl;
+	}
+	out << endl;
 }
