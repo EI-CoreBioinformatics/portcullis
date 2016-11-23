@@ -12,6 +12,8 @@ we suggest at least 16GB to handle most medium sized datasets.
 Large datasets will require more RAM, the largest dataset we tested required 20GB 
 but the actual amount of memory required depends on how many splice junctions
 are present in your BAM file and the number of accompanying reads that support them.
+As a rule of thumb if you have sufficient memory to align the reads, you should have
+sufficient memory to run portcullis.
 
 More specifically, the preparation, junction filtering and BAM filtering :ref:`subtools <using>` have relatively modest
 memory requirements.  The amount of memory the portcullis junction analysis stage requires 

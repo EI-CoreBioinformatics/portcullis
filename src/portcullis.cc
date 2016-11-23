@@ -145,7 +145,9 @@ int mainFull(int argc, char *argv[]) {
 	string strandSpecific;
 	string orientation;
 	uint16_t threads;
-	bool copy;
+	bool separate;
+    bool extra;
+    bool copy;
 	bool force;
 	bool useCsi;
 	bool properPairedCheck;
@@ -185,10 +187,6 @@ int mainFull(int argc, char *argv[]) {
 	;
 	po::options_description prepare_options("Input options", w.ws_col, (unsigned)((double)w.ws_col / 1.5));
 	prepare_options.add_options()
-	("orientation", po::value<string>(&orientation)->default_value(orientationToString(Orientation::UNKNOWN)),
-	 "The orientation of the reads that produced the BAM alignments: \"F\" (Single-end forward orientation); \"R\" (single-end reverse orientation); \"FR\" (paired-end, with reads sequenced towards center of fragment -> <-.  This is usual setting for most Illumina paired end sequencing); \"RF\" (paired-end, reads sequenced away from center of fragment <- ->); \"FF\" (paired-end, reads both sequenced in forward orientation); \"RR\" (paired-end, reads both sequenced in reverse orientation); \"UNKNOWN\" (default, portcullis will workaround any calculations requiring orientation information)")
-	("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)),
-	 "Whether BAM alignments were generated using a type of strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads); \"UNKNOWN\" (default, portcullis will workaround any calculations requiring strandedness information)")
 	("force", po::bool_switch(&force)->default_value(false),
 	 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
 	("copy", po::bool_switch(&copy)->default_value(false),
@@ -196,6 +194,19 @@ int mainFull(int argc, char *argv[]) {
 	("use_csi", po::bool_switch(&useCsi)->default_value(false),
 	 "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
 	;
+    
+    po::options_description analysis_options("Analysis options", w.ws_col, (unsigned)((double)w.ws_col / 1.5));
+	analysis_options.add_options()
+	("orientation", po::value<string>(&orientation)->default_value(orientationToString(Orientation::UNKNOWN)),
+	 "The orientation of the reads that produced the BAM alignments: \"F\" (Single-end forward orientation); \"R\" (single-end reverse orientation); \"FR\" (paired-end, with reads sequenced towards center of fragment -> <-.  This is usual setting for most Illumina paired end sequencing); \"RF\" (paired-end, reads sequenced away from center of fragment <- ->); \"FF\" (paired-end, reads both sequenced in forward orientation); \"RR\" (paired-end, reads both sequenced in reverse orientation); \"UNKNOWN\" (default, portcullis will workaround any calculations requiring orientation information)")
+	("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)),
+	 "Whether BAM alignments were generated using a type of strand specific RNAseq library: \"unstranded\" (Standard Illumina); \"firststrand\" (dUTP, NSR, NNSR); \"secondstrand\" (Ligation, Standard SOLiD, flux sim reads); \"UNKNOWN\" (default, portcullis will workaround any calculations requiring strandedness information)")
+	("separate", po::bool_switch(&separate)->default_value(false),
+	 "Separate spliced from unspliced reads.")
+	("extra", po::bool_switch(&extra)->default_value(false),
+	 "Calculate additional metrics that take some time to generate.  Automatically activates BAM splitting mode (--separate).")
+    ;
+	
 	po::options_description filter_options("Filtering options", w.ws_col, (unsigned)((double)w.ws_col / 1.5));
 	filter_options.add_options()
 	("reference,r", po::value<path>(&referenceFile),
@@ -209,14 +220,13 @@ int mainFull(int argc, char *argv[]) {
 	("save_bad", po::bool_switch(&saveBad)->default_value(false),
 	 "Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)")
 	;
+    
 	// Hidden options, will be allowed both on command line and
 	// in config file, but will not be shown to the user.
 	po::options_description hidden_options("Hidden options");
 	hidden_options.add_options()
 	("bam-files", po::value< std::vector<path> >(&bamFiles), "Path to the BAM files to process.")
 	("genome-file", po::value<path>(&genomeFile), "Path to the genome file to process.")
-	("pp", po::bool_switch(&properPairedCheck)->default_value(false),
-	 "Proper paired check for reliable alignments.  Do NOT use this if input data is single-end, or if the input aligner is tophat.  This is important to ensure you get a sensible number of reliable split read counts and getting good filtering behaviour.")
 	;
 	// Positional option for the input bam file
 	po::positional_options_description p;
@@ -224,7 +234,7 @@ int mainFull(int argc, char *argv[]) {
 	p.add("bam-files", -1);
 	// Combine non-positional options for displaying to the user
 	po::options_description display_options;
-	display_options.add(system_options).add(output_options).add(prepare_options).add(filter_options);
+	display_options.add(system_options).add(output_options).add(prepare_options).add(analysis_options).add(filter_options);
 	// Combine non-positional options for use at the command line
 	po::options_description cmdline_options;
 	cmdline_options.add(display_options).add(hidden_options);
@@ -264,6 +274,7 @@ int mainFull(int argc, char *argv[]) {
 									  "Could not create output directory: ") + outputDir.string()));
 		}
 	}
+    
 	// ************ Prepare input data (BAMs + genome) ***********
 	cout << "Preparing input data (BAMs + genome)" << endl
 		 << "----------------------------------" << endl << endl;
@@ -278,6 +289,7 @@ int mainFull(int argc, char *argv[]) {
 	// Prep the input to produce a usable indexed and sorted bam plus, indexed
 	// genome and queryable coverage information
 	prep.prepare(transformedBams, genomeFile);
+    
 	// ************ Identify all junctions and calculate metrics ***********
 	cout << "Identifying junctions and calculating metrics" << endl
 		 << "---------------------------------------------" << endl << endl;
@@ -290,12 +302,15 @@ int mainFull(int argc, char *argv[]) {
 	jb.setSeparate(false);  // Run in fast mode
 	jb.setStrandSpecific(strandednessFromString(strandSpecific));
 	jb.setOrientation(orientationFromString(orientation));
+    jb.setExtra(extra);
+    jb.setSeparate(separate);
 	jb.setSource(source);
 	jb.setUseCsi(useCsi);
 	jb.setOutputExonGFF(exongff);
 	jb.setOutputIntronGFF(introngff);
 	jb.setVerbose(verbose);
 	jb.process();
+    
 	// ************ Use default filtering strategy *************
 	cout << "Filtering junctions" << endl
 		 << "-------------------" << endl << endl;
@@ -314,6 +329,7 @@ int mainFull(int argc, char *argv[]) {
 	filter.setOutputIntronGFF(introngff);
 	filter.setSaveBad(saveBad);
 	filter.filter();
+    
 	// *********** BAM filter *********
 	if (bamFilter) {
 		cout << "Filtering BAMs" << endl

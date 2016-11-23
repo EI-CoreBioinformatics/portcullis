@@ -359,8 +359,10 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
 	system_options.add_options()
 	("threads,t", po::value<uint16_t>(&threads)->default_value(1),
 	 "The number of threads to use.  Note that increasing the number of threads will also increase memory requirements.")
-	("separate,s", po::bool_switch(&separate)->default_value(false),
+	("separate", po::bool_switch(&separate)->default_value(false),
 	 "Separate spliced from unspliced reads.")
+	("extra", po::bool_switch(&extra)->default_value(false),
+	 "Calculate additional metrics that take some time to generate.  Automatically activates BAM splitting mode (--separate).")
 	("orientation", po::value<string>(&orientation)->default_value(orientationToString(Orientation::UNKNOWN)),
 	 "The orientation of the reads that produced the BAM alignments: \"F\" (Single-end forward orientation); \"R\" (single-end reverse orientation); \"FR\" (paired-end, with reads sequenced towards center of fragment -> <-.  This is usual setting for most Illumina paired end sequencing); \"RF\" (paired-end, reads sequenced away from center of fragment <- ->); \"FF\" (paired-end, reads both sequenced in forward orientation); \"RR\" (paired-end, reads both sequenced in reverse orientation); \"UNKNOWN\" (default, portcullis will workaround any calculations requiring orientation information)")
 	("strandedness", po::value<string>(&strandSpecific)->default_value(strandednessToString(Strandedness::UNKNOWN)),
@@ -387,8 +389,6 @@ int portcullis::JunctionBuilder::main(int argc, char *argv[]) {
 	po::options_description hidden_options("Hidden options");
 	hidden_options.add_options()
 	("prep_data_dir,i", po::value<string>(&prepDir), "Path to directory containing prepared data.")
-	("extra,e", po::bool_switch(&extra)->default_value(false),
-	 "Calculate additional metrics that take some time to generate.  Automatically activates BAM splitting mode.")
 	;
 	// Positional option for the input bam file
 	po::positional_options_description p;
