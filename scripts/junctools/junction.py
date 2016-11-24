@@ -341,17 +341,11 @@ class BedJunction(ExonJunction):
 			self.red = junc_to_copy.red
 			self.green = junc_to_copy.green
 			self.blue = junc_to_copy.blue
-			self.block_count = junc_to_copy.block_count
-			self.block_sizes = junc_to_copy.block_sizes
-			self.block_starts = junc_to_copy.block_starts
 			self.style = junc_to_copy.style
 		else:
 			self.red = 255
 			self.green = 0
 			self.blue = 0
-			self.block_count = 2
-			self.block_sizes = [self.start - self.left, self.right - self.end]
-			self.block_starts = [0, self.end - self.left + 1]
 			self.style = JuncFactory.IBED
 
 	def __str__(self):
@@ -380,11 +374,10 @@ class BedJunction(ExonJunction):
 						]
 			else:
 
-				assert len(self.block_sizes) == len(self.block_starts) == self.block_count, (self.block_count,
-																							 len(self.block_sizes),
-																							 len(self.block_starts))
-				bsizes = ",".join([str(_) for _ in self.block_sizes])
-				bstarts = ",".join([str(_) for _ in self.block_starts])
+				block_count = 2
+				bsizes = ",".join([self.start - self.left, self.right - self.end])
+				bstarts = ",".join([0, self.end - self.left + 1])
+
 
 				if self.style == JuncFactory.EBED:
 
@@ -392,7 +385,7 @@ class BedJunction(ExonJunction):
 							self.strand if self.strand else ".",
 							self.start, self.end + 1,
 							rgb,
-							self.block_count,
+							block_count,
 							bsizes,
 							bstarts
 							]
@@ -402,7 +395,7 @@ class BedJunction(ExonJunction):
 							self.strand if self.strand else ".",
 							self.left, self.right + 1,
 							rgb,
-							self.block_count,
+							block_count,
 							bsizes,
 							bstarts
 							]
