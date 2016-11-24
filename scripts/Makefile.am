@@ -1,7 +1,7 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
 install-exec-hook:
-	PYTHONPATH=$(prefix)/lib/python$(PYTHON_VERSION)/site-packages/ && \
+	export PYTHONPATH=$(prefix)/lib/python$(PYTHON_VERSION)/site-packages/ && \
 	mkdir -p $(prefix)/lib/python$(PYTHON_VERSION)/site-packages/ && \
 	python3 setup.py install --prefix=$(prefix) --record install_files.txt
 
