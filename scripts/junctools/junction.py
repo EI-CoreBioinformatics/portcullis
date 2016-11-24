@@ -358,9 +358,11 @@ class BedJunction(ExonJunction):
 
 		line = ""
 
+		scr = "{0:.3f}".format(self.score)
+
 		if self.style == JuncFactory.BED6:
 
-			line = [self.refseq, self.start, self.end + 1, self.id, self.score,
+			line = [self.refseq, self.start, self.end + 1, self.id, scr,
 					self.strand if self.strand else "."]
 
 		else:
@@ -368,7 +370,7 @@ class BedJunction(ExonJunction):
 			rgb = ",".join([str(_) for _ in (self.red, self.green, self.blue)])
 
 			if self.style == JuncFactory.IBED:
-				line = [self.refseq, self.start, self.end + 1, self.id, self.score,
+				line = [self.refseq, self.start, self.end + 1, self.id, scr,
 						self.strand if self.strand else ".",
 						self.start, self.end + 1,
 						rgb,
@@ -386,7 +388,7 @@ class BedJunction(ExonJunction):
 
 				if self.style == JuncFactory.EBED:
 
-					line = [self.refseq, self.left, self.right + 1, self.id, self.score,
+					line = [self.refseq, self.left, self.right + 1, self.id, scr,
 							self.strand if self.strand else ".",
 							self.start, self.end + 1,
 							rgb,
@@ -396,7 +398,7 @@ class BedJunction(ExonJunction):
 							]
 				elif self.style == JuncFactory.TBED:
 
-					line = [self.refseq, self.left, self.right + 1, self.id, self.score,
+					line = [self.refseq, self.left, self.right + 1, self.id, scr,
 							self.strand if self.strand else ".",
 							self.left, self.right + 1,
 							rgb,
@@ -425,18 +427,18 @@ class BedJunction(ExonJunction):
 		if (len(parts) != 6 and len(parts) != 12):
 			return None
 
-		bed6 = True if len(parts) == 6 else False
+		self.style = JuncFactory.BED6 if len(parts) == 6 else JuncFactory.IBED
 
 		self.refseq = parts[0]
 		self.strand = parts[5]
-		self.start = int(parts[1]) if bed6 else int(parts[6])
-		self.end = int(parts[2]) - 1 if bed6 else int(parts[7]) - 1
+		self.start = int(parts[1]) if self.style == JuncFactory.BED6 else int(parts[6])
+		self.end = int(parts[2]) - 1 if self.style == JuncFactory.BED6 else int(parts[7]) - 1
 
 		if fullparse:
 			self.id = parts[3]
 			self.score = float(parts[4])
 
-			if not bed6:
+			if self.style != JuncFactory.BED6:
 				self.left = int(parts[1])
 				self.right = int(parts[2]) - 1
 
@@ -451,8 +453,11 @@ class BedJunction(ExonJunction):
 
 				# Check if this looks like a tophat style junction and if so bring it into out style
 				if self.start == self.left and self.block_sizes[0] != 0:
+					self.style = JuncFactory.TBED
 					self.start += self.block_sizes[0]
 					self.end -= self.block_sizes[1]
+				elif self.start != self.left:
+					self.style = JuncFactory.EBED
 
 				# Assert that everything looks valid
 				assert len(self.block_sizes) == len(self.block_starts) == self.block_count, (line,
