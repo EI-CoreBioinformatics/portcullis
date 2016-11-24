@@ -57,6 +57,11 @@ Portcullis contains *HTSlib* and *Ranger* (a random forest implementation)  in t
 not need to do anything special to handle *htslib* and *ranger* as these are automatically
 built and managed inside portcullis.
 
+Portcullis also comes with a python package for analysing, comparing and converting
+junction files, called junctools.  Should you not wish to build / install this
+you can add the ``--disable-junctools`` option to the ``configure`` script.  For more
+information about junctools see `junctools <junctools.html>`_ for more information.
+
 
 Compilation and Installation
 ----------------------------

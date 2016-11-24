@@ -38,104 +38,89 @@ using portcullis::SplicingScores;
 
 namespace portcullis {
 namespace ml {
-    
+
 typedef shared_ptr<Forest> ForestPtr;
 
 // List of variable names
-const vector<string> VAR_NAMES = { 
-        "Genuine",
-        "rna_usrs", 
-        "rna_dist", 
-        "rna_rel", 
-        "rna_entropy", 
-        "rna_rel2raw",
-        "rna_maxminanc", 
-        "rna_maxmmes", 
-        "rna_missmatch",
-        "rna_intron",
-        "dna_minhamm", 
-        "dna_coding",
-        "dna_pws",
-        "dna_ss"
+const vector<string> VAR_NAMES = {
+	"Genuine",
+	"rna_usrs",
+	"rna_dist",
+	"rna_rel",
+	"rna_entropy",
+	"rna_rel2raw",
+	"rna_maxminanc",
+	"rna_maxmmes",
+	"rna_missmatch",
+	"rna_intron",
+	"dna_minhamm",
+	"dna_coding",
+	"dna_pws",
+	"dna_ss"
 };
 
 struct Feature {
-    string name;
-    bool active;    
+	string name;
+	bool active;
 };
-    
+
 class ModelFeatures {
 private:
-    size_t fi;
+	size_t fi;
 protected:
-    void setRow(Data* d, size_t row, JunctionPtr j, bool labelled);
-        
+	void setRow(Data* d, size_t row, JunctionPtr j, bool labelled);
+
 public:
-    uint32_t L95;
-    KmerMarkovModel exonModel;
-    KmerMarkovModel intronModel;
-    KmerMarkovModel donorTModel;
-    KmerMarkovModel donorFModel;
-    KmerMarkovModel acceptorTModel;
-    KmerMarkovModel acceptorFModel;    
-    PosMarkovModel donorPWModel;
-    PosMarkovModel acceptorPWModel;
-    GenomeMapper gmap;
-    vector<Feature> features;
-    
-    ModelFeatures() : L95(0) {
-        fi = 1;
-        features.clear();
-        for(size_t i = 0; i < VAR_NAMES.size(); i++) {
-            Feature f;
-            f.name = VAR_NAMES[i];
-            f.active = true;
-            features.push_back(f);
-        }
-        for(size_t i = 0; i < JO_NAMES.size(); i++) {
-            Feature f;
-            f.name = JO_NAMES[i];
-            f.active = true;
-            features.push_back(f);
-        }        
-    }
-        
-    bool isCodingPotentialModelEmpty() {
-        return exonModel.size() == 0 || intronModel.size() == 0;
-    }
-    
-    bool isPWModelEmpty() {
-        return donorPWModel.size() == 0 || acceptorPWModel.size() == 0;
-    }
-    
-    void initGenomeMapper(const path& genomeFile);
-    
-    uint32_t calcIntronThreshold(const JunctionList& juncs);
-    
-    void trainCodingPotentialModel(const JunctionList& in);
-    
-    void trainSplicingModels(const JunctionList& pass, const JunctionList& fail);
-    
-    Data* juncs2FeatureVectors(const JunctionList& x);
-    Data* juncs2FeatureVectors(const JunctionList& xl, const JunctionList& xu);
-    
-    
-    ForestPtr trainInstance(const JunctionList& pos, const JunctionList& neg, string outputPrefix, 
-            uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose, bool smote, bool enn);
-    
-    void resetActiveFeatureIndex() {
-        fi = 0;
-    }
-    int16_t getNextActiveFeatureIndex() {
-        for(int16_t i = fi+1; i < features.size(); i++) {
-            if (features[i].active) {
-                fi = i;
-                return i;
-            }
-        }
-        return -1;
-    }
-    
+	uint32_t L95;
+	KmerMarkovModel exonModel;
+	KmerMarkovModel intronModel;
+	KmerMarkovModel donorTModel;
+	KmerMarkovModel donorFModel;
+	KmerMarkovModel acceptorTModel;
+	KmerMarkovModel acceptorFModel;
+	PosMarkovModel donorPWModel;
+	PosMarkovModel acceptorPWModel;
+	GenomeMapper gmap;
+	vector<Feature> features;
+
+	ModelFeatures();
+
+	bool isCodingPotentialModelEmpty() {
+		return exonModel.size() == 0 || intronModel.size() == 0;
+	}
+
+	bool isPWModelEmpty() {
+		return donorPWModel.size() == 0 || acceptorPWModel.size() == 0;
+	}
+
+	void initGenomeMapper(const path& genomeFile);
+
+	uint32_t calcIntronThreshold(const JunctionList& juncs);
+
+	void trainCodingPotentialModel(const JunctionList& in);
+
+	void trainSplicingModels(const JunctionList& pass, const JunctionList& fail);
+
+	Data* juncs2FeatureVectors(const JunctionList& x);
+	Data* juncs2FeatureVectors(const JunctionList& xl, const JunctionList& xu);
+
+
+	ForestPtr trainInstance(const JunctionList& pos, const JunctionList& neg, string outputPrefix,
+							uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose, bool smote, bool enn);
+
+	void resetActiveFeatureIndex() {
+		fi = 0;
+	}
+	int16_t getNextActiveFeatureIndex() {
+		for (int16_t i = fi + 1; i < features.size(); i++) {
+			if (features[i].active) {
+				fi = i;
+				return i;
+			}
+		}
+		return -1;
+	}
+
 };
 }
 }

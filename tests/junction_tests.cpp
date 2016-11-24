@@ -54,10 +54,10 @@ TEST(junction, donor_acceptor) {
     Junction j2(l2, 10, 40);
     
     CanonicalSS res1 = j1.setDonorAndAcceptorMotif("GT", "AG");
-    EXPECT_EQ(res1, portcullis::CANONICAL);
+    EXPECT_EQ(res1, CanonicalSS::CANONICAL);
     
     CanonicalSS res2 = j2.setDonorAndAcceptorMotif("CT", "AC");
-    EXPECT_EQ(res2, portcullis::CANONICAL);
+    EXPECT_EQ(res2, CanonicalSS::CANONICAL);
     
     try {
         j1.setDonorAndAcceptorMotif("GTA", "AG");
@@ -71,10 +71,10 @@ TEST(junction, donor_acceptor) {
 
     
     CanonicalSS res4 = j1.setDonorAndAcceptorMotif("CT", "AG");
-    EXPECT_NE(res4, portcullis::CANONICAL);
+    EXPECT_NE(res4, CanonicalSS::CANONICAL);
     
     CanonicalSS res5 = j1.setDonorAndAcceptorMotif("GT", "AC");
-    EXPECT_NE(res5, portcullis::CANONICAL);
+    EXPECT_NE(res5, CanonicalSS::CANONICAL);
     
     try {
         j1.setDonorAndAcceptorMotif("", "");

@@ -43,166 +43,171 @@ using portcullis::bam::BamAlignmentPtr;
 
 
 namespace portcullis {
-    
-typedef boost::error_info<struct BamFilterError,string> BamFilterErrorInfo;
+
+typedef boost::error_info<struct BamFilterError, string> BamFilterErrorInfo;
 struct BamFilterException: virtual boost::exception, virtual std::exception { };
 
-enum ClipMode {
-    HARD,
-    SOFT,
-    COMPLETE
+enum class ClipMode {
+	HARD,
+	SOFT,
+	COMPLETE
 };
 
 static string clipToString(ClipMode cm) {
-    
-    switch(cm) {
-        case HARD:
-            return "HARD";
-        case SOFT:
-            return "SOFT";
-        case COMPLETE:
-            return "COMPLETE";
-    }
-
-    return "COMPLETE";
+	switch (cm) {
+	case ClipMode::HARD:
+		return "HARD";
+	case ClipMode::SOFT:
+		return "SOFT";
+	case ClipMode::COMPLETE:
+		return "COMPLETE";
+	}
+	return "COMPLETE";
 }
 
 static ClipMode clipFromString(string cm) {
-    
-    if (boost::iequals(cm, "HARD")) {
-        return HARD;
-    }
-    else if (boost::iequals(cm, "SOFT")) {
-        return SOFT;
-    }
-    else if (boost::iequals(cm, "COMPLETE")) {
-        return COMPLETE;
-    }
-    
-    BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
-                    "Unrecognised clip mode: ") + cm));
+	if (boost::iequals(cm, "HARD")) {
+		return ClipMode::HARD;
+	}
+	else if (boost::iequals(cm, "SOFT")) {
+		return ClipMode::SOFT;
+	}
+	else if (boost::iequals(cm, "COMPLETE")) {
+		return ClipMode::COMPLETE;
+	}
+	BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
+							  "Unrecognised clip mode: ") + cm));
 }
 
 class BamFilter {
 
 private:
-    
-    path junctionFile;
-    path bamFile;
-    path outputBam;
-    Strandedness strandSpecific;
-    ClipMode clipMode;
-    bool saveMSRs;
-    bool useCsi;
-    bool verbose;
-    
+
+	path junctionFile;
+	path bamFile;
+	path outputBam;
+	//Strandedness strandSpecific;
+	//Orientation orientation;
+	ClipMode clipMode;
+	bool saveMSRs;
+	bool useCsi;
+	bool verbose;
+
 public:
-    
-    BamFilter(const path& _junctionFile, const path& _bamFile, const path& _outputBam);
-    
-    virtual ~BamFilter() {
-    }
-    
-    
+
+	BamFilter(const path& _junctionFile, const path& _bamFile, const path& _outputBam);
+
+	virtual ~BamFilter() {
+	}
+
+
 protected:
-    
-    /**
-     * Checks a given alignment to see if it exists in the given junction system
-     * @param al Alignment to check
-     * @param refs References
-     * @param js The junction system containing good junctions to keep
-     * @return Whether or not the alignment contains a junction found in the junction system
-     */
-    bool containsJunctionInSystem(const BamAlignment& al, const RefSeqPtrList& refs, JunctionSystem& js);
-    
-    BamAlignmentPtr clipMSR(const BamAlignment& al, const RefSeqPtrList& refs, JunctionSystem& js, bool& allBad);
-       
+
+	/**
+	 * Checks a given alignment to see if it exists in the given junction system
+	 * @param al Alignment to check
+	 * @param refs References
+	 * @param js The junction system containing good junctions to keep
+	 * @return Whether or not the alignment contains a junction found in the junction system
+	 */
+	bool containsJunctionInSystem(const BamAlignment& al, const RefSeqPtrList& refs, JunctionSystem& js);
+
+	BamAlignmentPtr clipMSR(const BamAlignment& al, const RefSeqPtrList& refs, JunctionSystem& js, bool& allBad);
+
 
 public:
-    
-    path getBamFile() const {
-        return bamFile;
-    }
 
-    void setBamFile(path bamFile) {
-        this->bamFile = bamFile;
-    }
+	path getBamFile() const {
+		return bamFile;
+	}
 
-    path getJunctionFile() const {
-        return junctionFile;
-    }
+	void setBamFile(path bamFile) {
+		this->bamFile = bamFile;
+	}
 
-    void setJunctionFile(path junctionFile) {
-        this->junctionFile = junctionFile;
-    }
+	path getJunctionFile() const {
+		return junctionFile;
+	}
 
-    path getOutputBam() const {
-        return outputBam;
-    }
+	void setJunctionFile(path junctionFile) {
+		this->junctionFile = junctionFile;
+	}
 
-    void setOutputBam(path outputBam) {
-        this->outputBam = outputBam;
-    }
+	path getOutputBam() const {
+		return outputBam;
+	}
 
-    Strandedness getStrandSpecific() const {
-        return strandSpecific;
-    }
+	void setOutputBam(path outputBam) {
+		this->outputBam = outputBam;
+	}
+	/*
+	    Strandedness getStrandSpecific() const {
+	        return strandSpecific;
+	    }
 
-    void setStrandSpecific(Strandedness strandSpecific) {
-        this->strandSpecific = strandSpecific;
-    }
-    
-    ClipMode getClipMode() const {
-        return clipMode;
-    }
+	    void setStrandSpecific(Strandedness strandSpecific) {
+	        this->strandSpecific = strandSpecific;
+	    }
 
-    void setClipMode(ClipMode clipMode) {
-        this->clipMode = clipMode;
-    }
-    
-    bool isSaveMSRs() const {
-        return saveMSRs;
-    }
+	    Orientation getOrientation() const {
+	        return orientation;
+	    }
 
-    void setSaveMSRs(bool saveMSRs) {
-        this->saveMSRs = saveMSRs;
-    }
-    
-    bool isUseCsi() const {
-        return useCsi;
-    }
+	    void setOrientation(Orientation orientation) {
+	        this->orientation = orientation;
+	    }
+	*/
+	ClipMode getClipMode() const {
+		return clipMode;
+	}
 
-    void setUseCsi(bool useCsi) {
-        this->useCsi = useCsi;
-    }
+	void setClipMode(ClipMode clipMode) {
+		this->clipMode = clipMode;
+	}
 
-    bool isVerbose() const {
-        return verbose;
-    }
+	bool isSaveMSRs() const {
+		return saveMSRs;
+	}
 
-    void setVerbose(bool verbose) {
-        this->verbose = verbose;
-    }
+	void setSaveMSRs(bool saveMSRs) {
+		this->saveMSRs = saveMSRs;
+	}
+
+	bool isUseCsi() const {
+		return useCsi;
+	}
+
+	void setUseCsi(bool useCsi) {
+		this->useCsi = useCsi;
+	}
+
+	bool isVerbose() const {
+		return verbose;
+	}
+
+	void setVerbose(bool verbose) {
+		this->verbose = verbose;
+	}
 
 
 
 
-    
-    void filter();
-  
-    static string title() {
-        return string("Portcullis BAM Filter Mode Help.");
-    }
-    
-    static string description() {
-        return string("Removes alignments associated with bad junctions from BAM file");
-    }
-    
-    static string usage() {
-        return string("portcullis bamfilt [options] <junction-file> <bam-file>");
-    }
-    
-    
-    static int main(int argc, char *argv[]);
+
+	void filter();
+
+	static string title() {
+		return string("Portcullis BAM Filter Mode Help.");
+	}
+
+	static string description() {
+		return string("Removes alignments associated with bad junctions from BAM file");
+	}
+
+	static string usage() {
+		return string("portcullis bamfilt [options] <junction-file> <bam-file>");
+	}
+
+
+	static int main(int argc, char *argv[]);
 };
 }

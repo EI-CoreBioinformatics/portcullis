@@ -4,7 +4,7 @@
 
 # Autoconf setup
 AC_PREREQ([2.68])
-AC_INIT([portcullis],[1.0.0_beta4],[daniel.mapleson@earlham.ac.uk],[portcullis],[http://www.earlham.ac.uk])
+AC_INIT([portcullis],[1.0.0_beta5],[daniel.mapleson@earlham.ac.uk],[portcullis],[http://www.earlham.ac.uk])
 AC_CONFIG_SRCDIR([src/portcullis.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
@@ -138,6 +138,12 @@ else
 fi
 AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
 AC_SUBST([MAKE_DOCS])
+
+AC_ARG_ENABLE([junctools],
+    AS_HELP_STRING([--disable-junctools], [Disable build of python package junctools]))
+
+AM_CONDITIONAL([MAKE_JUNCTOOLS], [test x$enable_junctools != xno])
+AC_SUBST([MAKE_JUNCTOOLS])
 
 ## Check for boost (required)
 AX_BOOST_BASE([1.52],, [AC_MSG_ERROR([Boost not found.  Please ensure that boost is properly built and the BOOST_ROOT environment variable is set.  Alternatively you can override BOOST_ROOT with the --with-boost option.])])

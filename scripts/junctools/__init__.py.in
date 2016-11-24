@@ -20,12 +20,16 @@ from . import markup
 from . import set
 from . import split
 
+
 def main():
 	call_args = sys.argv[1:]
 
 	parser = argparse.ArgumentParser(
 		"""This script contains a number of tools for manipulating junction files.""",
 		formatter_class=argparse.RawTextHelpFormatter)
+	parser.add_argument("-V", "--version", action='store_true', default=False,
+						help="Output the version of junctools")
+
 	subparsers = parser.add_subparsers(
 		title="Junction tools")
 
@@ -119,9 +123,10 @@ is_disjoint  = Returns True if there is a null intersection between both files''
 	args = parser.parse_args(call_args)
 	if hasattr(args, "func"):
 		args.func(args)
+	elif args.version:
+		print(__version__)
 	else:
 		parser.print_help()
-
 
 
 if __name__ == '__main__':

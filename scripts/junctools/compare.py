@@ -1,6 +1,3 @@
-from matplotlib_venn import venn2
-from pylab import figure
-
 from .performance import Performance
 from .junction import *
 

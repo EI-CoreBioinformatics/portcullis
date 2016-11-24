@@ -29,85 +29,85 @@ using portcullis::SeqUtils;
 using portcullis::ml::KMMU;
 
 void portcullis::ml::KmerMarkovModel::train(const vector<string>& input, const uint32_t _order) {
-    order = _order;
-    KMMU temp;
-    for(auto& seq : input) {
-        string s = SeqUtils::makeClean(seq);
-        if (s.size() > order+1) {
-            for(size_t i = order; i < s.size(); i++) {
-                temp[s.substr(i-order, order)][s.substr(i, 1)]++;
-            }
-        }
-    }
-    model.clear();
-    for(auto& i : temp) {
-        double sum = 0;
-        for(auto& j : i.second) {
-            sum += j.second;
-        }
-        for(auto& j : i.second) {
-            //cout << i.first << " " << j.first << " " << j.second << endl;
-            model[i.first][j.first] = j.second / sum;
-        }
-    }
+	order = _order;
+	KMMU temp;
+	for (auto & seq : input) {
+		string s = SeqUtils::makeClean(seq);
+		if (s.size() > order + 1) {
+			for (size_t i = order; i < s.size(); i++) {
+				temp[s.substr(i - order, order)][s.substr(i, 1)]++;
+			}
+		}
+	}
+	model.clear();
+	for (auto & i : temp) {
+		double sum = 0;
+		for (auto & j : i.second) {
+			sum += j.second;
+		}
+		for (auto & j : i.second) {
+			//cout << i.first << " " << j.first << " " << j.second << endl;
+			model[i.first][j.first] = j.second / sum;
+		}
+	}
 }
-    
-    
+
+
 double portcullis::ml::KmerMarkovModel::getScore(const string& seq) {
-    string s = SeqUtils::makeClean(seq);
-    double score = 1.0;
-    uint32_t no_count = 0;
-    for(size_t i = order; i < s.size(); i++) {
-        double m = model[s.substr(i-order, order)][s.substr(i, 1)];
-        if (m != 0.0) {
-            score *= m;
-        }
-        else {
-            no_count++;
-        }
-    }
-    if(score == 0.0) {
-        return -100.0;
-    }
-    else if (no_count > 2) {
-        // Add a penalty for situations where we repeatedly don't find a kmer in the tranining set
-        score /= ((double)no_count * 0.5);
-    }
-    return log(score);
+	string s = SeqUtils::makeClean(seq);
+	double score = 1.0;
+	uint32_t no_count = 0;
+	for (size_t i = order; i < s.size(); i++) {
+		double m = model[s.substr(i - order, order)][s.substr(i, 1)];
+		if (m != 0.0) {
+			score *= m;
+		}
+		else {
+			no_count++;
+		}
+	}
+	if (score == 0.0) {
+		return -100.0;
+	}
+	else if (no_count > 2) {
+		// Add a penalty for situations where we repeatedly don't find a kmer in the tranining set
+		score /= ((double)no_count * 0.5);
+	}
+	return log(score);
 }
 
 void portcullis::ml::PosMarkovModel::train(const vector<string>& input, const uint32_t _order) {
-    order = _order;
-    PMMU temp;
-    for(auto& seq : input) {
-        string s = SeqUtils::makeClean(seq);
-        for(size_t i = order; i < s.size(); i++) {
-            temp[i][s.substr(i, 1)]++;
-        }
-    }
-    model.clear();
-    for(auto& i : temp) {
-        double sum = 0;
-        for(auto& j : i.second) {
-            sum += j.second;
-        }
-        for(auto& j : i.second) {
-            //cout << i.first << " " << j.first << " " << j.second << endl;
-            model[i.first][j.first] = j.second / sum;
-        }
-    }
+	order = _order;
+	PMMU temp;
+	for (auto & seq : input) {
+		string s = SeqUtils::makeClean(seq);
+		for (size_t i = order; i < s.size(); i++) {
+			temp[i][s.substr(i, 1)]++;
+		}
+	}
+	model.clear();
+	for (auto & i : temp) {
+		double sum = 0;
+		for (auto & j : i.second) {
+			sum += j.second;
+		}
+		for (auto & j : i.second) {
+			//cout << i.first << " " << j.first << " " << j.second << endl;
+			model[i.first][j.first] = j.second / sum;
+		}
+	}
 }
-    
-    
+
+
 double portcullis::ml::PosMarkovModel::getScore(const string& seq) {
-    string s = SeqUtils::makeClean(seq);
-    double score = 1.0;
-    for(size_t i = order; i < s.size(); i++) {
-        score *= model[i][s.substr(i, 1)];
-    }
-    if(score == 0.0) {
-        return -300.0;
-    }
-    return log(score);
+	string s = SeqUtils::makeClean(seq);
+	double score = 1.0;
+	for (size_t i = order; i < s.size(); i++) {
+		score *= model[i][s.substr(i, 1)];
+	}
+	if (score == 0.0) {
+		return -300.0;
+	}
+	return log(score);
 }
 

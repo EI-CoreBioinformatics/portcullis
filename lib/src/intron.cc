@@ -34,9 +34,9 @@ using portcullis::bam::RefSeq;
 
 
 portcullis::Intron::Intron(const Intron& other) {
-    ref = other.ref;
-    start = other.start;
-    end = other.end;
+	ref = other.ref;
+	start = other.start;
+	end = other.end;
 }
 
 
@@ -45,16 +45,16 @@ portcullis::Intron::Intron(const Intron& other) {
 /**
  * We probably need to double check this logic.  We say this intron shares a
  * donor or acceptor with another intron, if the ref id is the same and we
- * find either the start or end position is the same. 
- *  
+ * find either the start or end position is the same.
+ *
  * Note: We ignore the strand!  Is this right?
- * 
+ *
  * @param other
- * @return 
+ * @return
  */
 bool portcullis::Intron::sharesDonorOrAcceptor(const Intron& other) {
-    return ref.index == other.ref.index && 
-            (start == other.start || end == other.end);
+	return ref.index == other.ref.index &&
+		   (start == other.start || end == other.end);
 }
 
 /**
@@ -64,75 +64,65 @@ bool portcullis::Intron::sharesDonorOrAcceptor(const Intron& other) {
  * @param rightAnchorEnd The end position of the right anchor (inclusive)
  * @return The minimum of the left anchor length and the right anchor length
  */
-int32_t portcullis::Intron::minAnchorLength(int32_t leftAnchorStart, int32_t rightAnchorEnd) {
-
-    if (leftAnchorStart > start)
-        BOOST_THROW_EXCEPTION(IntronException() << IntronErrorInfo(string(
-                "The intron start position must be greater than the left anchor start position: ") + 
-                lexical_cast<string>(leftAnchorStart) + " **** " + 
-                lexical_cast<string>(start) + "-" +
-                lexical_cast<string>(end) + " **** " +
-                lexical_cast<string>(rightAnchorEnd) + ") " +
-                "Reference seq: " + this->ref.toString()));
-
-    if (rightAnchorEnd < end)
-        BOOST_THROW_EXCEPTION(IntronException() << IntronErrorInfo(string(
-                "The intron end position must be less than the right anchor end position: (") + 
-                lexical_cast<string>(leftAnchorStart) + " **** " + 
-                lexical_cast<string>(start) + "-" +
-                lexical_cast<string>(end) + " **** " +
-                lexical_cast<string>(rightAnchorEnd) + ") " +
-                "Reference seq: " + this->ref.toString()));
-
-    int32_t lAnchor = start - leftAnchorStart;
-    int32_t rAnchor = rightAnchorEnd - end;
-
-    return min(lAnchor, rAnchor);        
+uint32_t portcullis::Intron::minAnchorLength(int32_t leftAnchorStart, int32_t rightAnchorEnd) {
+	if (leftAnchorStart > start)
+		BOOST_THROW_EXCEPTION(IntronException() << IntronErrorInfo(string(
+								  "The intron start position must be greater than the left anchor start position: ") +
+							  lexical_cast<string>(leftAnchorStart) + " **** " +
+							  lexical_cast<string>(start) + "-" +
+							  lexical_cast<string>(end) + " **** " +
+							  lexical_cast<string>(rightAnchorEnd) + ") " +
+							  "Reference seq: " + this->ref.toString()));
+	if (rightAnchorEnd < end)
+		BOOST_THROW_EXCEPTION(IntronException() << IntronErrorInfo(string(
+								  "The intron end position must be less than the right anchor end position: (") +
+							  lexical_cast<string>(leftAnchorStart) + " **** " +
+							  lexical_cast<string>(start) + "-" +
+							  lexical_cast<string>(end) + " **** " +
+							  lexical_cast<string>(rightAnchorEnd) + ") " +
+							  "Reference seq: " + this->ref.toString()));
+	int32_t lAnchor = start - leftAnchorStart;
+	int32_t rAnchor = rightAnchorEnd - end;
+	return min(lAnchor, rAnchor);
 }
 
 
 void portcullis::Intron::outputDescription(std::ostream &strm, string delimiter) {
-    strm << "RefId: " << ref.index << delimiter
-         << "RefName: " << ref.name << delimiter
-         << "RefLength: " << ref.length << delimiter
-         << "Start: " << start << delimiter
-         << "End: " << end;
+	strm << "RefId: " << ref.index << delimiter
+		 << "RefName: " << ref.name << delimiter
+		 << "RefLength: " << ref.length << delimiter
+		 << "Start: " << start << delimiter
+		 << "End: " << end;
 }
 
-size_t portcullis::IntronHasher::operator()(const Intron& l) const
-{
-   using boost::hash_value;
-   using boost::hash_combine;
-
-   // Start with a hash value of 0    .
-   size_t seed = 0;
-
-   // Modify 'seed' by XORing and bit-shifting in
-   // one member of 'Key' after the other:
-   hash_combine(seed, hash_value(l.ref.index));
-   hash_combine(seed, hash_value(l.start));
-   hash_combine(seed, hash_value(l.end));
-
-   // Return the result.
-   return seed;
+size_t portcullis::IntronHasher::operator()(const Intron& l) const {
+	using boost::hash_value;
+	using boost::hash_combine;
+	// Start with a hash value of 0    .
+	size_t seed = 0;
+	// Modify 'seed' by XORing and bit-shifting in
+	// one member of 'Key' after the other:
+	hash_combine(seed, hash_value(l.ref.index));
+	hash_combine(seed, hash_value(l.start));
+	hash_combine(seed, hash_value(l.end));
+	// Return the result.
+	return seed;
 }
 
-bool portcullis::IntronComparator::operator()(const Intron& l, const Intron& r) const
-{
-    if (l.ref.index < r.ref.index) {
-        return true;
-    }
-    else if (l.ref.index == r.ref.index) {
-        if (l.start < r.start) {
-            return true;
-        }
-        else if (l.start == r.start) {
-            if (l.end < r.end) {
-                return true;
-            }        
-        }
-    }
-    
-    return false;
+bool portcullis::IntronComparator::operator()(const Intron& l, const Intron& r) const {
+	if (l.ref.index < r.ref.index) {
+		return true;
+	}
+	else if (l.ref.index == r.ref.index) {
+		if (l.start < r.start) {
+			return true;
+		}
+		else if (l.start == r.start) {
+			if (l.end < r.end) {
+				return true;
+			}
+		}
+	}
+	return false;
 }
 

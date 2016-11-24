@@ -29,66 +29,61 @@ using std::vector;
 #include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
 
-namespace portcullis {  
+namespace portcullis {
 
-typedef boost::error_info<struct KmerError,string> KmerErrorInfo;
+typedef boost::error_info<struct KmerError, string> KmerErrorInfo;
 struct KmerException: virtual boost::exception, virtual std::exception { };
-    
+
 /**
  * An extremely basic kmer hash class that doesn't worry about canonical kmers
  * or reverse complementing the data.
  */
 class KmerHash {
 private:
-    unordered_map<string, uint32_t> khash;
-    uint16_t k;
-    
+	unordered_map<string, uint32_t> khash;
+	uint16_t k;
+
 public:
-    KmerHash(const uint16_t _k, const string& seq) {
-        k = _k;
-        
-        for(size_t i = k; i <= seq.size(); i++) {
-            khash[boost::to_upper_copy(seq.substr(i - k, k))]++;
-        }        
-    }
-    
-    uint32_t getCount(const string& kmer) {
-        if (kmer.size() != k) {
-            BOOST_THROW_EXCEPTION(KmerException() << KmerErrorInfo(string(
-                    "Given kmer size is ") + std::to_string(kmer.size()) + ".  Expected kmer of size " + std::to_string(k)));   
-        }
-        
-        string kup = boost::to_upper_copy(kmer);
-        return (khash.find(kup) != khash.end()) ? khash[kup] : 0;
-    }
-    
-    size_t nbDistinctKmers() const {
-        return khash.size();
-    }
-    
-    void print(ostream& out) const {        
-        for(auto& kmer : khash) {
-            out << kmer.first << "\t" << kmer.second << endl;
-        }
-    }
-    
-    void printAbundanceHistogram(ostream& out, const uint32_t hist_size) {
-        
-        vector<uint32_t> hist(hist_size, 0);
-        
-        for(auto& kmer : khash) {
-            if (hist.size() > kmer.second) {            
-                hist[kmer.second]++;
-            }
-            else {
-                hist[hist.size() -1]++;
-            }
-        }
-        
-        for(auto& e : hist) {
-            out << e << endl;
-        }
-    }
+	KmerHash(const uint16_t _k, const string& seq) {
+		k = _k;
+		for (size_t i = k; i <= seq.size(); i++) {
+			khash[boost::to_upper_copy(seq.substr(i - k, k))]++;
+		}
+	}
+
+	uint32_t getCount(const string& kmer) {
+		if (kmer.size() != k) {
+			BOOST_THROW_EXCEPTION(KmerException() << KmerErrorInfo(string(
+									  "Given kmer size is ") + std::to_string(kmer.size()) + ".  Expected kmer of size " + std::to_string(k)));
+		}
+		string kup = boost::to_upper_copy(kmer);
+		return (khash.find(kup) != khash.end()) ? khash[kup] : 0;
+	}
+
+	size_t nbDistinctKmers() const {
+		return khash.size();
+	}
+
+	void print(ostream& out) const {
+		for (auto & kmer : khash) {
+			out << kmer.first << "\t" << kmer.second << endl;
+		}
+	}
+
+	void printAbundanceHistogram(ostream& out, const uint32_t hist_size) {
+		vector<uint32_t> hist(hist_size, 0);
+		for (auto & kmer : khash) {
+			if (hist.size() > kmer.second) {
+				hist[kmer.second]++;
+			}
+			else {
+				hist[hist.size() - 1]++;
+			}
+		}
+		for (auto & e : hist) {
+			out << e << endl;
+		}
+	}
 };
-    
+
 }

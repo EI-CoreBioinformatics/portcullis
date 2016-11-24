@@ -41,8 +41,8 @@ using portcullis::ml::ModelFeatures;
 using portcullis::ml::ForestPtr;
 
 namespace portcullis {
-    
-typedef boost::error_info<struct TrainError,string> TrainErrorInfo;
+
+typedef boost::error_info<struct TrainError, string> TrainErrorInfo;
 struct TrainException: virtual boost::exception, virtual std::exception { };
 
 const string DEFAULT_TRAIN_OUTPUT = "portcullis_train/portcullis";
@@ -54,130 +54,130 @@ const int DEFAULT_SEED = 1234567;       // To avoid non-deterministic behaviour
 
 
 class Train {
-    
-    
+
+
 private:
-    
-    path junctionFile;
-    path refFile;
-    path outputPrefix;
-    uint16_t folds;
-    uint16_t trees;
-    uint16_t threads;
-    double fraction;
-    bool regressionMode;
-    bool verbose;    
-    
+
+	path junctionFile;
+	path refFile;
+	path outputPrefix;
+	uint16_t folds;
+	uint16_t trees;
+	uint16_t threads;
+	double fraction;
+	bool regressionMode;
+	bool verbose;
+
 public:
 
-    
-    
-    Train() {}
-    
-    Train(const path& _junctionFile, const path& _refFile);
-    
-    virtual ~Train() {
-    }
-    
-    uint16_t getFolds() const {
-        return folds;
-    }
 
-    void setFolds(uint16_t folds) {
-        this->folds = folds;
-    }
 
-    uint16_t getTrees() const {
-        return trees;
-    }
+	Train() {}
 
-    void setTrees(uint16_t trees) {
-        this->trees = trees;
-    }
-    
-    uint16_t getThreads() const {
-        return threads;
-    }
+	Train(const path& _junctionFile, const path& _refFile);
 
-    void setThreads(uint16_t threads) {
-        this->threads = threads;
-    }
-    
-    path getRefFile() const {
-        return refFile;
-    }
+	virtual ~Train() {
+	}
 
-    void setRefFile(path refFile) {
-        this->refFile = refFile;
-    }
+	uint16_t getFolds() const {
+		return folds;
+	}
 
-    path getJunctionFile() const {
-        return junctionFile;
-    }
+	void setFolds(uint16_t folds) {
+		this->folds = folds;
+	}
 
-    void setJunctionFile(path junctionFile) {
-        this->junctionFile = junctionFile;
-    }
+	uint16_t getTrees() const {
+		return trees;
+	}
 
-    path getOutputPrefix() const {
-        return outputPrefix;
-    }
+	void setTrees(uint16_t trees) {
+		this->trees = trees;
+	}
 
-    void setOutputPrefix(path outputPrefix) {
-        this->outputPrefix = outputPrefix;
-    }
+	uint16_t getThreads() const {
+		return threads;
+	}
 
-    double getFraction() const {
-        return fraction;
-    }
+	void setThreads(uint16_t threads) {
+		this->threads = threads;
+	}
 
-    void setFraction(double fraction) {
-        this->fraction = fraction;
-    }
+	path getRefFile() const {
+		return refFile;
+	}
 
-    bool isRegressionMode() const {
-        return regressionMode;
-    }
+	void setRefFile(path refFile) {
+		this->refFile = refFile;
+	}
 
-    void setRegressionMode(bool regressionMode) {
-        this->regressionMode = regressionMode;
-    }
+	path getJunctionFile() const {
+		return junctionFile;
+	}
 
-    bool isVerbose() const {
-        return verbose;
-    }
+	void setJunctionFile(path junctionFile) {
+		this->junctionFile = junctionFile;
+	}
 
-    void setVerbose(bool verbose) {
-        this->verbose = verbose;
-    }
+	path getOutputPrefix() const {
+		return outputPrefix;
+	}
 
-    
-    
-    /**
-     * Run a supervised training algorithm on the input data using k fold cross validation
-     */
-    void train();
-    
-    
-    static string helpMessage() {
-        return string("\nPortcullis Training Mode Help.\n\n") +
-                      "This is mode is intended to train a random forest model for later use\n" +
-                      "by the junction filtering tool.  The current implementation uses \"ranger\"\n" +
-                      "for creating the decision trees and random forests.  We also provide k-fold\n" +
-                      "cross validation support to help reduce overfitting.\n\n" +
-                      "Usage: portcullis train [options] --reference=<labels_file> <junction_file>\n\n" +
-                      "Allowed options";
-    }
+	void setOutputPrefix(path outputPrefix) {
+		this->outputPrefix = outputPrefix;
+	}
 
-    static int main(int argc, char *argv[]);
-    
-    
+	double getFraction() const {
+		return fraction;
+	}
+
+	void setFraction(double fraction) {
+		this->fraction = fraction;
+	}
+
+	bool isRegressionMode() const {
+		return regressionMode;
+	}
+
+	void setRegressionMode(bool regressionMode) {
+		this->regressionMode = regressionMode;
+	}
+
+	bool isVerbose() const {
+		return verbose;
+	}
+
+	void setVerbose(bool verbose) {
+		this->verbose = verbose;
+	}
+
+
+
+	/**
+	 * Run a supervised training algorithm on the input data using k fold cross validation
+	 */
+	void train();
+
+
+	static string helpMessage() {
+		return string("\nPortcullis Training Mode Help.\n\n") +
+			   "This is mode is intended to train a random forest model for later use\n" +
+			   "by the junction filtering tool.  The current implementation uses \"ranger\"\n" +
+			   "for creating the decision trees and random forests.  We also provide k-fold\n" +
+			   "cross validation support to help reduce overfitting.\n\n" +
+			   "Usage: portcullis train [options] --reference=<labels_file> <junction_file>\n\n" +
+			   "Allowed options";
+	}
+
+	static int main(int argc, char *argv[]);
+
+
 protected:
-    
-    
-    void testInstance(ForestPtr f, const JunctionList& y);
-    
-    void getRandomSubset(const JunctionList& in, JunctionList& out);    
+
+
+	void testInstance(ForestPtr f, const JunctionList& y);
+
+	void getRandomSubset(const JunctionList& in, JunctionList& out);
 };
 }
 

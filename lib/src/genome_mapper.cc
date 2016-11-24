@@ -45,53 +45,47 @@ using boost::lexical_cast;
  * uses Samtools to create a fasta index for the genome file and then
  * manages the data structure returned after loading the index.
  */
-portcullis::bam::GenomeMapper::GenomeMapper(path _genomeFile) : 
-    genomeFile(_genomeFile) {
-        fastaIndex = nullptr;
+portcullis::bam::GenomeMapper::GenomeMapper(path _genomeFile) :
+	genomeFile(_genomeFile) {
+	fastaIndex = nullptr;
 }
 
-portcullis::bam::GenomeMapper::~GenomeMapper() {        
-
-    if (fastaIndex != nullptr) {
-        fai_destroy(fastaIndex);
-    }
+portcullis::bam::GenomeMapper::~GenomeMapper() {
+	if (fastaIndex != nullptr) {
+		fai_destroy(fastaIndex);
+	}
 }
-    
-    
-    
+
+
+
 /**
  * Constructs the index for this fasta genome file
  */
 void portcullis::bam::GenomeMapper::buildFastaIndex() {
-
-    int faiRes = fai_build(genomeFile.c_str());
-
-    if (faiRes != 0) {
-        BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
-                "Genome indexing failed: ") + genomeFile.string()));
-    }
+	int faiRes = fai_build(genomeFile.c_str());
+	if (faiRes != 0) {
+		BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+								  "Genome indexing failed: ") + genomeFile.string()));
+	}
 }
-    
+
 /**
  * Loads the index for this genome file.  This must be done before using any
  * of the fetch commands.
  */
 void portcullis::bam::GenomeMapper::loadFastaIndex() {
-
-    if (!exists(genomeFile)) {
-       BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
-                "Genome file does not exist: ") + genomeFile.string())); 
-    }
-
-    path fastaIndexFile = getFastaIndexFile();
-    if (!exists(fastaIndexFile)) {
-       BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
-                "Genome index file does not exist: ") + fastaIndexFile.string())); 
-    }
-
-    fastaIndex = fai_load(genomeFile.c_str());
+	if (!exists(genomeFile)) {
+		BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+								  "Genome file does not exist: ") + genomeFile.string()));
+	}
+	path fastaIndexFile = getFastaIndexFile();
+	if (!exists(fastaIndexFile)) {
+		BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+								  "Genome index file does not exist: ") + fastaIndexFile.string()));
+	}
+	fastaIndex = fai_load(genomeFile.c_str());
 }
- 
+
 
 /**
 * @abstract    Fetch the sequence in a region.
@@ -100,11 +94,11 @@ void portcullis::bam::GenomeMapper::loadFastaIndex() {
 * @return      The sequence as a string; empty string if no seq found
 */
 string portcullis::bam::GenomeMapper::fetchBases(const char* reg, int* len) const {
-   char* cseq = fai_fetch(fastaIndex, reg, len);
-   string strseq = cseq == NULL ? string("") : string(cseq);
-   if (cseq != NULL)
-       free(cseq);
-   return strseq;        
+	char* cseq = fai_fetch(fastaIndex, reg, len);
+	string strseq = cseq == NULL ? string("") : string(cseq);
+	if (cseq != NULL)
+		free(cseq);
+	return strseq;
 }
 
 /**
@@ -116,9 +110,9 @@ string portcullis::bam::GenomeMapper::fetchBases(const char* reg, int* len) cons
  * @return      The sequence as a string; empty string if no seq found
  */
 string portcullis::bam::GenomeMapper::fetchBases(const char* name, int start, int end, int* len) const {
-    char* cseq = faidx_fetch_seq(fastaIndex, name, start, end, len);
-    string strseq = cseq == NULL ? string("") : string(cseq);
-    if (cseq != NULL)
-        free(cseq);
-    return strseq;        
+	char* cseq = faidx_fetch_seq(fastaIndex, name, start, end, len);
+	string strseq = cseq == NULL ? string("") : string(cseq);
+	if (cseq != NULL)
+		free(cseq);
+	return strseq;
 }

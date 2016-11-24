@@ -1,81 +1,81 @@
 {
     "parameters": {
-        "M1-canonical_ss": {
+        "ss_type": {
             "operator": "in",
             "value": ["C"]
         },
-        "M1-canonical_ss.2": {
+        "ss_type.2": {
             "operator": "in",
             "value": ["S"]
         },
-        "M1-canonical_ss.3": {
+        "ss_type.3": {
             "operator": "in",
             "value": ["N"]
         },
-        "M4-nb_rel_aln": {
+        "nb_rel_aln": {
             "operator": "gte",
             "value": 5
         },
-        "M4-nb_rel_aln.2": {
+        "nb_rel_aln.2": {
             "operator": "gte",
             "value": 1
         },
-        "M12-maxmmes": {
+        "maxmmes": {
             "operator": "gte",
             "value": 20
         },
-        "M12-maxmmes.2": {
+        "maxmmes.2": {
             "operator": "gte",
             "value": 10
         },
-        "M11-entropy": {
+        "entropy": {
             "operator": "gt",
             "value": 3.0
         },
-        "M11-entropy.2": {
+        "entropy.2": {
             "operator": "gt",
             "value": 1.5
         },
-        "M13-hamming5p": {
+        "hamming5p": {
             "operator": "gte",
             "value": 6
         },
-        "M13-hamming5p.2": {
+        "hamming5p.2": {
             "operator": "gte",
             "value": 7
         },
-        "M14-hamming3p": {
+        "hamming3p": {
             "operator": "gte",
             "value": 6
         },
-        "M14-hamming3p.2": {
+        "hamming3p.2": {
             "operator": "gte",
             "value": 7
         },
-        "M19-mean_mismatches": {
+        "mean_mismatches": {
             "operator": "eq",
             "value": 0
         },
-        "M19-mean_mismatches": {
+        "mean_mismatches": {
             "operator": "lt",
             "value": 0.1
         },
-        "M20-nb_usrs": {
+        "nb_us_aln": {
             "operator": "gte",
             "value": 5
         },
-        "M22-rel2raw": {
+        "rel2raw": {
             "operator": "gte",
             "value": 0.5
         },
-        "M22-rel2raw.2": {
+        "rel2raw.2": {
             "operator": "gte",
             "value": 0.75
         },
-	"M17-primary_junc": {
-	    "operator": "eq",
-	    "value": 1
-	}
+        "primary_junc": {
+            "operator": "eq",
+            "value": 1
+        }
     },
-    "expression": "(( M1-canonical_ss ) | ( M1-canonical_ss.2 & M22-rel2raw & M13-hamming5p & M14-hamming3p ) | ( M1-canonical_ss.3 & M22-rel2raw.2 & M13-hamming5p.2 & M14-hamming3p.2 & M19-mean_mismatches & M11-entropy.2 )) & (M17-primary_junc)"
+    "expression": "(( ss_type ) | ( ss_type.2 & rel2raw & hamming5p & hamming3p ) | ( ss_type.3 & rel2raw.2 & hamming5p.2 & hamming3p.2 & mean_mismatches & entropy.2 )) & (primary_junc)"
 }

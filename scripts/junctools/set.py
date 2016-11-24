@@ -130,7 +130,7 @@ def setops(args):
 						key = junc.key
 						if not key in found:
 							found.add(key)
-							merged[key].append(line)
+						merged[key].append(line)
 
 			print("\t".join([f, str(len(found)), str(counter)]))
 

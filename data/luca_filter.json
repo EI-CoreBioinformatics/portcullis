@@ -1,34 +1,33 @@
 {
-	"parameters": {
-		"M2-nb_reads":{
-			"operator": "gte",
-			"value": 1000
-		},
-		"M15-coverage": {
-			"operator": "gt",
-			"value": 20
-		},
-		"M1-canonical_ss":{
-			"operator": "in",
-			"value": ["C"]
-		},
-		"M5-intron_size.1": {
-			"operator": "gte",
-			"value": 1000
-		},
-		"M5-intron_size.2": {
-			"operator": "lte",
-			"value": 10000
-		},
-		"M11-entropy": {
-			"operator": "gt",
-			"value": 2.0
-		},
-		"refname": {
-			"operator": "not_in",
-			"value": ["I"]
-		}
-	},
-	"expression": "refname & M1-canonical_ss & M5-intron_size.2 & (M2-nb_reads | (M11-entropy & M15-coverage & M5-intron_size.1))"
-        /*"expression": "refname & M1-canonical_ss"*/
+    "parameters": {
+        "nb_reads": {
+            "operator": "gte",
+            "value": 1000
+        },
+        "coverage": {
+            "operator": "gt",
+            "value": 20
+        },
+        "ss_type": {
+            "operator": "in",
+            "value": ["C"]
+        },
+        "intron_size.1": {
+            "operator": "gte",
+            "value": 1000
+        },
+        "intron_size.2": {
+            "operator": "lte",
+            "value": 10000
+        },
+        "entropy": {
+            "operator": "gt",
+            "value": 2.0
+        },
+        "refname": {
+            "operator": "not_in",
+            "value": ["I"]
+        }
+    },
+    "expression": "refname & ss_type & intron_size.2 & (nb_reads | (entropy & coverage & intron_size.1))"
 }

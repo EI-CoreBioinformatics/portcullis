@@ -36,15 +36,22 @@ Installation
 ------------
 
 If you have proceeded through the installation steps and have run ``make install`` 
-then junctools will be installed as a package to your detected python installation
-and will be available by typing ``junctools`` at the command line.  Should you
-wish to use junctools without compiling or installing portcullis, then 
-``cd <portcullis_dir>/scripts``, then type ``python3 setup.py install``.
-Junctools will then be available as part of your python3 environment.
+then junctools will be installed along with portcullis as a python package to the
+location specified by ``--prefix`` when running the ``configure`` script.  Should
+prefix not be specified then junctools will be installed to ``/usr/local``.  The 
+junctools library reside in the ``$(prefix)/lib/python3.x/site-packages`` (where x 
+is the minor version of python installed on your system) directory and
+the junctools executable will reside in ``$(prefix)/bin``.  If you wish to install
+junctools into a specific python environment or if you wish to install junctools
+without portcullis, first make sure that you chosen environment has precedence on 
+your system then then ``cd <portcullis_dir>/scripts``, and then type ``python3 setup.py install``.
 
 .. note:: When you type ``make uninstall`` for portcullis you will also uninstall
-    junctools from your python environment.  Keep this in mind if you if you install
-    portcullis to a non-standard location using the ``--prefix=`` option in configure.
+    junctools from the location specified by $(prefix).  Keep this in mind if you 
+    installed to a system directory you will if you prefix ``sudo`` to the uninstall command.
+    Alternatively, if you installed junctools manually to a specific python environment then you
+    can uninstall junctools with: ``pip3 uninstall -y junctools``.
+    
 
 Compare
 -------
@@ -250,8 +257,15 @@ the user can alternatively choose to take the min, max or mean of the values.
 The following modes only support two input files and produce an output file containing
 junctions which are taken directly from the input without modification:
 
- * subtract     = Produces an output set of junctions containing all junctions present in the first input file that also are not found in the second file
- * symmetric_difference = Produces an output set containing junctions from both input files that are not present in the intersection of both
+ * subtract     = Produces an output set of junctions containing all junctions present
+                in the first input file that also are not found in the second file
+ * filter       = Produces an output set of junctions containing all junctions present
+                in the first input file that are also found in the second file.  This
+                is similar to an intersection on two files except that duplicates and
+                additional content assigned to junctions in the first file are retained
+ * symmetric_difference =
+                Produces an output set containing junctions from both input files
+                that are not present in the intersection of both
 
 In addition, these test modes also only support 2 input files and return either 
 True or False depending on the test requested:

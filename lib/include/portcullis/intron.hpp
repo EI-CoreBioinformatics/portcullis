@@ -34,120 +34,118 @@ using boost::lexical_cast;
 #include "bam/bam_master.hpp"
 using portcullis::bam::RefSeq;
 
-namespace portcullis {    
-    
+namespace portcullis {
 
-typedef boost::error_info<struct IntronError,string> IntronErrorInfo;
+
+typedef boost::error_info<struct IntronError, string> IntronErrorInfo;
 struct IntronException: virtual boost::exception, virtual std::exception { };
 
 
 class Intron {
-    
-    
-public:    
-    RefSeq ref;     // Details of the reference sequence
-    int32_t start;      // The index of the base of the intron
-    int32_t end;        // The index of the last base of the intron
-    
-    Intron() : Intron(RefSeq(), -1, -1) {}
-    
-    Intron(RefSeq _ref, int32_t _start, int32_t _end) :
-        ref(_ref), start(_start), end(_end) {
-    }
-    
-    Intron(string _ref, int32_t _start, int32_t _end);
-    
-    Intron(const Intron& other);
 
-    
-    /**
-    * Note that equality is determined purely on the ref id and the junction's
-    * start and end... the flanking regions are ignored.
-    * @param other
-    * @return 
-    */
-   bool operator==(const Intron &other) const
-   { 
-       return (ref.index == other.ref.index &&
-               start == other.start &&
-               end == other.end);
-   }
 
-   bool operator!=(const Intron &other) const
-   { 
-       return !((*this)==other);
-   }
+public:
+	RefSeq ref;     // Details of the reference sequence
+	int32_t start;      // The index of the base of the intron
+	int32_t end;        // The index of the last base of the intron
 
-    
-    
-    int32_t size() const {
-        return end - start + 1;
-    }
-    
-    /**
-     * We probably need to double check this logic.  We say this intron shares a
-     * donor or acceptor with another intron, if the ref id is the same and we
-     * find either the start or end position is the same. 
-     *  
-     * Note: We ignore the strand!  Is this right?
-     * 
-     * @param other
-     * @return 
-     */
-    bool sharesDonorOrAcceptor(const Intron& other);
-    
-    /**
-     * Calculates the length of both anchors, based on the provided start and end
-     * flanking regions and then returns the minimum of the two
-     * @param leftAnchorStart The start position of the left anchor
-     * @param rightAnchorEnd The end position of the right anchor (inclusive)
-     * @return The minimum of the left anchor length and the right anchor length
-     */
-    int32_t minAnchorLength(int32_t leftAnchorStart, int32_t rightAnchorEnd);
-    
-    void outputDescription(ostream& strm) {
-        outputDescription(strm, "; ");
-    }
-    
-    void outputDescription(ostream& strm, string delimiter);
-    
-    string toString() const {
-        stringstream ss;
-        ss << ref.name << "(" << start << "," << end << ")";
-        return ss.str();
-    }
-    
-    friend ostream& operator<<(ostream& strm, Intron& l) {
-        return strm << l.ref.index << "\t" << l.ref.name << "\t" << l.ref.length 
-                << "\t" << l.start << "\t" << l.end;
-    }
-    
-    static string locationOutputHeader() {
-        return string("refid\trefname\treflen\tstart\tend"); 
-    }
-    
+	Intron() : Intron(RefSeq(), -1, -1) {}
+
+	Intron(RefSeq _ref, int32_t _start, int32_t _end) :
+		ref(_ref), start(_start), end(_end) {
+	}
+
+	Intron(string _ref, int32_t _start, int32_t _end);
+
+	Intron(const Intron& other);
+
+
+	/**
+	* Note that equality is determined purely on the ref id and the junction's
+	* start and end... the flanking regions are ignored.
+	* @param other
+	* @return
+	*/
+	bool operator==(const Intron &other) const {
+		return (ref.index == other.ref.index &&
+				start == other.start &&
+				end == other.end);
+	}
+
+	bool operator!=(const Intron &other) const {
+		return !((*this) == other);
+	}
+
+
+
+	int32_t size() const {
+		return end - start + 1;
+	}
+
+	/**
+	 * We probably need to double check this logic.  We say this intron shares a
+	 * donor or acceptor with another intron, if the ref id is the same and we
+	 * find either the start or end position is the same.
+	 *
+	 * Note: We ignore the strand!  Is this right?
+	 *
+	 * @param other
+	 * @return
+	 */
+	bool sharesDonorOrAcceptor(const Intron& other);
+
+	/**
+	 * Calculates the length of both anchors, based on the provided start and end
+	 * flanking regions and then returns the minimum of the two
+	 * @param leftAnchorStart The start position of the left anchor
+	 * @param rightAnchorEnd The end position of the right anchor (inclusive)
+	 * @return The minimum of the left anchor length and the right anchor length
+	 */
+	uint32_t minAnchorLength(int32_t leftAnchorStart, int32_t rightAnchorEnd);
+
+	void outputDescription(ostream& strm) {
+		outputDescription(strm, "; ");
+	}
+
+	void outputDescription(ostream& strm, string delimiter);
+
+	string toString() const {
+		stringstream ss;
+		ss << ref.name << "(" << start << "," << end << ")";
+		return ss.str();
+	}
+
+	friend ostream& operator<<(ostream& strm, Intron& l) {
+		return strm << l.ref.index << "\t" << l.ref.name << "\t" << l.ref.length
+			   << "\t" << l.start << "\t" << l.end;
+	}
+
+	static string locationOutputHeader() {
+		return string("refid\trefname\treflen\tstart\tend");
+	}
+
 };
 
 /**
     * Overload hash_value with Location so that boost know how to use this class
     * as a key in some kind of hash table
-    * 
+    *
     * @param other
-    * @return 
+    * @return
     */
-struct IntronHasher {    
-    size_t operator()(const Intron& l) const;
+struct IntronHasher {
+	size_t operator()(const Intron& l) const;
 };
 
 /**
     * Overload hash_value with Location so that boost know how to use this class
     * as a key in some kind of hash table
-    * 
+    *
     * @param other
-    * @return 
+    * @return
     */
-struct IntronComparator {    
-    bool operator()(const Intron& l, const Intron& r) const;
+struct IntronComparator {
+	bool operator()(const Intron& l, const Intron& r) const;
 };
 
 typedef shared_ptr<Intron> IntronPtr;

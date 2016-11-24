@@ -1,13 +1,13 @@
 {
-	"parameters": {
-                "M1-canonical_ss": {
-			"operator": "in",
-			"value": ["N", "S"]
-		},                
-                "PFP": {
-			"operator": "eq",
-			"value": 1
-		}                
-	},
-	"expression": "( M1-canonical_ss & PFP )"  
+    "parameters": {
+        "ss_type": {
+            "operator": "in",
+            "value": ["N", "S"]
+        },
+        "pfp": {
+            "operator": "eq",
+            "value": 1
+        }
+    },
+    "expression": "( ss_type & pfp )"
 }

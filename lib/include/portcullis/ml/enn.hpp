@@ -34,9 +34,9 @@ using boost::timer::auto_cpu_timer;
 namespace portcullis {
 namespace ml {
 
-typedef boost::error_info<struct ENNError,string> ENNErrorInfo;
+typedef boost::error_info<struct ENNError, string> ENNErrorInfo;
 struct ENNException: virtual boost::exception, virtual std::exception { };
-    
+
 const uint16_t ENN_THRESHOLD = 5;
 
 /**
@@ -45,59 +45,59 @@ const uint16_t ENN_THRESHOLD = 5;
  * to be removed or to be kept if more than half of the KNNs come from a different
  * class.
  * KNN logic originally derived from OpenCV, modified to work with ranger data
- * types 
+ * types
  */
 class ENN {
 protected:
-    uint16_t k;
-    uint16_t threshold;
-    uint16_t threads;
-    bool verbose;
-    
-    double* data;
-    size_t rows;
-    size_t cols;
-    
-    vector<bool> labels;    
-    
-public:    
-    
-    ENN(uint16_t defaultK, uint16_t _threads, double* _data, size_t _rows, size_t _cols, vector<bool>& _labels);
-    
-    uint16_t getK() const {
-        return k;
-    }
+	uint16_t k;
+	uint16_t threshold;
+	uint16_t threads;
+	bool verbose;
 
-    void setK(uint16_t k) {
-        this->k = k;
-    }
+	double* data;
+	size_t rows;
+	size_t cols;
 
-    uint16_t getThreads() const {
-        return threads;
-    }
+	vector<bool> labels;
 
-    void setThreads(uint16_t threads) {
-        this->threads = threads;
-    }
+public:
 
-    bool isVerbose() const {
-        return verbose;
-    }
+	ENN(uint16_t defaultK, uint16_t _threads, double* _data, size_t _rows, size_t _cols, vector<bool>& _labels);
 
-    void setVerbose(bool verbose) {
-        this->verbose = verbose;
-    }
-    
-    void setThreshold(uint16_t threshold) {
-        this->threshold = threshold;
-    }
-    
-    uint16_t getThreshold() const {
-        return threshold;
-    }
+	uint16_t getK() const {
+		return k;
+	}
 
-    
-    uint32_t execute( vector<bool>& results ) const;
+	void setK(uint16_t k) {
+		this->k = k;
+	}
+
+	uint16_t getThreads() const {
+		return threads;
+	}
+
+	void setThreads(uint16_t threads) {
+		this->threads = threads;
+	}
+
+	bool isVerbose() const {
+		return verbose;
+	}
+
+	void setVerbose(bool verbose) {
+		this->verbose = verbose;
+	}
+
+	void setThreshold(uint16_t threshold) {
+		this->threshold = threshold;
+	}
+
+	uint16_t getThreshold() const {
+		return threshold;
+	}
+
+
+	uint32_t execute( vector<bool>& results ) const;
 };
 
 }

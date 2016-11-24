@@ -26,6 +26,7 @@ class JuncFactory(Enum):
 	SOAPSPLICE = 14
 	SPANKI = 15
 	TRUESIGHT = 16
+	MAPSPLICE = 17
 
 	def isStreamable(self):
 		return False if self == JuncFactory.GFF or self == JuncFactory.EGFF or self == JuncFactory.GTF else True
@@ -77,6 +78,8 @@ class JuncFactory(Enum):
 			return SpankiJunction(use_strand=use_strand, junc_to_copy=junc_to_copy)
 		elif type == JuncFactory.TRUESIGHT:
 			return TruesightJunction(junc_to_copy=junc_to_copy)
+		elif type == JuncFactory.MAPSPLICE:
+			return MapspliceJunction(junc_to_copy=junc_to_copy)
 		raise "Unknown type"
 
 
@@ -171,6 +174,9 @@ class Junction(object):
 
 	def __le__(self, other):
 		return not other < self
+
+	def size(self):
+		return self.end - self.start + 1
 
 	@abc.abstractmethod
 	def parse_line(line, fullparse=True):
@@ -352,9 +358,11 @@ class BedJunction(ExonJunction):
 
 		line = ""
 
+		scr = "{0:.3f}".format(self.score)
+
 		if self.style == JuncFactory.BED6:
 
-			line = [self.refseq, self.start, self.end + 1, self.id, self.score,
+			line = [self.refseq, self.start, self.end + 1, self.id, scr,
 					self.strand if self.strand else "."]
 
 		else:
@@ -362,7 +370,7 @@ class BedJunction(ExonJunction):
 			rgb = ",".join([str(_) for _ in (self.red, self.green, self.blue)])
 
 			if self.style == JuncFactory.IBED:
-				line = [self.refseq, self.start, self.end + 1, self.id, self.score,
+				line = [self.refseq, self.start, self.end + 1, self.id, scr,
 						self.strand if self.strand else ".",
 						self.start, self.end + 1,
 						rgb,
@@ -380,7 +388,7 @@ class BedJunction(ExonJunction):
 
 				if self.style == JuncFactory.EBED:
 
-					line = [self.refseq, self.left, self.right + 1, self.id, self.score,
+					line = [self.refseq, self.left, self.right + 1, self.id, scr,
 							self.strand if self.strand else ".",
 							self.start, self.end + 1,
 							rgb,
@@ -390,7 +398,7 @@ class BedJunction(ExonJunction):
 							]
 				elif self.style == JuncFactory.TBED:
 
-					line = [self.refseq, self.left, self.right + 1, self.id, self.score,
+					line = [self.refseq, self.left, self.right + 1, self.id, scr,
 							self.strand if self.strand else ".",
 							self.left, self.right + 1,
 							rgb,
@@ -419,18 +427,18 @@ class BedJunction(ExonJunction):
 		if (len(parts) != 6 and len(parts) != 12):
 			return None
 
-		bed6 = True if len(parts) == 6 else False
+		self.style = JuncFactory.BED6 if len(parts) == 6 else JuncFactory.IBED
 
 		self.refseq = parts[0]
 		self.strand = parts[5]
-		self.start = int(parts[1]) if bed6 else int(parts[6])
-		self.end = int(parts[2]) - 1 if bed6 else int(parts[7]) - 1
+		self.start = int(parts[1]) if self.style == JuncFactory.BED6 else int(parts[6])
+		self.end = int(parts[2]) - 1 if self.style == JuncFactory.BED6 else int(parts[7]) - 1
 
 		if fullparse:
 			self.id = parts[3]
 			self.score = float(parts[4])
 
-			if not bed6:
+			if self.style != JuncFactory.BED6:
 				self.left = int(parts[1])
 				self.right = int(parts[2]) - 1
 
@@ -445,8 +453,11 @@ class BedJunction(ExonJunction):
 
 				# Check if this looks like a tophat style junction and if so bring it into out style
 				if self.start == self.left and self.block_sizes[0] != 0:
+					self.style = JuncFactory.TBED
 					self.start += self.block_sizes[0]
 					self.end -= self.block_sizes[1]
+				elif self.start != self.left:
+					self.style = JuncFactory.EBED
 
 				# Assert that everything looks valid
 				assert len(self.block_sizes) == len(self.block_starts) == self.block_count, (line,
@@ -464,18 +475,22 @@ class GFFJunction(ExonJunction):
 		self.source = "portcullis"
 		self.feature = "intron"
 		self.frame = "."
+		self.attrs = []
 		self.note = ""
 		self.raw = 0
 
 		if junc_to_copy:
 			if type(junc_to_copy) is TabJunction:
-				self.note = "Note=can:" + junc_to_copy.canonical + "|cov:" + str(junc_to_copy.getRaw()) + "|rel:" + str(
+				self.note = "Note=can:" + junc_to_copy.getSSType() + "|cov:" + str(junc_to_copy.getRaw()) + "|rel:" + str(
 					junc_to_copy.getReliable()) + "|ent:" + junc_to_copy.getEntropyAsStr() + "|maxmmes:" + str(
 					junc_to_copy.getMaxMMES()) + "|ham:" + str(
 					junc_to_copy.getMinHamming()) + ";"
+				self.id = junc_to_copy.id
+				self.score = junc_to_copy.getScore()
 				self.raw = junc_to_copy.getRaw()
 			elif type(junc_to_copy) is GFFJunction:
 				self.note = junc_to_copy.note
+				self.score = junc_to_copy.score
 				self.raw = junc_to_copy.raw
 				self.source = junc_to_copy.source
 				self.feature = junc_to_copy.feature
@@ -486,7 +501,7 @@ class GFFJunction(ExonJunction):
 
 		if self.style == JuncFactory.EGFF:
 			entries = []
-			parts = [self.refseq, self.source, "match", self.left + 1, self.right + 1, self.raw, self.strand,
+			parts = [self.refseq, self.source, "match", self.left + 1, self.right + 1, self.score, self.strand,
 					 self.frame,
 					 "ID=" + self.id + ";" +
 					 "Name=" + self.id + ";" +
@@ -509,7 +524,7 @@ class GFFJunction(ExonJunction):
 
 			return "\n".join(entries)
 		else:
-			parts = [self.refseq, self.source, self.feature, self.start + 1, self.end + 1, self.raw, self.strand,
+			parts = [self.refseq, self.source, self.feature, self.start + 1, self.end + 1, self.score, self.strand,
 					 self.frame,
 					 # "ID=" + self.id + ";" +
 					 # "Name=" + self.id + ";" +
@@ -545,9 +560,20 @@ class GFFJunction(ExonJunction):
 
 		if fullparse:
 			self.source = parts[1]
-			self.feature = "intron"
+			self.feature = parts[2]
 			self.score = float(parts[5])
 			self.frame = parts[7]
+			self.attrs = parts[8].split(";")
+			for a in self.attrs:
+				p = a.split("=")
+				nam = p[0]
+				val = p[1]
+				if nam.startswith("ID"):
+					self.id = val
+				elif nam.startswith("mult"):
+					self.raw = int(val)
+				elif nam.startswith("Note"):
+					self.note = val
 
 		return self
 
@@ -565,11 +591,6 @@ class TabJunction(ExonJunction):
 			self.ss_strand = junc_to_copy.ss_strand
 
 			self.metrics = copy.deepcopy(junc_to_copy.metrics)
-
-			self.mql = junc_to_copy.mql
-			self.suspect = junc_to_copy.suspect
-			self.pfp = junc_to_copy.pfp
-
 			self.jo = copy.deepcopy(junc_to_copy.jo)
 		else:
 			self.refid = ""
@@ -580,23 +601,15 @@ class TabJunction(ExonJunction):
 			self.ss_strand = "."
 
 			self.metrics = [len(TabJunction.metric_names())]
-
-			self.mql = ""
-			self.suspect = False
-			self.pfp = False
-
 			self.jo = [len(TabJunction.jo_names())]
 
 	def __str__(self):
-		id_parts = [self.id, self.refid, self.refseq, self.reflen, self.start, self.end, self.left, self.right,
-					self.ss1, self.ss2,
-					self.read_strand, self.ss_strand, self.strand]
-		jo_parts = [self.mql, self.suspect, self.pfp]
+		id_parts = [self.id, self.refid, self.refseq, self.reflen, self.start, self.end, self.size(), self.left, self.right,
+					self.read_strand, self.ss_strand, self.strand, self.ss1, self.ss2]
 
 		chunks = []
 		chunks.append("\t".join([str(_) for _ in id_parts]))
 		chunks.append("\t".join([str(_) for _ in self.metrics]))
-		chunks.append("\t".join([str(_) for _ in jo_parts]))
 		chunks.append("\t".join([str(_) for _ in self.jo]))
 
 		return "\t".join(chunks)
@@ -604,78 +617,94 @@ class TabJunction(ExonJunction):
 	def accepts_ext(ext):
 		return ext == ".tab"
 
+	def getSSType(self):
+		return self.metrics[0]
+
 	def getRaw(self):
-		return int(self.metrics[1])
+		return int(self.metrics[4])
+
+	def getScore(self):
+		return float(self.metrics[1])
+
+	def getScoreAsStr(self):
+		return "{0:.2f}".format(self.getScore())
 
 	def getReliable(self):
-		return int(self.metrics[3])
+		return int(self.metrics[12])
 
 	def getEntropy(self):
-		return float(self.metrics[10])
+		return float(self.metrics[14])
 
 	def getEntropyAsStr(self):
 		return "{0:.2f}".format(self.getEntropy())
 
 	def getMaxMMES(self):
-		return int(self.metrics[11])
+		return int(self.metrics[18])
 
 	def getMinHamming(self):
-		return min(int(self.metrics[12]), int(self.metrics[13]))
+		return min(int(self.metrics[20]), int(self.metrics[21]))
 
 	@staticmethod
 	def metric_names():
-		return ["M1-canonical_ss",
-				"M2-nb_reads",
-				"M3-nb_dist_aln",
-				"M4-nb_rel_aln",
-				"M5-intron_size",
-				"M6-left_anc_size",
-				"M7-right_anc_size",
-				"M8-max_min_anc",
-				"M9-dif_anc",
-				"M10-dist_anc",
-				"M11-entropy",
-				"M12-maxmmes",
-				"M13-hamming5p",
-				"M14-hamming3p",
-				"M15-coverage",
-				"M16-uniq_junc",
-				"M17-primary_junc",
-				"M18-mm_score",
-				"M19-mean_mismatches",
-				"M20-nb_usrs",
-				"M21-nb_msrs",
-				"M22-rel2raw",
-				"M23-nb_up_juncs",
-				"M24-nb_down_juncs",
-				"M25-up_aln",
-				"M26-down_aln",
-				"M27-dist_2_up_junc",
-				"M28-dist_2_down_junc",
-				"M29-dist_nearest_junc"]
+		return ["canonical_ss",
+				"score",
+				"suspicious",
+				"pfp",
+				"nb_raw_aln",
+				"nb_dist_aln",
+				"nb_us_aln",
+				"nb_ms_aln",
+				"nb_um_aln",
+				"nb_mm_aln",
+				"nb_bpp_aln",
+				"nb_ppp_aln",
+				"nb_rel_aln",
+				"rel2raw",
+				"entropy",
+				"mean_mismatches",
+				"mean_readlen",
+				"max_min_anc",
+				"maxmmes",
+				"intron_score",
+				"hamming5p",
+				"hamming3p",
+				"coding",
+				"pws",
+				"splice_sig",
+				"uniq_junc",
+				"primary_junc",
+				"nb_up_juncs",
+				"nb_down_juncs",
+				"dist_2_up_junc",
+				"dist_2_down_junc",
+				"dist_nearest_junc",
+				"mm_score",
+				"coverage",
+				"up_aln",
+				"down_aln"]
 
 	@staticmethod
 	def jo_names():
-		return ["JO01",
-				"JO02",
-				"JO03",
-				"JO04",
-				"JO05",
-				"JO06",
-				"JO07",
-				"JO08",
-				"JO09",
-				"JO10",
-				"JO11",
-				"JO12",
-				"JO13",
-				"JO14",
-				"JO15",
-				"JO16",
-				"JO17",
-				"JO18",
-				"JO19",
-				"JO20"]
+		return ["JAD01",
+				"JAD02",
+				"JAD03",
+				"JAD04",
+				"JAD05",
+				"JAD06",
+				"JAD07",
+				"JAD08",
+				"JAD09",
+				"JAD10",
+				"JAD11",
+				"JAD12",
+				"JAD13",
+				"JAD14",
+				"JAD15",
+				"JAD16",
+				"JAD17",
+				"JAD18",
+				"JAD19",
+				"JAD20"]
 
 	@staticmethod
 	def strand_names():
@@ -683,10 +712,10 @@ class TabJunction(ExonJunction):
 
 	def file_header(self, description=""):
 		chunks = []
-		chunks.append("\t".join(["index", "refid", "refname", "reflen", "start", "end", "left", "right", "ss1", "ss2"]))
+		chunks.append("\t".join(["index", "refid", "refname", "reflen", "start", "end", "size", "left", "right"]))
 		chunks.append("\t".join(TabJunction.strand_names()))
+		chunks.append("\t".join(["ss1", "ss2"]))
 		chunks.append("\t".join(TabJunction.metric_names()))
-		chunks.append("\t".join(["MQL", "Suspect", "PFP"]))
 		chunks.append("\t".join(TabJunction.jo_names()))
 
 		return "\t".join(chunks)
@@ -702,36 +731,31 @@ class TabJunction(ExonJunction):
 		if parts[0] == "index" or len(parts) <= 1:
 			return None
 
-		if len(parts) != 65 and len(parts) > 1:
-			msg = "Unexpected number of columns in TAB file.  Expected 65, found " + str(len(parts))
+		if len(parts) != 70 and len(parts) > 1:
+			msg = "Unexpected number of columns in TAB file.  Expected 70, found " + str(len(parts))
 			raise ValueError(msg)
 
 		self.refseq = parts[2]
 		self.start = int(parts[4])
 		self.end = int(parts[5])
-		self.strand = parts[12]
+		self.strand = parts[11]
 
 		if fullparse:
 			self.id = str(parts[0])
 			self.refid = int(parts[1])
 			self.reflen = int(parts[3])
-			self.left = int(parts[6])
-			self.right = int(parts[7])
-			self.ss1 = parts[8]
-			self.ss2 = parts[9]
-			self.read_strand = parts[10]
-			self.ss_strand = parts[11]
+			self.left = int(parts[7])
+			self.right = int(parts[8])
+			self.ss1 = parts[12]
+			self.ss2 = parts[13]
+			self.read_strand = parts[9]
+			self.ss_strand = parts[10]
 
-			self.canonical = parts[13]
-			self.score = int(parts[14])
+			jostart = 14+len(TabJunction.metric_names())
+			self.metrics = parts[14:jostart]
 
-			self.metrics = parts[13:32]
-
-			self.mql = parts[33]
-			self.suspect = bool(parts[34])
-			self.pfp = bool(parts[35])
-
-			self.jo = parts[36:56]
+			endpart = jostart+len(TabJunction.jo_names())
+			self.jo = parts[jostart:endpart]
 
 			if len(parts) > 56:
 				i = 0
@@ -916,6 +940,35 @@ class SoapspliceJunction(Junction):
 		self.start = int(parts[1])
 		self.end = int(parts[2]) - 2
 		self.strand = "+" if parts[3] == "fwd" else "-" if parts[3] == "rev" else "."
+
+		if fullparse:
+			self.score = int(parts[4])
+
+		return self
+
+
+class MapspliceJunction(Junction):
+	def __init__(self, use_strand=True, junc_to_copy=None):
+		Junction.__init__(self, use_strand=use_strand, junc_to_copy=junc_to_copy)
+
+	def __str__(self):
+		raise ValueError("Can't represent Mapsplice junctions as string")
+
+
+	def parse_line(self, line, fullparse=True):
+		parts = line.split("\t")
+
+		if len(parts) <= 1:
+			return None
+
+		if len(parts) != 29 and len(parts) > 1:
+			msg = "Unexpected number of columns in Mapsplice junction file.  Expected 29, found " + str(len(parts))
+			raise ValueError(msg)
+
+		self.refseq = parts[0]
+		self.start = int(parts[1])
+		self.end = int(parts[2]) - 1
+		self.strand = parts[5]
 
 		if fullparse:
 			self.score = int(parts[4])

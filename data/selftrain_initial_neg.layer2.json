@@ -1,25 +1,25 @@
 {
-	"parameters": {
-                "M1-canonical_ss": {
-			"operator": "in",
-			"value": ["N", "S"]
-		},
-	    "M22-rel2raw": {
-		"operator": "lt",
-		"value": 0.5
-	    },
-	    "M19-mean_mismatches": {
-		"operator": "gte",
-		"value": 1
-	    },
-                "M12-maxmmes": {
-                        "operator": "lt",
-                        "value": 15
-                },
-                "M20-nb_usrs": {
-                        "operator": "lte",
-                        "value": 1
-                }
-	},
-	"expression": "( M20-nb_usrs & M12-maxmmes & M22-rel2raw & (M1-canonical_ss | M19-mean_mismatches ) )"  
+    "parameters": {
+        "ss_type": {
+            "operator": "in",
+            "value": ["N", "S"]
+        },
+        "rel2raw": {
+            "operator": "lt",
+            "value": 0.5
+        },
+        "mean_mismatches": {
+            "operator": "gte",
+            "value": 1
+        },
+        "maxmmes": {
+            "operator": "lt",
+            "value": 15
+        },
+        "nb_us_aln": {
+            "operator": "lte",
+            "value": 1
+        }
+    },
+    "expression": "( nb_us_aln & maxmmes & rel2raw & ( ss_type | mean_mismatches ) )"
 }

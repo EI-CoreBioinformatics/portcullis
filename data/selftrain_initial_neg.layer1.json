@@ -1,16 +1,17 @@
 {
-	"parameters": {
-                "M12-maxmmes": {
-                        "operator": "lt",
-                        "value": 15
-                },
-                "M20-nb_usrs": {
-                        "operator": "lte",
-                        "value": 1
-                },
-                "M22-rel2raw": {
-                        "operator": "eq",
-                        "value": 0
-                }
-	},
-	"expression": "( M12-maxmmes & M20-nb_usrs & M22-rel2raw )" }
+    "parameters": {
+        "maxmmes": {
+            "operator": "lt",
+            "value": 15
+        },
+        "nb_us_aln": {
+            "operator": "lte",
+            "value": 1
+        },
+        "rel2raw": {
+            "operator": "eq",
+            "value": 0
+        }
+    },
+    "expression": "( maxmmes & nb_us_aln & rel2raw )"
+}

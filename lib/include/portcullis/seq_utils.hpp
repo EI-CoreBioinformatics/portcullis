@@ -27,84 +27,77 @@ using boost::lexical_cast;
 
 
 namespace portcullis {
-    
-const char REVCOMP_LOOKUP[] = {'T',  0,  'G', 'H',
-                                0,   0,  'C', 'D',
-                                0,   0,   0,   0,
-                               'K', 'N',  0,   0,
-                                0,  'Y', 'W', 'A',
-                               'A', 'B', 'S', 'X',
-                               'R',  0 };
 
-typedef boost::error_info<struct SeqUtilsError,string> SeqUtilsErrorInfo;
+const char REVCOMP_LOOKUP[] = {'T',  0,  'G', 'H',
+							   0,   0,  'C', 'D',
+							   0,   0,   0,   0,
+							   'K', 'N',  0,   0,
+							   0,  'Y', 'W', 'A',
+							   'A', 'B', 'S', 'X',
+							   'R',  0
+							  };
+
+typedef boost::error_info<struct SeqUtilsError, string> SeqUtilsErrorInfo;
 struct SeqUtilsException: virtual boost::exception, virtual std::exception { };
 
 
 class SeqUtils {
-    
+
 public:
-    
-    static bool dnaNt(const char c) {
-        return c == 'A' || c == 'T' || c == 'G' || c == 'C';
-    }
-    
-    static string makeClean(const string& s) {
-        string sequp = boost::to_upper_copy(s);
-        
-        for(size_t i = 0; i < sequp.size(); i++) {
-            sequp[i] = dnaNt(sequp[i]) ? sequp[i] : 'N';
-        }
-        
-        return sequp;
-    }
-    
-    static int16_t hammingDistance(const string& s1, const string& s2) {
 
-        if (s1.size() != s2.size())
-            BOOST_THROW_EXCEPTION(SeqUtilsException() << SeqUtilsErrorInfo(string(
-                    "Can't find hamming distance of strings that are not the same length.  ") +
-                    "s1: " + lexical_cast<string>(s1.size()) + "\"" + s1 + "\"; " +
-                    "s2: " + lexical_cast<string>(s2.size()) + "\"" + s2 + "\""));
+	static bool dnaNt(const char c) {
+		return c == 'A' || c == 'T' || c == 'G' || c == 'C';
+	}
 
-        string s1u = boost::to_upper_copy(s1);
-        string s2u = boost::to_upper_copy(s2);
+	static string makeClean(const string& s) {
+		string sequp = boost::to_upper_copy(s);
+		for (size_t i = 0; i < sequp.size(); i++) {
+			sequp[i] = dnaNt(sequp[i]) ? sequp[i] : 'N';
+		}
+		return sequp;
+	}
 
-        int16_t sum = 0;
-        for(size_t i = 0; i < s1u.size(); i++) {
-            if (s1u[i] != s2u[i]) {
-                sum++;
-            }
-        }
+	static uint32_t hammingDistance(const string& s1, const string& s2) {
+		if (s1.size() != s2.size())
+			BOOST_THROW_EXCEPTION(SeqUtilsException() << SeqUtilsErrorInfo(string(
+									  "Can't find hamming distance of strings that are not the same length.  ") +
+								  "s1: " + lexical_cast<string>(s1.size()) + "\"" + s1 + "\"; " +
+								  "s2: " + lexical_cast<string>(s2.size()) + "\"" + s2 + "\""));
+		string s1u = boost::to_upper_copy(s1);
+		string s2u = boost::to_upper_copy(s2);
+		uint32_t sum = 0;
+		for (size_t i = 0; i < s1u.size(); i++) {
+			if (s1u[i] != s2u[i]) {
+				sum++;
+			}
+		}
+		return sum;
+	}
 
-        return sum;
-    }
+	/**
+	 * Reverses a string, and returns a copy of that string
+	 * @param sequence
+	 * @return
+	 */
+	static string reverseSeq(string& sequence) {
+		return string(sequence.rbegin(), sequence.rend());
+	}
 
-    /**
-     * Reverses a string, and returns a copy of that string
-     * @param sequence
-     * @return 
-     */
-    static string reverseSeq(string& sequence) {
-        return string(sequence.rbegin(), sequence.rend());
-    }
-
-    /**
-     * Returns a reverse complement of the provided sequence
-     * @param sequence
-     * @return 
-     */
-    static string reverseComplement(string sequence) {
-
-        // do complement, in-place
-        size_t seqLength = sequence.length();
-        for ( size_t i = 0; i < seqLength; ++i )
-            sequence.replace(i, 1, 1, REVCOMP_LOOKUP[(int)sequence.at(i) - 65]);
-
-        // reverse it
-        return reverseSeq(sequence);
-    }
+	/**
+	 * Returns a reverse complement of the provided sequence
+	 * @param sequence
+	 * @return
+	 */
+	static string reverseComplement(string sequence) {
+		// do complement, in-place
+		size_t seqLength = sequence.length();
+		for ( size_t i = 0; i < seqLength; ++i )
+			sequence.replace(i, 1, 1, REVCOMP_LOOKUP[(int)sequence.at(i) - 65]);
+		// reverse it
+		return reverseSeq(sequence);
+	}
 };
-    
-    
+
+
 }
 

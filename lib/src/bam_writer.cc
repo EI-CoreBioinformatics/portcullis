@@ -41,27 +41,25 @@ using boost::lexical_cast;
 using portcullis::bam::BamAlignment;
 
 #include <portcullis/bam/bam_writer.hpp>
-    
-void portcullis::bam::BamWriter::open(bam_hdr_t* header) {
-    // split
-    fp = bgzf_open(bamFile.c_str(), "w");
-    if (fp == NULL) {
-        BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
-                "Could not open output BAM file: ") + bamFile.string()));
-    }
 
-    if (bam_hdr_write(fp, header) != 0) {
-        BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
-                "Could not write header into: ") + bamFile.string()));
-    }
+void portcullis::bam::BamWriter::open(bam_hdr_t* header) {
+	// split
+	fp = bgzf_open(bamFile.c_str(), "w");
+	if (fp == NULL) {
+		BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+								  "Could not open output BAM file: ") + bamFile.string()));
+	}
+	if (bam_hdr_write(fp, header) != 0) {
+		BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
+								  "Could not write header into: ") + bamFile.string()));
+	}
 }
 
 int portcullis::bam::BamWriter::write(const BamAlignment& ba) {
-     return bam_write1(fp, ba.getRaw());       
+	return bam_write1(fp, ba.getRaw());
 }
 
 void portcullis::bam::BamWriter::close() {
-    bgzf_close(fp);
+	bgzf_close(fp);
 }
 
-    

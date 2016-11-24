@@ -38,66 +38,66 @@ using boost::timer::auto_cpu_timer;
 namespace portcullis {
 namespace ml {
 
-typedef boost::error_info<struct KNNError,string> KNNErrorInfo;
+typedef boost::error_info<struct KNNError, string> KNNErrorInfo;
 struct KNNException: virtual boost::exception, virtual std::exception { };
-    
+
 /**
  * An parallel implementation of K Nearest Neighbour.
  * Logic originally derived from OpenCV
  */
 class KNN {
 protected:
-    uint16_t k;
-    uint16_t threads;
-    bool verbose;
-    
-    double* data;
-    size_t rows;
-    size_t cols;
-    
-    vector<shared_ptr<vector<uint32_t>>> results;
-    
-    void doSlice( uint16_t slice );
-    
-public:    
-    
-    KNN(uint16_t defaultK, uint16_t _threads, double* _data, size_t _rows, size_t _cols);
-    
-    uint16_t getK() const {
-        return k;
-    }
+	uint16_t k;
+	uint16_t threads;
+	bool verbose;
 
-    void setK(uint16_t k) {
-        this->k = k;
-    }
+	double* data;
+	size_t rows;
+	size_t cols;
 
-    uint16_t getThreads() const {
-        return threads;
-    }
+	vector<shared_ptr<vector<uint32_t>>> results;
 
-    void setThreads(uint16_t threads) {
-        this->threads = threads;
-    }
+	void doSlice( uint16_t slice );
 
-    bool isVerbose() const {
-        return verbose;
-    }
+public:
 
-    void setVerbose(bool verbose) {
-        this->verbose = verbose;
-    }
-    
-    const vector<shared_ptr<vector<uint32_t>>>& getResults() const {
-        return results;
-    }
-    
-    const vector<uint32_t>& getNNs(size_t index) const {
-        return *results[index];
-    }
-    
-    void execute();
-    
-    void print(ostream& out);
+	KNN(uint16_t defaultK, uint16_t _threads, double* _data, size_t _rows, size_t _cols);
+
+	uint16_t getK() const {
+		return k;
+	}
+
+	void setK(uint16_t k) {
+		this->k = k;
+	}
+
+	uint16_t getThreads() const {
+		return threads;
+	}
+
+	void setThreads(uint16_t threads) {
+		this->threads = threads;
+	}
+
+	bool isVerbose() const {
+		return verbose;
+	}
+
+	void setVerbose(bool verbose) {
+		this->verbose = verbose;
+	}
+
+	const vector<shared_ptr<vector<uint32_t>>>& getResults() const {
+		return results;
+	}
+
+	const vector<uint32_t>& getNNs(size_t index) const {
+		return *results[index];
+	}
+
+	void execute();
+
+	void print(ostream& out);
 };
 
 }
