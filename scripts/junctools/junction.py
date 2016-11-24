@@ -375,8 +375,8 @@ class BedJunction(ExonJunction):
 			else:
 
 				block_count = 2
-				bsizes = ",".join([self.start - self.left, self.right - self.end])
-				bstarts = ",".join([0, self.end - self.left + 1])
+				bsizes = ",".join([str(self.start - self.left), str(self.right - self.end)])
+				bstarts = ",".join([str(0), str(self.end - self.left + 1)])
 
 
 				if self.style == JuncFactory.EBED:
@@ -439,7 +439,6 @@ class BedJunction(ExonJunction):
 				self.red = int(c_parts[0])
 				self.green = int(c_parts[1])
 				self.blue = int(c_parts[2])
-				self.block_count = int(parts[9])
 
 				block_sizes = [int(_) for _ in parts[10].split(",")]
 
