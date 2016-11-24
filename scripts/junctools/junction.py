@@ -441,22 +441,16 @@ class BedJunction(ExonJunction):
 				self.blue = int(c_parts[2])
 				self.block_count = int(parts[9])
 
-				self.block_sizes = [int(_) for _ in parts[10].split(",")]
-				self.block_starts = [int(_) for _ in parts[11].rstrip().split(",")]
+				block_sizes = [int(_) for _ in parts[10].split(",")]
 
 				# Check if this looks like a tophat style junction and if so bring it into out style
-				if self.start == self.left and self.block_sizes[0] != 0:
+				if self.start == self.left and block_sizes[0] != 0:
 					self.style = JuncFactory.TBED
-					self.start += self.block_sizes[0]
-					self.end -= self.block_sizes[1]
+					self.start += block_sizes[0]
+					self.end -= block_sizes[1]
 				elif self.start != self.left:
 					self.style = JuncFactory.EBED
 
-				# Assert that everything looks valid
-				assert len(self.block_sizes) == len(self.block_starts) == self.block_count, (line,
-																							 self.block_count,
-																							 self.block_sizes,
-																							 self.block_starts)
 		return self
 
 
