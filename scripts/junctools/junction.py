@@ -458,7 +458,7 @@ class GFFJunction(ExonJunction):
 		ExonJunction.__init__(self, use_strand=use_strand, junc_to_copy=junc_to_copy)
 
 		self.style = JuncFactory.IGFF
-		self.source = "portcullis"
+		self.source = "junctools"
 		self.feature = "intron"
 		self.frame = "."
 		self.attrs = []
@@ -473,6 +473,7 @@ class GFFJunction(ExonJunction):
 					junc_to_copy.getMinHamming()) + ";"
 				self.id = junc_to_copy.id
 				self.score = junc_to_copy.getScore()
+				self.source = "portcullis"
 				self.raw = junc_to_copy.getRaw()
 			elif type(junc_to_copy) is GFFJunction:
 				self.note = junc_to_copy.note
@@ -482,6 +483,15 @@ class GFFJunction(ExonJunction):
 				self.feature = junc_to_copy.feature
 				self.frame = junc_to_copy.frame
 				self.style = junc_to_copy.style
+			else:
+				self.score = junc_to_copy.score
+
+				if isinstance(junc_to_copy.score, float):
+					self.raw = 0
+					self.note = "Note=score:" + str(junc_to_copy.score)
+				else:
+					self.raw = junc_to_copy.score
+					self.note = "Note=cov:" + str(self.raw)
 
 	def __str__(self):
 
@@ -491,10 +501,7 @@ class GFFJunction(ExonJunction):
 					 self.frame,
 					 "ID=" + self.id + ";" +
 					 "Name=" + self.id + ";" +
-					 self.note +
-					 "mult=" + str(self.raw) + ";" +
-					 "grp=" + str(self.id) + ";" +
-					 "src=E"
+					 self.note
 					 ]
 			entries.append("\t".join([str(_) for _ in parts]))
 
@@ -520,7 +527,7 @@ class GFFJunction(ExonJunction):
 					 "mult=" + str(self.raw) + ";" +
 					 "grp=" + self.id + ";" +
 					 "src=E"]
-		return "\t".join([str(_) for _ in parts])
+			return "\t".join([str(_) for _ in parts])
 
 	def parse_line(self, line, fullparse=True):
 
