@@ -960,7 +960,7 @@ class MapspliceJunction(Junction):
 
 		self.refseq = parts[0]
 		self.start = int(parts[1])
-		self.end = int(parts[2]) - 1
+		self.end = int(parts[2]) - 2
 		self.strand = parts[5]
 
 		if fullparse:
