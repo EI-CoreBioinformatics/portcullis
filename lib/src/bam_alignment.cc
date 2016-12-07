@@ -343,11 +343,11 @@ uint32_t portcullis::bam::BamAlignment::calcNbAlignedBases(int32_t start, int32_
 	return count;
 }
 
-string portcullis::bam::BamAlignment::getPaddedQuerySeq(uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end, const bool include_soft_clips) const {
+string portcullis::bam::BamAlignment::getPaddedQuerySeq(int32_t start, int32_t end, int32_t& actual_start, int32_t& actual_end, const bool include_soft_clips) const {
 	return getPaddedQuerySeq(this->getQuerySeq(), start, end, actual_start, actual_end, include_soft_clips);
 }
 
-string portcullis::bam::BamAlignment::getPaddedQuerySeq(const string& query_seq, uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end, const bool include_soft_clips) const {
+string portcullis::bam::BamAlignment::getPaddedQuerySeq(const string& query_seq, int32_t start, int32_t end, int32_t& actual_start, int32_t& actual_end, const bool include_soft_clips) const {
 	if (start > getEnd() || end < position)
 		BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
 								  "Found an alignment that does not have a presence in the requested region")));
@@ -382,7 +382,7 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(const string& query_seq,
 									  + "\nCurrent output: " + ss.str()));
 			}
 			//cout << qPos << endl;
-			if (qPos < 0 || qPos + len > query.size()) {
+			if (qPos < 0 || qPos + len > (int32_t)query.size()) {
 				BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
 										  "Can't extract cigar op sequence from query string.")
 									  + "\nLimits: " + lexical_cast<string>(start) + "," + lexical_cast<string>(end)
@@ -411,7 +411,7 @@ string portcullis::bam::BamAlignment::getPaddedQuerySeq(const string& query_seq,
 	return ss.str();
 }
 
-string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq, uint32_t start, uint32_t end, uint32_t q_start, uint32_t q_end, const bool include_soft_clips) const {
+string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq, int32_t start, int32_t end, int32_t q_start, int32_t q_end, const bool include_soft_clips) const {
 	if (start > getEnd() || end < position)
 		BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
 								  "Found an alignment that does not have a presence in the requested region")));
@@ -443,7 +443,7 @@ string portcullis::bam::BamAlignment::getPaddedGenomeSeq(const string& genomeSeq
 		if (consumesRef) {
 			int32_t seqOffset = rPos - start;
 			int32_t len = rPos + op.length > q_end ? q_end - rPos + 1 : op.length;
-			if (seqOffset < 0 || seqOffset + len > genomeSeq.size()) {
+			if (seqOffset < 0 || seqOffset + len > (int32_t)genomeSeq.size()) {
 				BOOST_THROW_EXCEPTION(BamException() << BamErrorInfo(string(
 										  "Can't extract cigar op sequence from extracted genome region.\nCurrent position in extracted genome region: ")
 									  + lexical_cast<string>(seqOffset) +

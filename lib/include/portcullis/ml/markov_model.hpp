@@ -57,7 +57,7 @@ public:
 		order = _order;
 	}
 
-	MarkovModel(const vector<string>& input, const uint32_t _order) {
+	MarkovModel(const vector<string>& input, const uint16_t _order) {
 		order = _order;
 		train(input);
 	}
@@ -66,7 +66,7 @@ public:
 		train(input, order);
 	}
 
-	virtual void train(const vector<string>& input, const uint32_t order) = 0;
+	virtual void train(const vector<string>& input, const uint16_t order) = 0;
 
 	uint16_t getOrder() const {
 		return order;
@@ -80,10 +80,10 @@ private:
 	portcullis::ml::KMMU model;
 public:
 	KmerMarkovModel() : MarkovModel(1) {}
-	KmerMarkovModel(const uint32_t _order) : MarkovModel(_order) {};
-	KmerMarkovModel(const vector<string>& input, const uint32_t _order) : MarkovModel(input, _order) {}
+	KmerMarkovModel(const uint16_t _order) : MarkovModel(_order) {};
+	KmerMarkovModel(const vector<string>& input, const uint16_t _order) : MarkovModel(input, _order) {}
 
-	void train(const vector<string>& input, const uint32_t order);
+	void train(const vector<string>& input, const uint16_t order);
 	double getScore(const string& seq);
 	size_t size() const {
 		return model.size();
@@ -95,10 +95,10 @@ private:
 	portcullis::ml::PMMU model;
 public:
 	PosMarkovModel() : MarkovModel(1) {}
-	PosMarkovModel(const uint32_t _order) : MarkovModel(_order) {};
-	PosMarkovModel(const vector<string>& input, const uint32_t _order) : MarkovModel(input, _order) {}
+	PosMarkovModel(const uint16_t _order) : MarkovModel(_order) {};
+	PosMarkovModel(const vector<string>& input, const uint16_t _order) : MarkovModel(input, _order) {}
 
-	void train(const vector<string>& input, const uint32_t order);
+	void train(const vector<string>& input, const uint16_t order);
 	double getScore(const string& seq);
 	size_t size() const {
 		return model.size();

@@ -59,7 +59,6 @@ libportcullis_la_CPPFLAGS = \
 	-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
 	-isystem $(top_srcdir)/lib/include \
 	-DDATADIR=\"$(datadir)\" \
-	@AM_CPPFLAGS@ \
-	@CPPFLAGS@
+	@AM_CPPFLAGS@
 
-libportcullis_la_CXXFLAGS = -g -g3 -gdwarf-4 -O3 -pedantic @AM_CXXFLAGS@
+libportcullis_la_CXXFLAGS = -O3 -pedantic -ansi -Wall -Wextra -std=c++11 @AM_CXXFLAGS@

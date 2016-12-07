@@ -116,7 +116,7 @@ void portcullis::JunctionSystem::setQueryLengthStats(int32_t min, double mean, i
 	this->maxQueryLength = max;
 }
 
-bool portcullis::JunctionSystem::addJunction(JunctionPtr j) {
+void portcullis::JunctionSystem::addJunction(JunctionPtr j) {
 	j->clearAlignments();
 	distinctJunctions[*(j->getIntron())] = j;
 	junctionList.push_back(j);
@@ -205,20 +205,19 @@ bool portcullis::JunctionSystem::addJunctions(const BamAlignment& al, const size
 	return foundJunction;
 }
 
-void portcullis::JunctionSystem::findFlankingAlignments(const path& alignmentsFile, bool verbose) {
+void portcullis::JunctionSystem::findFlankingAlignments(const path& alignmentsFile) {
 	auto_cpu_timer timer(1, " done. Wall time taken: %ws\n");
 	// Maybe try to multi-thread this part
 	BamReader reader(alignmentsFile);
 	// Open the file
 	reader.open();
 	// Read the alignments around every junction and set appropriate metrics
-	size_t count = 0;
+	//size_t count = 0;
 	//cout << endl;
 	for (JunctionPtr j : junctionList) {
 		j->processJunctionVicinity(
 			reader,
 			j->getIntron()->ref.length,
-			meanQueryLength,
 			maxQueryLength);
 		//cout << count++ << endl;
 	}
@@ -229,7 +228,6 @@ void portcullis::JunctionSystem::calcCoverage(const path& alignmentsFile, Strand
 	auto_cpu_timer timer(1, " done. Wall time taken: %ws\n");
 	DepthParser dp(alignmentsFile, static_cast<uint8_t> (strandSpecific), false);
 	vector<uint32_t> batch;
-	size_t i = 0;
 	while (dp.loadNextBatch(batch)) {
 		JunctionList subset;
 		findJunctions(dp.getCurrentRefIndex(), subset);
@@ -239,13 +237,13 @@ void portcullis::JunctionSystem::calcCoverage(const path& alignmentsFile, Strand
 	}
 }
 
-void portcullis::JunctionSystem::calcMultipleMappingStats(SplicedAlignmentMap& map, bool verbose) {
+void portcullis::JunctionSystem::calcMultipleMappingStats(SplicedAlignmentMap& map) {
 	for (JunctionPtr j : junctionList) {
 		j->calcMultipleMappingScore(map);
 	}
 }
 
-void portcullis::JunctionSystem::calcJunctionStats(bool verbose) {
+void portcullis::JunctionSystem::calcJunctionStats() {
 	if (junctionList.empty()) {
 		return;
 	}

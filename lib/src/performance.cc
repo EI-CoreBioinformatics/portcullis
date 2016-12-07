@@ -60,7 +60,6 @@ void portcullis::ml::Performance::loadGenuine(path& genuineFile, vector<bool>& r
 	// Load reference data
 	std::ifstream refs(genuineFile.string());
 	string line;
-	uint32_t lineNb = 0;
 	while (std::getline(refs, line)) {
 		std::istringstream iss(line);
 		bool res;

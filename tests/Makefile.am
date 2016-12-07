@@ -36,7 +36,7 @@ check_unit_tests_SOURCES =	bam_tests.cpp \
 				junction_tests.cpp \
 				check_portcullis.cc
 
-check_unit_tests_CXXFLAGS = -O0 @AM_CXXFLAGS@ @CXXFLAGS@
+check_unit_tests_CXXFLAGS = -O0 -std=c++11 @AM_CXXFLAGS@
 
 check_unit_tests_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 				-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
@@ -44,13 +44,11 @@ check_unit_tests_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 				-DRESOURCESDIR=\"$(top_srcdir)/tests/resources\" \
 				-DDATADIR=\"$(datadir)\" \
 				@AM_CPPFLAGS@
-				@CPPFLAGS@
 
 check_unit_tests_LDFLAGS =	-L../lib \
 				-L../deps/htslib-1.3 \
 				-L../deps/ranger-0.3.8 \
-				@AM_LDFLAGS@ \
-				@LDFLAGS@
+				@AM_LDFLAGS@
 	
 check_unit_tests_LDADD =	libgtest.la \
 				-lz \

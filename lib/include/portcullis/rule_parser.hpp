@@ -241,7 +241,7 @@ protected:
 public:
 
 	static map<string, int> filter(const path& ruleFile, const JunctionList& all,
-								   JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap);
+								   JunctionList& pass, JunctionList& fail);
 
 	static void saveResults(const path& outputFile, const JunctionSystem& js, JuncResultMap& results);
 };

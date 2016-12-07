@@ -100,7 +100,7 @@ private:
 	bool saveBad;
 	bool outputExonGFF;
 	bool outputIntronGFF;
-	int32_t maxLength;
+	uint32_t maxLength;
 	bool filterCanonical;
 	uint32_t minCov;
 	bool filterSemi;
@@ -295,11 +295,11 @@ public:
 		return this->filterCanonical || this->filterSemi || this->filterNovel;
 	}
 
-	int32_t isMaxLength() const {
+	uint32_t isMaxLength() const {
 		return maxLength;
 	}
 
-	void setMaxLength(int32_t maxLength) {
+	void setMaxLength(uint32_t maxLength) {
 		this->maxLength = maxLength;
 	}
 
@@ -333,7 +333,7 @@ protected:
 
 	void printFilteringResults(const JunctionList& in, const JunctionList& pass, const JunctionList& fail, const string& prefix);
 
-	void doRuleBasedFiltering(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap);
+	void doRuleBasedFiltering(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail);
 
 	void categorise(shared_ptr<Forest> f, const JunctionList& all, JunctionList& pass, JunctionList& fail, double t);
 
@@ -341,7 +341,7 @@ protected:
 
 	void createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg, JunctionList& failJuncs);
 
-	double calcGoodThreshold(shared_ptr<Forest> f, const JunctionList& all);
+	double calcGoodThreshold(shared_ptr<Forest> f);
 
 	void undersample(JunctionList& jl, size_t size);
 

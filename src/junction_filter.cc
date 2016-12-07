@@ -233,6 +233,7 @@ void portcullis::JunctionFilter::filter() {
 		mf.trainSplicingModels(pos, neg);
 		cout << " done." << endl << endl;
 		// Balance models for training
+        // Note this doesn't seem to work.  Discarding useful data doesn't make sense
 		/*if (pos.size() > neg.size()) {
 		    undersample(pos, neg.size());
 		}
@@ -247,20 +248,8 @@ void portcullis::JunctionFilter::filter() {
 		negSystem.sort();
 		cout << "Training Random Forest" << endl
 			 << "----------------------" << endl << endl;
-		bool done = false;
 		shared_ptr<Forest> forest = mf.trainInstance(posSystem.getJunctions(), negSystem.getJunctions(), output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true, smote, enn);
-		/*SemiSupervisedForest ssf(mf, trainingSystem.getJunctions(), unlabelled2, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, 0.1, true);
-		shared_ptr<Forest> forest = ssf.train();*/
-		/*
-		const vector<double> importance = forest->getVariableImportance();
-		mf.resetActiveFeatureIndex();
-		cout << "Feature importance:" << endl;
-		for(auto& i : importance) {
-		    int16_t j = mf.getNextActiveFeatureIndex();
-		    cout << mf.features[j].name << " - " << i << endl;
-		}*/
 		forest->saveToFile();
-		//forest->writeOutput(&cout);
 		modelFile = output.string() + ".selftrain.forest";
 		cout << endl;
 	}
@@ -287,9 +276,8 @@ void portcullis::JunctionFilter::filter() {
 	if (!filterFile.empty() && exists(filterFile)) {
 		JunctionList passJuncs;
 		JunctionList failJuncs;
-		JuncResultMap resultMap;
-		doRuleBasedFiltering(filterFile, currentJuncs, passJuncs, failJuncs, "Rule-based filtering", resultMap);
-		RuleFilter::saveResults(path(output.string() + ".rule_filtering.results"), originalJuncs, resultMap);
+		doRuleBasedFiltering(filterFile, currentJuncs, passJuncs, failJuncs);
+		//RuleFilter::saveResults(path(output.string() + ".rule_filtering.results"), originalJuncs);
 		printFilteringResults(currentJuncs, passJuncs, failJuncs, string("Rule-based filtering"));
 		// Reset currentJuncs
 		currentJuncs.clear();
@@ -416,7 +404,7 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
 	}
 	JunctionList p1, p2, p3;
 	cout << endl << "1\t";
-	RuleFilter::filter(this->getIntitalPosRulesFile(1), all, p1, unlabelled, "Creating initial positive set for training", resultMap);
+	RuleFilter::filter(this->getIntitalPosRulesFile(1), all, p1, unlabelled);
 	if (!genuineFile.empty()) {
 		cout << calcPerformance(p1, unlabelled)->toLongString();
 	}
@@ -424,7 +412,7 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
 		cout << p1.size() << "\t" << unlabelled.size();
 	}
 	cout << endl << "2\t";
-	RuleFilter::filter(this->getIntitalPosRulesFile(2), p1, p2, unlabelled, "Creating initial positive set for training", resultMap);
+	RuleFilter::filter(this->getIntitalPosRulesFile(2), p1, p2, unlabelled);
 	if (!genuineFile.empty()) {
 		cout << calcPerformance(p2, unlabelled)->toLongString();
 	}
@@ -432,7 +420,7 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
 		cout << p2.size() << "\t" << unlabelled.size();
 	}
 	cout << endl << "3\t";
-	RuleFilter::filter(this->getIntitalPosRulesFile(3), p2, p3, unlabelled, "Creating initial positive set for training", resultMap);
+	RuleFilter::filter(this->getIntitalPosRulesFile(3), p2, p3, unlabelled);
 	if (!genuineFile.empty()) {
 		cout << calcPerformance(p3, unlabelled)->toLongString();
 	}
@@ -490,7 +478,6 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
 }
 
 void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionList& all, JunctionList& neg, JunctionList& failJuncs) {
-	JuncResultMap resultMap;
 	cout << "Creating initial negative set for training" << endl
 		 << "------------------------------------------" << endl << endl
 		 << "Applying a set of rule-based filters in " << dataDir.string() << " to create initial negative set." << endl << endl;
@@ -506,7 +493,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
 	}
 	JunctionList p1, p2, p3, p4, p5, p6, p7, p8, f1, f2, f3, f4, f5, f6, f7, f8;
 	cout << endl << "1\t";
-	RuleFilter::filter(this->getIntitalNegRulesFile(1), all, p1, f1, "Creating initial negative set for training", resultMap);
+	RuleFilter::filter(this->getIntitalNegRulesFile(1), all, p1, f1);
 	if (!genuineFile.empty()) {
 		cout << calcPerformance(p1, f1, true)->toLongString();
 	}
@@ -514,7 +501,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
 		cout << p1.size() << "\t" << f1.size();
 	}
 	cout << endl << "2\t";
-	RuleFilter::filter(this->getIntitalNegRulesFile(2), f1, p2, f2, "Creating initial negative set for training", resultMap);
+	RuleFilter::filter(this->getIntitalNegRulesFile(2), f1, p2, f2);
 	if (!genuineFile.empty()) {
 		cout << calcPerformance(p2, f2, true)->toLongString();
 	}
@@ -522,7 +509,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
 		cout << p2.size() << "\t" << f2.size();
 	}
 	cout << endl << "3\t";
-	RuleFilter::filter(this->getIntitalNegRulesFile(3), f2, p3, f3, "Creating initial negative set for training", resultMap);
+	RuleFilter::filter(this->getIntitalNegRulesFile(3), f2, p3, f3);
 	if (!genuineFile.empty()) {
 		cout << calcPerformance(p3, f3, true)->toLongString();
 	}
@@ -530,7 +517,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
 		cout << p3.size() << "\t" << f3.size();
 	}
 	cout << endl << "4\t";
-	RuleFilter::filter(this->getIntitalNegRulesFile(4), f3, p4, f4, "Creating initial negative set for training", resultMap);
+	RuleFilter::filter(this->getIntitalNegRulesFile(4), f3, p4, f4);
 	if (!genuineFile.empty()) {
 		cout << calcPerformance(p4, f4, true)->toLongString();
 	}
@@ -538,7 +525,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
 		cout << p4.size() << "\t" << f4.size();
 	}
 	cout << endl << "5\t";
-	RuleFilter::filter(this->getIntitalNegRulesFile(5), f4, p5, f5, "Creating initial negative set for training", resultMap);
+	RuleFilter::filter(this->getIntitalNegRulesFile(5), f4, p5, f5);
 	if (!genuineFile.empty()) {
 		cout << calcPerformance(p5, f5, true)->toLongString();
 	}
@@ -546,7 +533,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
 		cout << p5.size() << "\t" << f5.size();
 	}
 	cout << endl << "6\t";
-	RuleFilter::filter(this->getIntitalNegRulesFile(6), f5, p6, f6, "Creating initial negative set for training", resultMap);
+	RuleFilter::filter(this->getIntitalNegRulesFile(6), f5, p6, f6);
 	if (!genuineFile.empty()) {
 		cout << calcPerformance(p6, f6, true)->toLongString();
 	}
@@ -554,7 +541,7 @@ void portcullis::JunctionFilter::createNegativeSet(uint32_t L95, const JunctionL
 		cout << p6.size() << "\t" << f6.size();
 	}
 	cout << endl << "7\t";
-	RuleFilter::filter(this->getIntitalNegRulesFile(7), f6, p7, f7, "Creating initial negative set for training", resultMap);
+	RuleFilter::filter(this->getIntitalNegRulesFile(7), f6, p7, f7);
 	if (!genuineFile.empty()) {
 		cout << calcPerformance(p7, f7, true)->toLongString();
 	}
@@ -665,11 +652,11 @@ shared_ptr<Performance> portcullis::JunctionFilter::calcPerformance(const Juncti
 	return make_shared<Performance>(tp, tn, fp, fn);
 }
 
-void portcullis::JunctionFilter::doRuleBasedFiltering(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap) {
+void portcullis::JunctionFilter::doRuleBasedFiltering(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail) {
 	cout << "Loading JSON rule-based filtering config file: " << ruleFile.string() << endl;
 	cout << "Filtering junctions ...";
 	cout.flush();
-	map<string, int> filterCounts = RuleFilter::filter(ruleFile, all, pass, fail, prefix, resultMap);
+	map<string, int> filterCounts = RuleFilter::filter(ruleFile, all, pass, fail);
 	cout << " done." << endl << endl
 		 << "Number of junctions failing for each filter: " << endl;
 	for (map<string, int>::iterator iterator = filterCounts.begin(); iterator != filterCounts.end(); iterator++) {
@@ -760,7 +747,7 @@ void portcullis::JunctionFilter::categorise(shared_ptr<Forest> f, const Junction
 	}
 }
 
-double portcullis::JunctionFilter::calcGoodThreshold(shared_ptr<Forest> f, const JunctionList& all) {
+double portcullis::JunctionFilter::calcGoodThreshold(shared_ptr<Forest> f) {
 	uint32_t pos = 0;
 	uint32_t neg = 0;
 	for (auto & p : f->getPredictions()) {
@@ -787,7 +774,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 	bool saveBad;
 	bool exongff;
 	bool introngff;
-	int32_t max_length;
+	uint32_t max_length;
 	string canonical;
 	uint32_t mincov;
 	string source;
@@ -828,7 +815,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 	 "Reference annotation of junctions in BED format.  Any junctions found by the junction analysis tool will be preserved if found in this reference file regardless of any other filtering criteria.  If you need to convert a reference annotation from GTF or GFF to BED format portcullis contains scripts for this.")
 	("no_ml,n", po::bool_switch(&no_ml)->default_value(false),
 	 "Disables machine learning filtering")
-	("max_length", po::value<int32_t>(&max_length)->default_value(0),
+	("max_length", po::value<uint32_t>(&max_length)->default_value(0),
 	 "Filter junctions longer than this value.  Default (0) is to not filter based on length.")
 	("canonical", po::value<string>(&canonical)->default_value("OFF"),
 	 "Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GT-AG), S = Semi-canonical junctions (AT-AC, or GC-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate options by a comma to keep two categories.")

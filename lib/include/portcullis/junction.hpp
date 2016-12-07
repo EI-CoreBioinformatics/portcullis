@@ -345,8 +345,8 @@ public:
 	 * The intron size
 	 * @return
 	 */
-	int32_t getIntronSize() const {
-		return intron != nullptr ? intron->size() : 0;
+	uint32_t getIntronSize() const {
+		return intron != nullptr ? (uint32_t)intron->size() : 0;
 	}
 
 	/**
@@ -998,10 +998,9 @@ public:
 	 * Process non-spliced alignments within a certain region upstream and downstream of the junction
 	 * @param reader
 	 * @param refLength
-	 * @param meanQueryLength
 	 * @param maxQueryLength
 	 */
-	void processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength);
+	void processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t maxQueryLength);
 
 	/**
 	 * Based on the alignments in this junction calculate junction metrics

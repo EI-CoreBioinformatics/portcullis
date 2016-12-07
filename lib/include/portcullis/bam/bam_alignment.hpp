@@ -57,9 +57,9 @@ const char BAM_CIGAR_BACK_CHAR = 'B';
 
 struct CigarOp {
 	char type;
-	uint32_t length;
+	int32_t length;
 
-	CigarOp(char _type, uint32_t _length) {
+	CigarOp(char _type, int32_t _length) {
 		type = _type;
 		length = _length;
 	}
@@ -317,9 +317,9 @@ public:
 
 	uint32_t calcNbAlignedBases(int32_t start, int32_t end, bool includeSoftClips) const;
 
-	string getPaddedQuerySeq(uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end, const bool include_soft_clips) const;
-	string getPaddedQuerySeq(const string& querySeq, uint32_t start, uint32_t end, uint32_t& actual_start, uint32_t& actual_end, const bool include_soft_clips) const;
-	string getPaddedGenomeSeq(const string& fullGenomeSeq, uint32_t start, uint32_t end, uint32_t q_start, uint32_t q_end, const bool include_soft_clips) const;
+	string getPaddedQuerySeq(int32_t start, int32_t end, int32_t& actual_start, int32_t& actual_end, const bool include_soft_clips) const;
+	string getPaddedQuerySeq(const string& querySeq, int32_t start, int32_t end, int32_t& actual_start, int32_t& actual_end, const bool include_soft_clips) const;
+	string getPaddedGenomeSeq(const string& fullGenomeSeq, int32_t start, int32_t end, int32_t q_start, int32_t q_end, const bool include_soft_clips) const;
 
 	string toString() const;
 	string toString(bool afterClipping) const;

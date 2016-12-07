@@ -68,7 +68,7 @@ class ModelFeatures {
 private:
 	size_t fi;
 protected:
-	void setRow(Data* d, size_t row, JunctionPtr j, bool labelled);
+	void setRow(Data* d, size_t row, JunctionPtr j);
 
 public:
 	uint32_t L95;

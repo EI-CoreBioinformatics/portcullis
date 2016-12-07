@@ -16,7 +16,6 @@
 //  *******************************************************************
 
 #include <sys/ioctl.h>
-#include <climits>
 #include <glob.h>
 #include <fstream>
 #include <string>
@@ -341,7 +340,7 @@ vector<path> portcullis::Prepare::globFiles(vector<path> input) {
 		i++;
 	}
 	vector<path> transformedBams;
-	for ( int i = 0; i < globbuf.gl_pathc; ++i )
+	for ( size_t i = 0; i < globbuf.gl_pathc; ++i )
 		transformedBams.push_back( path(globbuf.gl_pathv[i]) );
 	if ( globbuf.gl_pathc > 0 )
 		globfree( &globbuf );
@@ -349,7 +348,12 @@ vector<path> portcullis::Prepare::globFiles(vector<path> input) {
 }
 
 bool portcullis::Prepare::checkIndexMode(const path& genomeIndexFile, const bool useCsi) {
-	ifstream genomeIndex(genomeIndexFile.string());
+	
+    if (useCsi) {
+        return true;
+    }
+    
+    ifstream genomeIndex(genomeIndexFile.string());
 	vector<string> myLines;
 	std::copy(istream_iterator<string>(genomeIndex),
 			  istream_iterator<string>(),
@@ -358,7 +362,7 @@ bool portcullis::Prepare::checkIndexMode(const path& genomeIndexFile, const bool
 		vector<string> parts;
 		boost::split( parts, l, boost::is_any_of("\t"), boost::token_compress_on );
 		if (parts.size() >= 2) {
-			if (boost::lexical_cast<int>(parts[1]) >= LONG_MAX) {
+			if (boost::lexical_cast<uint64_t>(parts[1]) >= std::numeric_limits<int32_t>::max()) {
 				return false;
 			}
 		}

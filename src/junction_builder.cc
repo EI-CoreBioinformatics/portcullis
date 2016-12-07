@@ -197,12 +197,21 @@ void portcullis::JunctionBuilder::separateBams() {
 	// Create BAM index
 	string unsplicedIndexCmd = BamHelper::createIndexBamCmd(unsplicedFile, useCsi);
 	int unsExitCode = system(unsplicedIndexCmd.c_str());
-	cout << "done." << endl;
+	if (unsExitCode != 0) {
+        BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+									  "Problem indexing unspliced BAM: ") + unsplicedFile.string()));
+    }
+    
+    cout << "done." << endl;
 	cout << " - Indexing spliced alignments ... ";
 	cout.flush();
 	// Create BAM index
 	string splicedIndexCmd = BamHelper::createIndexBamCmd(splicedFile, useCsi);
 	int sExitCode = system(splicedIndexCmd.c_str());
+    if (sExitCode != 0) {
+        BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
+									  "Problem indexing spliced BAM: ") + splicedFile.string()));
+    }
 	cout << "done." << endl;
 }
 
@@ -295,7 +304,7 @@ void portcullis::JunctionBuilder::calcExtraMetrics() {
 void portcullis::JunctionBuilder::findJuncs(BamReader& reader, GenomeMapper& gmap, int32_t seq) {
 	uint64_t splicedCount = 0;
 	uint64_t unsplicedCount = 0;
-	int32_t lastCalculatedJunctionIndex = 0;
+	uint32_t lastCalculatedJunctionIndex = 0;
 	uint64_t sumQueryLengths = 0;
 	int32_t minQueryLength = INT32_MAX;
 	int32_t maxQueryLength = 0;

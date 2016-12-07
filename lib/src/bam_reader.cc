@@ -103,7 +103,7 @@ void portcullis::bam::BamReader::close() {
 shared_ptr<RefSeqPtrList> portcullis::bam::BamReader::createRefList() {
 	shared_ptr<RefSeqPtrList> refs = make_shared<RefSeqPtrList>();
 	// Identify all the reference sequences in the BAM
-	for (uint32_t i = 0; i < header->n_targets; i++) {
+	for (int32_t i = 0; i < header->n_targets; i++) {
 		refs->push_back(make_shared<RefSeq>(i, string(header->target_name[i]), header->target_len[i]));
 	}
 	return refs;

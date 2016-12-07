@@ -161,7 +161,7 @@ void portcullis::ml::ModelFeatures::trainSplicingModels(const JunctionList& pass
 	acceptorFModel.train(acceptors, 5);
 }
 
-void portcullis::ml::ModelFeatures::setRow(Data* d, size_t row, JunctionPtr j, bool labelled) {
+void portcullis::ml::ModelFeatures::setRow(Data* d, size_t row, JunctionPtr j) {
 	SplicingScores ss = j->calcSplicingScores(gmap, donorTModel, donorFModel, acceptorTModel, acceptorFModel,
 						donorPWModel, acceptorPWModel);
 	bool error = false;
@@ -225,7 +225,7 @@ Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& x)
 	Data* d = new DataDouble(headers, x.size(), headers.size());
 	uint32_t row = 0;
 	for (const auto & j : x) {
-		setRow(d, row, j, true);
+		setRow(d, row, j);
 		row++;
 	}
 	return d;
@@ -242,11 +242,11 @@ Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& xl
 	Data* d = new DataDouble(headers, xl.size() + xu.size(), headers.size());
 	uint32_t row = 0;
 	for (const auto & j : xl) {
-		setRow(d, row, j, true);
+		setRow(d, row, j);
 		row++;
 	}
 	for (const auto & j : xu) {
-		setRow(d, row, j, false);
+		setRow(d, row, j);
 		row++;
 	}
 	return d;
