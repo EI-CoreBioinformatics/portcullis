@@ -20,7 +20,7 @@ setup) the switch this off.  Finally, the main driver for memory usage is the de
 of the dataset, specifically highly covered junctions.  Should have have tens of 
 thousands of reads supporting a single junction, all these reads must be kept in
 memory.  You can therefore reduce memory usage by pre-processing the BAM files to
-either cap the depth (you can use the `Kmer Analysis Toolkit <https://github.com/TGAC/KAT>_` 
+either cap the depth (you can use the `Kmer Analysis Toolkit <https://github.com/TGAC/KAT>`_ 
 to identify high coverage kmers then remove reads associated with those kmers), 
 or downsample using ``samtools view -s``. 
 

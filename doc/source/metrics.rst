@@ -64,7 +64,7 @@ the genomic position represented by this junction.  Because we use 'N' cigar ope
 to derive all potential junctions each junction will have a value of 1 or more for
 this metric.
 
-
+.. _distinct:
 
 Number of distinct alignments (nb_dist_aln)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -72,6 +72,7 @@ Number of distinct alignments (nb_dist_aln)
 This is the number of distinct / non-redundant spliced reads supporting the junction.
 Therefore duplicate reads are only counted as a single read for this metric.
 
+.. _usrs:
 
 Number of uniquely / multiply spliced alignments (nb_us_aln, nb_ms_aln)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -308,6 +309,17 @@ of getting any unspliced upstream alignments.  In addition, if the junction is c
 to the sequence start, it maybe that no unspliced upstream alignments are possible
 either.
 
+Number of Samples
+~~~~~~~~~~~~~~~~~
+
+Portcullis can only be used on a single sample and will therefore always set to 1.
+Note that although portcullis can take multiple BAM files as input it will merge 
+them at treat them as a single sample.  However, downstream of portcullis it's 
+useful to have a placeholder for the number of samples if applying set operations 
+to multiple junction files.  For example, if you were to create a union of 5 
+junction files it can be useful to know how many of those files contained the 
+junction.  That information is put into this metric.
+
 
 
 .. _extractedmetrics:
@@ -396,8 +408,9 @@ genuine or not.  We went through a process of feature selection and settled on
 the final set of metrics used in the machine learning part of portcullis.  Those are listed
 here:
 
+* :ref:`distinct`
+* :ref:`usrs` (Uniquely splice reads only)
 * :ref:`reliable`
-* :ref:`rel2raw`
 * :ref:`maxmmes`
 * :ref:`mismatch`
 * :ref:`intronscore`

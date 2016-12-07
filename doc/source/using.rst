@@ -11,10 +11,68 @@ can access by typing ``portcullis <subtool> --help``.
 The list of subtools present in portcullis are listed below in order.  A more detailed
 description of each subtool follows in the subsequent sections:
 
-* Prepare
-* Junction Analysis
-* Junction Filtering
-* Bam Filtering (optional)
+* :ref:`prepare`
+* :ref:`junc`
+* :ref:`filt`
+* :ref:`bamfilt` (optional)
+
+However, it is possible to run all portcullis steps in one go by using the `full`
+subtool.  The command line usage for this option is as follows::
+
+    Usage: portcullis full [options] <genome-file> (<bam-file>)+
+
+    System options:
+      -t [ --threads ] arg (=1) The number of threads to use.  Note that increasing the number of threads will also increase memory requirements.  Default: 1
+      -v [ --verbose ]          Print extra information
+      --help                    Produce help message
+
+    Output options:
+      -o [ --output ] arg (="portcullis_out") Output directory. Default: portcullis_out
+      -b [ --bam_filter ]                     Filter out alignments corresponding with false junctions.  Warning: this is time consuming; make sure you really want 
+                                              to do this first!
+      --exon_gff                              Output exon-based junctions in GFF format.
+      --intron_gff                            Output intron-based junctions in GFF format.
+      --source arg (=portcullis)              The value to enter into the "source" field in GFF files.
+
+    Input options:
+      --force               Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By 
+                            default portcullis will only do what it thinks it needs to.
+      --copy                Whether to copy files from input data to prepared data where possible, otherwise will use symlinks.  Will require more time and disk 
+                            space to prepare input but is potentially more robust.
+      --use_csi             Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not 
+                            an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome 
+                            browsers).
+
+    Analysis options:
+      --orientation arg (=UNKNOWN)  The orientation of the reads that produced the BAM alignments: "F" (Single-end forward orientation); "R" (single-end reverse 
+                                    orientation); "FR" (paired-end, with reads sequenced towards center of fragment -> <-.  This is usual setting for most Illumina 
+                                    paired end sequencing); "RF" (paired-end, reads sequenced away from center of fragment <- ->); "FF" (paired-end, reads both 
+                                    sequenced in forward orientation); "RR" (paired-end, reads both sequenced in reverse orientation); "UNKNOWN" (default, 
+                                    portcullis will workaround any calculations requiring orientation information)
+      --strandedness arg (=UNKNOWN) Whether BAM alignments were generated using a type of strand specific RNAseq library: "unstranded" (Standard Illumina); 
+                                    "firststrand" (dUTP, NSR, NNSR); "secondstrand" (Ligation, Standard SOLiD, flux sim reads); "UNKNOWN" (default, portcullis will 
+                                    workaround any calculations requiring strandedness information)
+      --separate                    Separate spliced from unspliced reads.
+      --extra                       Calculate additional metrics that take some time to generate.  Automatically activates BAM splitting mode (--separate).
+
+    Filtering options:
+      -r [ --reference ] arg Reference annotation of junctions in BED format.  Any junctions found by the junction analysis tool will be preserved if found in this 
+                             reference file regardless of any other filtering criteria.  If you need to convert a reference annotation from GTF or GFF to BED format
+                             portcullis contains scripts for this.
+      --max_length arg (=0)  Filter junctions longer than this value.  Default (0) is to not filter based on length.
+      --canonical arg (=OFF) Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = Canonical junctions (GT-AG), S = Semi-canonical 
+                             junctions (AT-AC, or  GC-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by canonical status).  User can 
+                             separate options by a comma to keep two categories.
+      --min_cov arg (=1)     Only keep junctions with a number of split reads greater than or equal to this number
+      --save_bad             Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)
+
+
+This is the typical way to run portcullis but it's still helpful to know what each step
+in the pipeline does in more detail.  Also the subtools offer some additional controls 
+that can be useful in certain situations so please read on.
+
+
+.. _prepare:
 
 Prepare
 -------
@@ -52,6 +110,7 @@ Usage
       --help                                   Produce help message
 
 
+.. _junc:
 
 Junction Analysis
 -----------------
@@ -78,6 +137,8 @@ Usage
       -t [ --threads ] arg (=1)     The number of threads to use.  Note that increasing the number of threads will also 
                                     increase memory requirements.
       -s [ --separate ]             Separate spliced from unspliced reads.
+      --extra                       Calculate additional metrics that take some time to generate.  Automatically activates BAM
+                                    splitting mode (--separate).
       --orientation arg (=UNKNOWN)  The orientation of the reads that produced the BAM alignments: "F" (Single-end forward 
                                     orientation); "R" (single-end reverse orientation); "FR" (paired-end, with reads sequenced
                                     towards center of fragment -> <-.  This is usual setting for most Illumina paired end 
@@ -104,7 +165,7 @@ Usage
       --source arg (=portcullis)             The value to enter into the "source" field in GFF files.
 
 
-
+.. _filt:
 
 Junction Filtering
 ------------------
@@ -127,8 +188,10 @@ Should the user have access to a reference annotation, they can supply that ( vi
 that should portcullis filter out any junctions that are also found in the reference,
 then those are put back into the set of genuine junctions.  This feature is useful
 when working with model organisms where high-quality references are available.
-Portcullis supplies scripts to convert GTF files to a junction BED12 format file,
-which can be used directly by the filter tool.
+
+The portcullis filter tool requires the reference junction annotation in BED format.
+If this is not readily available Portcullis comes supplied with an addition toolkit 
+called :ref:`junctools`, which can convert GTF annotation files to a set of junctions in BED format.
 
 
 Validating results
@@ -192,46 +255,43 @@ Usage
 ~~~~~
 ::
 
-    Usage: portcullis filter [options] <prep_data_dir> <junction_file>
+    Usage: portcullis filter [options] <prep_data_dir> <junction_tab_file>
 
-    Options:
-      -o [ --output ] arg (="portcullis_filter/portcullis") Output prefix for files generated by this program.
-      -f [ --filter_file ] arg                              If you wish to custom rule-based filter the junctions file, use this option to 
-                                                            provide a list of the rules you wish to use.  By default we don't filter using 
-                                                            a rule-based method, we instead filter via a self-trained random forest model. 
-                                                            See manual for more details.
-      -m [ --model_file ] arg                               If you wish to use a custom random forest model to filter the junctions file, 
-                                                            rather than self-training on the input dataset use this option to. See manual 
-                                                            for more details.
-      -g [ --genuine ] arg                                  If you have a list of line separated boolean values in a file, indicating 
-                                                            whether each junction in your input is genuine or not, then we can use that 
-                                                            information here to gauge the accuracy of the predictions.
-      -r [ --reference ] arg                                Reference annotation of junctions in BED format.  Any junctions found by the 
-                                                            junction analysis tool will be preserved if found in this reference file 
-                                                            regardless of any other filtering criteria.  If you need to convert a reference
-                                                            annotation from GTF or GFF to BED format portcullis contains scripts for this.
-      -n [ --no_ml ]                                        Disables machine learning filtering
-      -b [ --save_bad ]                                     Saves bad junctions (i.e. junctions that fail the filter), as well as good 
-                                                            junctions (those that pass)
-      --source arg (=portcullis)                            The value to enter into the "source" field in GFF files.
-      -l [ --max_length ] arg (=0)                          Filter junctions longer than this value.  Default (0) is to not filter based on
-                                                            length.
-      -c [ --canonical ] arg (=OFF)                         Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. 
-                                                            Where C = Canonical junctions (GU-AG), S = Semi-canonical junctions (AT-AC, or 
-                                                            GT-AG), N = Non-canonical.  OFF means, keep all junctions (i.e. don't filter by
-                                                            canonical status).  User can separate options by a comma to keep two 
-                                                            categories.
-      -t [ --threads ] arg (=1)                             The number of threads to use during testing (only applies if using forest 
-                                                            model).
-      --enn                                                 Use this flag to enable Edited Nearest Neighbour to clean decision region
-      --threshold arg (=0.5)                                The threshold score at which we determine a junction to be genuine or not.  
-                                                            Increase value towards 0.0 to increase precision, decrease towards 0.0 to 
-                                                            increase sensitivity.  We generally find that increasing sensitivity helps when
-                                                            using high coverage data, or when the aligner has already performed some form 
-                                                            of junction filtering.
-      -v [ --verbose ]                                      Print extra information
-      --help                                                Produce help message
+    System options:
+      -t [ --threads ] arg (=1) The number of threads to use during testing (only applies if using forest model).
+      -v [ --verbose ]          Print extra information
+      --help                    Produce help message
 
+    Output options:
+      -o [ --output ] arg (="portcullis_filter/portcullis")
+                                             Output prefix for files generated by this program.
+      -b [ --save_bad ]                      Saves bad junctions (i.e. junctions that fail the filter), as well as good 
+                                             junctions (those that pass)
+      --exon_gff                             Output exon-based junctions in GFF format.
+      --intron_gff                           Output intron-based junctions in GFF format.
+      --source arg (=portcullis)             The value to enter into the "source" field in GFF files.
+
+    Filtering options:
+      -f [ --filter_file ] arg If you wish to custom rule-based filter the junctions file, use this option to provide a list 
+                               of the rules you wish to use.  By default we don't filter using a rule-based method, we instead
+                               filter via a self-trained random forest model.  See manual for more details.
+      -r [ --reference ] arg   Reference annotation of junctions in BED format.  Any junctions found by the junction analysis 
+                               tool will be preserved if found in this reference file regardless of any other filtering 
+                               criteria.  If you need to convert a reference annotation from GTF or GFF to BED format 
+                               portcullis contains scripts for this.
+      -n [ --no_ml ]           Disables machine learning filtering
+      --max_length arg (=0)    Filter junctions longer than this value.  Default (0) is to not filter based on length.
+      --canonical arg (=OFF)   Keep junctions based on their splice site status.  Valid options: OFF,C,S,N. Where C = 
+                               Canonical junctions (GT-AG), S = Semi-canonical junctions (AT-AC, or GC-AG), N = Non-canonical.
+                                 OFF means, keep all junctions (i.e. don't filter by canonical status).  User can separate 
+                               options by a comma to keep two categories.
+      --min_cov arg (=1)       Only keep junctions with a number of split reads greater than or equal to this number
+      --threshold arg (=0.5)   The threshold score at which we determine a junction to be genuine or not.  Increase value 
+                               towards 1.0 to increase precision, decrease towards 0.0 to increase sensitivity.  We generally 
+                               find that increasing sensitivity helps when using high coverage data, or when the aligner has 
+                               already performed some form of junction filtering.
+
+.. _bamfilt:
 
 Bam Filtering
 -------------
