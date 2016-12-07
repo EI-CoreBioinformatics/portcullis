@@ -83,7 +83,8 @@ const vector<string> portcullis::Junction::METRIC_NAMES({
 	"mm_score",
 	"coverage",
 	"up_aln",
-	"down_aln"
+	"down_aln",
+    "nb_samples"
 });
 
 const vector<string> portcullis::Junction::JAD_NAMES({
@@ -289,6 +290,7 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
 	multipleMappingScore = 0.0;
 	nbUpstreamFlankingAlignments = 0;
 	nbDownstreamFlankingAlignments = 0;
+    nbSamples = 1;
 	junctionAnchorDepth.clear();
 	for (size_t i = 0; i < JAD_NAMES.size(); i++) {
 		junctionAnchorDepth.push_back(0);
@@ -346,6 +348,7 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 	multipleMappingScore = j.multipleMappingScore;
 	nbUpstreamFlankingAlignments = j.nbUpstreamFlankingAlignments;
 	nbDownstreamFlankingAlignments = j.nbDownstreamFlankingAlignments;
+    nbSamples = j.nbSamples;
 	if (withAlignments) {
 		for (size_t i = 0; i < j.alignments.size(); i++) {
 			this->alignments.push_back(make_shared<AlignmentInfo>(j.alignments[i]->ba));
@@ -944,7 +947,8 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
 		 << "Multiple mapping score: " << multipleMappingScore << delimiter
 		 << "Coverage: " << coverage << delimiter
 		 << "# Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
-		 << "# Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments;
+		 << "# Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
+         << "# Samples: " << nbSamples;
 }
 
 /**
@@ -1177,6 +1181,7 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
 	j->setCoverage(lexical_cast<double>(parts[i++]));
 	j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[i++]));
 	j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[i++]));
+    j->setNbSamples(lexical_cast<uint32_t>(parts[i++]));
 	// Read Junction anchor depths
 	for (size_t k = 0; k < Junction::JAD_NAMES.size(); k++) {
 		j->setJunctionAnchorDepth(k, lexical_cast<uint32_t>(parts[i + k]));

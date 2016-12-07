@@ -225,6 +225,7 @@ private:
 	double coverage;
 	uint32_t nbDownstreamFlankingAlignments;
 	uint32_t nbUpstreamFlankingAlignments;
+	uint32_t nbSamples;
 
 	// Junction anchor depth metrics
 	vector<uint32_t> trimmedCoverage;
@@ -738,6 +739,17 @@ public:
 	uint32_t getNbDownstreamFlankingAlignments() const {
 		return nbDownstreamFlankingAlignments;
 	}
+	
+	/**
+	 * This will be set to 1 by portcullis, but downstream it's useful to have
+	 * a placeholder for this incase you wish to merge junctions from multiple
+	 * files.
+	 * @return 
+	 */
+	uint32_t getNbSamples() const {
+		return nbSamples;
+	}
+
 
 	/**
 	 * Whether or not this junction looks suspicious (i.e. it may not be genuine)
@@ -924,6 +936,10 @@ public:
 
 	void setNbUpstreamFlankingAlignments(uint32_t nbUpstreamFlankingAlignments) {
 		this->nbUpstreamFlankingAlignments = nbUpstreamFlankingAlignments;
+	}
+	
+	void setNbSamples(uint32_t nbSamples) {
+		this->nbSamples = nbSamples;
 	}
 
 	void setSuspicious(bool suspicious) {
@@ -1218,7 +1234,8 @@ public:
 			 << j.multipleMappingScore << "\t"
 			 << j.coverage << "\t"
 			 << j.nbUpstreamFlankingAlignments << "\t"
-			 << j.nbDownstreamFlankingAlignments;
+			 << j.nbDownstreamFlankingAlignments << "\t"
+			 << j.nbSamples;
 		for (size_t i = 0; i < JAD_NAMES.size(); i++) {
 			strm << "\t" << j.junctionAnchorDepth[i];
 		}
@@ -1289,7 +1306,8 @@ const JuncUint32FuncMap JunctionUint32FunctionMap = {
 	{"dist_2_down_junc", &Junction::getDistanceToNextDownstreamJunction},
 	{"dist_nearest_junc", &Junction::getDistanceToNearestJunction},
 	{"nb_up_aln", &Junction::getNbUpstreamFlankingAlignments},
-	{"nb_down_aln", &Junction::getNbDownstreamFlankingAlignments}
+	{"nb_down_aln", &Junction::getNbDownstreamFlankingAlignments},
+	{"nb_samples", &Junction::getNbSamples}
 };
 
 const JuncDoubleFuncMap JunctionDoubleFunctionMap = {

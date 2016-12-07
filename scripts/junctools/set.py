@@ -149,7 +149,8 @@ def setops(args):
 			calcop = CalcOp[args.operator.upper()]
 
 			for b in sorted(merged):
-				if len(merged[b]) >= min_entry:
+				nb_samples = len(merged[b])
+				if nb_samples >= min_entry:
 					juncs = []
 					scores = []
 					lefts = []
@@ -166,6 +167,9 @@ def setops(args):
 					merged_junc.score = calcop.execute(scores)
 					merged_junc.left = CalcOp.MIN.execute(lefts)
 					merged_junc.right = CalcOp.MAX.execute(rights)
+
+					if type(merged_junc) is TabJunction:
+						merged_junc.setNbSamples(nb_samples)
 
 					i += 1
 

@@ -470,7 +470,7 @@ class GFFJunction(ExonJunction):
 				self.note = "Note=can:" + junc_to_copy.getSSType() + "|cov:" + str(junc_to_copy.getRaw()) + "|rel:" + str(
 					junc_to_copy.getReliable()) + "|ent:" + junc_to_copy.getEntropyAsStr() + "|maxmmes:" + str(
 					junc_to_copy.getMaxMMES()) + "|ham:" + str(
-					junc_to_copy.getMinHamming()) + ";"
+					junc_to_copy.getMinHamming()) + "|samp:" + str(junc_to_copy.getNbSamples()) + ";"
 				self.id = junc_to_copy.id
 				self.score = junc_to_copy.getScore()
 				self.source = "portcullis"
@@ -637,6 +637,12 @@ class TabJunction(ExonJunction):
 	def getMinHamming(self):
 		return min(int(self.metrics[20]), int(self.metrics[21]))
 
+	def getNbSamples(self):
+		return int(self.metrics[36])
+
+	def setNbSamples(self, nb_samples):
+		self.metrics[36] = nb_samples
+
 	@staticmethod
 	def metric_names():
 		return ["canonical_ss",
@@ -674,7 +680,8 @@ class TabJunction(ExonJunction):
 				"mm_score",
 				"coverage",
 				"up_aln",
-				"down_aln"]
+				"down_aln",
+				"nb_samples"]
 
 	@staticmethod
 	def jo_names():
@@ -724,8 +731,8 @@ class TabJunction(ExonJunction):
 		if parts[0] == "index" or len(parts) <= 1:
 			return None
 
-		if len(parts) != 70 and len(parts) > 1:
-			msg = "Unexpected number of columns in TAB file.  Expected 70, found " + str(len(parts))
+		if len(parts) != 71 and len(parts) > 1:
+			msg = "Unexpected number of columns in TAB file.  Expected 71, found " + str(len(parts))
 			raise ValueError(msg)
 
 		self.refseq = parts[2]
