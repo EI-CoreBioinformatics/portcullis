@@ -36,10 +36,8 @@ callgrind*
 /.pydevproject
 *.cproject
 *.project
-/portcullis-0.*/
 /scripts/__pycache__/
 *.travis.yml.swp
 *.h
 *.ac~
-/portcullis-1.0.0/
-/portcullis-1.0.0_beta2/
+/portcullis-*/
