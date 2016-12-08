@@ -7,7 +7,7 @@ pkgconfig_DATA = portcullis.pc
 lib_LTLIBRARIES = libportcullis.la
 
 # Library inputs
-libportcullis_la_LDFLAGS = -version-info 17:0:17
+libportcullis_la_LDFLAGS = -version-info 18:0:18
 libportcullis_la_SOURCES =	\
 	src/bam_master.cc \
 	src/bam_alignment.cc \
