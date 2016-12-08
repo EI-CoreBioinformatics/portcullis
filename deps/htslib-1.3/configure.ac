@@ -57,7 +57,7 @@ AX_CHECK_ZLIB
 
 LIBS=${SAVE_LIBS}
 
-AM_CFLAGS="-g -g3 -gdwarf-4 -Wno-deprecated-declarations"
+AM_CFLAGS="-g -g3 -gdwarf-4 -Wno-deprecated-declarations -Wno-pointer-bool-conversion"
 AC_SUBST([AM_CFLAGS])
 
 AM_CPPFLAGS=${ZLIB_CPPFLAGS}
