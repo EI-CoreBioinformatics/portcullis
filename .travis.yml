@@ -30,9 +30,9 @@ before_script:
 # Build portcullis and run tests
 script:
 - if [[ "$COMPILER" == "GCC5" ]]; then export CXX="g++-5" && export CC="gcc-5"; elif [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CXX="g++-4.9" && export CC="gcc-4.9"; fi   
-- export PATH="$TRAVIS_BUILD_DIR/exdeps/miniconda/bin:$PATH"
-- source activate test-environment
-- export LD_LIBRARY_PATH="$TRAVIS_BUILD_DIR/exdeps/miniconda/envs/test-environment/lib:$LD_LIBRARY_PATH"
+#- export PATH="$TRAVIS_BUILD_DIR/exdeps/miniconda/bin:$PATH"
+#- source activate test-environment
+#- export LD_LIBRARY_PATH="$TRAVIS_BUILD_DIR/exdeps/miniconda/envs/test-environment/lib:$LD_LIBRARY_PATH"
 - gcc --version
 - g++ --version
 - ./configure --disable-silent-rules
