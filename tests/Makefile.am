@@ -45,16 +45,17 @@ check_unit_tests_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 				-DDATADIR=\"$(datadir)\" \
 				@AM_CPPFLAGS@
 
-check_unit_tests_LDFLAGS =	-L../lib \
+check_unit_tests_LDFLAGS =	-static \
+				-L../lib \
 				-L../deps/htslib-1.3 \
 				-L../deps/ranger-0.3.8 \
 				@AM_LDFLAGS@
 	
 check_unit_tests_LDADD =	libgtest.la \
-				-lz \
 				-lportcullis \
 				-lphts \
 				-lranger \
+				-lz \
 				@AM_LIBS@	
 
 clean-local: clean-local-check
