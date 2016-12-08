@@ -106,12 +106,7 @@ TEST(bam, depth_test_1) {
     while(dp1.loadNextBatch(batch1)) {
 
         for(uint32_t cvg : batch1) {
-            if (cvg < 0) {
-                allPos1 = false;                
-            }
-            else {
-                count1 += cvg;
-            }
+            count1 += cvg;
         }
     }
     
@@ -127,12 +122,7 @@ TEST(bam, depth_test_1) {
     while(dp2.loadNextBatch(batch2)) {
 
         for(uint32_t cvg : batch2) {
-            if (cvg < 0) {
-                allPos2 = false;                
-            }
-            else {
-                count2 += cvg;
-            }
+            count2 += cvg;
         }        
     }
     

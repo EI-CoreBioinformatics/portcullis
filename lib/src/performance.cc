@@ -17,7 +17,6 @@
 
 #include <fstream>
 #include <iostream>
-#include <cmath>
 #include <numeric>
 using std::cout;
 using std::endl;

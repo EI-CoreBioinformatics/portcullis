@@ -110,6 +110,8 @@ inline char cssToChar(CanonicalSS css) {
 		return 'S';
 	case CanonicalSS::NO:
 		return 'N';
+	case CanonicalSS::ALL:
+		return 'A';
 	}
 	return 'N';
 }
@@ -122,6 +124,8 @@ inline string cssToString(CanonicalSS css) {
 		return "Semi-canonical";
 	case CanonicalSS::NO:
 		return "No";
+	case CanonicalSS::ALL:
+		return "All";
 	}
 	return string("No");
 }
