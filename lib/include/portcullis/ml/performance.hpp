@@ -23,6 +23,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <cmath>
 using std::ostream;
 using std::stringstream;
 using std::shared_ptr;
