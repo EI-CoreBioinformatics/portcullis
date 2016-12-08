@@ -24,9 +24,13 @@ else
 	tar -xf boost.tar.gz
 	cd boost_1_59_0
 	sudo ./bootstrap.sh --with-libraries=chrono,timer,program_options,filesystem,system
-	if [[ "$COMPILER" == "GCC5" ]]; then 
+	if [[ "$COMPILER" == "GCC5" ]]; then
+                export CXX="g++-5"
+                export CC="gcc-5"
 		sudo ./b2 -d0 --toolset=gcc-5 install; 
-	else 
+	else
+                export CXX="g++-4.9"
+                export CC="gcc-4.9"
 		sudo ./b2 -d0 --toolset=gcc-4.9 install; 
 	fi
 	cd ..
