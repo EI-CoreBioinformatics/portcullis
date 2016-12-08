@@ -5,7 +5,7 @@ if [[ $TRAVIS_OS_NAME == 'osx' ]]; then
 else
     sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
     sudo apt-get update -qq
-    sudo apt-get install -qq libc6-dev
+    sudo apt-get install -qq libstdc++6 libc6-dev
     if [ "$COMPILER" == "GCC5" ]; then 
         sudo apt-get install -qq gcc-5 g++-5
         sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 100

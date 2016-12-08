@@ -46,6 +46,7 @@ bash miniconda.sh -b -p $TRAVIS_BUILD_DIR/exdeps/miniconda; export PATH="$TRAVIS
 hash -r
 conda config --set always_yes yes --set changeps1 no
 conda update -q conda
+conda install libgcc
 conda info -a
 conda create -q -n test-environment python=3.5 anaconda
 source activate test-environment;
