@@ -95,26 +95,32 @@ if test "$with_samtools" == no ; then
     AC_MSG_ERROR([samtools not found])
 fi 
 
-#AM_PATH_PYTHON([], [], AC_MSG_ERROR([Python interpreter not found.]))
+AC_ARG_ENABLE([junctools],
+    AS_HELP_STRING([--disable-junctools], [Disable build of python package junctools]), make_junctools="no", make_junctools="yes")
 
-AX_PYTHON_DEVEL([>= '3.1'])
+if [[ "${make_junctools}" == "yes" ]]; then
+    
+    AX_PYTHON_DEVEL([>= '3.1'])
 
-if [[ -z "${PYTHON_VERSION}" ]]; then
-    AC_MSG_ERROR([Python3 not detected. If running on a debian system try "sudo apt-get install python3-dev".])
-fi    
+    if [[ -z "${PYTHON_VERSION}" ]]; then
+        AC_MSG_ERROR([Python3 not detected. If running on a debian system try "sudo apt-get install python3-dev".])
+    fi    
 
-if [[ -z "${PYTHON_EXTRA_LIBS}" ]]; then
-    AC_MSG_ERROR([Python3 detected but Python3 development library was not found. If running on a debian system try "sudo apt-get install python3-dev".])
-fi
+    if [[ -z "${PYTHON_EXTRA_LIBS}" ]]; then
+        AC_MSG_ERROR([Python3 detected but Python3 development library was not found. If running on a debian system try "sudo apt-get install python3-dev".])
+    fi
 
-pybin=python${PYTHON_VERSION}
+    pybin=python${PYTHON_VERSION}
 
-# Check for required python libraries
-AX_PYTHON_MODULE(numpy, [AC_MSG_ERROR([numpy not found])], ${pybin})
-AX_PYTHON_MODULE(matplotlib, [AC_MSG_ERROR([matplotlib not found])], ${pybin})
-AX_PYTHON_MODULE(scipy, [AC_MSG_ERROR([scipy not found])], ${pybin})
-AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], ${pybin})
-AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], ${pybin})     
+    # Check for required python libraries
+    #AX_PYTHON_MODULE(numpy, [AC_MSG_ERROR([numpy not found])], ${pybin})
+    #AX_PYTHON_MODULE(matplotlib, [AC_MSG_ERROR([matplotlib not found])], ${pybin})
+    #AX_PYTHON_MODULE(scipy, [AC_MSG_ERROR([scipy not found])], ${pybin})
+    #AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], ${pybin})
+    #AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], ${pybin})
+
+    AC_SUBST([MAKE_JUNCTOOLS])
+fi     
 
 
 # Check for sphinx executable to build documentation
@@ -139,11 +145,7 @@ fi
 AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
 AC_SUBST([MAKE_DOCS])
 
-AC_ARG_ENABLE([junctools],
-    AS_HELP_STRING([--disable-junctools], [Disable build of python package junctools]))
 
-AM_CONDITIONAL([MAKE_JUNCTOOLS], [test x$enable_junctools != xno])
-AC_SUBST([MAKE_JUNCTOOLS])
 
 ## Check for boost (required)
 AC_ARG_ENABLE([dynamic-boost], AS_HELP_STRING([--enable-dynamic-boost], [Boost is statically linked by default.  Use this option if you would prefer to dynamically link boost]), dynboost="yes", dynboost="no")
@@ -169,7 +171,7 @@ if [[ "${dynboost}" == "yes" ]]; then
     BOOST_LIBS="${BOOST_DYN_LIBS}"
 else
     if [[ -z "${BOOST_TIMER_STATIC_LIB}" ]] || [[ -z "${BOOST_CHRONO_STATIC_LIB}" ]] || [[ -z "${BOOST_FILESYSTEM_STATIC_LIB}" ]] || [[ -z "${BOOST_PROGRAM_OPTIONS_STATIC_LIB}" ]] || [[ -z "${BOOST_SYSTEM_STATIC_LIB}" ]]; then
-        AC_MSG_WARN([Not all static boost libraries could be found.  Using dynamic libraries instead.])
+        AC_MSG_WARN([Not all static boost libraries could be found.  Will use dynamic libraries instead.])
         BOOST_LIBS="${BOOST_DYN_LIBS}"
     else
         BOOST_LIBS="${BOOST_STATIC_LIBS}"
@@ -185,23 +187,28 @@ LIBS="${SAVED_LIBS}"
 AM_CXXFLAGS="-g -g3 -gdwarf-4"
 AC_SUBST([AM_CXXFLAGS])
 
-#AM_CPPFLAGS="${BOOST_CPPFLAGS} ${PYTHON_CPPFLAGS} ${DLIB_CPPFLAGS} ${ZLIB_CPPFLAGS}"
 AM_CPPFLAGS="${BOOST_CPPFLAGS} ${ZLIB_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
-#AM_LDFLAGS="${BOOST_LDFLAGS} ${PYTHON_EXTRA_LDFLAGS} ${ZLIB_LDFLAGS} ${PTHREAD_CFLAGS}"
 AM_LDFLAGS="${BOOST_LDFLAGS} ${PTHREAD_CFLAGS} ${ZLIB_LDFLAGS}"
 AC_SUBST([AM_LDFLAGS])
 
 # Order is important!
-#AM_LIBS="${M_LIB} ${DL_LIB} ${BOOST_LIBS} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS} ${RT_LIB} ${ZLIB_LIB} ${PTHREAD_LIBS}"
 AM_LIBS="${M_LIB} ${DL_LIB} ${BOOST_LIBS} ${RT_LIB} ${ZLIB_LIB} ${PTHREAD_LIBS}"
 AC_SUBST([AM_LIBS])
 
 AC_OUTPUT
 
+if [[ "$make_junctools" == "no" ]]; then
+    AC_MSG_NOTICE([Junctools not created at user request])    
+fi
+
 if [[ "${sphinx}" == "no" ]]; then
     AC_MSG_WARN([Sphinx not detected, or version is too old.  Wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.io/en/latest/])    
+fi
+
+if [[ "${dynboost}" == "yes" ]]; then
+    AC_MSG_NOTICE([Boost will be dynamically linked to your executable])
 else
-    AC_MSG_NOTICE([Building documentation with sphinx])
+    AC_MSG_NOTICE([Boost will be statically linked to your executable])
 fi
