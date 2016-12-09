@@ -146,6 +146,7 @@ AM_CONDITIONAL([MAKE_JUNCTOOLS], [test x$enable_junctools != xno])
 AC_SUBST([MAKE_JUNCTOOLS])
 
 ## Check for boost (required)
+AC_ARG_ENABLE([dynamic-boost], AS_HELP_STRING([--enable-dynamic-boost], [Boost is statically linked by default.  Use this option if you would prefer to dynamically link boost]), dynboost="yes", dynboost="no")
 AX_BOOST_BASE([1.52],, [AC_MSG_ERROR([Boost not found.  Please ensure that boost is properly built and the BOOST_ROOT environment variable is set.  Alternatively you can override BOOST_ROOT with the --with-boost option.])])
 AX_BOOST_SYSTEM
 AX_BOOST_FILESYSTEM
@@ -164,10 +165,15 @@ AC_SUBST([BOOST_STATIC_LIBS])
 # Prefer static linking of boost.  If one or more static libs are not present 
 # (this happens with some default boost installations on some environments) then
 # use dynamic libs instead.
-if [[ -z "${BOOST_TIMER_STATIC_LIB}" ]] || [[ -z "${BOOST_CHRONO_STATIC_LIB}" ]] || [[ -z "${BOOST_FILESYSTEM_STATIC_LIB}" ]] || [[ -z "${BOOST_PROGRAM_OPTIONS_STATIC_LIB}" ]] || [[ -z "${BOOST_SYSTEM_STATIC_LIB}" ]]; then
+if [[ "${dynboost}" == "yes" ]]; then
     BOOST_LIBS="${BOOST_DYN_LIBS}"
 else
-    BOOST_LIBS="${BOOST_STATIC_LIBS}"
+    if [[ -z "${BOOST_TIMER_STATIC_LIB}" ]] || [[ -z "${BOOST_CHRONO_STATIC_LIB}" ]] || [[ -z "${BOOST_FILESYSTEM_STATIC_LIB}" ]] || [[ -z "${BOOST_PROGRAM_OPTIONS_STATIC_LIB}" ]] || [[ -z "${BOOST_SYSTEM_STATIC_LIB}" ]]; then
+        AC_MSG_WARN([Not all static boost libraries could be found.  Using dynamic libraries instead.])
+        BOOST_LIBS="${BOOST_DYN_LIBS}"
+    else
+        BOOST_LIBS="${BOOST_STATIC_LIBS}"
+    fi
 fi
 AC_SUBST([BOOST_LIBS])
 
