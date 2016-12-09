@@ -5,7 +5,10 @@ bin_PROGRAMS = portcullis
 
 portcullis_noinstdir = $(top_srcdir)/src
 
-portcullis_CXXFLAGS = -O3 -pedantic -ansi -Wall -Wextra -Wno-unused-function -Wno-unused-const-variable -std=c++11 @AM_CXXFLAGS@
+portcullis_CXXFLAGS =	-O3 -pedantic -ansi -Wall -Wextra \
+			-Wno-unused-function -Wno-unused-const-variable \
+			-std=c++11 \
+			@AM_CXXFLAGS@
 
 portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 			-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
