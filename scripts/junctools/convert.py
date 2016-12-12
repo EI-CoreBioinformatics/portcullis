@@ -34,7 +34,7 @@ def loadgtf(filepath, dedup=False):
 		for line in f:
 			if not line.startswith("#"):
 				parts = line.split('\t')
-				if parts[2] == "exon":
+				if len(parts) == 9 and parts[2] == "exon":
 					tags = parts[8].split(';')
 					for tag in tags:
 						t = tag.strip()
