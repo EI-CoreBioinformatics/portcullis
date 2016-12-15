@@ -119,8 +119,10 @@ if [[ "${make_junctools}" == "yes" ]]; then
     #AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], ${pybin})
     #AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], ${pybin})
 
-    AC_SUBST([MAKE_JUNCTOOLS])
-fi     
+    
+fi
+AM_CONDITIONAL([MAKE_JUNCTOOLS], [test x$make_junctools = xyes])
+AC_SUBST([MAKE_JUNCTOOLS])
 
 
 # Check for sphinx executable to build documentation
