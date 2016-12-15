@@ -341,17 +341,11 @@ class BedJunction(ExonJunction):
 			self.red = junc_to_copy.red
 			self.green = junc_to_copy.green
 			self.blue = junc_to_copy.blue
-			self.block_count = junc_to_copy.block_count
-			self.block_sizes = junc_to_copy.block_sizes
-			self.block_starts = junc_to_copy.block_starts
 			self.style = junc_to_copy.style
 		else:
 			self.red = 255
 			self.green = 0
 			self.blue = 0
-			self.block_count = 2
-			self.block_sizes = [self.start - self.left, self.right - self.end]
-			self.block_starts = [0, self.end - self.left + 1]
 			self.style = JuncFactory.IBED
 
 	def __str__(self):
@@ -380,11 +374,10 @@ class BedJunction(ExonJunction):
 						]
 			else:
 
-				assert len(self.block_sizes) == len(self.block_starts) == self.block_count, (self.block_count,
-																							 len(self.block_sizes),
-																							 len(self.block_starts))
-				bsizes = ",".join([str(_) for _ in self.block_sizes])
-				bstarts = ",".join([str(_) for _ in self.block_starts])
+				block_count = 2
+				bsizes = ",".join([str(self.start - self.left), str(self.right - self.end)])
+				bstarts = ",".join([str(0), str(self.end - self.left + 1)])
+
 
 				if self.style == JuncFactory.EBED:
 
@@ -392,7 +385,7 @@ class BedJunction(ExonJunction):
 							self.strand if self.strand else ".",
 							self.start, self.end + 1,
 							rgb,
-							self.block_count,
+							block_count,
 							bsizes,
 							bstarts
 							]
@@ -402,7 +395,7 @@ class BedJunction(ExonJunction):
 							self.strand if self.strand else ".",
 							self.left, self.right + 1,
 							rgb,
-							self.block_count,
+							block_count,
 							bsizes,
 							bstarts
 							]
@@ -446,24 +439,17 @@ class BedJunction(ExonJunction):
 				self.red = int(c_parts[0])
 				self.green = int(c_parts[1])
 				self.blue = int(c_parts[2])
-				self.block_count = int(parts[9])
 
-				self.block_sizes = [int(_) for _ in parts[10].split(",")]
-				self.block_starts = [int(_) for _ in parts[11].rstrip().split(",")]
+				block_sizes = [int(_) for _ in parts[10].split(",")]
 
 				# Check if this looks like a tophat style junction and if so bring it into out style
-				if self.start == self.left and self.block_sizes[0] != 0:
+				if self.start == self.left and block_sizes[0] != 0:
 					self.style = JuncFactory.TBED
-					self.start += self.block_sizes[0]
-					self.end -= self.block_sizes[1]
+					self.start += block_sizes[0]
+					self.end -= block_sizes[1]
 				elif self.start != self.left:
 					self.style = JuncFactory.EBED
 
-				# Assert that everything looks valid
-				assert len(self.block_sizes) == len(self.block_starts) == self.block_count, (line,
-																							 self.block_count,
-																							 self.block_sizes,
-																							 self.block_starts)
 		return self
 
 
@@ -472,7 +458,7 @@ class GFFJunction(ExonJunction):
 		ExonJunction.__init__(self, use_strand=use_strand, junc_to_copy=junc_to_copy)
 
 		self.style = JuncFactory.IGFF
-		self.source = "portcullis"
+		self.source = "junctools"
 		self.feature = "intron"
 		self.frame = "."
 		self.attrs = []
@@ -484,9 +470,10 @@ class GFFJunction(ExonJunction):
 				self.note = "Note=can:" + junc_to_copy.getSSType() + "|cov:" + str(junc_to_copy.getRaw()) + "|rel:" + str(
 					junc_to_copy.getReliable()) + "|ent:" + junc_to_copy.getEntropyAsStr() + "|maxmmes:" + str(
 					junc_to_copy.getMaxMMES()) + "|ham:" + str(
-					junc_to_copy.getMinHamming()) + ";"
+					junc_to_copy.getMinHamming()) + "|samp:" + str(junc_to_copy.getNbSamples()) + ";"
 				self.id = junc_to_copy.id
 				self.score = junc_to_copy.getScore()
+				self.source = "portcullis"
 				self.raw = junc_to_copy.getRaw()
 			elif type(junc_to_copy) is GFFJunction:
 				self.note = junc_to_copy.note
@@ -496,6 +483,15 @@ class GFFJunction(ExonJunction):
 				self.feature = junc_to_copy.feature
 				self.frame = junc_to_copy.frame
 				self.style = junc_to_copy.style
+			else:
+				self.score = junc_to_copy.score
+
+				if isinstance(junc_to_copy.score, float):
+					self.raw = 0
+					self.note = "Note=score:" + str(junc_to_copy.score)
+				else:
+					self.raw = junc_to_copy.score
+					self.note = "Note=cov:" + str(self.raw)
 
 	def __str__(self):
 
@@ -505,10 +501,7 @@ class GFFJunction(ExonJunction):
 					 self.frame,
 					 "ID=" + self.id + ";" +
 					 "Name=" + self.id + ";" +
-					 self.note +
-					 "mult=" + str(self.raw) + ";" +
-					 "grp=" + str(self.id) + ";" +
-					 "src=E"
+					 self.note
 					 ]
 			entries.append("\t".join([str(_) for _ in parts]))
 
@@ -534,7 +527,7 @@ class GFFJunction(ExonJunction):
 					 "mult=" + str(self.raw) + ";" +
 					 "grp=" + self.id + ";" +
 					 "src=E"]
-		return "\t".join([str(_) for _ in parts])
+			return "\t".join([str(_) for _ in parts])
 
 	def parse_line(self, line, fullparse=True):
 
@@ -644,6 +637,12 @@ class TabJunction(ExonJunction):
 	def getMinHamming(self):
 		return min(int(self.metrics[20]), int(self.metrics[21]))
 
+	def getNbSamples(self):
+		return int(self.metrics[36])
+
+	def setNbSamples(self, nb_samples):
+		self.metrics[36] = nb_samples
+
 	@staticmethod
 	def metric_names():
 		return ["canonical_ss",
@@ -681,7 +680,8 @@ class TabJunction(ExonJunction):
 				"mm_score",
 				"coverage",
 				"up_aln",
-				"down_aln"]
+				"down_aln",
+				"nb_samples"]
 
 	@staticmethod
 	def jo_names():
@@ -731,8 +731,8 @@ class TabJunction(ExonJunction):
 		if parts[0] == "index" or len(parts) <= 1:
 			return None
 
-		if len(parts) != 70 and len(parts) > 1:
-			msg = "Unexpected number of columns in TAB file.  Expected 70, found " + str(len(parts))
+		if len(parts) != 71 and len(parts) > 1:
+			msg = "Unexpected number of columns in TAB file.  Expected 71, found " + str(len(parts))
 			raise ValueError(msg)
 
 		self.refseq = parts[2]
@@ -967,7 +967,7 @@ class MapspliceJunction(Junction):
 
 		self.refseq = parts[0]
 		self.start = int(parts[1])
-		self.end = int(parts[2]) - 1
+		self.end = int(parts[2]) - 2
 		self.strand = parts[5]
 
 		if fullparse:

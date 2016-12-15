@@ -106,12 +106,7 @@ TEST(bam, depth_test_1) {
     while(dp1.loadNextBatch(batch1)) {
 
         for(uint32_t cvg : batch1) {
-            if (cvg < 0) {
-                allPos1 = false;                
-            }
-            else {
-                count1 += cvg;
-            }
+            count1 += cvg;
         }
     }
     
@@ -127,12 +122,7 @@ TEST(bam, depth_test_1) {
     while(dp2.loadNextBatch(batch2)) {
 
         for(uint32_t cvg : batch2) {
-            if (cvg < 0) {
-                allPos2 = false;                
-            }
-            else {
-                count2 += cvg;
-            }
+            count2 += cvg;
         }        
     }
     
@@ -202,8 +192,8 @@ TEST(bam, padding) {
     ba.setPosition(609263);
     ba.setAlignedLength(1787);
     
-    uint32_t left = 609263;
-    uint32_t right = 609304;
+    int32_t left = 609263;
+    int32_t right = 609304;
     string paddedQueryInRegion = ba.getPaddedQuerySeq(query, 609263, 609304, left, right, false);
     string paddedGenomicInRegion = ba.getPaddedGenomeSeq(genomic, 609263, 609304, left, right, false);
     
@@ -225,10 +215,10 @@ TEST(bam, padding2) {
     ba.setPosition(750577);
     ba.setAlignedLength(7586);
     
-    uint32_t left = 750577;
-    uint32_t right = 750603;
-    string paddedQueryInRegion = ba.getPaddedQuerySeq(query, 750577, 750603, left, right, false);
-    string paddedGenomicInRegion = ba.getPaddedGenomeSeq(genomic, 750577, 750603, left, right, false);
+    int32_t left = 750577;
+    int32_t right = 750603;
+    const string paddedQueryInRegion = ba.getPaddedQuerySeq(query, 750577, 750603, left, right, false);
+    const string paddedGenomicInRegion = ba.getPaddedGenomeSeq(genomic, 750577, 750603, left, right, false);
     
     EXPECT_EQ(paddedQueryInRegion.size(), paddedGenomicInRegion.size());
     EXPECT_EQ(paddedQueryInRegion, "AATTTTATAAAAAT");
@@ -239,8 +229,8 @@ TEST(bam, padding3) {
     
     vector<CigarOp> cigar = CigarOp::createFullCigarFromString("30S8M25N2M5D28M");
     
-    string query = "ACAAAAACAGAAAAAAAAAGAAAAAAAAATACCAAAACCAACGCCTTCACTTAAAGACAAATATTCAA";
-    string genomic = "TACCAAAG";
+    const string query = "ACAAAAACAGAAAAAAAAAGAAAAAAAAATACCAAAACCAACGCCTTCACTTAAAGACAAATATTCAA";
+    const string genomic = "TACCAAAG";
     
     BamAlignment ba;
     ba.setCigar(cigar);
@@ -248,10 +238,10 @@ TEST(bam, padding3) {
     ba.setPosition(4776643);
     ba.setAlignedLength(98);
     
-    uint32_t left = 4776673;
-    uint32_t right = 4776680;
-    string paddedQueryInRegion = ba.getPaddedQuerySeq(query, 4776673, 4776680, left, right, false);
-    string paddedGenomicInRegion = ba.getPaddedGenomeSeq(genomic, 4776673, 4776680, left, right, false);
+    int32_t left = 4776673;
+    int32_t right = 4776680;
+    const string paddedQueryInRegion = ba.getPaddedQuerySeq(query, 4776673, 4776680, left, right, false);
+    const string paddedGenomicInRegion = ba.getPaddedGenomeSeq(genomic, 4776673, 4776680, left, right, false);
     
     EXPECT_EQ(paddedQueryInRegion.size(), paddedGenomicInRegion.size());
     EXPECT_EQ(paddedQueryInRegion, "CAXXX");

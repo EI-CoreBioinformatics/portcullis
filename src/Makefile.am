@@ -5,26 +5,28 @@ bin_PROGRAMS = portcullis
 
 portcullis_noinstdir = $(top_srcdir)/src
 
-portcullis_CXXFLAGS = -O3 -pedantic @AM_CXXFLAGS@ @CXXFLAGS@
+portcullis_CXXFLAGS =	-O3 -pedantic -ansi -Wall -Wextra \
+			-Wno-unused-function -Wno-unused-const-variable \
+			-std=c++11 \
+			@AM_CXXFLAGS@
 
 portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 			-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
 			-isystem $(top_srcdir)/lib/include \
 			-I$(top_srcdir)/src \
 			-DDATADIR=\"$(datadir)\" \
-			@AM_CPPFLAGS@ \
-			@CPPFLAGS@
+			@AM_CPPFLAGS@
 
-portcullis_LDFLAGS =	-L../lib/.libs \
-			-L../deps/htslib-1.3/.libs \
-			-L../deps/ranger-0.3.8/.libs \
-			@AM_LDFLAGS@ \
-			@LDFLAGS@
+portcullis_LDFLAGS =	-static \
+			-L../lib \
+			-L../deps/htslib-1.3 \
+			-L../deps/ranger-0.3.8 \
+			@AM_LDFLAGS@
 
 portcullis_LDADD =	@AM_LIBS@ \
-			-l:libportcullis.a \
-			-l:libranger.a \
-			-l:libphts.a \
+			-lportcullis \
+			-lranger \
+			-lphts \
 			-lz
 						
 

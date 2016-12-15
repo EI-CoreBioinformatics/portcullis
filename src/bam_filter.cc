@@ -79,7 +79,7 @@ bool portcullis::BamFilter::containsJunctionInSystem(const BamAlignment& al, con
 	int32_t lStart = al.getPosition();
 	int32_t lEnd = lStart;
 	int32_t rStart = lStart;
-	int32_t rEnd = lStart;
+	//int32_t rEnd = lStart;
 	for (size_t i = 0; i < al.getNbCigarOps(); i++) {
 		CigarOp op = al.getCigarOpAt(i);
 		if (op.type == BAM_CIGAR_REFSKIP_CHAR) {
@@ -105,7 +105,7 @@ BamAlignmentPtr portcullis::BamFilter::clipMSR(const BamAlignment& al, const Ref
 	int32_t lStart = al.getPosition();
 	int32_t lEnd = lStart;
 	int32_t rStart = lStart;
-	int32_t rEnd = lStart;
+	//int32_t rEnd = lStart;
 	size_t opStart = 0;
 	bool lastGood = false;
 	bool ab = true;
@@ -184,11 +184,10 @@ void portcullis::BamFilter::filter() {
 	uint64_t nbReadsIn = 0;
 	uint64_t nbReadsOut = 0;
 	uint64_t nbReadsModifiedOut = 0;
-	uint32_t nbJunctionsFound = 0;
 	while (reader.next()) {
 		const BamAlignment& al = reader.current();
 		nbReadsIn++;
-		bool write = false;
+		//bool write = false;
 		if (al.isSplicedRead()) {
 			// If we are in complete clip mode, or this is a single spliced read, then keep the alignment
 			// if its junction is found in the junctions system, otherwise discard it
@@ -233,7 +232,12 @@ void portcullis::BamFilter::filter() {
 	// Create BAM index
 	string indexCmd = BamHelper::createIndexBamCmd(outputBam, useCsi);
 	int indexExitCode = system(indexCmd.c_str());
-	cout << "done." << endl;
+	if (indexExitCode != 0) {
+        BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
+									  "Problem indexing output BAM: ") + outputBam.string()));
+    }
+    
+    cout << "done." << endl;
 }
 
 

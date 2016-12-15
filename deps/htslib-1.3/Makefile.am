@@ -4,14 +4,14 @@ ACLOCAL_AMFLAGS = -I m4
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = phtslib.pc
 
-HTSLIB_CPPFLAGS = -I$(top_srcdir) -I$(srcdir) @AM_CPPFLAGS@ @CPPFLAGS@
+HTSLIB_CPPFLAGS = -I$(top_srcdir) -I$(srcdir) @AM_CPPFLAGS@
 
 # Create portcullis library
 lib_LTLIBRARIES = libphts.la
 
 libphts_la_LDFLAGS = -version-info 4:1:3
 libphts_la_CPPFLAGS = $(HTSLIB_CPPFLAGS)
-libphts_la_CXXFLAGS = -O3 @AM_CXXFLAGS@
+libphts_la_CFLAGS = -O3 @AM_CFLAGS@
 libphts_la_SOURCES = \
 	bgzf.c \
 	faidx.c \
@@ -111,19 +111,19 @@ check_PROGRAMS = \
 	test/fieldarith \
 	test/sam
 	
-HTSLIB_TEST_CXXFLAGS = -O0 @AM_CXXFLAGS@
+HTSLIB_TEST_CFLAGS = -O0 @AM_CFLAGS@
 HTSLIB_LIBS = libphts.la @AM_LIBS@
 	
 test_fieldarith_SOURCES = test/fieldarith.c
-test_fieldarith_CXXFLAGS = $(HTSLIB_TEST_CXXFLAGS)
+test_fieldarith_CFLAGS = $(HTSLIB_TEST_CFLAGS)
 test_fieldarith_CPPFLAGS = -I.. $(HTSLIB_CPPFLAGS)
-test_fieldarith_LDFLAGS = @AM_LDFLAGS@ @LDFLAGS@
+test_fieldarith_LDFLAGS = @AM_LDFLAGS@
 test_fieldarith_LDADD = $(HTSLIB_LIBS)
 
 test_sam_SOURCES = test/sam.c
-test_sam_CXXFLAGS = $(HTSLIB_TEST_CXXFLAGS)
+test_sam_CFLAGS = $(HTSLIB_TEST_CFLAGS)
 test_sam_CPPFLAGS = $(HTSLIB_CPPFLAGS)
-test_sam_LDFLAGS = @AM_LDFLAGS@ @LDFLAGS@
+test_sam_LDFLAGS = @AM_LDFLAGS@
 test_sam_LDADD = $(HTSLIB_LIBS)
 
 

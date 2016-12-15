@@ -24,9 +24,13 @@ else
 	tar -xf boost.tar.gz
 	cd boost_1_59_0
 	sudo ./bootstrap.sh --with-libraries=chrono,timer,program_options,filesystem,system
-	if [[ "$COMPILER" == "GCC5" ]]; then 
+	if [[ "$COMPILER" == "GCC5" ]]; then
+                export CXX="g++-5"
+                export CC="gcc-5"
 		sudo ./b2 -d0 --toolset=gcc-5 install; 
-	else 
+	else
+                export CXX="g++-4.9"
+                export CC="gcc-4.9"
 		sudo ./b2 -d0 --toolset=gcc-4.9 install; 
 	fi
 	cd ..
@@ -42,6 +46,7 @@ bash miniconda.sh -b -p $TRAVIS_BUILD_DIR/exdeps/miniconda; export PATH="$TRAVIS
 hash -r
 conda config --set always_yes yes --set changeps1 no
 conda update -q conda
+conda install libgcc
 conda info -a
 conda create -q -n test-environment python=3.5 anaconda
 source activate test-environment;

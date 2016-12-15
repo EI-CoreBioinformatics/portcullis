@@ -110,7 +110,7 @@ public:
 	}
 
 
-	bool addJunction(JunctionPtr j);
+	void addJunction(JunctionPtr j);
 
 	/**
 	 * Appends a new copy of all the junctions in the other junction system to this
@@ -131,25 +131,13 @@ public:
 
 	bool addJunctions(const BamAlignment& al, const size_t startOp, const int32_t offset);
 
-	void findFlankingAlignments(const path& alignmentsFile) {
-		findFlankingAlignments(alignmentsFile, false);
-	}
-
-	void findFlankingAlignments(const path& alignmentsFile, bool verbose);
+	void findFlankingAlignments(const path& alignmentsFile);
 
 	void calcCoverage(const path& alignmentsFile, Strandedness strandSpecific);
 
-	void calcMultipleMappingStats(SplicedAlignmentMap& map) {
-		calcMultipleMappingStats(map, false);
-	}
+	void calcMultipleMappingStats(SplicedAlignmentMap& map);
 
-	void calcMultipleMappingStats(SplicedAlignmentMap& map, bool verbose);
-
-	void calcJunctionStats() {
-		calcJunctionStats(false);
-	}
-
-	void calcJunctionStats(bool verbose);
+	void calcJunctionStats();
 
 	void sort();
 

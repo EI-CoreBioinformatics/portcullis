@@ -48,6 +48,7 @@ DISTFILES = $(DPS)/index.rst \
 	    $(DPS)/requirements.rst \
 	    $(DPS)/junctools.rst \
 	    $(DPS)/using.rst \
+	    $(DPS)/faq.rst \
 	    $(DPI)/hamming.png \
 	    $(DPI)/portcullis_logo.png \
 	    $(DPA)/portcullis_genomescience2016_poster.pdf \

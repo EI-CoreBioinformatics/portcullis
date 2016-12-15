@@ -83,7 +83,8 @@ const vector<string> portcullis::Junction::METRIC_NAMES({
 	"mm_score",
 	"coverage",
 	"up_aln",
-	"down_aln"
+	"down_aln",
+    "nb_samples"
 });
 
 const vector<string> portcullis::Junction::JAD_NAMES({
@@ -116,12 +117,26 @@ const vector<string> portcullis::Junction::STRAND_NAMES = {
 };
 
 void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t leftStart, const uint32_t rightEnd, const string& ancLeft, const string& ancRight) {
-	uint32_t leftEnd = i.start - 1;
-	uint32_t rightStart = i.end + 1;
-	uint32_t qLeftStart = leftStart;
-	uint32_t qLeftEnd = leftEnd;
-	uint32_t qRightStart = rightStart;
-	uint32_t qRightEnd = rightEnd;
+	
+    if (leftStart > std::numeric_limits<int32_t>::max()) {
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+								  "Left start value is too large to process for junction: ") + i.toString()));
+    }
+    
+    if (rightEnd > std::numeric_limits<int32_t>::max()) {
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+								  "Right end value is too large to process for junction: ") + i.toString()));
+    }
+    
+    
+    int32_t leftEnd = i.start - 1;
+	int32_t rightStart = i.end + 1;
+	int32_t qLeftStart = (int32_t)leftStart;
+	int32_t qLeftEnd = leftEnd;
+	int32_t qRightStart = rightStart;
+	int32_t qRightEnd = (int32_t)rightEnd;   
+    
+    
 	string qAnchorLeft = ba->getPaddedQuerySeq(leftStart, leftEnd, qLeftStart, qLeftEnd, false);
 	string qAnchorRight = ba->getPaddedQuerySeq(rightStart, rightEnd, qRightStart, qRightEnd, false);
 	string gAnchorLeft = ba->getPaddedGenomeSeq(ancLeft, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
@@ -178,8 +193,9 @@ uint32_t portcullis::AlignmentInfo::getNbMatchesFromStart(const string& query, c
 }
 
 uint32_t portcullis::AlignmentInfo::getNbMatchesFromEnd(const string& query, const string& anchor) {
-	for (size_t i = query.size() - 1; i >= 0; i--) {
-		if (query[i] != anchor[i]) {
+	for (size_t j = query.size(); j > 0; j--) {
+		size_t i = j-1;
+        if (query[i] != anchor[i]) {
 			return query.size() - i - 1;
 		}
 	}
@@ -274,6 +290,7 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
 	multipleMappingScore = 0.0;
 	nbUpstreamFlankingAlignments = 0;
 	nbDownstreamFlankingAlignments = 0;
+    nbSamples = 1;
 	junctionAnchorDepth.clear();
 	for (size_t i = 0; i < JAD_NAMES.size(); i++) {
 		junctionAnchorDepth.push_back(0);
@@ -331,6 +348,7 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 	multipleMappingScore = j.multipleMappingScore;
 	nbUpstreamFlankingAlignments = j.nbUpstreamFlankingAlignments;
 	nbDownstreamFlankingAlignments = j.nbDownstreamFlankingAlignments;
+    nbSamples = j.nbSamples;
 	if (withAlignments) {
 		for (size_t i = 0; i < j.alignments.size(); i++) {
 			this->alignments.push_back(make_shared<AlignmentInfo>(j.alignments[i]->ba));
@@ -519,13 +537,13 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
 	this->calcMismatchStats();
 }
 
-void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t meanQueryLength, int32_t maxQueryLength) {
+void portcullis::Junction::processJunctionVicinity(BamReader& reader, int32_t refLength, int32_t maxQueryLength) {
 	int32_t refId = intron->ref.index;
 	uint32_t nbLeftFlankingAlignments = 0, nbRightFlankingAlignments = 0;
 	int32_t regionStart = leftAncStart - maxQueryLength - 1;
-	regionStart < 0 ? 0 : regionStart;
+	regionStart = regionStart < 0 ? 0 : regionStart;
 	int32_t regionEnd = rightAncEnd + maxQueryLength + 1;
-	regionEnd >= refLength ? refLength - 1 : regionEnd;
+	regionEnd = regionEnd >= refLength ? refLength - 1 : regionEnd;
 	// Focus only on the (expanded... to be safe...) region of interest
 	reader.setRegion(refId, regionStart, regionEnd);
 	while (reader.next()) {
@@ -695,8 +713,8 @@ void portcullis::Junction::calcHammingScores(const string& leftAnchor, const str
 		const string& rightIntron, const string& rightAnchor) {
 	const int32_t leftDelta = leftAnchor.size() - rightIntron.size();
 	const int32_t leftOffset = leftDelta <= 0 ? 0 : leftDelta;
-	const int32_t leftLen = min(leftAnchor.size(), rightIntron.size());
-	const int32_t rightLen = min(leftIntron.size(), rightAnchor.size());
+	const uint32_t leftLen = min(leftAnchor.size(), rightIntron.size());
+	const uint32_t rightLen = min(leftIntron.size(), rightAnchor.size());
 	// TODO, might want to modify this logic later, but worst case is that the 5' and
 	// 3' results are swapped
 	Strand s = consensusStrand != Strand::UNKNOWN ? consensusStrand : Strand::UNKNOWN;
@@ -783,7 +801,7 @@ double portcullis::Junction::calcCoverage(int32_t a, int32_t b, const vector<uin
 	uint32_t readCount = 0;
 	for (int32_t i = a; i <= b; i++) {
 		// Don't do anything stupid!
-		if (i >= 0 && i < coverageLevels.size()) {
+		if (i >= 0 && i < (int32_t)coverageLevels.size()) {
 			readCount += coverageLevels[i];
 		}
 	}
@@ -809,7 +827,7 @@ double portcullis::Junction::calcCoverage(const vector<uint32_t>& coverageLevels
 }
 
 double portcullis::Junction::calcIntronScore(const uint32_t threshold) {
-	this->setIntronScore(this->intron->size() <= threshold ? 0.0 : log(this->intron->size() - threshold));
+	this->setIntronScore((uint32_t)this->intron->size() <= threshold ? 0.0 : log(this->intron->size() - threshold));
 	return this->intronScore;
 }
 
@@ -929,7 +947,8 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
 		 << "Multiple mapping score: " << multipleMappingScore << delimiter
 		 << "Coverage: " << coverage << delimiter
 		 << "# Upstream Non-Spliced Alignments: " << nbUpstreamFlankingAlignments << delimiter
-		 << "# Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments;
+		 << "# Downstream Non-Spliced Alignments: " << nbDownstreamFlankingAlignments << delimiter
+         << "# Samples: " << nbSamples;
 }
 
 /**
@@ -1162,6 +1181,7 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
 	j->setCoverage(lexical_cast<double>(parts[i++]));
 	j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[i++]));
 	j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[i++]));
+    j->setNbSamples(lexical_cast<uint32_t>(parts[i++]));
 	// Read Junction anchor depths
 	for (size_t k = 0; k < Junction::JAD_NAMES.size(); k++) {
 		j->setJunctionAnchorDepth(k, lexical_cast<uint32_t>(parts[i + k]));

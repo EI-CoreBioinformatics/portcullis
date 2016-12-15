@@ -86,18 +86,16 @@ AC_DEFUN([AX_BOOST_CHRONO],
             if test "x$ax_boost_user_chrono_lib" = "x"; then
                 for libextension in `ls $BOOSTLIBDIR/libboost_chrono*.so* $BOOSTLIBDIR/libboost_chrono*.dylib* 2>/dev/null | sed 's,.*/,,' | sed -e 's;^lib\(boost_chrono.*\)\.so.*$;\1;' -e 's;^lib\(boost_chrono.*\)\.dylib.*$;\1;'` ; do
                     ax_lib=${libextension}
-                    AC_SEARCH_LIBS(exit, $ax_lib,
+                    AC_CHECK_LIB($ax_lib, exit,
                         [BOOST_CHRONO_LIB="-l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
-                        [link_chrono="no"],
-			[-lrt])
+                        [link_chrono="no"])
                 done
                 if test "x$link_chrono" != "xyes"; then
                     for libextension in `ls $BOOSTLIBDIR/boost_chrono*.dll* 2>/dev/null | sed 's,.*/,,' | sed -e 's;^\(boost_chrono.*\)\.dll.*$;\1;'` ; do
                         ax_lib=${libextension}
-                        AC_SEARCH_LIBS(exit, $ax_lib,
+                        AC_CHECK_LIB($ax_lib, exit,
                             [BOOST_CHRONO_LIB="-l$ax_lib"; AC_SUBST(BOOST_CHRONO_LIB) link_chrono="yes"; break],
-                            [link_chrono="no"],
-			    [-lrt])
+                            [link_chrono="no"])
                     done
                 fi
                 for libextension in `ls $BOOSTLIBDIR/libboost_chrono*.a* 2>/dev/null` ; do
@@ -108,17 +106,13 @@ AC_DEFUN([AX_BOOST_CHRONO],
                 done
 
                 no_find="no"
-                if test "x$ax_lib" = "x"; then
-                    if test "x$ax_static_lib" = "x"; then
-                        no_find="yes"
-                    fi
+                if [[ -z "$ax_lib" ]] && [[ -z "$ax_static_lib" ]]; then
+                    no_find="yes"
                 fi
 
                 no_link="no"
-                if test "x$link_chrono" != "xyes"; then
-                    if test "x$link_chrono_static" != "xyes"; then
-                        no_link="yes"
-                    fi
+                if [[ "$link_chrono" == "no" ]] && [[ "$link_chrono_static" == "no" ]]; then
+                    no_link="yes"
                 fi
 
             else
@@ -129,22 +123,24 @@ AC_DEFUN([AX_BOOST_CHRONO],
                 done
 
             fi
-            if test "x$ax_lib" = "x"; then
-                AC_MSG_WARN(Could not find a dynamic version of the library!)
-            elif test "x$ax_static_lib" = "x"; then
-                AC_MSG_WARN(Could not find a static version of the library!)
+            if [[ -z "$ax_lib" ]]; then
+                AC_MSG_WARN(Could not find a dynamic version of boost_chrono)
             fi
-            if test "x$no_find" = "xyes"; then
-                AC_MSG_ERROR(Could not find any version of the library to link to)
+            if [[ -z "$ax_static_lib" ]]; then
+                AC_MSG_WARN(Could not find a static version of boost_chrono)
+            fi
+            if [[ "$no_find" == "yes" ]]; then
+                AC_MSG_ERROR(Could not find any version boost_chrono to link to)
             fi
 
-            if test "x$link_chrono" = "xno"; then
-                AC_MSG_WARN(Could not dynamic link against $ax_lib !)
-            elif test "x$link_chrono_static" = "xno"; then
-                AC_MSG_WARN(Could not static link against $ax_static_lib!)
+            if [[ "$link_chrono" = "no" ]]; then
+                AC_MSG_WARN(Could not dynamic link against $ax_lib)
             fi
-            if test "x$no_link" = "xyes"; then
-                AC_MSG_ERROR(Could not link against any boost-chrono lib)
+            if [[ "$link_chrono_static" == "no" ]]; then
+                AC_MSG_WARN(Could not static link against $ax_static_lib)
+            fi
+            if [[ "$no_link" == "yes" ]]; then
+                AC_MSG_ERROR(Could not link against any boost_chrono lib)
             fi
 
         fi

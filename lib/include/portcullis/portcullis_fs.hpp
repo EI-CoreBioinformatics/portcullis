@@ -27,6 +27,10 @@ using std::cout;
 using std::endl;
 using std::string;
 
+#ifdef OS_MAC
+#include <mach-o/dyld.h>
+#endif
+
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
 namespace bfs = boost::filesystem;

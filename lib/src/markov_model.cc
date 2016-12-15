@@ -28,12 +28,12 @@ using portcullis::SeqUtils;
 #include <portcullis/ml/markov_model.hpp>
 using portcullis::ml::KMMU;
 
-void portcullis::ml::KmerMarkovModel::train(const vector<string>& input, const uint32_t _order) {
+void portcullis::ml::KmerMarkovModel::train(const vector<string>& input, const uint16_t _order) {
 	order = _order;
 	KMMU temp;
 	for (auto & seq : input) {
 		string s = SeqUtils::makeClean(seq);
-		if (s.size() > order + 1) {
+		if ((uint16_t)s.size() > order + 1) {
 			for (size_t i = order; i < s.size(); i++) {
 				temp[s.substr(i - order, order)][s.substr(i, 1)]++;
 			}
@@ -76,7 +76,7 @@ double portcullis::ml::KmerMarkovModel::getScore(const string& seq) {
 	return log(score);
 }
 
-void portcullis::ml::PosMarkovModel::train(const vector<string>& input, const uint32_t _order) {
+void portcullis::ml::PosMarkovModel::train(const vector<string>& input, const uint16_t _order) {
 	order = _order;
 	PMMU temp;
 	for (auto & seq : input) {

@@ -150,7 +150,6 @@ int mainFull(int argc, char *argv[]) {
     bool copy;
 	bool force;
 	bool useCsi;
-	bool properPairedCheck;
 	bool saveBad;
 	bool exongff;
 	bool introngff;

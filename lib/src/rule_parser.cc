@@ -160,7 +160,7 @@ bool portcullis::RuleFilter::parse(const string& expression, JunctionPtr junc,
 	return boost::apply_visitor(eval(numericFilters, stringFilters, junc, results), result);
 }
 
-map<string, int> portcullis::RuleFilter::filter(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail, const string& prefix, JuncResultMap& resultMap) {
+map<string, int> portcullis::RuleFilter::filter(const path& ruleFile, const JunctionList& all, JunctionList& pass, JunctionList& fail) {
 	ptree pt;
 	boost::property_tree::read_json(ruleFile.string(), pt);
 	NumericFilterMap numericFilters;

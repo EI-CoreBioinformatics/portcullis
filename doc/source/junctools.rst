@@ -149,6 +149,8 @@ junction or a false positive.
     information.  However, should you wish to disable this feature you can do so
     with the ``--use_strand`` option.
 
+.. _junctools_convert:
+
 Convert
 -------
 

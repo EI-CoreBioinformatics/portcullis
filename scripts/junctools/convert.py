@@ -34,7 +34,7 @@ def loadgtf(filepath, dedup=False):
 		for line in f:
 			if not line.startswith("#"):
 				parts = line.split('\t')
-				if parts[2] == "exon":
+				if len(parts) == 9 and parts[2] == "exon":
 					tags = parts[8].split(';')
 					for tag in tags:
 						t = tag.strip()
@@ -79,7 +79,7 @@ def convert(args):
 
 	# Check for any invalid input file formats
 	if in_type == JuncFactory.GFF or in_type == JuncFactory.EGFF:
-		raise "Currently we can only interpret GFF files containing intron features.  If you have this kind of file use \"igff\" as input type, or try to add introns to your gff."
+		raise "Currently we can only interpret GFF files containing intron features.  If you have this kind of file use \"igff\" as input type, or add introns to your gff."
 	elif in_type == JuncFactory.EBED or in_type == JuncFactory.IBED or in_type == JuncFactory.TBED or in_type == JuncFactory.BED6:
 		raise "Do not specify which type of BED file you wish to input, we will automatically detect and handle the BED file correctly.  Please rerun using \"bed\" as input type."
 
