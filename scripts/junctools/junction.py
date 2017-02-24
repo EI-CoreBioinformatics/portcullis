@@ -197,7 +197,8 @@ class Junction(object):
 		items = {}
 
 		with open(filepath) as f:
-			for line in f:
+			for l in f:
+				line = l.strip()
 				junc = JuncFactory.create_from_file(filepath, use_strand=use_strand).parse_line(line,
 																								fullparse=fullparse)
 				if junc:
@@ -212,7 +213,8 @@ class Junction(object):
 		items = set()
 
 		with open(filepath) as f:
-			for line in f:
+			for l in f:
+				line = l.strip()
 				junc = JuncFactory.create_from_file(filepath, use_strand=use_strand).parse_line(line,
 																								fullparse=fullparse)
 				if junc:
@@ -554,7 +556,7 @@ class GFFJunction(ExonJunction):
 		if fullparse:
 			self.source = parts[1]
 			self.feature = parts[2]
-			self.score = float(parts[5])
+			self.score = float(parts[5]) if parts[5] != '.' else 0.0
 			self.frame = parts[7]
 			self.attrs = parts[8].split(";")
 			for a in self.attrs:
@@ -642,6 +644,9 @@ class TabJunction(ExonJunction):
 
 	def setNbSamples(self, nb_samples):
 		self.metrics[36] = nb_samples
+
+	def setRaw(self, raw_count):
+		self.metrics[4] = raw_count
 
 	@staticmethod
 	def metric_names():

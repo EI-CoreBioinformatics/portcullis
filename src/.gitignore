@@ -9,3 +9,5 @@
 *.in
 /.libs/
 /portcullis
+/tags
+*.junction_filter.cc.swp

@@ -148,13 +148,14 @@ int mainFull(int argc, char *argv[]) {
 	bool separate;
     bool extra;
     bool copy;
-	bool force;
+	bool keep_temp;
+    bool force;
 	bool useCsi;
 	bool saveBad;
 	bool exongff;
 	bool introngff;
 	bool bamFilter;
-	string source;
+    string source;
 	uint32_t max_length;
 	uint32_t mincov;
 	string canonical;
@@ -190,6 +191,8 @@ int mainFull(int argc, char *argv[]) {
 	 "Whether or not to clean the output directory before processing, thereby forcing full preparation of the genome and bam files.  By default portcullis will only do what it thinks it needs to.")
 	("copy", po::bool_switch(&copy)->default_value(false),
 	 "Whether to copy files from input data to prepared data where possible, otherwise will use symlinks.  Will require more time and disk space to prepare input but is potentially more robust.")
+	("keep_temp", po::bool_switch(&keep_temp)->default_value(false),
+	 "Whether keep any temporary files created during the prepare stage of portcullis.  This might include BAM files and indexes.")
 	("use_csi", po::bool_switch(&useCsi)->default_value(false),
 	 "Whether to use CSI indexing rather than BAI indexing.  CSI has the advantage that it supports very long target sequences (probably not an issue unless you are working on huge genomes).  BAI has the advantage that it is more widely supported (useful for viewing in genome browsers).")
 	;
@@ -343,6 +346,14 @@ int mainFull(int argc, char *argv[]) {
 		bamFilter.setVerbose(verbose);
 		bamFilter.filter();
 	}
+    
+    if (!keep_temp) {
+        cout << "Cleaning temporary files...";
+        cout.flush();			 
+        prep.getOutput()->clean();
+        cout << " done." << endl << endl;
+    }
+    
 	return 0;
 }
 

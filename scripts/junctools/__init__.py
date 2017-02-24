@@ -9,7 +9,7 @@ _title__ = "junctools"
 __author__ = 'Daniel Mapleson'
 __license__ = 'GPLV3'
 __copyright__ = 'Copyright 2016 Daniel Mapleson'
-__version__ = '1.0.0_beta6'
+__version__ = '1.0.0_beta7'
 
 import argparse
 import sys
@@ -19,6 +19,7 @@ from . import convert
 from . import markup
 from . import set
 from . import split
+from . import gtf
 
 
 def main():
@@ -72,6 +73,17 @@ truesight  = Truesight style tab delimited format.''')
 
 	convert.add_options(convert_parser)
 	convert_parser.set_defaults(func=convert.convert)
+
+	gtf_parser = subparsers.add_parser("gtf",
+										   help="Filter or markup GTF files based on provided junctions",
+									   	description='''GTF modes:
+filter   = Filters out transcripts from GTF file that are not supported by the provided
+           junction file
+markup   = Marks transcripts from GTF file with \'portcullis\' attribute, which indicates
+           if transcript has a fully supported set of junctions, or if not, which ones are
+           not supported.''')
+	gtf.add_options(gtf_parser)
+	gtf_parser.set_defaults(func=gtf.gtf)
 
 	markup_parser = subparsers.add_parser("markup",
 										  help="Marks whether each junction in the input can be found in the reference or not.")

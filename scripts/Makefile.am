@@ -15,7 +15,8 @@ EXTRA_DIST = \
 	junctools/markup.py \
 	junctools/performance.py \
 	junctools/set.py \
-	junctools/split.py
+	junctools/split.py \
+	junctools/gtf.py
 
 clean-local: clean-local-check
 .PHONY: clean-local-check
