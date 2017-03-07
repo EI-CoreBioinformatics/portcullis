@@ -427,7 +427,18 @@ void portcullis::JunctionFilter::createPositiveSet(const JunctionList& all, Junc
 	else {
 		cout << p3.size() << "\t" << unlabelled.size();
 	}
-	cout << endl << "L95x1.2\t";
+	cout << endl;
+    
+    if (p3.empty()) {
+        BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+								  "Could not find any junctions to put in the positive set.  This could happen if your" \
+								  " dataset is very small, or if your genome file used for portcullis is different from" \
+                                  " the one used to align the reads.  If you are sure your dataset is ok, you can still" \
+                                  " rerun the filtering stage using manually crafted rules.  See documentation for more" 
+                                  " details.")));
+    }
+    
+    cout << "L95x1.2\t";
 	const uint32_t L95 = mf.calcIntronThreshold(p3);
 	const uint32_t pos_length_limit = L95 * 1.2;
 	JunctionList passJuncs;
