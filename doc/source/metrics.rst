@@ -349,7 +349,7 @@ introns look suspicious.
 If :math:`L^{j} < L_{95}` then we assign a score of 0, otherwise we assign a score
 of :math:`-ln(L^{j} - L_{95})`.
 
-Metric originally used in truesight.
+Metric originally used in TrueSight.
 
 .. _splicingsignal:
 
@@ -375,7 +375,7 @@ where:
 * :math:`P_{fa}` is the probability of a false acceptor given the following sequence
 
 
-Metric originally used in truesight.
+Metric originally used in TrueSight.
 
 
 .. _josdev:
