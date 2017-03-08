@@ -9,7 +9,7 @@ _title__ = "junctools"
 __author__ = 'Daniel Mapleson'
 __license__ = 'GPLV3'
 __copyright__ = 'Copyright 2016 Daniel Mapleson'
-__version__ = '1.0.0_beta7'
+__version__ = '1.0.0'
 
 import argparse
 import sys
