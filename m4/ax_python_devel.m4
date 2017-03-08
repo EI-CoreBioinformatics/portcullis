@@ -124,7 +124,7 @@ to something else than an empty string.
 		fi
 	else
 		AC_MSG_RESULT([yes])
-                if test -z "$PYTHON_VERSION"; then
+                if test "$PYTHON_VERSION" = "3"; then
                         PYTHON_VERSION=${python_short_ver}
                 fi
 	fi
@@ -140,7 +140,7 @@ to something else than an empty string.
                 
 		if test "$ac_supports_python_ver" = "True"; then
 		   AC_MSG_RESULT([yes])
-                   if test -z "$PYTHON_VERSION"; then
+                   if test "$PYTHON_VERSION" = "3"; then
                         PYTHON_VERSION=${python_short_ver}
                    fi      
                    

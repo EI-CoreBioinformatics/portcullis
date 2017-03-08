@@ -2,3 +2,4 @@
 *.lo
 *.o
 /.deps/
+/tags

@@ -977,7 +977,7 @@ void portcullis::Junction::condensedOutputDescription(std::ostream &strm, string
 void portcullis::Junction::outputIntronGFF(std::ostream &strm, const string& source) {
 	// Use intron strand if known, otherwise use the predicted strand,
 	// if predicted strand is also unknown then use "." to indicated unstranded
-	const char strand = consensusStrand == Strand::UNKNOWN ? '.' : strandToChar(consensusStrand);
+	const char strand = consensusStrand == Strand::UNKNOWN ? '?' : strandToChar(consensusStrand);
 	string juncId = string("junc_") + lexical_cast<string>(id);
 	// Modify coordinates to 1-based end inclusive
 	// Output junction parent
@@ -1008,7 +1008,7 @@ void portcullis::Junction::outputIntronGFF(std::ostream &strm, const string& sou
 void portcullis::Junction::outputJunctionGFF(std::ostream &strm, const string& source) {
 	// Use intron strand if known, otherwise use the predicted strand,
 	// if predicted strand is also unknown then use "." to indicated unstranded
-	const char strand = consensusStrand == Strand::UNKNOWN ? '.' : strandToChar(consensusStrand);
+	const char strand = consensusStrand == Strand::UNKNOWN ? '?' : strandToChar(consensusStrand);
 	string juncId = string("junc_") + lexical_cast<string>(id);
 	// Modify coordinates to 1-based end inclusive
 	// Output junction parent

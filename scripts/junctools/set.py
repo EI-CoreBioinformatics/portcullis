@@ -122,7 +122,8 @@ def setops(args):
 			counter = 0
 			found = set()
 			with open(f) as fin:
-				for line in fin:
+				for line_orig in fin:
+					line = line_orig.strip()
 					junc = JuncFactory.create_from_ext(last_ext, use_strand=not args.ignore_strand).parse_line(line,
 																											   fullparse=False)
 					if junc:
@@ -155,12 +156,16 @@ def setops(args):
 					scores = []
 					lefts = []
 					rights = []
+					counts = []
 					for line in merged[b]:
 						j = JuncFactory.create_from_ext(last_ext).parse_line(line)
 						juncs.append(j)
 						scores.append(j.score)
 						lefts.append(j.left)
 						rights.append(j.right)
+						if type(j) is TabJunction:
+							counts.append(j.getRaw())
+
 
 					merged_junc = juncs[0]
 					merged_junc.name = "{prefix}_{i}".format(prefix=args.prefix, i=i)
@@ -170,6 +175,7 @@ def setops(args):
 
 					if type(merged_junc) is TabJunction:
 						merged_junc.setNbSamples(nb_samples)
+						merged_junc.setRaw(CalcOp.SUM.execute(counts))
 
 					i += 1
 

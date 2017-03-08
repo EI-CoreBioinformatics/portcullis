@@ -156,6 +156,9 @@ def convert(args):
 
 			print(c, file=o)
 
+	if args.output != sys.stdout:
+		o.close()
+
 
 def add_options(parser):
 	parser.formatter_class = argparse.RawTextHelpFormatter

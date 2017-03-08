@@ -61,4 +61,4 @@ libportcullis_la_CPPFLAGS = \
 	-DDATADIR=\"$(datadir)\" \
 	@AM_CPPFLAGS@
 
-libportcullis_la_CXXFLAGS = -O3 -pedantic -ansi -Wall -Wextra -std=c++11 @AM_CXXFLAGS@
+libportcullis_la_CXXFLAGS = -O3 -pedantic -ansi -Wall -Wextra -std=c++11 -Wno-unused-variable @AM_CXXFLAGS@

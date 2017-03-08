@@ -6,7 +6,7 @@ bin_PROGRAMS = portcullis
 portcullis_noinstdir = $(top_srcdir)/src
 
 portcullis_CXXFLAGS =	-O3 -pedantic -ansi -Wall -Wextra \
-			-Wno-unused-function -Wno-unused-const-variable \
+			-Wno-unused-function -Wno-unused-variable \
 			-std=c++11 \
 			@AM_CXXFLAGS@
 

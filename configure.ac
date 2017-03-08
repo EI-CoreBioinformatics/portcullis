@@ -4,7 +4,7 @@
 
 # Autoconf setup
 AC_PREREQ([2.68])
-AC_INIT([portcullis],[1.0.0_beta6],[daniel.mapleson@earlham.ac.uk],[portcullis],[http://www.earlham.ac.uk])
+AC_INIT([portcullis],[1.0.0_beta7],[daniel.mapleson@earlham.ac.uk],[portcullis],[http://www.earlham.ac.uk])
 AC_CONFIG_SRCDIR([src/portcullis.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
@@ -175,6 +175,7 @@ else
     if [[ -z "${BOOST_TIMER_STATIC_LIB}" ]] || [[ -z "${BOOST_CHRONO_STATIC_LIB}" ]] || [[ -z "${BOOST_FILESYSTEM_STATIC_LIB}" ]] || [[ -z "${BOOST_PROGRAM_OPTIONS_STATIC_LIB}" ]] || [[ -z "${BOOST_SYSTEM_STATIC_LIB}" ]]; then
         AC_MSG_WARN([Not all static boost libraries could be found.  Will use dynamic libraries instead.])
         BOOST_LIBS="${BOOST_DYN_LIBS}"
+        dynboost="yes"
     else
         BOOST_LIBS="${BOOST_STATIC_LIBS}"
     fi

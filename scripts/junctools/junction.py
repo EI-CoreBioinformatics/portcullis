@@ -197,7 +197,8 @@ class Junction(object):
 		items = {}
 
 		with open(filepath) as f:
-			for line in f:
+			for l in f:
+				line = l.strip()
 				junc = JuncFactory.create_from_file(filepath, use_strand=use_strand).parse_line(line,
 																								fullparse=fullparse)
 				if junc:
@@ -212,7 +213,8 @@ class Junction(object):
 		items = set()
 
 		with open(filepath) as f:
-			for line in f:
+			for l in f:
+				line = l.strip()
 				junc = JuncFactory.create_from_file(filepath, use_strand=use_strand).parse_line(line,
 																								fullparse=fullparse)
 				if junc:
@@ -493,11 +495,14 @@ class GFFJunction(ExonJunction):
 					self.raw = junc_to_copy.score
 					self.note = "Note=cov:" + str(self.raw)
 
+	def __strandConvert(self):
+		return "." if self.strand == "?" else self.strand
+
 	def __str__(self):
 
 		if self.style == JuncFactory.EGFF:
 			entries = []
-			parts = [self.refseq, self.source, "match", self.left + 1, self.right + 1, self.score, self.strand,
+			parts = [self.refseq, self.source, "match", self.left + 1, self.right + 1, self.score, self.__strandConvert(),
 					 self.frame,
 					 "ID=" + self.id + ";" +
 					 "Name=" + self.id + ";" +
@@ -505,19 +510,19 @@ class GFFJunction(ExonJunction):
 					 ]
 			entries.append("\t".join([str(_) for _ in parts]))
 
-			parts = [self.refseq, self.source, "match_part", self.left + 1, self.start, 0.0, self.strand, self.frame,
+			parts = [self.refseq, self.source, "match_part", self.left + 1, self.start, 0.0, self.__strandConvert(), self.frame,
 					 "ID=" + self.id + "_left;" +
 					 "Parent=" + self.id]
 			entries.append("\t".join([str(_) for _ in parts]))
 
-			parts = [self.refseq, self.source, "match_part", self.end + 2, self.right + 1, 0.0, self.strand, self.frame,
+			parts = [self.refseq, self.source, "match_part", self.end + 2, self.right + 1, 0.0, self.__strandConvert(), self.frame,
 					 "ID=" + self.id + "_right;" +
 					 "Parent=" + self.id]
 			entries.append("\t".join([str(_) for _ in parts]))
 
 			return "\n".join(entries)
 		else:
-			parts = [self.refseq, self.source, self.feature, self.start + 1, self.end + 1, self.score, self.strand,
+			parts = [self.refseq, self.source, self.feature, self.start + 1, self.end + 1, self.score, self.__strandConvert(),
 					 self.frame,
 					 # "ID=" + self.id + ";" +
 					 # "Name=" + self.id + ";" +
@@ -554,7 +559,7 @@ class GFFJunction(ExonJunction):
 		if fullparse:
 			self.source = parts[1]
 			self.feature = parts[2]
-			self.score = float(parts[5])
+			self.score = float(parts[5]) if parts[5] != '.' else 0.0
 			self.frame = parts[7]
 			self.attrs = parts[8].split(";")
 			for a in self.attrs:
@@ -642,6 +647,9 @@ class TabJunction(ExonJunction):
 
 	def setNbSamples(self, nb_samples):
 		self.metrics[36] = nb_samples
+
+	def setRaw(self, raw_count):
+		self.metrics[4] = raw_count
 
 	@staticmethod
 	def metric_names():
