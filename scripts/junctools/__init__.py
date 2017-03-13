@@ -78,10 +78,12 @@ truesight  = Truesight style tab delimited format.''')
 										   help="Filter or markup GTF files based on provided junctions",
 									   	description='''GTF modes:
 filter   = Filters out transcripts from GTF file that are not supported by the provided
-           junction file
+           junction file.
 markup   = Marks transcripts from GTF file with \'portcullis\' attribute, which indicates
            if transcript has a fully supported set of junctions, or if not, which ones are
-           not supported.''')
+           not supported.
+compare  = For each GTF provided in the input. compare mode creates statistics describing
+		   how many transcripts contain introns that are supported by a junction file.''')
 	gtf.add_options(gtf_parser)
 	gtf_parser.set_defaults(func=gtf.gtf)
 
