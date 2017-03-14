@@ -10,7 +10,7 @@ junctools can be displayed by typing ``junctools --help`` at the command line:
 ::
 
     usage: This script contains a number of tools for manipulating junction files.
-           [-h] {compare,convert,markup,set,split} ...
+           [-h] {compare,convert,gtf,markup,set,split} ...
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -19,6 +19,7 @@ junctools can be displayed by typing ``junctools --help`` at the command line:
       {compare,convert,markup,set,split}
         compare             Compares junction files.
         convert             Converts junction files between various formats.
+        gtf                 Filter or markup GTF files based on provided junctions
         markup              Marks whether each junction in the input can be found in the reference or not.
         set                 Apply set operations to two or more junction files.
         split               Splits portcullis pass and fail juncs into 4 sets (TP, TN, FP, FN) based on whether or not the junctions are found in the reference or not.
@@ -207,6 +208,51 @@ The usage information for the conversion tool looks like this::
 
 
 .. note:: The user can also use the conversion tool to deduplicate, sort and reindex junction files.
+
+
+.. _gtf:
+
+GTF
+---
+
+Provides a means of manipulating or analysing GTF files using a junctions file.
+Three modes are currently supported, the first two filter and markup, will process
+a GTF file and either remove, or mark, transcripts and their associated exons, if
+junctions within that transcript are not supported by the provided junction file.
+In compare mode, we benchmark GTF files based on whether junctions present are 
+found in a reference junction file.  This gives junction-level accuracy statistics
+as well as transcript-level stats.
+
+Usage information follows::
+
+    usage: This script contains a number of tools for manipulating junction files. gtf
+           [-h] [-is] -j JUNCTIONS [-o OUTPUT] mode input [input ...]
+
+    GTF modes:
+    filter   = Filters out transcripts from GTF file that are not supported by the provided
+               junction file.
+    markup   = Marks transcripts from GTF file with 'portcullis' attribute, which indicates
+               if transcript has a fully supported set of junctions, or if not, which ones are
+               not supported.
+    compare  = For each GTF provided in the input. compare mode creates statistics describing
+               how many transcripts contain introns that are supported by a junction file.
+
+    positional arguments:
+      mode                  GTF operation to apply.  See above for details.  Available options:
+                             - filter
+                             - markup
+                             - compare
+      input                 The input GTF file to convert
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -is, --ignore_strand  Whether or not to ignore strand when looking for junctions
+      -j JUNCTIONS, --junctions JUNCTIONS
+                            The file containing junctions that should be found in the GTF.
+      -o OUTPUT, --output OUTPUT
+                            The filtered or markedup GTF output.  By default we print to stdout.
+
+
 
 .. _markup:
 
