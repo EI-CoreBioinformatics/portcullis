@@ -50,8 +50,6 @@ def loadgtf(filepath, use_strand=False):
 								t = tag_parts[1].strip()
 								transcript_id = t[1:-1] if t[0] == '\"' else t
 								transcripts[transcript_id].append([parts[0], parts[3], parts[4], parts[6]])
-				elif len(parts) == 9 and parts[2] == "transcript":
-					nb_transcripts += 1
 
 	intron_chains = collections.defaultdict(list)
 	junc_set = set()
@@ -96,7 +94,7 @@ def loadgtf(filepath, use_strand=False):
 	for j in junc_set:
 		junc_key_set.add(j.key)
 
-	return intron_chains, junc_key_set, nb_transcripts, nb_introns
+	return intron_chains, junc_key_set, len(transcripts), nb_introns
 
 def run_compare(args, ref_juncs):
 	print("\t".join(["file", "j_distinct", "j_total", "j_tp", "j_fp", "j_fn", "j_recall", "j_precision", "j_f1",
