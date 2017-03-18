@@ -103,6 +103,9 @@ def run_compare(args, ref_juncs):
 		intron_chains, junc_set, nb_transcripts, nb_introns = loadgtf(i, use_strand=not args.ignore_strand)
 		nb_monoexonic = nb_transcripts - len(intron_chains)
 		nb_multiexonic = len(intron_chains)
+		if nb_multiexonic <= 0:
+			print("skipped...nb_multiexonic=0")
+			continue
 
 		jr_tp = len(ref_juncs & junc_set)
 		jr_fn = len(ref_juncs - junc_set)
