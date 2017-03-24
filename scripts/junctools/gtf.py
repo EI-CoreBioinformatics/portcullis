@@ -96,9 +96,10 @@ def loadgtf(filepath, use_strand=False):
 
 	return intron_chains, junc_key_set, len(transcripts), nb_introns
 
-def run_compare(args, ref_juncs):
+def run_compare(args, ref_juncs, ref_ics):
 	print("\t".join(["file", "j_distinct", "j_total", "j_tp", "j_fp", "j_fn", "j_recall", "j_precision", "j_f1",
-					 "t_transcripts", "t_monoexonic", "t_multiexonic", "t_supported", "t_unsupported", "t_precision"]))
+					 "t_transcripts", "t_monoexonic", "t_multiexonic", "t_supported", "t_unsupported", "t_precision",
+					 "ic_tp", "ic_fp", "ic_fn", "ic_recall", "ic_precision", "ic_f1"]))
 	for i in args.input:
 		intron_chains, junc_set, nb_transcripts, nb_introns = loadgtf(i, use_strand=not args.ignore_strand)
 		nb_monoexonic = nb_transcripts - len(intron_chains)
@@ -113,12 +114,22 @@ def run_compare(args, ref_juncs):
 		jr_perf = Performance(tp=jr_tp, fn=jr_fn, fp=jr_fp)
 
 		nb_in_ref = 0
+		ic_tp = 0
+		ic_fp = 0
+
 		for t, introns in intron_chains.items():
 
 			is_valid_by_ref = True
 
+			# Start key to be used to represent this intron chain
+			key = introns[0].refseq + "_" + introns[0].strand
+
+			# Loop through introns in this transcript
 			for index, j in enumerate(introns):
 				in_ref = j.key in ref_juncs
+
+				# Add intron start and stop to intron chain key
+				key += "_" + str(j.start) + "_" + str(j.end)
 
 				if not in_ref:
 					is_valid_by_ref = False
@@ -127,12 +138,43 @@ def run_compare(args, ref_juncs):
 			if is_valid_by_ref:
 				nb_in_ref += 1
 
+			# Check if intron chain is found
+			if key in ref_ics:
+				ic_tp += 1
+			else:
+				ic_fp += 1
+
 		nb_unsupported = nb_multiexonic - nb_in_ref
 		t_precision = (nb_in_ref / nb_multiexonic) * 100.0
 
+		ic_fn = len(ref_ics) - ic_tp
+		ic_perf = Performance(tp=ic_tp, fn=ic_fn, fp=ic_fp)
+
 		print("\t".join(str(_) for _ in [i, len(junc_set), nb_introns, jr_tp, jr_fp, jr_fn,
 										 "{0:.2f}".format(jr_perf.recall()), "{0:.2f}".format(jr_perf.precision()), "{0:.2f}".format(jr_perf.F1()),
-										 nb_transcripts, nb_monoexonic, nb_multiexonic, nb_in_ref, nb_unsupported, "{0:.2f}".format(t_precision)]))
+										 nb_transcripts, nb_monoexonic, nb_multiexonic, nb_in_ref, nb_unsupported, "{0:.2f}".format(t_precision),
+										 ic_tp, ic_fp, ic_fn,
+										 "{0:.2f}".format(ic_perf.recall()), "{0:.2f}".format(ic_perf.precision()),
+										 "{0:.2f}".format(ic_perf.F1())]))
+
+def keyFromIC(ic):
+	if len(ic) > 0:
+		key = ic[0].refseq + "_" + ic[0].strand
+		for i in ic:
+			key += "_" + str(i.start) + "_" + str(i.end)
+		return key
+	else:
+		return None
+
+def convert_ic_map(ic):
+	mod = set()
+	for t, introns in ic.items():
+		key = keyFromIC(introns)
+		if key:
+			mod.add(key)
+
+	return mod
+
 
 
 def gtf(args):
@@ -140,14 +182,27 @@ def gtf(args):
 	print("# Running junctools GTF in", mode.name, "mode")
 
 	if mode != Mode.COMPARE and (len(args.input) > 1 or len(args.input) == 0):
-		raise SyntaxError("This mode can takes a single GTF file as input")
+		raise SyntaxError("This mode can only take a single GTF file as input")
 
-	print("# Loading junctions ...",end="")
-	port_juncs, port_count = Junction.createJuncSet(args.junctions, use_strand=not args.ignore_strand)
-	print(" done.  Found", port_count, "junctions.")
+	if args.junctions == None and args.transcripts == None:
+		raise SyntaxError("You must either specify a file containing junctions (-j) or transcripts (-t) to use as a reference against your input files(s).")
+	elif args.junctions and args.transcripts:
+		raise SyntaxError(
+			"You must either specify a file containing junctions (-j) or transcripts (-t) to use as a reference against your input files(s). Not both.")
+
+
+	if args.junctions:
+		print("# Loading junctions from reference junctions file ...",end="")
+		ref_juncs, ref_junc_count = Junction.createJuncSet(args.junctions, use_strand=not args.ignore_strand)
+		print(" done.  Found", ref_junc_count, "junctions (", len(ref_juncs), "distinct ) .")
+	else:
+		print("# Extracting junctions from reference transcript file ...", end="")
+		ref_intron_chains, ref_juncs, ref_transcript_count, ref_junc_count = loadgtf(args.transcripts, use_strand=not args.ignore_strand)
+		ref_ics = convert_ic_map(ref_intron_chains)
+		print(" done.  Found", ref_junc_count, "junctions (", len(ref_juncs), "distinct ) and", ref_transcript_count, "transcripts (", len(ref_ics), "distinct intron chains).")
 
 	if mode == Mode.COMPARE:
-		run_compare(args, port_juncs)
+		run_compare(args, ref_juncs, ref_ics)
 
 	else:
 		print("Loading transcripts ...",end="")
@@ -160,11 +215,11 @@ def gtf(args):
 		print()
 
 		print("Doing junction level comparison ...", end="")
-		juncs_inport = port_juncs & junc_set
+		juncs_inport = ref_juncs & junc_set
 		print(" done.")
-		recall = (len(juncs_inport) / port_count) * 100.0
+		recall = (len(juncs_inport) / ref_junc_count) * 100.0
 		precision = (len(juncs_inport) / len(junc_set)) * 100.0
-		print(len(juncs_inport), "/", port_count, "(" + "{0:.2f}".format(recall) + ") of valid junctions.")
+		print(len(juncs_inport), "/", ref_junc_count, "(" + "{0:.2f}".format(recall) + ") of valid junctions.")
 		print(len(juncs_inport), "/", len(junc_set), "(" + "{0:.2f}".format(precision) + ") junctions supported by input.")
 		print()
 
@@ -173,7 +228,7 @@ def gtf(args):
 		invalid_transcripts = collections.defaultdict(list)
 		for t, introns in intron_chains.items():
 			for index, j in enumerate(introns):
-				if not j.key in port_juncs:
+				if not j.key in ref_juncs:
 					invalid_transcripts[t].append(str(j.start+1) + "_" + str(j.end+1))
 		print(" done.  Found", len(invalid_transcripts), "/", nb_multiexonic, "invalid multi-exonic transcripts.")
 		print()
@@ -224,7 +279,8 @@ def add_options(parser):
 	parser.add_argument("-is", "--ignore_strand", action='store_true', default=False,
 						help="Whether or not to ignore strand when looking for junctions")
 
-	parser.add_argument("-j", "--junctions", required=True, help='''The file containing junctions that should be found in the GTF.''')
+	parser.add_argument("-j", "--junctions", help='''The file containing junctions that should be found in the GTF.  Either this or '-t' must be used.''')
+	parser.add_argument("-t", "--transcripts", help='''The file containing transcripts that should be found in the GTF.  Either this or '-j' must be used.''')
 
 	parser.add_argument("-o", "--output", default="junctools.out.gtf",
 						help="The filtered or markedup GTF output.  By default we print to stdout.")
@@ -235,4 +291,4 @@ def add_options(parser):
  - compare
 ''')
 
-	parser.add_argument("input", nargs="+", help="The input GTF file to convert")
+	parser.add_argument("input", nargs="+", help="The input GTF file(s) to process")
