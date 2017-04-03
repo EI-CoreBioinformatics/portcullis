@@ -114,7 +114,7 @@ def convert(args):
 	else:
 		with open(args.input) as f:
 			for line in f:
-				j = JuncFactory.create_from_enum(in_type, use_strand=not args.ignore_strand).parse_line(line)
+				j = JuncFactory.create_from_enum(in_type, use_strand=not args.ignore_strand).parse_line(line.strip())
 
 				if j:
 

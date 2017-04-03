@@ -1,5 +1,6 @@
 import argparse
 import collections
+import sys
 from enum import Enum, unique
 
 from .junction import Junction, BedJunction
@@ -100,6 +101,7 @@ def run_compare(args, ref_juncs, ref_ics):
 	print("\t".join(["file", "j_distinct", "j_total", "j_tp", "j_fp", "j_fn", "j_recall", "j_precision", "j_f1",
 					 "t_transcripts", "t_monoexonic", "t_multiexonic", "t_supported", "t_unsupported", "t_precision",
 					 "ic_tp", "ic_fp", "ic_fn", "ic_recall", "ic_precision", "ic_f1"]))
+	sys.stdout.flush()
 	for i in args.input:
 		intron_chains, junc_set, nb_transcripts, nb_introns = loadgtf(i, use_strand=not args.ignore_strand)
 		nb_monoexonic = nb_transcripts - len(intron_chains)
@@ -156,6 +158,7 @@ def run_compare(args, ref_juncs, ref_ics):
 										 ic_tp, ic_fp, ic_fn,
 										 "{0:.2f}".format(ic_perf.recall()), "{0:.2f}".format(ic_perf.precision()),
 										 "{0:.2f}".format(ic_perf.F1())]))
+		sys.stdout.flush()
 
 def keyFromIC(ic):
 	if len(ic) > 0:
