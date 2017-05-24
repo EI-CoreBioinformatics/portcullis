@@ -120,7 +120,7 @@ def convert(args):
 
 					if args.dedup:
 						if j.key not in junction_set:
-							junction_set.add(j.key())
+							junction_set.add(j.key)
 							if loadall:
 								junctions.append(j)
 					else:
