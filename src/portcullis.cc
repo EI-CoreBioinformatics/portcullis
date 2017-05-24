@@ -19,6 +19,8 @@
 #include <config.h>
 #endif
 
+#include <execinfo.h>
+#include <signal.h>
 #include <sys/ioctl.h>
 #include <string.h>
 #include <iostream>
@@ -357,11 +359,29 @@ int mainFull(int argc, char *argv[]) {
 	return 0;
 }
 
+
+void handler(int sig) {
+    void *array[10];
+    size_t size;
+
+    // get void*'s for all entries on the stack
+    size = backtrace(array, 10);
+
+    // print out all the frames to stderr
+    fprintf(stderr, "Error: signal %d:\n", sig);
+    fprintf(stderr, "Stack trace:\n");
+    backtrace_symbols_fd(array, size, STDERR_FILENO);
+    exit(1);
+}
+
+
 /**
  * Start point for portcullis.
  */
 int main(int argc, char *argv[]) {
-	try {
+	
+    signal(SIGSEGV, handler);
+    try {
 		// Portcullis args
 		string modeStr;
 		std::vector<string> others;
@@ -400,7 +420,7 @@ int main(int argc, char *argv[]) {
 #define PACKAGE_NAME "Portcullis"
 #endif
 #ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.13.X"
+#define PACKAGE_VERSION "1.X"
 #endif
 		portcullis::pfs = PortcullisFS(argv[0]);
 		portcullis::pfs.setVersion(PACKAGE_VERSION);

@@ -21,7 +21,7 @@ setup(
 file conversion, set operations and comparisons''',
     url="https://github.com/maplesond/portcullis",
     author="Daniel Mapleson",
-    author_email="danile.mapleson@earlham.ac.uk",
+    author_email="daniel.mapleson@earlham.ac.uk",
     license="GPLV3",
     zip_safe=False,
     keywords="rna-seq annotation genomics transcriptomics",
