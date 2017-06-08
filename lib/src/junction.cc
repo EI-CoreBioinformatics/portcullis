@@ -136,51 +136,69 @@ void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t l
 	int32_t qRightStart = rightStart;
 	int32_t qRightEnd = (int32_t)rightEnd;   
     
-    
-	string qAnchorLeft = ba->getPaddedQuerySeq(leftStart, leftEnd, qLeftStart, qLeftEnd, false);
-	string qAnchorRight = ba->getPaddedQuerySeq(rightStart, rightEnd, qRightStart, qRightEnd, false);
-	string gAnchorLeft = ba->getPaddedGenomeSeq(ancLeft, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
-	string gAnchorRight = ba->getPaddedGenomeSeq(ancRight, rightStart, rightEnd, qRightStart, qRightEnd, false);
-	if (qAnchorLeft.size() != gAnchorLeft.size() || qAnchorLeft.empty()) {
-		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-								  "Left anchor region for query and genome are not the same size.")
-							  + "\nIntron: " + i.toString()
-							  + "\nJunction anchor limits: " + lexical_cast<string>(leftStart) + "," + lexical_cast<string>(rightEnd)
-							  + "\nGenomic sequence: " + ancLeft
-							  + "\nAlignment coords (before soft clipping): " + ba->toString(false)
-							  + "\nAlignment coords (after soft clipping): " + ba->toString(true)
-							  + "\nRead name: " + ba->deriveName()
-							  + "\nRead seq (before soft clipping): " + ba->getQuerySeq() + " (" + lexical_cast<string>(ba->getQuerySeq().size()) + ")"
-							  + "\nRead seq (after soft clipping): " + ba->getQuerySeqAfterClipping() + " (" + lexical_cast<string>(ba->getQuerySeqAfterClipping().size()) + ")"
-							  + "\nCigar: " + ba->getCigarAsString()
-							  + "\nLeft Anchor query seq:  \n" + qAnchorLeft + " (" + lexical_cast<string>(qAnchorLeft.size()) + ")"
-							  + "\nLeft Anchor genome seq: \n" + gAnchorLeft + " (" + lexical_cast<string>(gAnchorLeft.size()) + ")"));
-	}
-	if (qAnchorRight.size() != gAnchorRight.size() || qAnchorRight.empty()) {
-		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
-								  "Right Anchor region for query and genome are not the same size.")
-							  + "\nIntron: " + i.toString()
-							  + "\nJunction anchor limits: " + lexical_cast<string>(leftStart) + "," + lexical_cast<string>(rightEnd)
-							  + "\nGenomic sequence: " + ancRight
-							  + "\nAlignment coords (before soft clipping): " + ba->toString(false)
-							  + "\nAlignment coords (after soft clipping): " + ba->toString(true)
-							  + "\nRead name: " + ba->deriveName()
-							  + "\nRead seq (before soft clipping): " + ba->getQuerySeq() + " (" + lexical_cast<string>(ba->getQuerySeq().size()) + ")"
-							  + "\nRead seq (after soft clipping): " + ba->getQuerySeqAfterClipping() + " (" + lexical_cast<string>(ba->getQuerySeqAfterClipping().size()) + ")"
-							  + "\nCigar: " + ba->getCigarAsString()
-							  + "\nRight Anchor query seq:  \n" + qAnchorRight + " (" + lexical_cast<string>(qAnchorRight.size()) + ")"
-							  + "\nRight Anchor genome seq: \n" + gAnchorRight + " (" + lexical_cast<string>(gAnchorRight.size()) + ")"));
-	}
-	totalUpstreamMismatches = SeqUtils::hammingDistance(qAnchorLeft, gAnchorLeft);
-	totalDownstreamMismatches = SeqUtils::hammingDistance(qAnchorRight, gAnchorRight);
-	totalUpstreamMatches = qAnchorLeft.size() - totalUpstreamMismatches;
-	totalDownstreamMatches = qAnchorRight.size() - totalDownstreamMismatches;
-	nbMismatches = totalUpstreamMismatches + totalDownstreamMismatches;
-	upstreamMatches = getNbMatchesFromEnd(qAnchorLeft, gAnchorLeft);
-	downstreamMatches = getNbMatchesFromStart(qAnchorRight, gAnchorRight);
-	minMatch = min(upstreamMatches, downstreamMatches);
-	maxMatch = max(upstreamMatches, downstreamMatches);
-	mmes = min(totalUpstreamMatches, totalDownstreamMatches);
+    string gAnchorLeft = ba->getPaddedGenomeSeq(ancLeft, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
+    string gAnchorRight = ba->getPaddedGenomeSeq(ancRight, rightStart, rightEnd, qRightStart, qRightEnd, false);
+    string query = ba->getQuerySeq();
+    if (query.size() <= 1) {
+        // In this case the genome and query sequences do not correspond with one another.  Most
+        // likely the cause of this is that the query sequence is not present in the alignment.  
+        // In which case just assume everything is fine.
+		totalUpstreamMismatches = 0;
+        totalDownstreamMismatches = 0;
+        totalUpstreamMatches = gAnchorLeft.size();
+        totalDownstreamMatches = gAnchorRight.size();
+        nbMismatches = totalUpstreamMismatches + totalDownstreamMismatches;
+        upstreamMatches = totalUpstreamMismatches;
+        downstreamMatches = totalDownstreamMismatches;
+        minMatch = min(upstreamMatches, downstreamMatches);
+        maxMatch = max(upstreamMatches, downstreamMatches);
+        mmes = min(totalUpstreamMatches, totalDownstreamMatches);
+    }
+    else {
+	
+        string qAnchorLeft = ba->getPaddedQuerySeq(query, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
+        string qAnchorRight = ba->getPaddedQuerySeq(query, rightStart, rightEnd, qRightStart, qRightEnd, false);
+        if (qAnchorLeft.size() != gAnchorLeft.size() || qAnchorLeft.empty()) {
+            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                                      "Left anchor region for query and genome are not the same size.")
+                                  + "\nIntron: " + i.toString()
+                                  + "\nJunction anchor limits: " + lexical_cast<string>(leftStart) + "," + lexical_cast<string>(rightEnd)
+                                  + "\nGenomic sequence: " + ancLeft
+                                  + "\nAlignment coords (before soft clipping): " + ba->toString(false)
+                                  + "\nAlignment coords (after soft clipping): " + ba->toString(true)
+                                  + "\nRead name: " + ba->deriveName()
+                                  + "\nRead seq (before soft clipping): " + ba->getQuerySeq() + " (" + lexical_cast<string>(ba->getQuerySeq().size()) + ")"
+                                  + "\nRead seq (after soft clipping): " + ba->getQuerySeqAfterClipping() + " (" + lexical_cast<string>(ba->getQuerySeqAfterClipping().size()) + ")"
+                                  + "\nCigar: " + ba->getCigarAsString()
+                                  + "\nLeft Anchor query seq:  \n" + qAnchorLeft + " (" + lexical_cast<string>(qAnchorLeft.size()) + ")"
+                                  + "\nLeft Anchor genome seq: \n" + gAnchorLeft + " (" + lexical_cast<string>(gAnchorLeft.size()) + ")"));
+        }
+        if (qAnchorRight.size() != gAnchorRight.size() || qAnchorRight.empty()) {
+            BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                                      "Right Anchor region for query and genome are not the same size.")
+                                  + "\nIntron: " + i.toString()
+                                  + "\nJunction anchor limits: " + lexical_cast<string>(leftStart) + "," + lexical_cast<string>(rightEnd)
+                                  + "\nGenomic sequence: " + ancRight
+                                  + "\nAlignment coords (before soft clipping): " + ba->toString(false)
+                                  + "\nAlignment coords (after soft clipping): " + ba->toString(true)
+                                  + "\nRead name: " + ba->deriveName()
+                                  + "\nRead seq (before soft clipping): " + ba->getQuerySeq() + " (" + lexical_cast<string>(ba->getQuerySeq().size()) + ")"
+                                  + "\nRead seq (after soft clipping): " + ba->getQuerySeqAfterClipping() + " (" + lexical_cast<string>(ba->getQuerySeqAfterClipping().size()) + ")"
+                                  + "\nCigar: " + ba->getCigarAsString()
+                                  + "\nRight Anchor query seq:  \n" + qAnchorRight + " (" + lexical_cast<string>(qAnchorRight.size()) + ")"
+                                  + "\nRight Anchor genome seq: \n" + gAnchorRight + " (" + lexical_cast<string>(gAnchorRight.size()) + ")"));
+        }
+        totalUpstreamMismatches = SeqUtils::hammingDistance(qAnchorLeft, gAnchorLeft);
+        totalDownstreamMismatches = SeqUtils::hammingDistance(qAnchorRight, gAnchorRight);
+        totalUpstreamMatches = qAnchorLeft.size() - totalUpstreamMismatches;
+        totalDownstreamMatches = qAnchorRight.size() - totalDownstreamMismatches;
+        nbMismatches = totalUpstreamMismatches + totalDownstreamMismatches;
+        upstreamMatches = getNbMatchesFromEnd(qAnchorLeft, gAnchorLeft);
+        downstreamMatches = getNbMatchesFromStart(qAnchorRight, gAnchorRight);
+        minMatch = min(upstreamMatches, downstreamMatches);
+        maxMatch = max(upstreamMatches, downstreamMatches);
+        mmes = min(totalUpstreamMatches, totalDownstreamMatches);
+    }
 }
 
 uint32_t portcullis::AlignmentInfo::getNbMatchesFromStart(const string& query, const string& anchor) {
