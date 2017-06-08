@@ -136,8 +136,6 @@ void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t l
 	int32_t qRightStart = rightStart;
 	int32_t qRightEnd = (int32_t)rightEnd;   
     
-    string gAnchorLeft = ba->getPaddedGenomeSeq(ancLeft, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
-    string gAnchorRight = ba->getPaddedGenomeSeq(ancRight, rightStart, rightEnd, qRightStart, qRightEnd, false);
     string query = ba->getQuerySeq();
     if (query.size() <= 1) {
         // In this case the genome and query sequences do not correspond with one another.  Most
@@ -145,8 +143,8 @@ void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t l
         // In which case just assume everything is fine.
 		totalUpstreamMismatches = 0;
         totalDownstreamMismatches = 0;
-        totalUpstreamMatches = gAnchorLeft.size();
-        totalDownstreamMatches = gAnchorRight.size();
+        totalUpstreamMatches = leftEnd - leftStart + 1;
+        totalDownstreamMatches = rightEnd - rightStart + 1;
         nbMismatches = totalUpstreamMismatches + totalDownstreamMismatches;
         upstreamMatches = totalUpstreamMismatches;
         downstreamMatches = totalDownstreamMismatches;
@@ -158,6 +156,8 @@ void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t l
 	
         string qAnchorLeft = ba->getPaddedQuerySeq(query, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
         string qAnchorRight = ba->getPaddedQuerySeq(query, rightStart, rightEnd, qRightStart, qRightEnd, false);
+        string gAnchorLeft = ba->getPaddedGenomeSeq(ancLeft, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
+        string gAnchorRight = ba->getPaddedGenomeSeq(ancRight, rightStart, rightEnd, qRightStart, qRightEnd, false);    
         if (qAnchorLeft.size() != gAnchorLeft.size() || qAnchorLeft.empty()) {
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                                       "Left anchor region for query and genome are not the same size.")
