@@ -55,6 +55,7 @@ def loadgtf(filepath, use_strand=False):
 	intron_chains = collections.defaultdict(list)
 	junc_set = set()
 	nb_introns = 0
+	monoexonics = set()
 
 	for t, exons in transcripts.items():
 		le = None
@@ -72,6 +73,17 @@ def loadgtf(filepath, use_strand=False):
 				nb_introns += 1
 
 			le = e
+		if len(exons) == 1:
+			# HACK! Use a junction to represent the mono-exonic transcript
+			e = exons[0]
+			j = BedJunction(use_strand=use_strand)
+			j.refseq = e[0]
+			j.start = int(e[1])
+			j.end = int(e[2])
+			j.strand = e[3]
+			j.id = t
+			monoexonics.add(j)
+
 
 	last_id = ""
 	index = 1
@@ -95,16 +107,21 @@ def loadgtf(filepath, use_strand=False):
 	for j in junc_set:
 		junc_key_set.add(j.key)
 
-	return intron_chains, junc_key_set, len(transcripts), nb_introns
+	return intron_chains, junc_key_set, len(transcripts), nb_introns, monoexonics
 
-def run_compare(args, ref_juncs, ref_ics):
+def run_compare(args, ref_juncs, ref_monos, ref_ics):
 	print("\t".join(["file", "j_distinct", "j_total", "j_tp", "j_fp", "j_fn", "j_recall", "j_precision", "j_f1",
 					 "t_transcripts", "t_monoexonic", "t_multiexonic", "t_supported", "t_unsupported", "t_precision",
+					 "mt_tp", "mt_fp", "mt_fn", "mt_recall", "mt_precision", "mt_f1"
 					 "ic_tp", "ic_fp", "ic_fn", "ic_recall", "ic_precision", "ic_f1"]))
 	sys.stdout.flush()
 	for i in args.input:
-		intron_chains, junc_set, nb_transcripts, nb_introns = loadgtf(i, use_strand=not args.ignore_strand)
+		intron_chains, junc_set, nb_transcripts, nb_introns, monoexonics = loadgtf(i, use_strand=not args.ignore_strand)
 		nb_monoexonic = nb_transcripts - len(intron_chains)
+
+		if nb_monoexonic != len(monoexonics):
+			print("Monoexonic numbers don't agree for", i, nb_monoexonic, len(monoexonics), file=sys.stderr)
+
 		nb_multiexonic = len(intron_chains)
 		if nb_multiexonic <= 0:
 			print("skipped...nb_multiexonic=0")
@@ -146,18 +163,25 @@ def run_compare(args, ref_juncs, ref_ics):
 			else:
 				ic_fp += 1
 
+		mt_tp = len(ref_monos & monoexonics)
+		mt_fn = len(ref_monos - monoexonics)
+		mt_fp = len(monoexonics - ref_monos)
+		mt_perf = Performance(tp=mt_tp, fp=mt_fp, fn=mt_fn)
+
 		nb_unsupported = nb_multiexonic - nb_in_ref
 		t_precision = (nb_in_ref / nb_multiexonic) * 100.0
 
 		ic_fn = len(ref_ics) - ic_tp
 		ic_perf = Performance(tp=ic_tp, fn=ic_fn, fp=ic_fp)
 
-		print("\t".join(str(_) for _ in [i, len(junc_set), nb_introns, jr_tp, jr_fp, jr_fn,
+		print("\t".join(str(_) for _ in [i, len(junc_set), nb_introns,
+										 jr_tp, jr_fp, jr_fn,
 										 "{0:.2f}".format(jr_perf.recall()), "{0:.2f}".format(jr_perf.precision()), "{0:.2f}".format(jr_perf.F1()),
 										 nb_transcripts, nb_monoexonic, nb_multiexonic, nb_in_ref, nb_unsupported, "{0:.2f}".format(t_precision),
+										 mt_tp, mt_fp, mt_fn,
+										 "{0:.2f}".format(mt_perf.recall()), "{0:.2f}".format(mt_perf.precision()), "{0:.2f}".format(mt_perf.F1()),
 										 ic_tp, ic_fp, ic_fn,
-										 "{0:.2f}".format(ic_perf.recall()), "{0:.2f}".format(ic_perf.precision()),
-										 "{0:.2f}".format(ic_perf.F1())]))
+										 "{0:.2f}".format(ic_perf.recall()), "{0:.2f}".format(ic_perf.precision()), "{0:.2f}".format(ic_perf.F1())]))
 		sys.stdout.flush()
 
 def keyFromIC(ic):
@@ -200,12 +224,12 @@ def gtf(args):
 		print(" done.  Found", ref_junc_count, "junctions (", len(ref_juncs), "distinct ) .")
 	else:
 		print("# Extracting junctions from reference transcript file ...", end="")
-		ref_intron_chains, ref_juncs, ref_transcript_count, ref_junc_count = loadgtf(args.transcripts, use_strand=not args.ignore_strand)
+		ref_intron_chains, ref_juncs, ref_transcript_count, ref_junc_count, ref_monos = loadgtf(args.transcripts, use_strand=not args.ignore_strand)
 		ref_ics = convert_ic_map(ref_intron_chains)
 		print(" done.  Found", ref_junc_count, "junctions (", len(ref_juncs), "distinct ) and", ref_transcript_count, "transcripts (", len(ref_ics), "distinct intron chains).")
 
 	if mode == Mode.COMPARE:
-		run_compare(args, ref_juncs, ref_ics)
+		run_compare(args, ref_juncs, ref_monos, ref_ics)
 
 	else:
 		print("Loading transcripts ...",end="")

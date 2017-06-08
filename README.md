@@ -1,6 +1,7 @@
 ![alt text](doc/source/images/portcullis_logo.png "Portcullis")
 
-#Portcullis
+Portcullis
+==========
 
 Portcullis stands for PORTable CULLing of Invalid Splice junctions from pre-aligned 
 RNA-seq data.  It is known that RNAseq mapping tools generate many invalid junction
@@ -17,7 +18,8 @@ associated with `bad` junctions.  Both the filtered junctions and BAM files are 
 and more usable resources which can more effectively be used to assist in downstream 
 analyses such as gene prediction and genome annotation. 
 
-##Installation:
+Installation
+------------
 
 There are two ways to install portcullis from source, either by cloning the git 
 repository, or by downloading a distributable package, the later method is generally 
@@ -69,7 +71,8 @@ located in non-standard locations are:
 Type ```./configure --help``` for full details.
 
 
-##Operating Instructions:
+Operating Instructions
+----------------------
 
 After portcullis has been installed, the ```portcullis``` executable should be available.
 
@@ -89,12 +92,14 @@ In addition to portcullis, we provide a tool-suite for manipulating junction fil
 
 An online version of the manual can be found here: [https://portcullis.readthedocs.org/en/latest/](https://portcullis.readthedocs.org/en/latest/).
 
-##Licensing:
+Licensing
+---------
 
 GNU GPL V3.  See COPYING file for more details.
 
 
-##Authors:
+Authors
+-------
 
  * Daniel Mapleson
  * Luca Venturini
@@ -103,7 +108,8 @@ GNU GPL V3.  See COPYING file for more details.
 See AUTHORS file for more details.
 
 
-##Acknowledgements:
+Acknowledgements
+----------------
 
 Affiliation: The Genome Analysis Centre (TGAC)
 Funding: The Biotechnology and Biological Sciences Research Council (BBSRC)
