@@ -66,7 +66,7 @@
         },
         "rel2raw": {
             "operator": "gte",
-            "value": 0.5
+            "value": 0.99
         },
         "rel2raw.2": {
             "operator": "gte",
@@ -77,5 +77,5 @@
             "value": 1
         }
     },
-    "expression": "(( ss_type ) | ( ss_type.2 & rel2raw & hamming5p & hamming3p ) | ( ss_type.3 & rel2raw.2 & hamming5p.2 & hamming3p.2 & mean_mismatches & entropy.2 )) & (primary_junc)"
+    "expression": "(( ss_type ) | ( ss_type.2 & rel2raw & hamming5p & hamming3p ))"
 }

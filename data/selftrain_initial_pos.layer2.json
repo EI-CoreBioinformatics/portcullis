@@ -10,7 +10,7 @@
         },
         "maxmmes": {
             "operator": "gte",
-            "value": 20
+            "value": 46
         },
         "maxmmes.2": {
             "operator": "gt",
