@@ -151,8 +151,11 @@ def convert(args):
 			# Convert
 			c = JuncFactory.create_from_enum(out_type, use_strand=not args.ignore_strand, junc_to_copy=j)
 
-			if out_type.isBed() or out_type.isGFF:
+			if out_type.isBed():
 				c.style = out_type
+			elif out_type.isGFF():
+				c.style = out_type
+				c.source = args.source
 
 			print(c, file=o)
 
