@@ -233,7 +233,7 @@ def gtf(args):
 
 	else:
 		print("Loading transcripts ...",end="")
-		intron_chains, junc_set, nb_transcripts, nb_introns = loadgtf(args.input[0], use_strand=not args.ignore_strand)
+		intron_chains, junc_set, nb_transcripts, nb_introns, monoexonics = loadgtf(args.input[0], use_strand=not args.ignore_strand)
 		print(" done.")
 		nb_monoexonic = nb_transcripts - len(intron_chains)
 		nb_multiexonic = len(intron_chains)
