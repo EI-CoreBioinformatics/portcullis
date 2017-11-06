@@ -472,7 +472,7 @@ class GFFJunction(ExonJunction):
 				self.note = "Note=can:" + junc_to_copy.getSSType() + "|cov:" + str(junc_to_copy.getRaw()) + "|rel:" + str(
 					junc_to_copy.getReliable()) + "|ent:" + junc_to_copy.getEntropyAsStr() + "|maxmmes:" + str(
 					junc_to_copy.getMaxMMES()) + "|ham:" + str(
-					junc_to_copy.getMinHamming()) + "|samp:" + str(junc_to_copy.getNbSamples()) + ";"
+					junc_to_copy.getMinHamming()) + "|samp:" + str(junc_to_copy.getNbSamples()) + "|score:" + str(junc_to_copy.getScore()) + ";"
 				self.id = junc_to_copy.id
 				self.score = junc_to_copy.getScore()
 				self.source = "portcullis"
