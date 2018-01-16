@@ -3,51 +3,38 @@
 Installation
 ============
 
-Portcullis is primarily a C++ application with some python scripts.  We use the 
-GNU build system *Autotools* to assist with package management and to make the 
-software portable across UNIX type operating systems.  Installation of portcullis
-therefore follows a similar incantation to other autotools based projects::
+Before installing portcullis please first confirm these dependencies are installed and configured:
 
-  ./configure && make && sudo make install
+ - **GCC** V4.8+
+ - **autoconf** V2.53+
+ - **automake** V1.11+
+ - **make**
+ - **libtool** V2.4.2+
+ - **zlib**
+ - **pthreads**
+ - **samtools** V1.2+
+ - **Python3** V3.5+ (including python3 development libraries and the *numpy*, *scipy*, *matplotlib*, and *sklearn* packages)
+ - **Sphinx-doc** V1.3+ (Optional: only required for building the documentation.)
 
-However, there are a few caveats.  If you cloned the software directly from the 
-git repository you must first run ``./autogen.sh`` to create the configure and make 
-files for your project.  If you downloaded a source code distribution tarball those
-scripts are already present so you can skip this step.
+With regards to python3 and sphinx we recommend installing anaconda3 as this contains all packages and programs required by portcullis.
+If you have installed python to a custom location please verify that the *bin* and *lib* directories are on python_full_ver
+*PATH* and *LD_LIBRARY_PATH* environment variables respectively.
 
-External Dependencies
----------------------
+Then proceed with the following steps:
 
-Portcullis depends on some external software:
- * boost
- * samtools
- * pthreads
- * zlib
- * sphinx (optional - for building documentation)
- * python3 (optional - for running additional scripts)
+ - Clone the git repository (For ssh: ```git clone git@github.com:maplesond/portcullis.git```; or for https: ```git clone https://github.com/maplesond/portcullis.git```), into a directory on your machine.
+ - "cd" into root directory of the installation
+ - Build boost by tying ```./build_boost.sh```.
+ - Create configuration script by typing: ```./autogen.sh```.
+ - Generate makefiles and confirm dependencies: ```./configure```
+ - Compile software: ```make```
+ - Run tests (optional) ```make check```
+ - Install: ```sudo make install```
 
-Please make sure these programs are correctly configured and installed 
-on your system prior to building portcullis.  Consult the each program's installation
-guide separately for instructions on how to do this.  Should you install these dependencies
-into non-standard locations you can direct portcullis to them by using the following
-options when running the configure script.
-
-  - ``--with-boost`` - for specifying a custom boost installation directory
-  - ``--with-zlib`` - for specifying a custom zlib installation directory
-
-Note there is not option for specifying a custom *pthreads* or *samtools* location.  
-We assume *pthreads* is correctly installed and configured for your system already.  In most cases
-it will be.  For *samtools*, we just require the executable to be on the path.
-
-If the user has *sphinx* installed then documentation will also be built along with
-the software.  If *sphinx* is not detected then the documentation building stage is
-skipped and documentation won't be available locally, although it can still be 
-found at: https://portcullis.readthedocs.org/en/latest/
-
-Boost is statically linked and doesn't need to be available at runtime.  *zlib* and *pthreads* are 
-dynamically linked so will need to be on your ``LD_LIBRARY_PATH``,
-or in one of the automatically searched lib directories in order for portcullis 
-to dynamically link them at runtime.  No other non-system libraries need linking at runtime.
+The configure script can take several options as arguments.  One commonly modified
+option is ```--prefix```, which will install portcullis to a custom directory.  By
+default this is "/usr/local", so the portcullis executable would be found at "/usr/local/bin"
+by default.  Type ```./configure --help``` for full details and available options.
 
 
 Internal Dependencies
@@ -61,24 +48,3 @@ Portcullis also comes with a python package for analysing, comparing and convert
 junction files, called junctools.  Should you not wish to build / install this
 you can add the ``--disable-junctools`` option to the ``configure`` script.  For more
 information about junctools see `junctools <junctools.html>`_ for more information.
-
-
-Compilation and Installation
-----------------------------
-
-First change into the portcullis root directory and run ``./configure``, providing
-any options you feel are appropriate.  By default the installation directory is ``/usr/local``, 
-so the portcullis executable would be found at "/usr/local/bin" by default.  If you
-want to change this use the ``--prefix`` option as previously described.  For a full
-list of configuration options type ``./configure --help``.
-
-Next compile the software.  This can be done by typing ``make``.  The compiles
-all internal dependencies and portcullis itself.
-
-To check the code compiled correct and is operating as expected you can optionally
-type  ``make check`` to runs some tests.  This includes unit tests for HTSlib, 
-which are embedded in the portcullis source tree.  To run only portcullis 
-unit tests go into the ``tests`` subdirectory and run ``make check`` there.
-
-Finally to install the compiled code to the specified (or default) installation
-directory type ``make install``.
