@@ -169,9 +169,3 @@ fi
 if [[ "${sphinx}" == "no" ]]; then
     AC_MSG_WARN([Sphinx not detected, or version is too old.  Wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.io/en/latest/])
 fi
-
-if [[ "${dynboost}" == "yes" ]]; then
-    AC_MSG_NOTICE([Boost will be dynamically linked to your executable])
-else
-    AC_MSG_NOTICE([Boost will be statically linked to your executable])
-fi
