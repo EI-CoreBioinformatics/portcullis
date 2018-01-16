@@ -10,7 +10,7 @@ lib_LTLIBRARIES = libportcullis.la
 libportcullis_la_LDFLAGS = \
 	-version-info 18:0:18 \
 	-L../deps/boost/stage/lib
-	
+
 libportcullis_la_SOURCES =	\
 	src/bam_master.cc \
 	src/bam_alignment.cc \
@@ -49,6 +49,7 @@ library_include_HEADERS = \
 	$(PI)/ml/ss_forest.hpp \
 	$(PI)/kmer.hpp \
 	$(PI)/python_exe.hpp \
+	$(PI)/python_helper.hpp \
 	$(PI)/intron.hpp \
 	$(PI)/junction.hpp \
 	$(PI)/junction_system.hpp \
