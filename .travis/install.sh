@@ -18,23 +18,6 @@ if [[ $TRAVIS_OS_NAME == 'osx' ]]; then
 
 else
 
-	# Boost installation
-	wget -q http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.gz/download
-	mv download boost.tar.gz
-	tar -xf boost.tar.gz
-	cd boost_1_59_0
-	sudo ./bootstrap.sh --with-libraries=chrono,timer,program_options,filesystem,system
-	if [[ "$COMPILER" == "GCC5" ]]; then
-                export CXX="g++-5"
-                export CC="gcc-5"
-		sudo ./b2 -d0 --toolset=gcc-5 install; 
-	else
-                export CXX="g++-4.9"
-                export CC="gcc-4.9"
-		sudo ./b2 -d0 --toolset=gcc-4.9 install; 
-	fi
-	cd ..
-
 	# Download conda
 	wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
 
