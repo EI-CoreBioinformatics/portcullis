@@ -3,10 +3,10 @@
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
 # Blank man target (used in doc)
-man: 
+man:
 	cd doc && $(MAKE) $(AM_MAKEFLAGS) man
 .PHONY: man
-	
+
 # ADDITIONAL FILES TO INSTALL
 EXTRA_DIST = \
 	README.md \
@@ -15,7 +15,7 @@ EXTRA_DIST = \
 	NEWS
 
 # FILES NOT TO INSTALL
-dist_noinst_SCRIPTS = autogen.sh antigen.sh
+dist_noinst_SCRIPTS = autogen.sh antigen.sh build_boost.sh
 		    
 # Config files
 configdir = $(datadir)/portcullis

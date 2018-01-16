@@ -12,12 +12,15 @@ portcullis_CXXFLAGS =	-O3 -pedantic -ansi -Wall -Wextra \
 
 portcullis_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 			-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
-			-isystem $(top_srcdir)/lib/include \
+			-isystem $(top_srcdir)/deps/boost \
+      -isystem $(top_srcdir)/lib/include \
 			-I$(top_srcdir)/src \
 			-DDATADIR=\"$(datadir)\" \
+			-DPORTCULLIS_SITE_PKGS='"$(libdir)/python$(PYTHON_VERSION)/site-packages"' \
 			@AM_CPPFLAGS@
 
-portcullis_LDFLAGS =	-static \
+portcullis_LDFLAGS =
+			-static \
 			-L../lib \
 			-L../deps/htslib-1.3 \
 			-L../deps/ranger-0.3.8 \
@@ -27,14 +30,19 @@ portcullis_LDADD =	@AM_LIBS@ \
 			-lportcullis \
 			-lranger \
 			-lphts \
-			-lz
-						
+			-lz \
+			../deps/boost/stage/lib/libboost_timer.a \
+      ../deps/boost/stage/lib/libboost_chrono.a \
+      ../deps/boost/stage/lib/libboost_filesystem.a \
+      ../deps/boost/stage/lib/libboost_program_options.a \
+      ../deps/boost/stage/lib/libboost_system.a
+
 
 noinst_HEADERS =	prepare.hpp \
 			junction_builder.hpp \
 			junction_filter.hpp \
 			bam_filter.hpp \
-			train.hpp 
+			train.hpp
 
 portcullis_SOURCES =	prepare.cc \
 			junction_builder.cc \

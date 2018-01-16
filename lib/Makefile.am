@@ -7,7 +7,10 @@ pkgconfig_DATA = portcullis.pc
 lib_LTLIBRARIES = libportcullis.la
 
 # Library inputs
-libportcullis_la_LDFLAGS = -version-info 18:0:18
+libportcullis_la_LDFLAGS = \
+	-version-info 18:0:18 \
+	-L../deps/boost/stage/lib
+	
 libportcullis_la_SOURCES =	\
 	src/bam_master.cc \
 	src/bam_alignment.cc \
@@ -52,12 +55,13 @@ library_include_HEADERS = \
 	$(PI)/portcullis_fs.hpp \
 	$(PI)/seq_utils.hpp \
 	$(PI)/rule_parser.hpp
-	
+
 
 libportcullis_la_CPPFLAGS = \
 	-isystem $(top_srcdir)/deps/htslib-1.3 \
 	-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
-	-isystem $(top_srcdir)/lib/include \
+	-isystem $(top_srcdir)/deps/boost \
+  -isystem $(top_srcdir)/lib/include \
 	-DDATADIR=\"$(datadir)\" \
 	@AM_CPPFLAGS@
 
