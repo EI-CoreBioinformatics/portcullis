@@ -40,8 +40,8 @@ check_unit_tests_CXXFLAGS = -O0 -std=c++11 @AM_CXXFLAGS@
 
 check_unit_tests_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 				-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
-				-isystem $(top_srcdir)/deps/boost \
-        -I$(top_srcdir)/lib/include \
+				-isystem $(top_srcdir)/deps/boost_build/include \
+        			-I$(top_srcdir)/lib/include \
 				-DRESOURCESDIR=\"$(top_srcdir)/tests/resources\" \
 				-DDATADIR=\"$(datadir)\" \
 				-DPORTCULLIS_SITE_PKGS='"$(libdir)/python$(PYTHON_VERSION)/site-packages"' \
@@ -52,7 +52,7 @@ check_unit_tests_LDFLAGS =	-static \
 				-L../lib \
 				-L../deps/htslib-1.3 \
 				-L../deps/ranger-0.3.8 \
-				-L../deps/boost/stage/lib \
+				-L../deps/boost_build/lib \
 				@AM_LDFLAGS@
 
 check_unit_tests_LDADD =	libgtest.la \
@@ -61,11 +61,11 @@ check_unit_tests_LDADD =	libgtest.la \
 				-lphts \
 				-lranger \
 				-lz \
-				../deps/boost/stage/lib/libboost_timer.a \
-        ../deps/boost/stage/lib/libboost_chrono.a \
-        ../deps/boost/stage/lib/libboost_filesystem.a \
-        ../deps/boost/stage/lib/libboost_program_options.a \
-        ../deps/boost/stage/lib/libboost_system.a \
+				-lboost_timer.a \
+        			-lboost_chrono.a \
+        			-lboost_filesystem.a \
+        			-lboost_program_options.a \
+        			-lboost_system.a \
 				@AM_LIBS@
 
 clean-local: clean-local-check

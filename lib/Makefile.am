@@ -9,7 +9,8 @@ lib_LTLIBRARIES = libportcullis.la
 # Library inputs
 libportcullis_la_LDFLAGS = \
 	-version-info 18:0:18 \
-	-L../deps/boost/stage/lib
+	-L../deps/boost_build/lib \
+	@AM_LDFLAGS@
 
 libportcullis_la_SOURCES =	\
 	src/bam_master.cc \
@@ -59,11 +60,14 @@ library_include_HEADERS = \
 
 
 libportcullis_la_CPPFLAGS = \
-	-isystem $(top_srcdir)/deps/htslib-1.3 \
-	-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
-	-isystem $(top_srcdir)/deps/boost \
-  -isystem $(top_srcdir)/lib/include \
-	-DDATADIR=\"$(datadir)\" \
+	-I$(top_srcdir)/deps/htslib-1.3 \
+	-I$(top_srcdir)/deps/ranger-0.3.8/include \
+	-I$(top_srcdir)/deps/boost_build/include \
+  	-I$(top_srcdir)/lib/include \
+	-DDATADIR=\"$(datadir)\"
 	@AM_CPPFLAGS@
 
-libportcullis_la_CXXFLAGS = -O3 -pedantic -ansi -Wall -Wextra -std=c++11 -Wno-unused-variable @AM_CXXFLAGS@
+libportcullis_la_CXXFLAGS = \
+	-Wall -Wextra \
+	-std=c++11 \
+	@AM_CXXFLAGS@

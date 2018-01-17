@@ -52,6 +52,6 @@ libranger_la_CPPFLAGS = \
 	-isystem $(top_srcdir)/include \
 	@AM_CPPFLAGS@ 
 
-libranger_la_CXXFLAGS = -O3 -pedantic -ansi -Wall -Wextra -std=c++11 -Wno-unused-parameter @AM_CXXFLAGS@
+libranger_la_CXXFLAGS = -O3 -Wall -Wextra -std=c++11 -Wno-unused-parameter @AM_CXXFLAGS@
 
 

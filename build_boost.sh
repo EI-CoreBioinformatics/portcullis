@@ -6,7 +6,8 @@ git submodule update --recursive --init deps/boost
 
 # Build boost
 cd deps/boost
-./bootstrap.sh --prefix=build --with-libraries=chrono,exception,program_options,timer,filesystem,system,stacktrace
-./b2 link=static install
+./bootstrap.sh --prefix=../boost_build --with-libraries=chrono,exception,program_options,timer,filesystem,system,stacktrace
+./b2 --prefix=../boost_build headers
+./b2 --prefix=../boost_build install
 
 cd ../..

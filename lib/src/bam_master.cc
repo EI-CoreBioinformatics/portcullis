@@ -28,10 +28,8 @@ using std::string;
 using std::vector;
 using std::stringstream;
 
-#include <boost/exception/all.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/filesystem/operations.hpp>
 using boost::filesystem::exists;
 using boost::filesystem::path;
