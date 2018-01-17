@@ -34,9 +34,7 @@ Before installing portcullis please first confirm these dependencies are install
  - **Python3** V3.5+ (including python3 development libraries and the *numpy*, *scipy*, *matplotlib*, and *sklearn* packages)
  - **Sphinx-doc** V1.3+ (Optional: only required for building the documentation.)
 
-With regards to python3 and sphinx we recommend installing anaconda3 as this contains all packages and programs required by portcullis.
-If you have installed python to a custom location please verify that the *bin* and *lib* directories are on python_full_ver
-*PATH* and *LD_LIBRARY_PATH* environment variables respectively.
+With regards to python3 and sphinx we recommend installing anaconda3 as this contains all packages and programs required by portcullis.  Also, if you have installed python to a custom location please verify that the *bin* directors on the *PATH* environment variable.
 
 Then proceed with the following steps:
 

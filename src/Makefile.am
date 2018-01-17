@@ -8,14 +8,14 @@ portcullis_noinstdir = $(top_srcdir)/src
 portcullis_CXXFLAGS =	\
 			-O3 -pedantic -ansi -Wall -Wextra \
 			-Wno-unused-function -Wno-unused-variable \
-			-std=c++11 \
+			-std=c++11 -static-libstdc++ \
 			@AM_CXXFLAGS@
 
 portcullis_CPPFLAGS = \
 			-isystem $(top_srcdir)/deps/htslib-1.3 \
 			-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
-			-isystem $(top_srcdir)/deps/boost \
-      -isystem $(top_srcdir)/lib/include \
+			-isystem $(top_srcdir)/deps/boost/build/include \
+			-isystem $(top_srcdir)/lib/include \
 			-DDATADIR=\"$(datadir)\" \
 			-DPORTCULLIS_SITE_PKGS='"$(libdir)/python$(PYTHON_VERSION)/site-packages"' \
 			@AM_CPPFLAGS@
@@ -31,11 +31,11 @@ portcullis_LDADD = \
 			-lportcullis \
 			-lranger \
 			-lphts \
-			../deps/boost/stage/lib/libboost_timer.a \
-      ../deps/boost/stage/lib/libboost_chrono.a \
-      ../deps/boost/stage/lib/libboost_filesystem.a \
-      ../deps/boost/stage/lib/libboost_program_options.a \
-      ../deps/boost/stage/lib/libboost_system.a \
+			../deps/boost/build/lib/libboost_timer.a \
+      ../deps/boost/build/lib/libboost_chrono.a \
+      ../deps/boost/build/lib/libboost_filesystem.a \
+      ../deps/boost/build/lib/libboost_program_options.a \
+      ../deps/boost/build/lib/libboost_system.a \
 			@AM_LIBS@
 
 

@@ -42,3 +42,4 @@ callgrind*
 *.ac~
 /portcullis-*/
 /tags
+/cmake-build-debug/
