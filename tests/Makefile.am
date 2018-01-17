@@ -53,6 +53,7 @@ check_unit_tests_LDFLAGS =	-static \
 				-L../deps/htslib-1.3 \
 				-L../deps/ranger-0.3.8 \
 				-L../deps/boost_build/lib \
+				-Wl,-rpath=../deps/boost_build/lib \
 				@AM_LDFLAGS@
 
 check_unit_tests_LDADD =	libgtest.la \
@@ -61,11 +62,11 @@ check_unit_tests_LDADD =	libgtest.la \
 				-lphts \
 				-lranger \
 				-lz \
-				-lboost_timer.a \
-        			-lboost_chrono.a \
-        			-lboost_filesystem.a \
-        			-lboost_program_options.a \
-        			-lboost_system.a \
+				-lboost_timer \
+        			-lboost_chrono \
+        			-lboost_filesystem \
+        			-lboost_program_options \
+        			-lboost_system \
 				@AM_LIBS@
 
 clean-local: clean-local-check
