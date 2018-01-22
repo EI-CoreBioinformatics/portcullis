@@ -6,6 +6,7 @@ bin_PROGRAMS = portcullis
 portcullis_noinstdir = $(top_srcdir)/src
 
 portcullis_CXXFLAGS =	\
+			-O3 -g -g3 -gdwarf-4 -Wno-unused-function -Wno-unused-variable -Wno-ignored-qualifiers \
 			-Wall -Wextra \
 			-std=c++11 \
 			@AM_CXXFLAGS@
@@ -28,14 +29,14 @@ portcullis_LDFLAGS = \
 			@AM_LDFLAGS@
 
 portcullis_LDADD = \
+			../deps/boost_build/lib/libboost_timer.a \
+			../deps/boost_build/lib/libboost_chrono.a \
+      			../deps/boost_build/lib/libboost_filesystem.a \
+      			../deps/boost_build/lib/libboost_program_options.a \
+      			../deps/boost_build/lib/libboost_system.a \
 			-lportcullis \
 			-lranger \
 			-lphts \
-			-l:libboost_timer.a \
-			-l:libboost_chrono.a \
-      			-l:libboost_filesystem.a \
-      			-l:libboost_program_options.a \
-      			-l:libboost_system.a \
 			@AM_LIBS@
 
 

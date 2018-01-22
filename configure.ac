@@ -12,9 +12,10 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile scripts/setup.py scripts/junctools/__init__.py scripts/Makefile])
 AC_CONFIG_SUBDIRS([deps/htslib-1.3 deps/ranger-0.3.8])
 AC_LANG([C++])
-AC_PROG_INSTALL
+AC_LANG_CPLUSPLUS
+AC_PROG_CXXCPP
 AC_PROG_CXX
-AC_PROG_CC
+AC_PROG_INSTALL
 
 # Ensure there's C++11 support
 AX_CXX_COMPILE_STDCXX_11(,[mandatory])
@@ -147,7 +148,11 @@ fi
 AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
 AC_SUBST([MAKE_DOCS])
 
-AM_CXXFLAGS="-O3 -g -g3 -gdwarf-4 -static-libstdc++ -Wno-unused-function -Wno-unused-variable -Wno-ignored-qualifiers"
+AM_CXXFLAGS=""
+if test x"${UNAME_S}" == x"Linux"; then
+	AM_CXXFLAGS="-static-libstdc++"
+fi
+echo ${AM_CXXFLAGS}
 AC_SUBST([AM_CXXFLAGS])
 
 #AM_CPPFLAGS="${ZLIB_CPPFLAGS} ${PYTHON_CPPFLAGS}"
