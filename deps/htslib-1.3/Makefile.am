@@ -11,7 +11,7 @@ lib_LTLIBRARIES = libphts.la
 
 libphts_la_LDFLAGS = -version-info 4:1:3
 libphts_la_CPPFLAGS = $(HTSLIB_CPPFLAGS)
-libphts_la_CFLAGS = -O3 @AM_CFLAGS@
+libphts_la_CFLAGS = -Wno-deprecated-declarations -Wno-pointer-bool-conversion @AM_CFLAGS@
 libphts_la_SOURCES = \
 	bgzf.c \
 	faidx.c \
@@ -77,7 +77,7 @@ htslib_library_include_HEADERS = \
 	$(HI)/vcf.h \
 	$(HI)/vcf_sweep.h \
 	$(HI)/vcfutils.h
-	
+
 cram_library_includedir=$(includedir)/phtslib-@PACKAGE_VERSION@/cram
 CI = $(top_srcdir)/cram
 cram_library_include_HEADERS = \
@@ -106,14 +106,14 @@ cram_library_include_HEADERS = \
 TESTS = \
 	test/fieldarith \
 	test/sam
-	
+
 check_PROGRAMS = \
 	test/fieldarith \
 	test/sam
-	
-HTSLIB_TEST_CFLAGS = -O0 @AM_CFLAGS@
+
+HTSLIB_TEST_CFLAGS = -O0 -Wno-deprecated-declarations -Wno-pointer-bool-conversion
 HTSLIB_LIBS = libphts.la @AM_LIBS@
-	
+
 test_fieldarith_SOURCES = test/fieldarith.c
 test_fieldarith_CFLAGS = $(HTSLIB_TEST_CFLAGS)
 test_fieldarith_CPPFLAGS = -I.. $(HTSLIB_CPPFLAGS)

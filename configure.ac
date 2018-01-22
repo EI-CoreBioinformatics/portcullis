@@ -11,6 +11,8 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile scripts/setup.py scripts/junctools/__init__.py scripts/Makefile])
 AC_CONFIG_SUBDIRS([deps/htslib-1.3 deps/ranger-0.3.8])
+: ${CXXFLAGS=""}
+: ${CFLAGS=""}
 AC_LANG([C++])
 AC_LANG_CPLUSPLUS
 AC_PROG_CXXCPP
@@ -18,7 +20,7 @@ AC_PROG_CXX
 AC_PROG_INSTALL
 
 # Ensure there's C++11 support
-AX_CXX_COMPILE_STDCXX_11(,[mandatory])
+AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
 
 # Automake setup
 AM_INIT_AUTOMAKE([1.11 subdir-objects foreign -Wall no-define tar-ustar])
@@ -148,9 +150,9 @@ fi
 AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
 AC_SUBST([MAKE_DOCS])
 
-AM_CXXFLAGS=""
+AM_CXXFLAGS="-g -O3"
 if test x"${UNAME_S}" == x"Linux"; then
-	AM_CXXFLAGS="-static-libstdc++"
+	AM_CXXFLAGS="-g -O3 -static-libstdc++"
 fi
 echo ${AM_CXXFLAGS}
 AC_SUBST([AM_CXXFLAGS])
