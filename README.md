@@ -52,6 +52,9 @@ option is ```--prefix```, which will install portcullis to a custom directory.  
 default this is "/usr/local", so the portcullis executable would be found at "/usr/local/bin"
 by default.  Type ```./configure --help``` for full details and available options.
 
+NOTE: if KAT is failing at the ```./autogen.sh``` step you will likely need to install autotools.  The following command should do this on MacOS: ```brew install autoconf automake libtool```.  On a debian system this can be done with: ```sudo apt-get install autoconf automake libtool```.
+
+
 
 Operating Instructions
 ----------------------
