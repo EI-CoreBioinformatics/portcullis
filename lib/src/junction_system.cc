@@ -494,13 +494,13 @@ Strandedness portcullis::JunctionSystem::determineStrandedness(bool verbose) con
     }
 
 	Strandedness s = Strandedness::UNKNOWN;
-	if (posr1 > 0.5 && negr1 > 0.5) {
+	if (posr1 > 0.5 && negr1 > 0.5 && posr2 < -0.5 && negr2 < -0.5) {
 		s = Strandedness::FIRSTSTRAND;
 	}
-	else if (posr2 > 0.5 && negr2 > 0.5) {
+	else if (posr2 > 0.5 && negr2 > 0.5 && posr1 < -0.5 && negr1 < -0.5 ) {
 		s = Strandedness::SECONDSTRAND;
 	}
-	else if (abs(posr1) < 0.3 && abs(negr1) < 0.3 && abs(posr2) < 0.3 && abs(negr2) < 0.3) {
+	else if (abs(posr1) < 0.5 && abs(negr1) < 0.5 && abs(posr2) < 0.5 && abs(negr2) < 0.5) {
 		s = Strandedness::UNSTRANDED;
 	}
 	return s;
