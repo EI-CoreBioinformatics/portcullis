@@ -139,6 +139,8 @@ public:
 
 	void calcJunctionStats();
 
+	Strandedness determineStrandedness(bool verbose) const;
+
 	void sort();
 
 	void index();

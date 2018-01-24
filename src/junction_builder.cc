@@ -137,6 +137,13 @@ void portcullis::JunctionBuilder::process() {
 	}
 	cout << "Saving junctions: " << endl;
 	junctionSystem.saveAll(path(outputDir.string() + "/" + outputPrefix), source, false, this->outputExonGFF, this->outputIntronGFF);
+
+	// Also do a strand analysis as this is cheap and quick to do.
+	Strandedness actual_strandedness = junctionSystem.determineStrandedness(true);
+	cout << "Determined RNAseq strandedness to be: " << strandednessToString(actual_strandedness) << endl << endl;
+	if (strandSpecific != Strandedness::UNKNOWN && strandSpecific != actual_strandedness) {
+		cerr << "Warning!  User input and portcullis disagree about the strandedness of the dataset" << endl << endl;
+	}
 }
 
 void portcullis::JunctionBuilder::separateBams() {
@@ -201,7 +208,7 @@ void portcullis::JunctionBuilder::separateBams() {
         BOOST_THROW_EXCEPTION(JunctionBuilderException() << JunctionBuilderErrorInfo(string(
 									  "Problem indexing unspliced BAM: ") + unsplicedFile.string()));
     }
-    
+
     cout << "done." << endl;
 	cout << " - Indexing spliced alignments ... ";
 	cout.flush();
@@ -530,4 +537,3 @@ portcullis::JBThreadPool::~JBThreadPool() {
 		shutDown();
 	}
 }
-

@@ -443,5 +443,67 @@ JunctionPtr portcullis::JunctionSystem::getJunction(Intron& intron) const {
 	}
 }
 
-string portcullis::JunctionSystem::version = "";
+Strandedness portcullis::JunctionSystem::determineStrandedness(bool verbose) const {
+	uint32_t tot_r1_pos_when_ss_pos = 0;
+	uint32_t tot_r1_neg_when_ss_pos = 0;
+	uint32_t tot_r2_pos_when_ss_pos = 0;
+	uint32_t tot_r2_neg_when_ss_pos = 0;
+	uint32_t tot_r1_pos_when_ss_neg = 0;
+	uint32_t tot_r1_neg_when_ss_neg = 0;
+	uint32_t tot_r2_pos_when_ss_neg = 0;
+	uint32_t tot_r2_neg_when_ss_neg = 0;
 
+	for (JunctionPtr j : junctionList) {
+		if (j->getSpliceSiteStrand() == Strand::POSITIVE) {
+			tot_r1_pos_when_ss_pos += j->getNbR1PosAlignments();
+			tot_r1_neg_when_ss_pos += j->getNbR1NegAlignments();
+			tot_r2_pos_when_ss_pos += j->getNbR2PosAlignments();
+			tot_r2_neg_when_ss_pos += j->getNbR2NegAlignments();
+		}
+		else if (j->getSpliceSiteStrand() == Strand::NEGATIVE) {
+			tot_r1_pos_when_ss_neg += j->getNbR1PosAlignments();
+			tot_r1_neg_when_ss_neg += j->getNbR1NegAlignments();
+			tot_r2_pos_when_ss_neg += j->getNbR2PosAlignments();
+			tot_r2_neg_when_ss_neg += j->getNbR2NegAlignments();
+		}
+	}
+
+	double posr1 = ((double)((int32_t)tot_r1_pos_when_ss_pos - (int32_t)tot_r1_neg_when_ss_pos)) / ((double)(tot_r1_pos_when_ss_pos + tot_r1_neg_when_ss_pos));
+	double negr1 = ((double)((int32_t)tot_r1_neg_when_ss_neg - (int32_t)tot_r1_pos_when_ss_neg)) / ((double)(tot_r1_pos_when_ss_neg + tot_r1_neg_when_ss_neg));
+	double posr2 = ((double)((int32_t)tot_r2_pos_when_ss_pos - (int32_t)tot_r2_neg_when_ss_pos)) / ((double)(tot_r2_pos_when_ss_pos + tot_r2_neg_when_ss_pos));
+	double negr2 = ((double)((int32_t)tot_r2_neg_when_ss_neg - (int32_t)tot_r2_pos_when_ss_neg)) / ((double)(tot_r2_pos_when_ss_neg + tot_r2_neg_when_ss_neg));
+
+	if (verbose) {
+		cout << "Strand Analysis" << endl
+			 << "---------------" << endl << endl;
+		cout << "Alignment counts when splice site suggests +ve strand:" << endl
+			 << " - R1+: " << tot_r1_pos_when_ss_pos << endl
+			 << " - R1-: " << tot_r1_neg_when_ss_pos << endl
+			 << " - R2+: " << tot_r2_pos_when_ss_pos << endl
+			 << " - R2-: " << tot_r2_neg_when_ss_pos << endl
+			 << "Alignment counts when splice site suggests -ve strand:" << endl
+	 		 << " - R1+: " << tot_r1_pos_when_ss_neg << endl
+	 		 << " - R1-: " << tot_r1_neg_when_ss_neg << endl
+	 		 << " - R2+: " << tot_r2_pos_when_ss_neg << endl
+	 		 << " - R2-: " << tot_r2_neg_when_ss_neg << endl;
+		cout << "Ratios:" << endl
+		  	 << " - R1+: " << posr1 << endl
+		  	 << " - R2+: " << posr2 << endl
+		  	 << " - R1-: " << negr1 << endl
+		  	 << " - R2-: " << negr2 << endl << endl;
+    }
+
+	Strandedness s = Strandedness::UNKNOWN;
+	if (posr1 > 0.5 && negr1 > 0.5) {
+		s = Strandedness::FIRSTSTRAND;
+	}
+	else if (posr2 > 0.5 && negr2 > 0.5) {
+		s = Strandedness::SECONDSTRAND;
+	}
+	else if (abs(posr1) < 0.3 && abs(negr1) < 0.3 && abs(posr2) < 0.3 && abs(negr2) < 0.3) {
+		s = Strandedness::UNSTRANDED;
+	}
+	return s;
+}
+
+string portcullis::JunctionSystem::version = "";
