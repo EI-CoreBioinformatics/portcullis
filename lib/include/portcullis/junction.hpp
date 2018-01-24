@@ -199,6 +199,10 @@ private:
 	uint32_t nbAlBamProperlyPaired;
 	uint32_t nbAlPortcullisProperlyPaired;
 	uint32_t nbAlReliable; // reliable to raw ratio = reliable / split
+	uint32_t nbAlR1Pos;
+	uint32_t nbAlR1Neg;
+	uint32_t nbAlR2Pos;
+	uint32_t nbAlR2Neg;
 
 	// RNAseq Derived Stats
 	double entropy;
@@ -541,6 +545,38 @@ public:
 	}
 
 	/**
+	 * The number of raw R1 + reads supporting this junction
+	 * @return
+	 */
+	uint32_t getNbR1PosAlignments() const {
+		return this->nbAlR1Pos;
+	}
+
+	/**
+	 * The number of raw R1 - reads supporting this junction
+	 * @return
+	 */
+	uint32_t getNbR1NegAlignments() const {
+		return this->nbAlR1Neg;
+	}
+
+	/**
+	 * The number of raw R2 + reads supporting this junction
+	 * @return
+	 */
+	uint32_t getNbR2PosAlignments() const {
+		return this->nbAlR2Pos;
+	}
+
+	/**
+	 * The number of raw R2 - reads supporting this junction
+	 * @return
+	 */
+	uint32_t getNbR2NegAlignments() const {
+		return this->nbAlR2Neg;
+	}
+
+	/**
 	 * The Shannon Entropy of this junction.  This is a measure of how well distributed
 	 * the reads are around the junction.  The closely the alignment distribution
 	 * is to a uniform distribution the higher the entropy score.
@@ -743,12 +779,12 @@ public:
 	uint32_t getNbDownstreamFlankingAlignments() const {
 		return nbDownstreamFlankingAlignments;
 	}
-	
+
 	/**
 	 * This will be set to 1 by portcullis, but downstream it's useful to have
 	 * a placeholder for this incase you wish to merge junctions from multiple
 	 * files.
-	 * @return 
+	 * @return
 	 */
 	uint32_t getNbSamples() const {
 		return nbSamples;
@@ -854,6 +890,22 @@ public:
 		this->nbAlReliable = nbReliableAlignments;
 	}
 
+	void setNbR1PosAlignments(uint32_t nbR1PosAlignments) {
+		this->nbAlR1Pos = nbR1PosAlignments;
+	}
+
+	void setNbR1NegAlignments(uint32_t nbR1NegAlignments) {
+		this->nbAlR1Neg = nbR1NegAlignments;
+	}
+
+	void setNbR2PosAlignments(uint32_t nbR2PosAlignments) {
+		this->nbAlR2Pos = nbR2PosAlignments;
+	}
+
+	void setNbR2NegAlignments(uint32_t nbR2NegAlignments) {
+		this->nbAlR2Neg = nbR2NegAlignments;
+	}
+
 	void setEntropy(double entropy) {
 		this->entropy = entropy;
 	}
@@ -941,7 +993,7 @@ public:
 	void setNbUpstreamFlankingAlignments(uint32_t nbUpstreamFlankingAlignments) {
 		this->nbUpstreamFlankingAlignments = nbUpstreamFlankingAlignments;
 	}
-	
+
 	void setNbSamples(uint32_t nbSamples) {
 		this->nbSamples = nbSamples;
 	}
@@ -1217,6 +1269,10 @@ public:
 			 << j.nbAlPortcullisProperlyPaired << "\t"
 			 << j.nbAlReliable << "\t"
 			 << j.getReliable2RawAlignmentRatio() << "\t"
+			 << j.nbAlR1Pos << "\t"
+			 << j.nbAlR1Neg << "\t"
+			 << j.nbAlR2Pos << "\t"
+		 	 << j.nbAlR2Neg << "\t"
 			 << j.entropy << "\t"
 			 << j.meanMismatches << "\t"
 			 << j.meanReadLength << "\t"
