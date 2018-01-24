@@ -486,10 +486,10 @@ Strandedness portcullis::JunctionSystem::determineStrandedness(bool verbose) con
 	 		 << " - R1-: " << tot_r1_neg_when_ss_neg << endl
 	 		 << " - R2+: " << tot_r2_pos_when_ss_neg << endl
 	 		 << " - R2-: " << tot_r2_neg_when_ss_neg << endl;
-		cout << "Ratios:" << endl
+		cout << "Ratios matching splice site strand (1.0 means complete agreement, -1.0 means complete disagreement):" << endl
 		  	 << " - R1+: " << posr1 << endl
+			 << " - R1-: " << negr1 << endl
 		  	 << " - R2+: " << posr2 << endl
-		  	 << " - R1-: " << negr1 << endl
 		  	 << " - R2-: " << negr2 << endl << endl;
     }
 
