@@ -486,21 +486,28 @@ Strandedness portcullis::JunctionSystem::determineStrandedness(bool verbose) con
 	 		 << " - R1-: " << tot_r1_neg_when_ss_neg << endl
 	 		 << " - R2+: " << tot_r2_pos_when_ss_neg << endl
 	 		 << " - R2-: " << tot_r2_neg_when_ss_neg << endl;
-		cout << "Ratios matching splice site strand (1.0 means complete agreement, -1.0 means complete disagreement):" << endl
+		cout << "Correlation of read strand to splice site strand (1.0 = complete agreement, -1.0 = complete disagreement):" << endl
 		  	 << " - R1+: " << posr1 << endl
 			 << " - R1-: " << negr1 << endl
 		  	 << " - R2+: " << posr2 << endl
 		  	 << " - R2-: " << negr2 << endl << endl;
     }
 
+	// If none of the following scenarios hold true then we don't know what protocol was used.
+	// Note that these scenarios all assume either FR paired read orientation or single end,
+	// which is what is likely from.
 	Strandedness s = Strandedness::UNKNOWN;
-	if (posr1 > 0.5 && negr1 > 0.5 && posr2 < -0.5 && negr2 < -0.5) {
-		s = Strandedness::FIRSTSTRAND;
-	}
-	else if (posr2 > 0.5 && negr2 > 0.5 && posr1 < -0.5 && negr1 < -0.5 ) {
+	if (posr1 > 0.5 && negr1 > 0.5) {
+		// R1 is in agreement with transcript strand
 		s = Strandedness::SECONDSTRAND;
 	}
+	else if (posr1 < -0.5 && negr1 < -0.5 ) {
+		// R1 is in disagreement with transcript strand
+		s = Strandedness::FIRSTSTRAND;
+	}
 	else if (abs(posr1) < 0.5 && abs(negr1) < 0.5 && abs(posr2) < 0.5 && abs(negr2) < 0.5) {
+		// Total mix (i.e. ratio's of around 0) for both R1 and R2 on either strand.
+		// All R2 ratios will be 0 anyway if SE
 		s = Strandedness::UNSTRANDED;
 	}
 	return s;
