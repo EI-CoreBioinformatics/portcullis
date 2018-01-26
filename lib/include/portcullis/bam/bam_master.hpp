@@ -112,6 +112,16 @@ inline const string strandednessToString(Strandedness ss) {
 	}
 }
 
+inline const string strandednessToLongString(Strandedness ss) {
+	switch (ss) {
+	case Strandedness::UNSTRANDED:   return "Unstranded - can't determine transcript strand from read strand";
+	case Strandedness::FIRSTSTRAND:  return "Firststrand - R1 is not on transcript strand";
+	case Strandedness::SECONDSTRAND: return "Secondstrand - R1 is on transcript strand";
+	case Strandedness::UNKNOWN: return "Unknown strand protocol";
+	default:      return "[Unknown StrandSpecific type]";
+	}
+}
+
 inline const Strandedness strandednessFromString(string& ss) {
 	if (boost::iequals(ss, "UNSTRANDED")) {
 		return Strandedness::UNSTRANDED;
@@ -129,41 +139,44 @@ inline const Strandedness strandednessFromString(string& ss) {
 }
 
 enum class Orientation : std::uint8_t {
-	F,
-	R,
+	SE,
 	FR,
 	RF,
 	FF,
-	RR,
 	UNKNOWN
 };
 
 inline bool doProperPairCheck(Orientation orientation) {
 	return orientation == Orientation::FR ||
 		   orientation == Orientation::FF ||
-		   orientation == Orientation::RF ||
-		   orientation == Orientation::RR;
+		   orientation == Orientation::RF;
 }
 
 inline const string orientationToString(Orientation orientation) {
 	switch (orientation) {
-	case Orientation::F:    return "F";
-	case Orientation::R:    return "R";
+	case Orientation::SE:    return "SE";
 	case Orientation::FR:   return "FR";
 	case Orientation::RF:   return "RF";
 	case Orientation::FF:   return "FF";
-	case Orientation::RR:   return "RR";
 	case Orientation::UNKNOWN:   return "UNKNOWN";
 	default:      return "[Unknown Orientation type]";
 	}
 }
 
-inline const Orientation orientationFromString(string& ss) {
-	if (boost::iequals(ss, "F")) {
-		return Orientation::F;
+inline const string orientationToLongString(Orientation orientation) {
+	switch (orientation) {
+	case Orientation::SE:    return "Single-End (SE)";
+	case Orientation::FR:   return "Paired-End (FR): Forward Reverse (-> <-)";
+	case Orientation::RF:   return "Paired-End (RF): Reverse Forward (<- ->)";
+	case Orientation::FF:   return "Paired-End (FF): Forward Forward (-> ->)";
+	case Orientation::UNKNOWN:   return "Unknown";
+	default:      return "[Unknown Orientation type]";
 	}
-	else if (boost::iequals(ss, "R")) {
-		return Orientation::R;
+}
+
+inline const Orientation orientationFromString(string& ss) {
+	if (boost::iequals(ss, "SE")) {
+		return Orientation::SE;
 	}
 	else if (boost::iequals(ss, "FR")) {
 		return Orientation::FR;
@@ -173,9 +186,6 @@ inline const Orientation orientationFromString(string& ss) {
 	}
 	else if (boost::iequals(ss, "FF")) {
 		return Orientation::FF;
-	}
-	else if (boost::iequals(ss, "RR")) {
-		return Orientation::RR;
 	}
 	else if (boost::iequals(ss, "UNKNOWN")) {
 		return Orientation::UNKNOWN;

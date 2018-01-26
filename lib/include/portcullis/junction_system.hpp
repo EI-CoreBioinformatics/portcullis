@@ -139,7 +139,7 @@ public:
 
 	void calcJunctionStats();
 
-	Strandedness determineStrandedness(bool verbose) const;
+	std::pair<Orientation, Strandedness> determineStrandedness(bool verbose) const;
 
 	void sort();
 
