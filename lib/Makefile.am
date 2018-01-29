@@ -9,7 +9,7 @@ lib_LTLIBRARIES = libportcullis.la
 # Library inputs
 libportcullis_la_LDFLAGS = \
 	-version-info 18:0:18 \
-	-L../deps/boost_build/lib \
+	-L../deps/boost/build/lib \
 	@AM_LDFLAGS@
 
 libportcullis_la_SOURCES =	\
@@ -62,7 +62,7 @@ library_include_HEADERS = \
 libportcullis_la_CPPFLAGS = \
 	-I$(top_srcdir)/deps/htslib-1.3 \
 	-I$(top_srcdir)/deps/ranger-0.3.8/include \
-	-I$(top_srcdir)/deps/boost_build/include \
+	-I$(top_srcdir)/deps/boost/build/include \
   	-I$(top_srcdir)/lib/include \
 	-DDATADIR=\"$(datadir)\"
 	@AM_CPPFLAGS@

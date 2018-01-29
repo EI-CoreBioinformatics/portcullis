@@ -22,7 +22,7 @@ fi
 cd ..
 
 # Remove boost
-rm -Rf deps/boost
+rm -Rf deps/boost/build deps/boost/bin.v2
 
 # Remove all tar-files (assuming there are some packages), and any expanded directories.
 rm -f *.tar.* *.tgz

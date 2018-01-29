@@ -13,7 +13,7 @@ portcullis_CXXFLAGS =	\
 portcullis_CPPFLAGS = \
 			-isystem $(top_srcdir)/deps/htslib-1.3 \
 			-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
-			-isystem $(top_srcdir)/deps/boost_build/include \
+			-isystem $(top_srcdir)/deps/boost/build/include \
 			-isystem $(top_srcdir)/lib/include \
 			-DDATADIR=\"$(datadir)\" \
 			-DPORTCULLIS_SITE_PKGS='"$(libdir)/python$(PYTHON_VERSION)/site-packages"' \
@@ -22,17 +22,17 @@ portcullis_CPPFLAGS = \
 portcullis_LDFLAGS = \
 			-static \
 			-L../lib \
-			-L../deps/boost_build/lib \
+			-L../deps/boost/build/lib \
 			-L../deps/htslib-1.3 \
 			-L../deps/ranger-0.3.8 \
 			@AM_LDFLAGS@
 
 portcullis_LDADD = \
-			../deps/boost_build/lib/libboost_timer.a \
-			../deps/boost_build/lib/libboost_chrono.a \
-			../deps/boost_build/lib/libboost_filesystem.a \
-			../deps/boost_build/lib/libboost_program_options.a \
-			../deps/boost_build/lib/libboost_system.a \
+			../deps/boost/build/lib/libboost_timer.a \
+			../deps/boost/build/lib/libboost_chrono.a \
+			../deps/boost/build/lib/libboost_filesystem.a \
+			../deps/boost/build/lib/libboost_program_options.a \
+			../deps/boost/build/lib/libboost_system.a \
 			-lportcullis \
 			-lranger \
 			-lphts \

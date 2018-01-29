@@ -154,7 +154,6 @@ AM_CXXFLAGS="-g -O3"
 if test x"${UNAME_S}" == x"Linux"; then
 	AM_CXXFLAGS="-g -O3 -static-libstdc++"
 fi
-echo ${AM_CXXFLAGS}
 AC_SUBST([AM_CXXFLAGS])
 
 #AM_CPPFLAGS="${ZLIB_CPPFLAGS} ${PYTHON_CPPFLAGS}"
