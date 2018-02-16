@@ -44,3 +44,8 @@ callgrind*
 /tags
 /cmake-build-debug/
 *.build_boost.sh.swp
+/portcullis.config
+/portcullis.creator
+/portcullis.files
+/portcullis.includes
+/portcullis.creator.user

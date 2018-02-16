@@ -667,6 +667,10 @@ class TabJunction(ExonJunction):
 				"nb_ppp_aln",
 				"nb_rel_aln",
 				"rel2raw",
+				"nb_r1_pos",
+				"nb_r1_neg",
+				"nb_r2_pos",
+				"nb_r2_neg",
 				"entropy",
 				"mean_mismatches",
 				"mean_readlen",
@@ -739,8 +743,8 @@ class TabJunction(ExonJunction):
 		if parts[0] == "index" or len(parts) <= 1:
 			return None
 
-		if len(parts) != 71 and len(parts) > 1:
-			msg = "Unexpected number of columns in TAB file.  Expected 71, found " + str(len(parts))
+		if len(parts) != 75 and len(parts) > 1:
+			msg = "Unexpected number of columns in TAB file.  Expected 75, found " + str(len(parts))
 			raise ValueError(msg)
 
 		self.refseq = parts[2]

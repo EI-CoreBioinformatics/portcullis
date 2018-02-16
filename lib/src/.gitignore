@@ -3,3 +3,5 @@
 *.o
 /.deps/
 /tags
+/.libs/
+*.junction_system.cc.swp
