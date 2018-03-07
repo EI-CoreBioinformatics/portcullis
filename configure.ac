@@ -9,7 +9,10 @@ AC_CONFIG_SRCDIR([src/portcullis.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile scripts/setup.py scripts/junctools/__init__.py scripts/Makefile])
+AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile
+                scripts/junctools/setup.py scripts/junctools/junctools/__init__.py
+                scripts/portcullis/setup.py scripts/portcullis/portcullis/__init__.py
+                scripts/Makefile])
 AC_CONFIG_SUBDIRS([deps/htslib-1.3 deps/ranger-0.3.8])
 : ${CXXFLAGS=""}
 : ${CFLAGS=""}
@@ -98,34 +101,25 @@ if test "$with_samtools" == no ; then
     AC_MSG_ERROR([samtools not found])
 fi
 
-AC_ARG_ENABLE([junctools],
-    AS_HELP_STRING([--disable-junctools], [Disable build of python package junctools]), make_junctools="no", make_junctools="yes")
+AX_PYTHON_DEVEL([>= '3.5'])
 
-if [[ "${make_junctools}" == "yes" ]]; then
-
-    AX_PYTHON_DEVEL([>= '3.5'])
-
-    if [[ -z "${PYTHON_VERSION}" ]]; then
-        AC_MSG_ERROR([Python3 not detected. If running on a debian system try "sudo apt-get install python3-dev".])
-    fi
-
-    if [[ -z "${PYTHON_EXTRA_LIBS}" ]]; then
-        AC_MSG_ERROR([Python3 detected but Python3 development library was not found. If running on a debian system try "sudo apt-get install python3-dev".])
-    fi
-
-    pybin=python${PYTHON_VERSION}
-
-    # Check for required python libraries
-    #AX_PYTHON_MODULE(numpy, [AC_MSG_ERROR([numpy not found])], ${pybin})
-    #AX_PYTHON_MODULE(matplotlib, [AC_MSG_ERROR([matplotlib not found])], ${pybin})
-    #AX_PYTHON_MODULE(scipy, [AC_MSG_ERROR([scipy not found])], ${pybin})
-    #AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], ${pybin})
-    #AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], ${pybin})
-
-
+if [[ -z "${PYTHON_VERSION}" ]]; then
+    AC_MSG_ERROR([Python3 not detected. If running on a debian system try "sudo apt-get install python3-dev".])
 fi
-AM_CONDITIONAL([MAKE_JUNCTOOLS], [test x$make_junctools = xyes])
-AC_SUBST([MAKE_JUNCTOOLS])
+
+if [[ -z "${PYTHON_EXTRA_LIBS}" ]]; then
+    AC_MSG_ERROR([Python3 detected but Python3 development library was not found. If running on a debian system try "sudo apt-get install python3-dev".])
+fi
+
+pybin=python${PYTHON_VERSION}
+
+# Check for required python libraries
+AX_PYTHON_MODULE(pandas, [AC_MSG_ERROR([pandas not found])], ${pybin})
+#AX_PYTHON_MODULE(matplotlib, [AC_MSG_ERROR([matplotlib not found])], ${pybin})
+#AX_PYTHON_MODULE(scipy, [AC_MSG_ERROR([scipy not found])], ${pybin})
+#AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], ${pybin})
+#AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], ${pybin})
+
 
 
 # Check for sphinx executable to build documentation
@@ -156,23 +150,16 @@ if test x"${UNAME_S}" == x"Linux"; then
 fi
 AC_SUBST([AM_CXXFLAGS])
 
-#AM_CPPFLAGS="${ZLIB_CPPFLAGS} ${PYTHON_CPPFLAGS}"
-AM_CPPFLAGS="${ZLIB_CPPFLAGS}"
+AM_CPPFLAGS="${ZLIB_CPPFLAGS} ${PYTHON_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
 AM_LDFLAGS="${ZLIB_LDFLAGS} ${PYTHON_EXTRA_LDFLAGS} ${PYTHON_RPATH}"
-#AM_LDFLAGS="${ZLIB_LDFLAGS}"
 AC_SUBST([AM_LDFLAGS])
 
-#AM_LIBS="${PTHREAD_CFLAGS} -lz ${RT_LIB} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS}"
-AM_LIBS="${PTHREAD_CFLAGS} -lz ${RT_LIB}"
+AM_LIBS="${PTHREAD_CFLAGS} -lz ${RT_LIB} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS}"
 AC_SUBST([AM_LIBS])
 
 AC_OUTPUT
-
-if [[ "$make_junctools" == "no" ]]; then
-    AC_MSG_NOTICE([Junctools not created at user request])
-fi
 
 if [[ "${sphinx}" == "no" ]]; then
     AC_MSG_WARN([Sphinx not detected, or version is too old.  Wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.io/en/latest/])

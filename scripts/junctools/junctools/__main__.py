@@ -1,25 +1,20 @@
-#!/usr/bin/env python3
-
-"""
-The junctools module is designed to perform various operations of common junction files, such as
-file conversion, set operations and comparisons
-"""
-
-_title__ = "junctools"
-__author__ = 'Daniel Mapleson'
-__license__ = 'GPLV3'
-__copyright__ = 'Copyright 2016 Daniel Mapleson'
-__version__ = '@PACKAGE_VERSION@'
 
 import argparse
 import sys
 
 from . import compare
 from . import convert
+from . import gtf
 from . import markup
 from . import set
 from . import split
-from . import gtf
+
+version = "1.X.X"
+try:
+	from . import __version__
+	version = __version__
+except:
+	pass
 
 
 def main():
@@ -138,7 +133,7 @@ is_disjoint  = Returns True if there is a null intersection between both files''
 	if hasattr(args, "func"):
 		args.func(args)
 	elif args.version:
-		print(__version__)
+		print(version)
 	else:
 		parser.print_help()
 

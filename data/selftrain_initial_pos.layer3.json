@@ -1,18 +1,18 @@
 {
     "parameters": {
-        "ss_type": {
+        "canonical_ss.1": {
             "operator": "in",
             "value": ["C"]
         },
-        "ss_type.2": {
+        "canonical_ss.2": {
             "operator": "in",
             "value": ["S"]
         },
-        "ss_type.3": {
+        "canonical_ss.3": {
             "operator": "in",
             "value": ["N"]
         },
-        "nb_rel_aln": {
+        "nb_rel_aln.1": {
             "operator": "gte",
             "value": 5
         },
@@ -20,7 +20,7 @@
             "operator": "gte",
             "value": 1
         },
-        "maxmmes": {
+        "maxmmes.1": {
             "operator": "gte",
             "value": 20
         },
@@ -28,7 +28,7 @@
             "operator": "gte",
             "value": 10
         },
-        "entropy": {
+        "entropy.1": {
             "operator": "gt",
             "value": 3.0
         },
@@ -36,7 +36,7 @@
             "operator": "gt",
             "value": 1.5
         },
-        "hamming5p": {
+        "hamming5p.1": {
             "operator": "gte",
             "value": 6
         },
@@ -44,7 +44,7 @@
             "operator": "gte",
             "value": 7
         },
-        "hamming3p": {
+        "hamming3p.1": {
             "operator": "gte",
             "value": 6
         },
@@ -52,11 +52,11 @@
             "operator": "gte",
             "value": 7
         },
-        "mean_mismatches": {
+        "mean_mismatches.1": {
             "operator": "eq",
             "value": 0
         },
-        "mean_mismatches": {
+        "mean_mismatches.2": {
             "operator": "lt",
             "value": 0.1
         },
@@ -64,7 +64,7 @@
             "operator": "gte",
             "value": 5
         },
-        "rel2raw": {
+        "rel2raw.1": {
             "operator": "gte",
             "value": 0.5
         },
@@ -77,5 +77,5 @@
             "value": 1
         }
     },
-    "expression": "(( ss_type ) | ( ss_type.2 & rel2raw & hamming5p & hamming3p ) | ( ss_type.3 & rel2raw.2 & hamming5p.2 & hamming3p.2 & mean_mismatches & entropy.2 )) & (primary_junc)"
+    "expression": "(( canonical_ss.1 ) | ( canonical_ss.2 & rel2raw.1 & hamming5p.1 & hamming3p.1 ) | ( canonical_ss.3 & rel2raw.2 & hamming5p.2 & hamming3p.2 & mean_mismatches.1 & entropy.2 )) & (primary_junc)"
 }

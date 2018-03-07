@@ -1,6 +1,6 @@
 {
     "parameters": {
-        "ss_type": {
+        "canonical_ss": {
             "operator": "in",
             "value": ["N", "S"]
         },
@@ -9,5 +9,5 @@
             "value": 1
         }
     },
-    "expression": "( ss_type & pfp )"
+    "expression": "( canonical_ss & pfp )"
 }

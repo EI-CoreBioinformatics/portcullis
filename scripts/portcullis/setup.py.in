@@ -10,15 +10,13 @@ import re
 import sys
 
 if sys.version_info.major != 3:
-    raise EnvironmentError("""junctools is a python module that requires python3,
+    raise EnvironmentError("""portcullis is a python module that requires python3,
     and is not compatible with python2.""")
 
 setup(
-    name="junctools",
+    name="portcullis",
     version="@PACKAGE_VERSION@",
-    description="A program for manipulating common splice junction files",
-    long_description='''junctools is designed to perform various operations of common splice junction files, such as
-file conversion, set operations and comparisons''',
+    description="Supplementary python scripts for assisting portcullis",
     url="https://github.com/maplesond/portcullis",
     author="Daniel Mapleson",
     author_email="daniel.mapleson@earlham.ac.uk",
@@ -27,7 +25,6 @@ file conversion, set operations and comparisons''',
     keywords="rna-seq annotation genomics transcriptomics",
     packages=find_packages(),
     # scripts=glob.glob("bin/*.py") + glob.glob("util/*.py"),
-    entry_points={"console_scripts": ["junctools = junctools:main"]},
-    #install_requires=[line.rstrip() for line in open("requirements.txt", "rt")],
+    install_requires=["pandas"],
     #test_suite="junctools.test"
 )

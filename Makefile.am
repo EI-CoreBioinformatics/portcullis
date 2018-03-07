@@ -33,11 +33,7 @@ dist_config_DATA = \
 		    data/selftrain_initial_pos.layer3.json
 
 # SRC DIRS
-make_dirs=deps/htslib-1.3 deps/ranger-0.3.8 lib src tests
-
-if MAKE_JUNCTOOLS
-    make_dirs += scripts
-endif
+make_dirs=deps/htslib-1.3 deps/ranger-0.3.8 lib src tests scripts
 
 if MAKE_DOCS
     make_dirs += doc

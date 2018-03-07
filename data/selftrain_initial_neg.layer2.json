@@ -1,6 +1,6 @@
 {
     "parameters": {
-        "ss_type": {
+        "canonical_ss": {
             "operator": "in",
             "value": ["N", "S"]
         },
@@ -21,5 +21,5 @@
             "value": 1
         }
     },
-    "expression": "( nb_us_aln & maxmmes & rel2raw & ( ss_type | mean_mismatches ) )"
+    "expression": "( nb_us_aln & maxmmes & rel2raw & ( canonical_ss | mean_mismatches ) )"
 }
