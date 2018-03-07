@@ -129,7 +129,7 @@ def create_training_sets(args):
 	print("done.", len(original), "junctions loaded.")
 
 	# Before we go further make sure we have a sufficent number of junctions to work with.  Minimum 1000.
-	if len(original) < 1000:
+	if len(original) < 500:
 		raise ValueError("Not enough junctions to create training set")
 
 	if args.genuine:
