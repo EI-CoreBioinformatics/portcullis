@@ -315,16 +315,16 @@ void portcullis::JunctionFilter::filter() {
             for (auto & j : currentJuncs) {
                 remainingJuncs.addJunction(j);
             }
-            remainingJuncs.saveAll(output.string() + ".rules", source + "_rules", false, false, false);
+            remainingJuncs.saveAll(output.string() + ".rules_in", source + "_rules", false, false, false);
 
             path rf_script = path("portcullis") / "rule_filter.py";
             vector<string> args;
             args.push_back(rf_script.string());
 
             args.push_back("--json=" + filterFile.string());
-            args.push_back("--prefix=" + output.string() + ".rules");
+            args.push_back("--prefix=" + output.string() + ".rules_out");
             args.push_back("--save_failed");
-            args.push_back(junctionFile.string());
+            args.push_back(output.string() + ".rules_in.junctions.tab");
 
             char* char_args[50];
 
@@ -335,8 +335,8 @@ void portcullis::JunctionFilter::filter() {
             PyHelper::getInstance().execute(rf_script.string(), (int)args.size(), char_args);
 
             // Load junction system
-            JunctionSystem posSystem(path(output.string() + ".rules.passed.junctions.tab"));
-            JunctionSystem negSystem(path(output.string() + ".rules.failed.junctions.tab"));
+            JunctionSystem posSystem(path(output.string() + ".rules_out.passed.junctions.tab"));
+            JunctionSystem negSystem(path(output.string() + ".rules_out.failed.junctions.tab"));
             posSystem.sort();
             negSystem.sort();
 

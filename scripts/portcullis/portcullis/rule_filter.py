@@ -90,7 +90,7 @@ def json2pandas(handle, fieldnames):
 															   json_dict['parameters'][key]['value']), newexpr)
 		elif json_dict['parameters'][key]['operator'] == "not in":
 			newexpr = re.sub(key,
-							 "(df~[\"{0}\"].isin({2}))".format(k, replace_op(json_dict['parameters'][key]['operator']),
+							 "(~df[\"{0}\"].isin({2}))".format(k, replace_op(json_dict['parameters'][key]['operator']),
 															  json_dict['parameters'][key]['value']), newexpr)
 		else:
 			newexpr = re.sub(key, "(df[\"{0}\"] {1} {2})".format(k, replace_op(json_dict['parameters'][key]['operator']),
@@ -339,6 +339,7 @@ def filter_one(args):
 			print("Saving junctions failing filter ... ", end="", flush=True)
 		failed = original.reset_index().merge(passed, indicator=True, how='outer').set_index('index')
 		failed.loc[failed['_merge'] == 'left_only']
+		del failed['_merge']
 		failed.to_csv(args.prefix + ".failed.junctions.tab", sep='\t')
 		if args.verbose:
 			print("done.")
