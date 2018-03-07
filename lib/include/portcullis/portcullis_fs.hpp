@@ -52,6 +52,7 @@ private:
 
 	// Directories
 	path dataDir;
+    path scriptsDir;
 
 	// Info
 	string version;
@@ -139,7 +140,55 @@ public:
 									  "Found the data directory where expected") + dataDir.string() +
 								  ". However, could not find the \"default_filter.json\" configuraton file inside."));
 		}
-	}
+        // Check to see if scripts are adjacent to exe first
+        path prf(canonicalExe.parent_path());
+        prf /= "junctools";
+        if (exists(prf)) {
+#ifdef HAVE_PYTHON
+            // Looks like we are running from an installed location.  Don't try to use then
+            // scripts from here.  We will try the PORTCULLIS_SITE_PKGS PATH instead.
+            this->scriptsDir = PORTCULLIS_SITE_PKGS;
+            this->scriptsDir /= string("portcullis-") + PACKAGE_VERSION + "-py" + HAVE_PYTHON + ".egg";
+            if (!exists(this->scriptsDir)) {
+                BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
+                    "Could not find Portcullis scripts at the expected installed location: ") + this->scriptsDir.c_str()));
+            }
+#else
+            this->scriptsDir = canonicalExe.parent_path();
+#endif
+        }
+        else {
+            // If we are here then we are not running from an installed location,
+            // we are running from the source tree.
+            // Not 100% sure how far back we need to go (depends on whether using KAT exe or tests)
+            // so try 2, 3 and 4 levels.
+            this->scriptsDir = canonicalExe.parent_path().parent_path();
+            this->scriptsDir /= "scripts";
+
+            if (!exists(this->scriptsDir)) {
+                this->scriptsDir = canonicalExe.parent_path().parent_path().parent_path();
+                this->scriptsDir /= "scripts";
+
+                if (!exists(this->scriptsDir)) {
+                    this->scriptsDir = canonicalExe.parent_path().parent_path().parent_path().parent_path();
+                    this->scriptsDir /= "scripts";
+
+                    if (!exists(this->scriptsDir)) {
+                        BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
+                            "Could not find suitable directory containing Portcullis scripts relative to provided exe: ") + canonicalExe.c_str()));
+                    }
+                }
+            }
+            this->scriptsDir /= "portcullis";
+            prf = this->scriptsDir;
+            prf /= "setup.py";
+            if (!exists(prf)) {
+               BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
+                    "Could not find suitable directory containing Portcullis scripts derived from relative path of executable")));
+            }
+        }
+
+    }
 
 
 	std::string do_readlink() {
@@ -175,6 +224,10 @@ public:
 		return dataDir;
 	}
 
+    path getScriptsDir() const {
+        return scriptsDir;
+    }
+
 	void setVersion(string version) {
 		this->version = version;
 	}
@@ -204,6 +257,7 @@ public:
 			   << " - portcullis: " << pfs.portcullisExe << " - " << pfs.canonicalExe << endl
 			   << "Directories: " << endl
 			   << " - Data: " << pfs.dataDir << endl
+               << " - Scripts: " << pfs.scriptsDir << endl
 			   << "Info:" << endl
 			   << " - Version: " << pfs.version << endl;
 	}

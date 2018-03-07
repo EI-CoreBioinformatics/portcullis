@@ -57,11 +57,9 @@ using portcullis::ml::ModelFeatures;
 #include <portcullis/intron.hpp>
 #include <portcullis/portcullis_fs.hpp>
 #include <portcullis/junction_system.hpp>
-#include <portcullis/rule_parser.hpp>
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
-using portcullis::JuncResultMap;
 
 #include "prepare.hpp"
 using portcullis::PreparedFiles;

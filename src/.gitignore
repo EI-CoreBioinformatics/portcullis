@@ -13,3 +13,4 @@
 *.junction_filter.cc.swp
 *.portcullis.cc.swp
 *.log
+*.cc.autosave

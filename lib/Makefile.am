@@ -24,10 +24,8 @@ libportcullis_la_SOURCES =	\
 	src/intron.cc \
 	src/junction.cc \
 	src/junction_system.cc \
-	src/rule_parser.cc \
-	src/performance.cc \
-	src/ss_forest.cc \
-	src/knn.cc \
+        src/performance.cc \
+        src/knn.cc \
 	src/enn.cc \
 	src/smote.cc
 
@@ -47,16 +45,13 @@ library_include_HEADERS = \
 	$(PI)/ml/knn.hpp \
 	$(PI)/ml/enn.hpp \
 	$(PI)/ml/smote.hpp \
-	$(PI)/ml/ss_forest.hpp \
-	$(PI)/kmer.hpp \
-	$(PI)/python_exe.hpp \
-	$(PI)/python_helper.hpp \
+        $(PI)/kmer.hpp \
+        $(PI)/python_helper.hpp \
 	$(PI)/intron.hpp \
 	$(PI)/junction.hpp \
 	$(PI)/junction_system.hpp \
 	$(PI)/portcullis_fs.hpp \
-	$(PI)/seq_utils.hpp \
-	$(PI)/rule_parser.hpp
+        $(PI)/seq_utils.hpp
 
 
 libportcullis_la_CPPFLAGS = \

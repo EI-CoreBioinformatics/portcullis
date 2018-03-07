@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import json
 import re
@@ -5,6 +7,11 @@ import os
 import sys
 from pandas import DataFrame
 import pandas as pd
+
+try:
+	from .performance import Performance
+except:
+	from performance import Performance
 
 def replace_op(op):
     if op == "eq":
@@ -21,6 +28,13 @@ def replace_op(op):
         return ".isin("
     elif op == "not in":
         return ".isin("
+
+def load_genuine(genuine_file):
+	glist = []
+	with open(genuine_file) as gin:
+		for line in gin:
+			glist.append(bool(line))
+	return glist
 
 
 def json2pandas(handle, fieldnames):
@@ -85,6 +99,27 @@ def json2pandas(handle, fieldnames):
 	return "df.loc[" + newexpr + "]"
 
 
+def calcPerformance(passed, failed, invert=False):
+	tp = 0
+	tn = 0
+	fp = 0
+	fn = 0
+	passed_res = pd.value_counts(passed['genuine'].values, sort=True)
+	failed_res = pd.value_counts(failed['genuine'].values, sort=True)
+	if invert:
+		tn = passed_res['False']
+		fn = passed_res['True']
+		tp = failed_res['True']
+		fp = failed_res['False']
+	else :
+		tp = passed_res['True']
+		fp = passed_res['False']
+		tn = failed_res['False']
+		fn = failed_res['True']
+
+	return Performance(tp=tp, tn=tn, fp=fp, fn=fn)
+
+
 def create_training_sets(args):
 
 	# Load portcullis junctions into dataframe
@@ -97,6 +132,14 @@ def create_training_sets(args):
 	if len(original) < 1000:
 		raise ValueError("Not enough junctions to create training set")
 
+	if args.genuine:
+		glist = load_genuine(args.genuine)
+		if len(glist) != len(original):
+			raise ValueError("Genuine list and input junctions do not contain the same number of elements.  Genuine:" + len(glist) + "; input:" + len(original))
+
+		original["genuine"] = pd.Series(glist, index=original.index)
+
+
 	print()
 	print("Creating initial positive set for training")
 	print("------------------------------------------")
@@ -105,7 +148,11 @@ def create_training_sets(args):
 	for i, pjson in enumerate(args.pos_json, start=1):
 		print("\t".join([str(i), pjson]))
 	print()
-	print("LAYER\tPASS\tFAIL")
+	print("LAYER\t", end="")
+	if args.genuine:
+		print(Performance.longHeader())
+	else:
+		print("PASS\tFAIL")
 
 	df = original.copy()	# Required for pandas eval
 	pos_juncs = None
@@ -125,7 +172,13 @@ def create_training_sets(args):
 
 		nb_not_pos = len(original) - len(pos_juncs)
 
-		print(str(len(pos_juncs)) + "\t" + str(nb_not_pos))
+		if args.genuine:
+			not_pos_juncs = original.reset_index().merge(pos_juncs, indicator=True, how='outer').set_index('index')
+			not_pos_juncs = not_pos_juncs.loc[not_pos_juncs['_merge'] == 'left_only']
+			del not_pos_juncs['_merge']
+			print(calcPerformance(pos_juncs, not_pos_juncs).longStr())
+		else:
+			print(str(len(pos_juncs)) + "\t" + str(nb_not_pos))
 
 		if args.save_layers:
 			pos_juncs.to_csv(args.prefix + ".pos_layer_" + str(i) + ".tab", sep='\t')
@@ -161,11 +214,13 @@ def create_training_sets(args):
 	print("Positive set contains:", len(pos_juncs), "junctions")
 	print()
 	print("Saving positive set to disk ... ", end="", flush=True)
-	pos_file = args.prefix + ".pos.tab"
+	if args.genuine:
+		del pos_juncs["genuine"]
+	pos_file = args.prefix + ".pos.junctions.tab"
 	pos_juncs.to_csv(pos_file, sep='\t')
 	print("done. File saved to:", pos_file)
 
-	not_pos_juncs = original.merge(pos_juncs, indicator=True, how='outer')
+	not_pos_juncs = original.reset_index().merge(pos_juncs, indicator=True, how='outer').set_index('index')
 	not_pos_juncs = not_pos_juncs.loc[not_pos_juncs['_merge'] == 'left_only']
 	del not_pos_juncs['_merge']
 
@@ -178,7 +233,11 @@ def create_training_sets(args):
 	for i, njson in enumerate(args.neg_json, start=1):
 		print("\t".join([str(i), njson]))
 	print()
-	print("LAYER\tPASS\tFAIL")
+	print("LAYER\t", end="")
+	if args.genuine:
+		print(Performance.longHeader())
+	else:
+		print("PASS\tFAIL")
 
 	neg_juncs = []
 	df = not_pos_juncs
@@ -198,19 +257,23 @@ def create_training_sets(args):
 
 		nb_not_neg = len(df) - len(neg_juncs[-1])
 
-		print(str(len(neg_juncs[-1])) + "\t" + str(nb_not_neg))
+		if args.genuine:
+			print(calcPerformance(neg_juncs[-1], df).longStr())
+		else:
+			print(str(len(neg_juncs[-1])) + "\t" + str(nb_not_neg))
 
 		if args.save_layers:
 			neg_juncs[-1].to_csv(args.prefix + ".neg_layer_" + str(i) + ".tab", sep='\t')
 
-		remaining = df.merge(neg_juncs[-1], indicator=True, how='outer')
-		df = remaining.loc[remaining['_merge'] == 'left_only']
-		del df['_merge']
+
 
 	neg_length_limit = int(L95 * 10)
 	print("Intron size L95 =", L95, "negative set will use junctions with intron size over L95 x 10:", neg_length_limit)
 	neg_juncs.append(df.loc[df["size"] > neg_length_limit])
-	print(str(i+1) + "\t" + str(len(neg_juncs[-1])) + "\t" + str(len(df) - len(neg_juncs[-1])))
+	if args.genuine:
+		print(str(i+1) + "\t" + calcPerformance(neg_juncs[-1], df).longStr())
+	else:
+		print(str(i+1) + "\t" + str(len(neg_juncs[-1])) + "\t" + str(len(df) - len(neg_juncs[-1])))
 
 	if args.save_layers:
 		neg_juncs[-1].to_csv(args.prefix + ".neg_layer_intronsize.tab", sep='\t')
@@ -220,15 +283,18 @@ def create_training_sets(args):
 	print()
 	print("Negative set contains:", len(neg_set), "junctions")
 
+	if args.genuine:
+		del neg_set["genuine"]
+
 	print("Saving negative set to disk ... ", end="", flush=True)
-	neg_file = args.prefix + ".neg.tab"
+	neg_file = args.prefix + ".neg.junctions.tab"
 	neg_set.to_csv(neg_file, sep='\t')
 	print("done. File saved to:", neg_file)
 
 	if args.save_failed:
 		print("Creating file containing junctions not in positive or negative set ... ", end="", flush=True)
 		training = pd.concat([pos_juncs, neg_set])
-		remaining = original.merge(training, indicator=True, how='outer')
+		remaining = original.reset_index().merge(training, indicator=True, how='outer').set_index('index')
 		others = remaining.loc[remaining['_merge'] == 'left_only']
 		other_file = args.prefix + ".others.tab"
 		others.to_csv(other_file, sep='\t')
@@ -236,7 +302,7 @@ def create_training_sets(args):
 
 
 	print()
-	print("Final stats:")
+	print("Final train set stats:")
 	print(" - Positive set:", len(pos_juncs), "junctions.")
 	print(" - Negative set:", len(neg_set), "junctions.")
 	print(" - Others:", len(original) - len(pos_juncs) - len(neg_set), "junctions.")
@@ -266,14 +332,14 @@ def filter_one(args):
 
 	print("After filtering", len(passed), "junctions remain.")
 
-	passed.to_csv(args.prefix + ".passed", sep='\t')
+	passed.to_csv(args.prefix + ".passed.junctions.tab", sep='\t')
 
 	if args.save_failed:
 		if args.verbose:
 			print("Saving junctions failing filter ... ", end="", flush=True)
-		failed = original.merge(passed, indicator=True, how='outer')
+		failed = original.reset_index().merge(passed, indicator=True, how='outer').set_index('index')
 		failed.loc[failed['_merge'] == 'left_only']
-		failed.to_csv(args.prefix + ".failed", sep='\t')
+		failed.to_csv(args.prefix + ".failed.junctions.tab", sep='\t')
 		if args.verbose:
 			print("done.")
 
@@ -283,6 +349,7 @@ def main():
 	parser.add_argument("--json", help="Rules for filtering")
 	parser.add_argument("--pos_json", nargs="*", help="File containing rules for positive set filtering.  Multiple positive rule sets allowed.  Intersection of all files taken as positive set.")
 	parser.add_argument("--neg_json", nargs="*", help="File containing rules for negative set filtering.  Multiple negative rule sets allowed.  Union of all files taken as negative set")
+	parser.add_argument("--genuine", help="A simple line separated list file indicating whether each junction in the input file is genuine or not 0 means not genuine, 1 means genuine.  This is used to evaulate the performance of the rule filtering.")
 	parser.add_argument("--prefix", default="portcullis_filtered",
 						help="The prefix to apply to all portcullis junction output files.")
 	parser.add_argument("--save_layers", action='store_true', help="Whether to output the junctions at each layer")
