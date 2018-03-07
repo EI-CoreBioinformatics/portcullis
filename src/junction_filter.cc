@@ -136,6 +136,9 @@ void portcullis::JunctionFilter::filter() {
 	JunctionSystem originalJuncs(junctionFile);
 	cout << " done." << endl
 		 << "Found " << originalJuncs.getJunctions().size() << " junctions." << endl << endl;
+    // Also keep the current list of junctions
+    JunctionList currentJuncs = originalJuncs.getJunctions();
+
 	unordered_set<string> ref;
 	if (!referenceFile.empty()) {
 		cout << "Loading junctions from reference: " << referenceFile.string() << " ...";
@@ -174,12 +177,7 @@ void portcullis::JunctionFilter::filter() {
 		}
 		cout << " done." << endl << endl;
 	}
-	// Also keep the current list of junctions
-	JunctionList currentJuncs;
-	// Copy everything into passJunc to begin with
-	for (auto & j : originalJuncs.getJunctions()) {
-		currentJuncs.push_back(j);
-	}
+
 	// To be overridden if we are training
 	ModelFeatures mf;
 	mf.initGenomeMapper(prepData.getGenomeFilePath());
@@ -266,15 +264,6 @@ void portcullis::JunctionFilter::filter() {
 		mf.trainCodingPotentialModel(pos);
 		mf.trainSplicingModels(pos, neg);
 		cout << " done." << endl << endl;
-		// Balance models for training
-        // Note this doesn't seem to work.  Discarding useful data doesn't make sense
-		/*if (pos.size() > neg.size()) {
-		    undersample(pos, neg.size());
-		}
-		else if (pos.size() < neg.size()) {
-		    undersample(neg, pos.size());
-		}
-		cout << "Balanced datasets to size of smallest set: " << pos.size() << endl << endl;*/
 
 		cout << "Training Random Forest" << endl
 			 << "----------------------" << endl << endl;

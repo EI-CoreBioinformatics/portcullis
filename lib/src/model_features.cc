@@ -363,8 +363,7 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
 		uint32_t count = enn.execute(results);
 		delete[] m;
 		uint32_t pcount = 0, ncount = 0;
-		JunctionList x2;
-		for (size_t i = 0; i < trainingData->getNumRows(); i++) {
+        for (size_t i = 0; i < trainingData->getNumRows(); i++) {
 			if (trainingData->get(i, 0) == 1.0 && !results[i]) {
 				pcount++;
 			}
@@ -401,15 +400,15 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
 		delete trainingData;
 		cout << "Final training set contains " << pcount << " positive entries and " << ncount << " negative entries" << endl;
 	}
-	/*path feature_file = outputPrefix + ".features";
+    /*path feature_file = outputPrefix + ".features";
 	if (verbose) cout << "Saving feature vector to disk: " << feature_file << endl;
 
 	ofstream fout(feature_file.c_str(), std::ofstream::out);
 	fout << Intron::locationOutputHeader() << "\t" << trainingData2->getHeader() << endl;
-	for(size_t i = 0; i < x2.size(); i++) {
-	    fout << *(x2[i]->getIntron()) << "\t" << trainingData2->getRow(i) << endl;
+    for(size_t i = 0; i < x.size(); i++) {
+        fout << *(x[i]->getIntron()) << "\t" << trainingData2->getRow(i) << endl;
 	}
-	fout.close();*/
+    fout.close();*/
 	if (verbose) cout << "Initialising random forest" << endl;
 	ForestPtr f = nullptr;
 	if (probabilityMode) {
