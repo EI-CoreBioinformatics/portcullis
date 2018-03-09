@@ -5,9 +5,9 @@ bin_PROGRAMS = portcullis
 
 portcullis_noinstdir = $(top_srcdir)/src
 
-portcullis_CXXFLAGS =	\
+portcullis_CXXFLAGS =	-m64\
 			-Wno-unused-function -Wno-unused-variable -Wno-ignored-qualifiers \
-			-Wall -Wextra \
+                        -Wall \
 			@AM_CXXFLAGS@
 
 portcullis_CPPFLAGS = \

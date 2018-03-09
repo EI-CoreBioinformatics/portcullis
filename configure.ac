@@ -24,6 +24,8 @@ AC_PROG_INSTALL
 
 # Ensure there's C++11 support
 AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
+CXXFLAGS=""
+CFLAGS=""
 
 # Automake setup
 AM_INIT_AUTOMAKE([1.11 subdir-objects foreign -Wall no-define tar-ustar])
@@ -144,16 +146,13 @@ fi
 AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
 AC_SUBST([MAKE_DOCS])
 
-AM_CXXFLAGS="-g -O3"
-if test x"${UNAME_S}" == x"Linux"; then
-	AM_CXXFLAGS="-g -O3 -static-libstdc++"
-fi
+AM_CXXFLAGS="-g -O2 -std=c++11"
 AC_SUBST([AM_CXXFLAGS])
 
 AM_CPPFLAGS="${ZLIB_CPPFLAGS} ${PYTHON_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
-AM_LDFLAGS="${ZLIB_LDFLAGS} ${PYTHON_EXTRA_LDFLAGS} ${PYTHON_RPATH}"
+AM_LDFLAGS="-static-libstdc++ ${ZLIB_LDFLAGS} ${PYTHON_EXTRA_LDFLAGS} ${PYTHON_RPATH}"
 AC_SUBST([AM_LDFLAGS])
 
 AM_LIBS="${PTHREAD_CFLAGS} -lz ${RT_LIB} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS}"

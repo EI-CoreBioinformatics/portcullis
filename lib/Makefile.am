@@ -63,6 +63,7 @@ libportcullis_la_CPPFLAGS = \
 	@AM_CPPFLAGS@
 
 libportcullis_la_CXXFLAGS = \
+        -m64 \
 	-Wno-unused-function -Wno-unused-variable -Wno-ignored-qualifiers \
-	-Wall -Wextra \
+        -Wall \
 	@AM_CXXFLAGS@
