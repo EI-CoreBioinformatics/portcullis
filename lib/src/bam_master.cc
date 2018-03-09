@@ -106,10 +106,12 @@ string portcullis::bam::BamHelper::createSortBamCmd(const path& unsortedFile,
 		bool sortByName,
 		uint16_t threads,
 		const string& memory) {
+    path temp_path = sortedFile.parent_path();
+    temp_path /= sortedFile.stem().string() + "_temp";
 	return string("samtools sort -@ ") + lexical_cast<string>(threads) +
            " -m " + memory + " " + (sortByName ? "-n " : "") +
-           "-T " + sortedFile.parent_path().string() + "_temp" + " " +
-           unsortedFile.string() + " " + sortedFile.string();
+           "-T " + temp_path.string() + " -o " + sortedFile.string() + " " +
+           unsortedFile.string();
 }
 
 /**
