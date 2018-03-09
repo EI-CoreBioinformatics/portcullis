@@ -2,14 +2,6 @@
 
 if [[ $TRAVIS_OS_NAME == 'osx' ]]; then
 
-	# Install samtools
-	wget https://github.com/samtools/samtools/releases/download/1.7/samtools-1.7.tar.bz2
-	tar -xf samtools-1.7.tar.bz2
-	cd samtools-1.7
-	./configure
-	make
-	sudo make install
-	cd ..
 
 	# Download anaconda
 	wget https://repo.continuum.io/miniconda/Miniconda3-4.3.31-MacOSX-x86_64.sh -O miniconda.sh;
@@ -52,6 +44,17 @@ else
 	wget https://repo.continuum.io/miniconda/Miniconda3-4.3.31-Linux-x86_64.sh -O miniconda.sh;
 
 fi
+
+
+# Install samtools
+wget https://github.com/samtools/samtools/releases/download/1.7/samtools-1.7.tar.bz2
+tar -xf samtools-1.7.tar.bz2
+cd samtools-1.7
+./configure
+make
+sudo make install
+cd ..
+
 
 bash miniconda.sh -b -p $TRAVIS_BUILD_DIR/miniconda
 export PATH="$TRAVIS_BUILD_DIR/miniconda/bin:$PATH"
