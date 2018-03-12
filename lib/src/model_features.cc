@@ -443,7 +443,7 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
 	if (verbose) cout << "Training" << endl;
 	f->setVerboseOut(&cerr);
 	f->run(verbose);
-	cout << "OOBE: " << f->getOverallPredictionError() << endl;
+    cout << "Out of box Error (OOBE): " << f->getOverallPredictionError() << endl;
 	delete trainingData2;
 	return f;
 }

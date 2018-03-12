@@ -255,7 +255,13 @@ void portcullis::JunctionFilter::filter() {
         JunctionList pos = posSystem.getJunctions();
         JunctionList neg = negSystem.getJunctions();
 
-        // Load positive and negative set from disk
+        // Ensure positive and negative set have the genuine flag set appropriately
+        for (auto & j : pos) {
+            j->setGenuine(true);
+        }
+        for (auto & j : neg) {
+            j->setGenuine(false);
+        }
 
 		cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
 		ratio = 1.0 - ((double) pos.size() / (double) (pos.size() + neg.size()));
@@ -514,9 +520,9 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
     if (saveFeatures) {
         path feature_file = output.string() + ".features.testing";
         ofstream fout(feature_file.c_str(), std::ofstream::out);
-        fout << testingData->getHeader() << endl;
+        fout << Intron::locationOutputHeader() << "\t" << testingData->getHeader() << endl;
         for(size_t i = 0; i < testingData->getNumRows(); i++) {
-            fout << testingData->getRow(i) << endl;
+            fout << *(all[i]->getIntron()) << "\t"<< testingData->getRow(i) << endl;
         }
         fout.close();
     }
@@ -530,7 +536,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 		testingData, // Data object
 		0, // M Try (0 == use default)
 		"", // Output prefix
-		250, //DEFAULT_SELFTRAIN_TREES,    // Number of trees (will be overwritten when loading the model)
+        DEFAULT_SELFTRAIN_TREES,    // Number of trees (will be overwritten when loading the model)
 		1234567890, // Seed for random generator
 		threads, // Number of threads
 		IMP_GINI, // Importance measure
@@ -551,9 +557,9 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 	f->run(verbose);
 	// Make sure score is saved back with the junction
 	for (size_t i = 0; i < all.size(); i++) {
+        cout << f->getPredictions()[i][0] << endl;
         double score = 1.0 - f->getPredictions()[i][0];
         all[i]->setScore(score);
-        //cout << score << endl;
 	}
 	if (!genuineFile.empty() && exists(genuineFile)) {
 		vector<double> thresholds;
