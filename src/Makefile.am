@@ -42,12 +42,10 @@ portcullis_LDADD = \
 noinst_HEADERS =	prepare.hpp \
 			junction_builder.hpp \
 			junction_filter.hpp \
-			bam_filter.hpp \
-			train.hpp
+                        bam_filter.hpp
 
 portcullis_SOURCES =	prepare.cc \
 			junction_builder.cc \
 			bam_filter.cc \
-			junction_filter.cc \
-			train.cc \
+                        junction_filter.cc \
 			portcullis.cc

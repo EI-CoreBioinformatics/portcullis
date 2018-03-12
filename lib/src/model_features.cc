@@ -253,7 +253,7 @@ Data* portcullis::ml::ModelFeatures::juncs2FeatureVectors(const JunctionList& xl
 }
 
 portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const JunctionList& pos, const JunctionList& neg,
-		string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose, bool smote, bool enn) {
+        string outputPrefix, uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose, bool smote, bool enn, bool saveFeatures) {
 	// Work out number of times to duplicate negative set
 	const int N = (pos.size() / neg.size()) - 1;
 	// Duplicate pointers to negative set
@@ -400,15 +400,18 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
 		delete trainingData;
 		cout << "Final training set contains " << pcount << " positive entries and " << ncount << " negative entries" << endl;
 	}
-    /*path feature_file = outputPrefix + ".features";
-	if (verbose) cout << "Saving feature vector to disk: " << feature_file << endl;
 
-	ofstream fout(feature_file.c_str(), std::ofstream::out);
-	fout << Intron::locationOutputHeader() << "\t" << trainingData2->getHeader() << endl;
-    for(size_t i = 0; i < x.size(); i++) {
-        fout << *(x[i]->getIntron()) << "\t" << trainingData2->getRow(i) << endl;
-	}
-    fout.close();*/
+    if (saveFeatures) {
+        path feature_file = outputPrefix + ".features";
+        if (verbose) cout << "Saving feature vector to disk: " << feature_file << endl;
+        ofstream fout(feature_file.c_str(), std::ofstream::out);
+        fout << Intron::locationOutputHeader() << "\t" << trainingData2->getHeader() << endl;
+        for(size_t i = 0; i < x.size(); i++) {
+            fout << *(x[i]->getIntron()) << "\t" << trainingData2->getRow(i) << endl;
+        }
+        fout.close();
+    }
+
 	if (verbose) cout << "Initialising random forest" << endl;
 	ForestPtr f = nullptr;
 	if (probabilityMode) {

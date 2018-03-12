@@ -201,7 +201,13 @@ def create_training_sets(args):
 	L95 = pos_intron_sizes[int(len(pos_intron_sizes) * 0.95)]
 	pos_length_limit = int(L95 * 1.2)
 
+
 	print("Intron size L95 =", L95, " positive set maximum intron size limit set to L95 x 1.2:", pos_length_limit)
+
+	# Also save this to file as we'll need it back in the C program
+	with open(args.prefix + ".L95_intron_size.txt", 'w') as l95out:
+		print("Length of intron at 95th percentile", file=l95out)
+		print(L95, file=l95out)
 
 	if len(pos_juncs) > 100:
 		pos_juncs = pos_juncs.loc[pos_juncs["size"] <= pos_length_limit]

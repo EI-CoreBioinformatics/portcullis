@@ -96,6 +96,7 @@ private:
 	bool train;
 	uint16_t threads;
 	bool saveBad;
+    bool saveFeatures;
 	bool outputExonGFF;
 	bool outputIntronGFF;
 	uint32_t maxLength;
@@ -252,6 +253,14 @@ public:
 	void setSmote(bool smote) {
 		this->smote = smote;
 	}
+
+    bool doSaveFeatures() const {
+        return this->saveFeatures;
+    }
+
+    void setSaveFeatures(bool saveFeatures) {
+        this->saveFeatures = saveFeatures;
+    }
 
 	void setCanonical(const string& canonical) {
 		vector<string> modes;

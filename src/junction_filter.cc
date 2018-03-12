@@ -136,7 +136,8 @@ void portcullis::JunctionFilter::filter() {
 	JunctionSystem originalJuncs(junctionFile);
 	cout << " done." << endl
 		 << "Found " << originalJuncs.getJunctions().size() << " junctions." << endl << endl;
-    // Also keep the current list of junctions
+
+    // Also keep a shortcut to the list of junctions
     JunctionList currentJuncs = originalJuncs.getJunctions();
 
 	unordered_set<string> ref;
@@ -167,7 +168,7 @@ void portcullis::JunctionFilter::filter() {
 		Performance::loadGenuine(genuineFile, genuine);
 		if (genuine.size() != originalJuncs.getJunctions().size()) {
 			BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-									  "Genuine file contains ") + lexical_cast<string>(genuine.size()) +
+                                      "Genuine file contains ") + lexical_cast<string>(genuine.size()) +
 								  " entries.  Junction file contains " + lexical_cast<string>(originalJuncs.getJunctions().size()) +
 								  " junctions.  The number of entries in both files must be the same to assess performance."));
 		}
@@ -259,15 +260,36 @@ void portcullis::JunctionFilter::filter() {
 		cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
 		ratio = 1.0 - ((double) pos.size() / (double) (pos.size() + neg.size()));
 		cout << "Pos to neg ratio: " << ratio << endl << endl;
-		cout << "Training markov models ...";
+
+        // Ensure the L95 is set to what the python script generated.
+        std::ifstream isL95(output.string() + ".selftrain.initialset.L95_intron_size.txt");
+        bool foundL95 = false;
+        for (int i = 0; i < 2; i++) {
+            string line;
+            std::getline(isL95, line);
+            if (i == 1) {
+                mf.L95 = lexical_cast<uint32_t>(line);
+                foundL95 = true;
+                break;
+            }
+        }
+
+        // Double check we got that correctly
+        if (!foundL95) {
+            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                                  "Problem loading L95 value from disk: " + output.string() + ".L95_intron_size.txt")));
+        }
+        cout << "Confirming intron length L95 is: " << mf.L95 << endl;
+
+        cout << "Feature learning from training set ...";
 		cout.flush();
-		mf.trainCodingPotentialModel(pos);
+        mf.trainCodingPotentialModel(pos);
 		mf.trainSplicingModels(pos, neg);
 		cout << " done." << endl << endl;
 
 		cout << "Training Random Forest" << endl
 			 << "----------------------" << endl << endl;
-        shared_ptr<Forest> forest = mf.trainInstance(pos, neg, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true, smote, enn);
+        shared_ptr<Forest> forest = mf.trainInstance(pos, neg, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true, smote, enn, saveFeatures);
 		forest->saveToFile();
 		modelFile = output.string() + ".selftrain.forest";
 		cout << endl;
@@ -489,6 +511,16 @@ shared_ptr<Performance> portcullis::JunctionFilter::calcPerformance(const Juncti
 void portcullis::JunctionFilter::forestPredict(const JunctionList& all, JunctionList& pass, JunctionList& fail, ModelFeatures& mf) {
 	cout << "Creating feature vector" << endl;
 	Data* testingData = mf.juncs2FeatureVectors(all);
+    if (saveFeatures) {
+        path feature_file = output.string() + ".features.testing";
+        ofstream fout(feature_file.c_str(), std::ofstream::out);
+        fout << testingData->getHeader() << endl;
+        for(size_t i = 0; i < testingData->getNumRows(); i++) {
+            fout << testingData->getRow(i) << endl;
+        }
+        fout.close();
+    }
+
 	cout << "Initialising random forest" << endl;
 	shared_ptr<Forest> f = make_shared<ForestProbability>();
 	vector<string> catVars;
@@ -519,7 +551,9 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 	f->run(verbose);
 	// Make sure score is saved back with the junction
 	for (size_t i = 0; i < all.size(); i++) {
-		all[i]->setScore(1.0 - f->getPredictions()[i][0]);
+        double score = 1.0 - f->getPredictions()[i][0];
+        all[i]->setScore(score);
+        //cout << score << endl;
 	}
 	if (!genuineFile.empty() && exists(genuineFile)) {
 		vector<double> thresholds;
@@ -555,7 +589,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 	//threshold = calcGoodThreshold(f, all);
 	cout << "Threshold set at " << threshold << endl;
 	categorise(f, all, pass, fail, threshold);
-	delete testingData;
+    delete testingData;
 }
 
 void portcullis::JunctionFilter::categorise(shared_ptr<Forest> f, const JunctionList& all, JunctionList& pass, JunctionList& fail, double t) {
@@ -594,6 +628,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 	uint16_t threads;
 	bool no_ml;
 	bool saveBad;
+    bool save_features;
 	bool exongff;
 	bool introngff;
 	uint32_t max_length;
@@ -660,6 +695,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 	 "If you have a list of line separated boolean values in a file, indicating whether each junction in your input is genuine or not, then we can use that information here to gauge the accuracy of the predictions. This option is only useful if you have access to simulated data.")
 	("model_file,m", po::value<path>(&modelFile),
 	 "If you wish to use a custom random forest model to filter the junctions file, rather than self-training on the input dataset use this option to. See manual for more details.")
+    ("save_features", po::bool_switch(&save_features)->default_value(false),
+     "Use this flag to save features (both for training set and again for all junctions) to disk.")
 	;
 	// Positional option for the input bam file
 	po::positional_options_description p;
@@ -709,6 +746,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
 			filter.setModelFile(modelFile);
 		}
 	}
+    filter.setSaveFeatures(save_features);
 	filter.setReferenceFile(referenceFile);
 	filter.setThreshold(threshold);
 	filter.setSmote(!no_smote);
