@@ -1,5 +1,7 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
+if MAKE_PY_INSTALL
+
 install-exec-hook:
 	export PYTHONPATH=$(prefix)/lib/python$(PYTHON_VERSION)/site-packages/ && \
 	mkdir -p $(prefix)/lib/python$(PYTHON_VERSION)/site-packages/ && \
@@ -13,6 +15,23 @@ install-exec-hook:
 uninstall-hook:
 	cat junctools/install_files.txt | xargs rm -rf	
 	cat portcullis/install_files.txt | xargs rm -rf	
+
+else
+
+
+install-exec-hook:
+	mkdir -p $(prefix)/lib/python$(PYTHON_VERSION)/local/ && \
+	cp -r portcullis $(prefix)/lib/python$(PYTHON_VERSION)/local
+
+# Don't bother with junctools at this time... we should probably install this separately.
+# cp -r junctools $(prefix)/lib/python$(PYTHON_VERSION)/local
+
+uninstall-hook:
+	rm -rf $(prefix)/lib/python$(PYTHON_VERSION)/local
+
+endif
+
+
 
 EXTRA_DIST = \
 	junctools/junctools/compare.py \

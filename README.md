@@ -21,7 +21,20 @@ analyses such as gene prediction and genome annotation.
 Installation
 ------------
 
-Before installing portcullis please first confirm these dependencies are installed and configured:
+From package manager
+~~~~~~~~~~~~~~~~~~~~
+
+The simplist way to install portcullis is via package manager.  We support both brew and bioconda.  We try to keep these reciepes as up to date as possible but sometimes there can be a lag between updating the source code and ensuring the package managers have the latest reciepes.
+
+For brew type: ```brew install brewsci/bio/portcullis```
+From bioconda type: ```bioconda install portcullis```
+
+
+
+From source
+~~~~~~~~~~~
+
+Installing from source will ensure you have the latest version of the software.  If you wish to install from source please first confirm that first you have these dependencies are installed and configured:
 
  - **GCC** V4.8+
  - **autoconf** V2.53+
@@ -31,7 +44,7 @@ Before installing portcullis please first confirm these dependencies are install
  - **zlib**
  - **pthreads**
  - **samtools** V1.2+
- - **Python3** V3.5+ (including python3 development libraries and the *numpy*, *scipy*, *matplotlib*, and *sklearn* packages)
+ - **Python3** V3.5+ (including python3 development libraries and the *pandas*, *numpy*, *scipy*, *matplotlib*, and *sklearn* packages)
  - **Sphinx-doc** V1.3+ (Optional: only required for building the documentation.)
 
 With regards to python3 and sphinx we recommend installing anaconda3 as this contains all packages and programs required by portcullis.  Also, if you have installed python to a custom location please verify that the *bin* directors on the *PATH* environment variable.

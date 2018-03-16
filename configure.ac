@@ -122,6 +122,11 @@ AX_PYTHON_MODULE(pandas, [AC_MSG_ERROR([pandas not found])], ${pybin})
 #AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], ${pybin})
 #AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], ${pybin})
 
+AC_ARG_ENABLE([py-install],
+    AS_HELP_STRING([--disable-py-install], [Disable installation of python packages.  If this is disabled, portcullis will not install the python portcullis and junctools packages to <prefix>/lib/python<version>/site-packages.  The user can manually install the portcullis and junctools packages using setuptools.]), make_py_install="no", make_py_install="yes")
+
+AM_CONDITIONAL([MAKE_PY_INSTALL], [test x$make_py_install = xyes])
+AC_SUBST([MAKE_PY_INSTALL])
 
 
 # Check for sphinx executable to build documentation
@@ -152,7 +157,7 @@ AC_SUBST([AM_CXXFLAGS])
 AM_CPPFLAGS="${ZLIB_CPPFLAGS} ${PYTHON_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
-AM_LDFLAGS="-static-libstdc++ ${ZLIB_LDFLAGS} ${PYTHON_EXTRA_LDFLAGS} ${PYTHON_RPATH}"
+AM_LDFLAGS="-static-libstdc++ ${ZLIB_LDFLAGS} ${PYTHON_RPATH}"
 AC_SUBST([AM_LDFLAGS])
 
 AM_LIBS="${PTHREAD_CFLAGS} ${ZLIB_LIB} ${RT_LIB} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS}"
