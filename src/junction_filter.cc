@@ -557,7 +557,7 @@ void portcullis::JunctionFilter::forestPredict(const JunctionList& all, Junction
 	f->run(verbose);
 	// Make sure score is saved back with the junction
 	for (size_t i = 0; i < all.size(); i++) {
-        cout << f->getPredictions()[i][0] << endl;
+        //cout << f->getPredictions()[i][0] << endl;
         double score = 1.0 - f->getPredictions()[i][0];
         all[i]->setScore(score);
 	}

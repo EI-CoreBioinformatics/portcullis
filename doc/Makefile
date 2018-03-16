@@ -10,7 +10,7 @@ MKDIR_P	      = mkdir -p
 INSTALL	      = /usr/bin/install -c -m 644
 
 # Set autoconf variables
-prefix	      = /home/maplesod/temp/portcullis/wopy
+prefix	      = /usr/local
 PACKAGE_TARNAME = portcullis
 top_srcdir    = ..
 srcdir	      = .

@@ -1,3 +1,4 @@
 /portcullis.egg-info/
 /build/
 /dist/
+*.txt
