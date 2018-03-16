@@ -16,7 +16,7 @@ EXTRA_DIST = \
 	resources/spombe.gsnap.III.25K.bam \
 	test_full.sh \
 	test_substeps.sh
-	
+
 TEST_EXTENSIONS = .sh
 SH_LOG_COMPILER = $(SHELL)
 AM_SH_LOG_FLAGS =
@@ -36,13 +36,15 @@ check_unit_tests_SOURCES =	bam_tests.cpp \
 				junction_tests.cpp \
 				check_portcullis.cc
 
-check_unit_tests_CXXFLAGS = -O0 -std=c++11 @AM_CXXFLAGS@
+check_unit_tests_CXXFLAGS = -O0 @AM_CXXFLAGS@
 
 check_unit_tests_CPPFLAGS =	-isystem $(top_srcdir)/deps/htslib-1.3 \
 				-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
-				-I$(top_srcdir)/lib/include \
+				-isystem $(top_srcdir)/deps/boost/build/include \
+        			-I$(top_srcdir)/lib/include \
 				-DRESOURCESDIR=\"$(top_srcdir)/tests/resources\" \
 				-DDATADIR=\"$(datadir)\" \
+				-DPORTCULLIS_SITE_PKGS='"$(libdir)/python$(PYTHON_VERSION)/site-packages"' \
 				@AM_CPPFLAGS@
 
 check_unit_tests_LDFLAGS =	-static \
@@ -50,20 +52,26 @@ check_unit_tests_LDFLAGS =	-static \
 				-L../lib \
 				-L../deps/htslib-1.3 \
 				-L../deps/ranger-0.3.8 \
+				-L../deps/boost/build/lib \
+				-Wl,-rpath=../deps/boost/build/lib \
 				@AM_LDFLAGS@
-	
+
 check_unit_tests_LDADD =	libgtest.la \
 				-lgtest \
 				-lportcullis \
 				-lphts \
 				-lranger \
 				-lz \
-				@AM_LIBS@	
+				-lboost_timer \
+        			-lboost_chrono \
+        			-lboost_filesystem \
+        			-lboost_program_options \
+        			-lboost_system \
+				@AM_LIBS@
 
 clean-local: clean-local-check
 .PHONY: clean-local-check
 clean-local-check:
 	-rm -rf temp
-	
+
 include gtest.mk
-	

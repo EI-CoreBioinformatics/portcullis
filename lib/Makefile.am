@@ -7,7 +7,11 @@ pkgconfig_DATA = portcullis.pc
 lib_LTLIBRARIES = libportcullis.la
 
 # Library inputs
-libportcullis_la_LDFLAGS = -version-info 18:0:18
+libportcullis_la_LDFLAGS = \
+	-version-info 18:0:18 \
+	-L../deps/boost/build/lib \
+	@AM_LDFLAGS@
+
 libportcullis_la_SOURCES =	\
 	src/bam_master.cc \
 	src/bam_alignment.cc \
@@ -20,10 +24,8 @@ libportcullis_la_SOURCES =	\
 	src/intron.cc \
 	src/junction.cc \
 	src/junction_system.cc \
-	src/rule_parser.cc \
-	src/performance.cc \
-	src/ss_forest.cc \
-	src/knn.cc \
+        src/performance.cc \
+        src/knn.cc \
 	src/enn.cc \
 	src/smote.cc
 
@@ -43,22 +45,25 @@ library_include_HEADERS = \
 	$(PI)/ml/knn.hpp \
 	$(PI)/ml/enn.hpp \
 	$(PI)/ml/smote.hpp \
-	$(PI)/ml/ss_forest.hpp \
-	$(PI)/kmer.hpp \
-	$(PI)/python_exe.hpp \
+        $(PI)/kmer.hpp \
+        $(PI)/python_helper.hpp \
 	$(PI)/intron.hpp \
 	$(PI)/junction.hpp \
 	$(PI)/junction_system.hpp \
 	$(PI)/portcullis_fs.hpp \
-	$(PI)/seq_utils.hpp \
-	$(PI)/rule_parser.hpp
-	
+        $(PI)/seq_utils.hpp
+
 
 libportcullis_la_CPPFLAGS = \
-	-isystem $(top_srcdir)/deps/htslib-1.3 \
-	-isystem $(top_srcdir)/deps/ranger-0.3.8/include \
-	-isystem $(top_srcdir)/lib/include \
-	-DDATADIR=\"$(datadir)\" \
+	-I$(top_srcdir)/deps/htslib-1.3 \
+	-I$(top_srcdir)/deps/ranger-0.3.8/include \
+	-I$(top_srcdir)/deps/boost/build/include \
+  	-I$(top_srcdir)/lib/include \
+	-DDATADIR=\"$(datadir)\"
 	@AM_CPPFLAGS@
 
-libportcullis_la_CXXFLAGS = -O3 -pedantic -ansi -Wall -Wextra -std=c++11 -Wno-unused-variable @AM_CXXFLAGS@
+libportcullis_la_CXXFLAGS = \
+        -m64 \
+	-Wno-unused-function -Wno-unused-variable -Wno-ignored-qualifiers \
+        -Wall \
+	@AM_CXXFLAGS@

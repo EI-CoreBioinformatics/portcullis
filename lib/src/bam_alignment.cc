@@ -119,11 +119,8 @@ portcullis::bam::Strand portcullis::bam::BamAlignment::calcStrand() {
 				strand = isReverseStrand() ? Strand::POSITIVE : Strand::NEGATIVE;
 			}
 		}
-		else if (orientation == Orientation::F || orientation == Orientation::FF) {
+		else if (orientation == Orientation::SE || orientation == Orientation::FF) {
 			strand = isReverseStrand() ? Strand::POSITIVE : Strand::NEGATIVE;
-		}
-		else if (orientation == Orientation::R || orientation == Orientation::RR) {
-			strand = isReverseStrand() ? Strand::NEGATIVE : Strand::POSITIVE;
 		}
 	}
 	else if (strandedness == Strandedness::SECONDSTRAND) {
@@ -144,11 +141,8 @@ portcullis::bam::Strand portcullis::bam::BamAlignment::calcStrand() {
 				strand = isReverseStrand() ? Strand::NEGATIVE : Strand::POSITIVE;
 			}
 		}
-		else if (orientation == Orientation::F || orientation == Orientation::FF) {
+		else if (orientation == Orientation::SE || orientation == Orientation::FF) {
 			strand = isReverseStrand() ? Strand::NEGATIVE : Strand::POSITIVE;
-		}
-		else if (orientation == Orientation::R || orientation == Orientation::RR) {
-			strand = isReverseStrand() ? Strand::POSITIVE : Strand::NEGATIVE;
 		}
 	}
 	return strand;
@@ -291,9 +285,6 @@ bool portcullis::bam::BamAlignment::calcIfProperPair(Orientation orientation) co
 	}
 	else if (orientation == Orientation::FF) {
 		return !diffStrand && posGap;
-	}
-	else if (orientation == Orientation::RR) {
-		return !diffStrand && !posGap;
 	}
 	else {
 		return false;

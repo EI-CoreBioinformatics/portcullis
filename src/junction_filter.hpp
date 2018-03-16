@@ -57,11 +57,9 @@ using portcullis::ml::ModelFeatures;
 #include <portcullis/intron.hpp>
 #include <portcullis/portcullis_fs.hpp>
 #include <portcullis/junction_system.hpp>
-#include <portcullis/rule_parser.hpp>
 using portcullis::PortcullisFS;
 using portcullis::Intron;
 using portcullis::IntronHasher;
-using portcullis::JuncResultMap;
 
 #include "prepare.hpp"
 using portcullis::PreparedFiles;
@@ -98,6 +96,7 @@ private:
 	bool train;
 	uint16_t threads;
 	bool saveBad;
+    bool saveFeatures;
 	bool outputExonGFF;
 	bool outputIntronGFF;
 	uint32_t maxLength;
@@ -254,6 +253,14 @@ public:
 	void setSmote(bool smote) {
 		this->smote = smote;
 	}
+
+    bool doSaveFeatures() const {
+        return this->saveFeatures;
+    }
+
+    void setSaveFeatures(bool saveFeatures) {
+        this->saveFeatures = saveFeatures;
+    }
 
 	void setCanonical(const string& canonical) {
 		vector<string> modes;

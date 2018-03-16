@@ -50,8 +50,6 @@ library_include_HEADERS = \
 
 libranger_la_CPPFLAGS = \
 	-isystem $(top_srcdir)/include \
-	@AM_CPPFLAGS@ 
+	@AM_CPPFLAGS@
 
-libranger_la_CXXFLAGS = -O3 -pedantic -ansi -Wall -Wextra -std=c++11 -Wno-unused-parameter @AM_CXXFLAGS@
-
-
+libranger_la_CXXFLAGS = -Wall -Wextra -Wno-unused-parameter @AM_CXXFLAGS@

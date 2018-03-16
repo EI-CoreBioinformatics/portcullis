@@ -106,13 +106,13 @@ public:
 
 
 	ForestPtr trainInstance(const JunctionList& pos, const JunctionList& neg, string outputPrefix,
-							uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose, bool smote, bool enn);
+                            uint16_t trees, uint16_t threads, bool probabilityMode, bool verbose, bool smote, bool enn, bool saveFeatures);
 
 	void resetActiveFeatureIndex() {
 		fi = 0;
 	}
 	int16_t getNextActiveFeatureIndex() {
-		for (int16_t i = fi + 1; i < features.size(); i++) {
+        for (size_t i = fi + 1; i < features.size(); i++) {
 			if (features[i].active) {
 				fi = i;
 				return i;

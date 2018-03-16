@@ -215,7 +215,7 @@ bool portcullis::Prepare::bamSort(const path& input, const path& output) {
 		else {
 			auto_cpu_timer timer(1, " - BAM Sort - Wall time taken: %ws\n\n");
 			// Sort the BAM file by coordinate
-			string sortCmd = BamHelper::createSortBamCmd(unsortedBam, sortedBam, false, threads, "1G");
+            string sortCmd = BamHelper::createSortBamCmd(unsortedBam, sortedBam, false, threads, "2G");
 			cout << "Sorting BAM using command \"" << sortCmd << "\" ... ";
 			cout.flush();
 			int exitCode = system(sortCmd.c_str());

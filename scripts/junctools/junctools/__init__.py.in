@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+
+"""
+The junctools module is designed to perform various operations of common junction files, such as
+file conversion, set operations and comparisons
+"""
+
+_title__ = "junctools"
+__author__ = 'Daniel Mapleson'
+__license__ = 'GPLV3'
+__copyright__ = 'Copyright 2018 Daniel Mapleson'
+__version__ = '@PACKAGE_VERSION@'
+

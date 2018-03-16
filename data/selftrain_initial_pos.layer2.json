@@ -1,6 +1,6 @@
 {
     "parameters": {
-        "nb_rel_aln": {
+        "nb_rel_aln.1": {
             "operator": "gte",
             "value": 5
         },
@@ -8,7 +8,7 @@
             "operator": "gte",
             "value": 3
         },
-        "maxmmes": {
+        "maxmmes.1": {
             "operator": "gte",
             "value": 20
         },
@@ -16,7 +16,7 @@
             "operator": "gt",
             "value": 12
         },
-        "hamming5p": {
+        "hamming5p.1": {
             "operator": "gte",
             "value": 7
         },
@@ -24,7 +24,7 @@
             "operator": "gte",
             "value": 9
         },
-        "hamming3p": {
+        "hamming3p.1": {
             "operator": "gte",
             "value": 7
         },
@@ -32,7 +32,7 @@
             "operator": "gte",
             "value": 9
         },
-        "mean_mismatches": {
+        "mean_mismatches.1": {
             "operator": "lte",
             "value": 0
         },
@@ -41,5 +41,5 @@
             "value": 0.33
         }
     },
-    "expression": "( nb_rel_aln & maxmmes ) | ( nb_rel_aln.2 & maxmmes.2 & hamming5p & hamming3p & mean_mismatches.2 ) | ( hamming5p.2 & hamming3p.2 & mean_mismatches )"
+    "expression": "( nb_rel_aln.1 & maxmmes.1 ) | ( nb_rel_aln.2 & maxmmes.2 & hamming5p.1 & hamming3p.1 & mean_mismatches.2 ) | ( hamming5p.2 & hamming3p.2 & mean_mismatches.1 )"
 }

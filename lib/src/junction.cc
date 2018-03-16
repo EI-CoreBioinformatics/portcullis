@@ -62,6 +62,10 @@ const vector<string> portcullis::Junction::METRIC_NAMES({
 	"nb_ppp_aln",
 	"nb_rel_aln",
 	"rel2raw",
+	"nb_r1_pos",
+	"nb_r1_neg",
+	"nb_r2_pos",
+	"nb_r2_neg",
 	"entropy",
 	"mean_mismatches",
 	"mean_readlen",
@@ -117,29 +121,29 @@ const vector<string> portcullis::Junction::STRAND_NAMES = {
 };
 
 void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t leftStart, const uint32_t rightEnd, const string& ancLeft, const string& ancRight) {
-	
+
     if (leftStart > std::numeric_limits<int32_t>::max()) {
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 								  "Left start value is too large to process for junction: ") + i.toString()));
     }
-    
+
     if (rightEnd > std::numeric_limits<int32_t>::max()) {
         BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 								  "Right end value is too large to process for junction: ") + i.toString()));
     }
-    
-    
+
+
     int32_t leftEnd = i.start - 1;
 	int32_t rightStart = i.end + 1;
 	int32_t qLeftStart = (int32_t)leftStart;
 	int32_t qLeftEnd = leftEnd;
 	int32_t qRightStart = rightStart;
-	int32_t qRightEnd = (int32_t)rightEnd;   
-    
+	int32_t qRightEnd = (int32_t)rightEnd;
+
     string query = ba->getQuerySeq();
     if (query.size() <= 1) {
         // In this case the genome and query sequences do not correspond with one another.  Most
-        // likely the cause of this is that the query sequence is not present in the alignment.  
+        // likely the cause of this is that the query sequence is not present in the alignment.
         // In which case just assume everything is fine.
 		totalUpstreamMismatches = 0;
         totalDownstreamMismatches = 0;
@@ -153,11 +157,11 @@ void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t l
         mmes = min(totalUpstreamMatches, totalDownstreamMatches);
     }
     else {
-	
+
         string qAnchorLeft = ba->getPaddedQuerySeq(query, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
         string qAnchorRight = ba->getPaddedQuerySeq(query, rightStart, rightEnd, qRightStart, qRightEnd, false);
         string gAnchorLeft = ba->getPaddedGenomeSeq(ancLeft, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
-        string gAnchorRight = ba->getPaddedGenomeSeq(ancRight, rightStart, rightEnd, qRightStart, qRightEnd, false);    
+        string gAnchorRight = ba->getPaddedGenomeSeq(ancRight, rightStart, rightEnd, qRightStart, qRightEnd, false);
         if (qAnchorLeft.size() != gAnchorLeft.size() || qAnchorLeft.empty()) {
             BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
                                       "Left anchor region for query and genome are not the same size.")
@@ -286,6 +290,10 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
 	nbAlBamProperlyPaired = 0;
 	nbAlPortcullisProperlyPaired = 0;
 	nbAlReliable = 0;
+	nbAlR1Pos = 0;
+	nbAlR1Neg = 0;
+	nbAlR2Pos = 0;
+	nbAlR2Neg = 0;
 	entropy = 0;
 	meanMismatches = 0;
 	meanReadLength = 0;
@@ -344,6 +352,10 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 	nbAlBamProperlyPaired = j.nbAlBamProperlyPaired;
 	nbAlPortcullisProperlyPaired = j.nbAlPortcullisProperlyPaired;
 	nbAlReliable = j.nbAlReliable;
+	nbAlR1Pos = j.nbAlR1Pos;
+	nbAlR1Neg = j.nbAlR1Neg;
+	nbAlR2Pos = j.nbAlR2Pos;
+	nbAlR2Neg = j.nbAlR2Neg;
 	entropy = j.entropy;
 	meanMismatches = j.meanMismatches;
 	meanReadLength = j.meanReadLength;
@@ -404,6 +416,22 @@ void portcullis::Junction::addJunctionAlignment(const BamAlignment& al) {
 	this->alignments.push_back(aip);
 	this->alignmentCodes.push_back(aip->nameCode);
 	this->nbAlRaw = this->alignments.size();
+	if (al.isFirstMate()) {
+		if (!al.isReverseStrand()) {
+			this->nbAlR1Pos++;
+		}
+		else {
+			this->nbAlR1Neg++;
+		}
+	}
+	else {
+		if (!al.isReverseStrand()) {
+			this->nbAlR2Pos++;
+		}
+		else {
+			this->nbAlR2Neg++;
+		}
+	}
 	if (al.getNbJunctionsInRead() > 1) {
 		this->nbAlMultiplySpliced++;
 	}
@@ -943,6 +971,7 @@ void portcullis::Junction::outputDescription(std::ostream &strm, string delimite
 		 << "# Properly paired (bam flag): " << nbAlBamProperlyPaired << delimiter
 		 << "# Properly paired (portcullis): " << nbAlPortcullisProperlyPaired << delimiter
 		 << "# Reliable (MapQ >=" << MAP_QUALITY_THRESHOLD << " + portcullis properly paired) Alignments: " << nbAlReliable << delimiter
+		 << "# R1 (+" << nbAlR1Pos << ",-" << nbAlR1Neg << "); # R2 (+" << nbAlR2Pos << ",-" << nbAlR2Neg << ")" << delimiter
 		 << "*** RNA seq derived Junction stats ***" << delimiter
 		 << "Entropy: " << entropy << delimiter
 		 << "Mean mismatches: " << meanMismatches << delimiter
@@ -1173,6 +1202,11 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
 	j->setNbPortcullisProperlyPairedAlignments(lexical_cast<uint32_t>(parts[i++]));
 	j->setNbReliableAlignments(lexical_cast<uint32_t>(parts[i++]));
 	i++; // reliable2raw ratio not required
+	j->setNbR1PosAlignments(lexical_cast<uint32_t>(parts[i++]));
+	j->setNbR1NegAlignments(lexical_cast<uint32_t>(parts[i++]));
+	j->setNbR2PosAlignments(lexical_cast<uint32_t>(parts[i++]));
+	j->setNbR2NegAlignments(lexical_cast<uint32_t>(parts[i++]));
+
 	// RNAseq derived Junction stats
 	j->setEntropy(lexical_cast<double>(parts[i++]));
 	j->setMeanMismatches(lexical_cast<double>(parts[i++]));

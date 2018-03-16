@@ -1,0 +1,30 @@
+# coding: utf-8
+
+"""Setup file for PyPI"""
+
+from setuptools import setup, find_packages
+from codecs import open
+from os import path
+import glob
+import re
+import sys
+
+if sys.version_info.major != 3:
+    raise EnvironmentError("""portcullis is a python module that requires python3,
+    and is not compatible with python2.""")
+
+setup(
+    name="portcullis",
+    version="@PACKAGE_VERSION@",
+    description="Supplementary python scripts for assisting portcullis",
+    url="https://github.com/maplesond/portcullis",
+    author="Daniel Mapleson",
+    author_email="daniel.mapleson@earlham.ac.uk",
+    license="GPLV3",
+    zip_safe=False,
+    keywords="rna-seq annotation genomics transcriptomics",
+    packages=find_packages(),
+    # scripts=glob.glob("bin/*.py") + glob.glob("util/*.py"),
+    install_requires=["pandas"],
+    #test_suite="junctools.test"
+)

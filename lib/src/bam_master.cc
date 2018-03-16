@@ -28,10 +28,8 @@ using std::string;
 using std::vector;
 using std::stringstream;
 
-#include <boost/exception/all.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/filesystem/operations.hpp>
 using boost::filesystem::exists;
 using boost::filesystem::path;
@@ -108,9 +106,12 @@ string portcullis::bam::BamHelper::createSortBamCmd(const path& unsortedFile,
 		bool sortByName,
 		uint16_t threads,
 		const string& memory) {
+    path temp_path = sortedFile.parent_path();
+    temp_path /= sortedFile.stem().string() + "_temp";
 	return string("samtools sort -@ ") + lexical_cast<string>(threads) +
-		   " -m " + memory + " " + (sortByName ? "-n " : "") + unsortedFile.string() +
-		   " " + sortedFile.string();
+           " -m " + memory + " " + (sortByName ? "-n " : "") +
+           "-T " + temp_path.string() + " -o " + sortedFile.string() + " " +
+           unsortedFile.string();
 }
 
 /**

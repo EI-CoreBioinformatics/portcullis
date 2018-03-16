@@ -139,6 +139,8 @@ public:
 
 	void calcJunctionStats();
 
+	std::pair<Orientation, Strandedness> determineStrandedness(bool verbose) const;
+
 	void sort();
 
 	void index();

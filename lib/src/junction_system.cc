@@ -20,6 +20,7 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 using std::cout;
 using std::endl;
@@ -443,5 +444,111 @@ JunctionPtr portcullis::JunctionSystem::getJunction(Intron& intron) const {
 	}
 }
 
-string portcullis::JunctionSystem::version = "";
+std::pair<Orientation, Strandedness> portcullis::JunctionSystem::determineStrandedness(bool verbose) const {
+	uint32_t tot_r1_pos_when_ss_pos = 0;
+	uint32_t tot_r1_neg_when_ss_pos = 0;
+	uint32_t tot_r2_pos_when_ss_pos = 0;
+	uint32_t tot_r2_neg_when_ss_pos = 0;
+	uint32_t tot_r1_pos_when_ss_neg = 0;
+	uint32_t tot_r1_neg_when_ss_neg = 0;
+	uint32_t tot_r2_pos_when_ss_neg = 0;
+	uint32_t tot_r2_neg_when_ss_neg = 0;
 
+	for (JunctionPtr j : junctionList) {
+		if (j->getSpliceSiteStrand() == Strand::POSITIVE) {
+			tot_r1_pos_when_ss_pos += j->getNbR1PosAlignments();
+			tot_r1_neg_when_ss_pos += j->getNbR1NegAlignments();
+			tot_r2_pos_when_ss_pos += j->getNbR2PosAlignments();
+			tot_r2_neg_when_ss_pos += j->getNbR2NegAlignments();
+		}
+		else if (j->getSpliceSiteStrand() == Strand::NEGATIVE) {
+			tot_r1_pos_when_ss_neg += j->getNbR1PosAlignments();
+			tot_r1_neg_when_ss_neg += j->getNbR1NegAlignments();
+			tot_r2_pos_when_ss_neg += j->getNbR2PosAlignments();
+			tot_r2_neg_when_ss_neg += j->getNbR2NegAlignments();
+		}
+	}
+
+	double posr1 = ((double)((int32_t)tot_r1_pos_when_ss_pos - (int32_t)tot_r1_neg_when_ss_pos)) / ((double)(tot_r1_pos_when_ss_pos + tot_r1_neg_when_ss_pos));
+	double negr1 = ((double)((int32_t)tot_r1_neg_when_ss_neg - (int32_t)tot_r1_pos_when_ss_neg)) / ((double)(tot_r1_pos_when_ss_neg + tot_r1_neg_when_ss_neg));
+	double posr2 = ((double)((int32_t)tot_r2_pos_when_ss_pos - (int32_t)tot_r2_neg_when_ss_pos)) / ((double)(tot_r2_pos_when_ss_pos + tot_r2_neg_when_ss_pos));
+	double negr2 = ((double)((int32_t)tot_r2_neg_when_ss_neg - (int32_t)tot_r2_pos_when_ss_neg)) / ((double)(tot_r2_pos_when_ss_neg + tot_r2_neg_when_ss_neg));
+
+	uint32_t totalr1 = tot_r1_pos_when_ss_pos + tot_r1_neg_when_ss_pos + tot_r1_pos_when_ss_neg + tot_r1_neg_when_ss_neg;
+	uint32_t totalr2 = tot_r2_pos_when_ss_pos + tot_r2_neg_when_ss_pos + tot_r2_pos_when_ss_neg + tot_r2_neg_when_ss_neg;
+
+	if (verbose) {
+		cout << "Strand Analysis" << endl
+			 << "---------------" << endl << endl;
+		cout << "Total Alignments:" << endl
+			 << " - R1:" << totalr1 << endl
+			 << " - R2:" << totalr2 << endl;
+		cout << "Alignment counts when splice site suggests +ve strand:" << endl
+			 << " - R1+: " << tot_r1_pos_when_ss_pos << endl
+			 << " - R1-: " << tot_r1_neg_when_ss_pos << endl
+			 << " - R2+: " << tot_r2_pos_when_ss_pos << endl
+			 << " - R2-: " << tot_r2_neg_when_ss_pos << endl
+			 << "Alignment counts when splice site suggests -ve strand:" << endl
+	 		 << " - R1+: " << tot_r1_pos_when_ss_neg << endl
+	 		 << " - R1-: " << tot_r1_neg_when_ss_neg << endl
+	 		 << " - R2+: " << tot_r2_pos_when_ss_neg << endl
+	 		 << " - R2-: " << tot_r2_neg_when_ss_neg << endl;
+		cout << "Correlation of read strand to splice site strand (1.0 = complete agreement, -1.0 = complete disagreement):" << endl
+		  	 << " - R1+: " << posr1 << endl
+			 << " - R1-: " << negr1 << endl
+		  	 << " - R2+: " << posr2 << endl
+		  	 << " - R2-: " << negr2 << endl << endl;
+    }
+
+	// If none of the following scenarios hold true then we don't know what protocol was used.
+	// Note that these scenarios all assume either FR or FF paired read orientation or single end,
+	// which is what is likely from.
+	Strandedness s = Strandedness::UNKNOWN;
+	Orientation o = Orientation::UNKNOWN;
+	if (totalr1 == 0 && totalr2 == 0) {
+		// No alignments so no way of knowing.
+	}
+	else if (totalr2 == 0) {
+		// We are single end for sure
+		o = Orientation::SE;
+		if (posr1 > 0.5 && negr1 > 0.5) {
+			// R1 is in agreement with transcript strand
+			s = Strandedness::SECONDSTRAND;
+		}
+		else if (posr1 < -0.5 && negr1 < -0.5 ) {
+			// R1 is in disagreement with transcript strand
+			s = Strandedness::FIRSTSTRAND;
+		}
+	}
+	else {
+		// We are paired end
+		// WARNING: Assume FR for now... currently we have no way of checking if the orientation is RF from this point
+		o = Orientation::FR;
+		if (posr1 > 0.5 && negr1 > 0.5 && posr2 < -0.5 && negr2 < -0.5) {
+			// R1 is in agreement with transcript strand
+			s = Strandedness::SECONDSTRAND;
+		}
+		else if (posr1 < -0.5 && negr1 < -0.5 && posr2 > 0.5 && negr2 > 0.5) {
+			// R1 is in disagreement with transcript strand
+			s = Strandedness::FIRSTSTRAND;
+		}
+		else if (posr1 > 0.5 && negr1 > 0.5 && posr2 > 0.5 && negr2 > 0.5) {
+			s = Strandedness::SECONDSTRAND;
+			o = Orientation::FF;
+		}
+		else if (posr1 < -0.5 && negr1 < -0.5 && posr2 < -0.5 && negr2 < -0.5) {
+			s = Strandedness::FIRSTSTRAND;
+			o = Orientation::FF;
+		}
+	}
+
+	// This works for single or paired end
+	if (abs(posr1) <= 0.5 && abs(negr1) <= 0.5 && abs(posr2) <= 0.5 && abs(negr2) <= 0.5) {
+		// Total mix (i.e. ratio's of around 0) for both R1 and R2 on either strand.
+		// All R2 ratios will be 0 anyway if SE
+		s = Strandedness::UNSTRANDED;
+	}
+	return std::make_pair(o, s);
+}
+
+string portcullis::JunctionSystem::version = "";

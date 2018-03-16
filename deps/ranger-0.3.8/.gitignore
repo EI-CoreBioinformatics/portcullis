@@ -8,3 +8,4 @@ config.*
 /Makefile
 /libtool
 *.la
+/ranger.pc

@@ -1,6 +1,6 @@
 {
     "parameters": {
-        "nb_reads": {
+        "nb_raw_aln": {
             "operator": "gte",
             "value": 1000
         },
@@ -8,15 +8,15 @@
             "operator": "gt",
             "value": 20
         },
-        "ss_type": {
+        "canonical_ss": {
             "operator": "in",
             "value": ["C"]
         },
-        "intron_size.1": {
+        "size.1": {
             "operator": "gte",
             "value": 1000
         },
-        "intron_size.2": {
+        "size.2": {
             "operator": "lte",
             "value": 10000
         },
@@ -25,9 +25,9 @@
             "value": 2.0
         },
         "refname": {
-            "operator": "not_in",
+            "operator": "not in",
             "value": ["I"]
         }
     },
-    "expression": "refname & ss_type & intron_size.2 & (nb_reads | (entropy & coverage & intron_size.1))"
+    "expression": "refname & canonical_ss & size.2 & (nb_raw_aln | (entropy & coverage & size.1))"
 }

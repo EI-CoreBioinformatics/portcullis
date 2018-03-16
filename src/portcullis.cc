@@ -49,12 +49,10 @@ using portcullis::PortcullisFS;
 #include "prepare.hpp"
 #include "junction_filter.hpp"
 #include "bam_filter.hpp"
-#include "train.hpp"
 using portcullis::JunctionBuilder;
 using portcullis::Prepare;
 using portcullis::JunctionFilter;
 using portcullis::BamFilter;
-using portcullis::Train;
 
 typedef boost::error_info<struct PortcullisError, string> PortcullisErrorInfo;
 struct PortcullisException: virtual boost::exception, virtual std::exception { };
@@ -72,8 +70,7 @@ enum class Mode {
 	JUNC,
 	FILTER,
 	BAM_FILT,
-	FULL,
-	TRAIN
+    FULL
 };
 
 Mode parseMode(string mode) {
@@ -93,10 +90,7 @@ Mode parseMode(string mode) {
 	else if (upperMode == string("FULL")) {
 		return Mode::FULL;
 	}
-	else if (upperMode == string("TRAIN")) {
-		return Mode::TRAIN;
-	}
-	else {
+    else {
 		BOOST_THROW_EXCEPTION(PortcullisException() << PortcullisErrorInfo(string(
 								  "Could not recognise mode string: ") + mode));
 	}
@@ -468,10 +462,7 @@ int main(int argc, char *argv[]) {
 		else if (mode == Mode::BAM_FILT) {
 			BamFilter::main(modeArgC, modeArgV);
 		}
-		else if (mode == Mode::TRAIN) {
-			Train::main(modeArgC, modeArgV);
-		}
-		else if (mode == Mode::FULL) {
+        else if (mode == Mode::FULL) {
 			mainFull(modeArgC, modeArgV);
 		}
 		else {
