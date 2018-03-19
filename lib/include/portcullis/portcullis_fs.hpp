@@ -150,8 +150,13 @@ public:
             this->scriptsDir = PORTCULLIS_SITE_PKGS;
             this->scriptsDir /= string("portcullis-") + PACKAGE_VERSION + "-py" + HAVE_PYTHON + ".egg";
             if (!exists(this->scriptsDir)) {
-                BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-                    "Could not find Portcullis scripts at the expected installed location: ") + this->scriptsDir.c_str()));
+                // Do a check to see if we can find the local version first (possibly a brew or conda install)
+                this->scriptsDir = path(PORTCULLIS_SITE_PKGS).parent_path();
+                this->scriptsDir /= "local";
+                if (!exists(this->scriptsDir)) {
+                    BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
+                        "Could not find Portcullis scripts at the expected installed location: ") + this->scriptsDir.c_str()));
+                }
             }
 #else
             this->scriptsDir = canonicalExe.parent_path();
