@@ -21,18 +21,17 @@ analyses such as gene prediction and genome annotation.
 Installation
 ------------
 
-From package manager
-~~~~~~~~~~~~~~~~~~~~
+**From package manager**
 
 The simplist way to install portcullis is via package manager.  We support both brew and bioconda.  We try to keep these reciepes as up to date as possible but sometimes there can be a lag between updating the source code and ensuring the package managers have the latest reciepes.
 
 For brew type: ```brew install brewsci/bio/portcullis```
-From bioconda type: ```bioconda install portcullis```
+
+For bioconda type: ```conda install portcullis```
 
 
 
-From source
-~~~~~~~~~~~
+**From source**
 
 Installing from source will ensure you have the latest version of the software.  If you wish to install from source please first confirm that first you have these dependencies are installed and configured:
 
