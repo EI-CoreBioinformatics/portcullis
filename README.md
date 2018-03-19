@@ -27,7 +27,7 @@ The simplist way to install portcullis is via package manager.  We support both 
 
 For brew type: ```brew install brewsci/bio/portcullis```
 
-For bioconda type: ```bioconda install portcullis```
+For bioconda type: ```conda install portcullis```
 
 
 
