@@ -38,7 +38,7 @@ using bfs::path;
 #include <portcullis/bam/genome_mapper.hpp>
 using namespace portcullis::bam;
 
-        
+/**        
 TEST(bam, sort) {
     
     string unsortedBam = RESOURCESDIR "/unsorted.bam";
@@ -56,7 +56,7 @@ TEST(bam, sort) {
     // Check the sorted bam file exists
     EXPECT_EQ(cmd, correct);
 }
-
+**/
 
 TEST(bam, merge) {
     
