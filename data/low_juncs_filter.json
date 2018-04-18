@@ -1,0 +1,21 @@
+{
+    "parameters": {
+        "maxmmes": {
+            "operator": "gte",
+            "value": 10
+        },
+        "hamming5p": {
+            "operator": "gte",
+            "value": 4
+        },
+        "hamming3p": {
+            "operator": "gte",
+            "value": 4
+        },
+		"canonical_ss": {
+			"operator": "in",
+			"value": ["C", "S"]
+		}
+    },
+    "expression": "maxmmes & hamming5p & hamming3p & canonical_ss"
+}

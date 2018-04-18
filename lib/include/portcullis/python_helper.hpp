@@ -101,6 +101,9 @@ private:
         if (this->verbose) {
             cout << "Python interpretter initialised" << endl << endl;
         }
+#else
+        BOOST_THROW_EXCEPTION(PortcullisPythonException() << PortcullisPythonErrorInfo(string(
+                "Portcullis not configured to use Python.  Please check your configuration and rebuild.")));
 #endif
     }
 
@@ -169,6 +172,9 @@ public:
         if (this->verbose) {
             cout << endl << "Python script \"" << script_name << "\" executed successfully" << endl;
         }
+#else
+        BOOST_THROW_EXCEPTION(PortcullisPythonException() << PortcullisPythonErrorInfo(string(
+                "Portcullis not configured to use Python.  Please check your configuration and rebuild.")));
 #endif
     }
 
