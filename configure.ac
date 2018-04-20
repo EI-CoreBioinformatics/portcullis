@@ -116,7 +116,7 @@ fi
 pybin=python${PYTHON_VERSION}
 
 # Check for required python libraries
-AX_PYTHON_MODULE(pandas, [AC_MSG_ERROR([pandas not found])], ${pybin})
+AX_PYTHON_MODULE(pandas, 1, ${pybin})
 #AX_PYTHON_MODULE(matplotlib, [AC_MSG_ERROR([matplotlib not found])], ${pybin})
 #AX_PYTHON_MODULE(scipy, [AC_MSG_ERROR([scipy not found])], ${pybin})
 #AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], ${pybin})

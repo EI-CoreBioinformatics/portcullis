@@ -43,7 +43,7 @@ Installing from source will ensure you have the latest version of the software. 
  - **zlib**
  - **pthreads**
  - **samtools** V1.2+
- - **Python3** V3.5+ (including python3 development libraries and the *pandas*, *numpy*, *scipy*, *matplotlib*, and *sklearn* packages)
+ - **Python3** V3.5+ (including python3 development libraries and the *pandas* packages)
  - **Sphinx-doc** V1.3+ (Optional: only required for building the documentation.)
 
 With regards to python3 and sphinx we recommend installing anaconda3 as this contains all packages and programs required by portcullis.  Also, if you have installed python to a custom location please verify that the *bin* directors on the *PATH* environment variable.
