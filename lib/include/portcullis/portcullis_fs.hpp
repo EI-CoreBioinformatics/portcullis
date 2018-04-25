@@ -102,13 +102,14 @@ public:
 			canonicalExe = do_readlink(); // Assume linux
 #endif
 			isOnPath = true;
-			dataDir = path(DATADIR "/portcullis/");
+			dataDir = path(DATADIR "/portcullis");
 		}
 		// Check to see if scripts are adjacent to exe first
 		path root = canonicalExe.parent_path();
 		path kda(root);
 		if (kda.leaf() == "bin") { // Usually this is a good indication of whether portcullis has been installed
-			dataDir = path(DATADIR "/portcullis/");
+			dataDir = path(DATADIR "/portcullis");
+			scriptsDir = path(DATADIR "/portcullis/scripts");
 		}
 		else {
 			// If we are here then we are not running from an installed location,
@@ -132,6 +133,33 @@ public:
 					}
 				}
 			}
+	        // If we are here then we are not running from an installed location,
+    	    // we are running from the source tree.
+        	// Not 100% sure how far back we need to go (depends on whether using KAT exe or tests)
+            // so try 2, 3 and 4 levels.
+	        this->scriptsDir = canonicalExe.parent_path().parent_path();
+    	    this->scriptsDir /= "scripts";
+  	        if (!exists(this->scriptsDir)) {
+                this->scriptsDir = canonicalExe.parent_path().parent_path().parent_path();
+   	            this->scriptsDir /= "scripts";
+
+   	            if (!exists(this->scriptsDir)) {
+       	            this->scriptsDir = canonicalExe.parent_path().parent_path().parent_path().parent_path();
+           	        this->scriptsDir /= "scripts";
+
+   	                if (!exists(this->scriptsDir)) {
+       	                BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
+           	                "Could not find suitable directory containing Portcullis scripts relative to provided exe: ") + canonicalExe.c_str()));
+               	    }
+                }
+   	        }
+       	    this->scriptsDir /= "portcullis";
+		}
+        path prf = this->scriptsDir;
+        prf /= "portcullis/rule_filter.py";
+   	    if (!exists(prf)) {
+       		BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
+           	        "Could not find suitable directory containing Portcullis scripts derived from relative path of executable")));
 		}
 		path df = dataDir;
 		df /= "default_filter.json";
@@ -140,75 +168,6 @@ public:
 									  "Found the data directory where expected") + dataDir.string() +
 								  ". However, could not find the \"default_filter.json\" configuraton file inside."));
 		}
-        // Check to see if scripts are adjacent to exe first
-        path prf(canonicalExe.parent_path());
-        prf /= "junctools";
-        if (exists(prf)) {
-#ifdef HAVE_PYTHON
-            // Looks like we are running from an installed location.  Don't try to use then
-            // scripts from here.  We will try the PORTCULLIS_SITE_PKGS PATH instead.
-            this->scriptsDir = PORTCULLIS_SITE_PKGS;
-            this->scriptsDir /= string("portcullis-") + PACKAGE_VERSION + "-py" + HAVE_PYTHON + ".egg";
-            if (!exists(this->scriptsDir)) {
-                // Do a check to see if we can find the local version first (possibly a brew or conda install)
-                this->scriptsDir = path(PORTCULLIS_SITE_PKGS).parent_path();
-                this->scriptsDir /= "local";
-                if (!exists(this->scriptsDir)) {
-                    BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-                        "Could not find Portcullis scripts at the expected installed location: ") + this->scriptsDir.c_str()));
-                }
-            }
-#else
-            this->scriptsDir = canonicalExe.parent_path();
-#endif
-        }
-        else {
-			path pcc(canonicalExe.parent_path());
-			if (exists(pcc)) {
-	            // If we are here then we are not running from an installed location,
-    	        // we are running from the source tree.
-        	    // Not 100% sure how far back we need to go (depends on whether using KAT exe or tests)
-            	// so try 2, 3 and 4 levels.
-	            this->scriptsDir = canonicalExe.parent_path().parent_path();
-    	        this->scriptsDir /= "scripts";
-	
-    	        if (!exists(this->scriptsDir)) {
-	                this->scriptsDir = canonicalExe.parent_path().parent_path().parent_path();
-    	            this->scriptsDir /= "scripts";
-	
-    	            if (!exists(this->scriptsDir)) {
-        	            this->scriptsDir = canonicalExe.parent_path().parent_path().parent_path().parent_path();
-            	        this->scriptsDir /= "scripts";
-	
-    	                if (!exists(this->scriptsDir)) {
-        	                BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-            	                "Could not find suitable directory containing Portcullis scripts relative to provided exe: ") + canonicalExe.c_str()));
-                	    }
-	                }
-    	        }
-        	    this->scriptsDir /= "portcullis";
-            	prf = this->scriptsDir;
-	            prf /= "setup.py";
-    	        if (!exists(prf)) {
-        	       BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-            	        "Could not find suitable directory containing Portcullis scripts derived from relative path of executable")));
-				}
-            }
-			else {
-
-#ifdef HAVE_PYTHON
-					// Assume user install portcullis but without installing python modules alongside
-                    this->scriptsDir = path(PORTCULLIS_SITE_PKGS).parent_path();
-                    this->scriptsDir /= "local";
-                    if (!exists(this->scriptsDir)) {
-                        BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-                            "Could not find Portcullis scripts at the expected installed location: ") + this->scriptsDir.c_str()));
-                    }
-#else
-                    this->scriptsDir = canonicalExe.parent_path();
-#endif
-			}
-        }
 
     }
 

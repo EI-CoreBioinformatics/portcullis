@@ -21,6 +21,7 @@ dist_noinst_SCRIPTS = autogen.sh antigen.sh build_boost.sh
 configdir = $(datadir)/portcullis
 dist_config_DATA = \
 		    data/default_filter.json \
+		    data/low_juncs_filter.json \
 		    data/selftrain_initial_neg.layer1.json \
 		    data/selftrain_initial_neg.layer2.json \
 		    data/selftrain_initial_neg.layer3.json \

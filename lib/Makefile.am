@@ -70,7 +70,7 @@ libportcullis_la_CPPFLAGS = \
 	-I$(top_srcdir)/deps/ranger-0.3.8/include \
 	-I$(top_srcdir)/deps/boost/build/include \
   	-I$(top_srcdir)/lib/include \
-	-DDATADIR=\"$(datadir)\"
+	-DDATADIR=\"$(datadir)\" \
 	@AM_CPPFLAGS@
 
 libportcullis_la_CXXFLAGS = \

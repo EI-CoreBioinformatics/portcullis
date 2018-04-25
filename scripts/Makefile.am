@@ -1,33 +1,61 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
+if MAKE_PY_NOINSTALL
+
+install-exec-hook:
+	mkdir -p $(datadir)/portcullis/scripts/portcullis
+	cp -r portcullis/portcullis/*.py $(datadir)/portcullis/scripts/portcullis 
+
+
+uninstall-hook:
+	rm -rf $(datarootdir)/portcullis/scripts
+
+endif
+
 if MAKE_PY_INSTALL
 
 install-exec-hook:
-	export PYTHONPATH=$(prefix)/lib/python$(PYTHON_VERSION)/site-packages/ && \
-	mkdir -p $(prefix)/lib/python$(PYTHON_VERSION)/site-packages/ && \
+	mkdir -p $(datadir)/portcullis/scripts/portcullis
+	cp -r portcullis/portcullis/*.py $(datadir)/portcullis/scripts/portcullis
+	cd junctools && \
+	$(PYTHON_INT_PATH) setup.py install --record install_files.txt && \
+	cd ../portcullis && \
+	$(PYTHON_INT_PATH) setup.py install --record install_files.txt && \
+	cd ..
+
+
+uninstall-hook:
+	rm -rf $(datadir)/portcullis/scripts
+	cd junctools && \
+	cat install_files.txt | xargs rm -rf && \
+	cd ../portcullis && \
+	cat install_files.txt | xargs rm -rf && \
+	cd ..
+
+endif
+
+if MAKE_PY_INSTALL_CUSTOM
+
+
+install-exec-hook:
+	mkdir -p $(datadir)/portcullis/scripts/portcullis
+	cp -r portcullis/portcullis/*.py $(datadir)/portcullis/scripts/portcullis
+	mkdir -p $(prefix)/lib/python$(PYTHON_VERSION)/site-packages
+	export PYTHONPATH=$(prefix)/lib/python$(PYTHON_VERSION)/site-packages && \
 	cd junctools && \
 	python3 setup.py install --prefix=$(prefix) --record install_files.txt && \
 	cd ../portcullis && \
 	python3 setup.py install --prefix=$(prefix) --record install_files.txt && \
 	cd ..
 
-
 uninstall-hook:
-	cat junctools/install_files.txt | xargs rm -rf	
-	cat portcullis/install_files.txt | xargs rm -rf	
+	rm -rf $(datadir)/portcullis/scripts
+	cd junctools && \
+	cat install_files.txt | xargs rm -rf && \
+	cd ../portcullis && \
+	cat install_files.txt | xargs rm -rf && \
+	cd ..
 
-else
-
-
-install-exec-hook:
-	mkdir -p $(prefix)/lib/python$(PYTHON_VERSION)/local/ && \
-	cp -r portcullis $(prefix)/lib/python$(PYTHON_VERSION)/local
-
-# Don't bother with junctools at this time... we should probably install this separately.
-# cp -r junctools $(prefix)/lib/python$(PYTHON_VERSION)/local
-
-uninstall-hook:
-	rm -rf $(prefix)/lib/python$(PYTHON_VERSION)/local
 
 endif
 

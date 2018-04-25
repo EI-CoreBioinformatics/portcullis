@@ -46,7 +46,6 @@ check_unit_tests_CPPFLAGS =	\
         		-I$(top_srcdir)/lib/include \
 				-DRESOURCESDIR=\"$(top_srcdir)/tests/resources\" \
 				-DDATADIR=\"$(datadir)\" \
-				-DPORTCULLIS_SITE_PKGS='"$(libdir)/python$(PYTHON_VERSION)/site-packages"' \
 				@AM_CPPFLAGS@
 
 check_unit_tests_LDFLAGS = \

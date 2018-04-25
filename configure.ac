@@ -125,8 +125,28 @@ AX_PYTHON_MODULE(pandas, 1, ${pybin})
 AC_ARG_ENABLE([py-install],
     AS_HELP_STRING([--disable-py-install], [Disable installation of python packages.  If this is disabled, portcullis will not install the python portcullis and junctools packages to <prefix>/lib/python<version>/site-packages.  The user can manually install the portcullis and junctools packages using setuptools.]), make_py_install="no", make_py_install="yes")
 
+
+# This logic is a bit messy and probably OTT but it seems to work.
+# Basically if the user provides a prefix then we want to install the python libraries there,
+# if not the install the the python site packages location determined by whatever python3 instance
+# was found on the PATH.  So not necessarily at the default installation site: /usr/local/...
+make_py_install_custom="no"	
+if [[ "${make_pykat_install}" == "yes" ]]; then
+	if [[ -n "${prefix}" ]]; then
+		if [[ "${prefix}" != "NONE" ]]; then
+			if [[ "${prefix}" != "/usr/local" ]]; then
+				if [[ "${prefix}" != "/usr" ]]; then
+					make_py_install_custom="yes"
+					make_py_install="no"
+				fi
+			fi
+		fi
+	fi
+fi
+
 AM_CONDITIONAL([MAKE_PY_INSTALL], [test x$make_py_install = xyes])
-AC_SUBST([MAKE_PY_INSTALL])
+AM_CONDITIONAL([MAKE_PY_INSTALL_CUSTOM], [test x$make_py_install_custom = xyes])
+AM_CONDITIONAL([MAKE_PY_NOINSTALL], [test x$make_py_install_custom = xno && test x$make_py_install = xno])
 
 
 # Check for sphinx executable to build documentation
@@ -165,6 +185,27 @@ AC_SUBST([AM_LIBS])
 
 AC_OUTPUT
 
+
+pystr="detected ${PYTHON_VERSION}.  Plotting and downstream analysis enabled."
+
+sphinxstr="detected. Docs will be built."
 if [[ "${sphinx}" == "no" ]]; then
-    AC_MSG_WARN([Sphinx not detected, or version is too old.  Wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.io/en/latest/])
+	sphinxstr="no.  Will not build docs. You can still find the documentation online at: https://kat.readthedocs.org/en/latest/"
 fi
+
+pyinststr="no"
+if [[ "${make_py_install_custom}" == "yes" ]]; then
+	pyinststr="${prefix}/lib/python${PYTHON_VERSION}/site-packages"
+elif [[ "${make_py_install}" == "yes" ]]; then
+	pyinststr="${PYTHON_SITE_PKG}"
+fi
+
+AC_MSG_NOTICE([
+
+	Configuration status:
+	- Installation prefix = ${prefix}
+	- Python V3.5+ - ${pystr}
+	- Sphinx V1.3+ - ${sphinxstr}
+	- Python install - ${pyinststr}])
+
+

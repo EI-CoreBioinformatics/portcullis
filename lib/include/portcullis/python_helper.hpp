@@ -82,7 +82,7 @@ private:
         string py_path_interp(wppath2.begin(), wppath2.end());
         ppaths.push_back(py_path_interp);
 
-        string py_path_here(portcullis::pfs.getScriptsDir().string() + ":" + PYTHON_INTERP_SITE_PKGS + ":" + PORTCULLIS_SITE_PKGS);
+        string py_path_here(portcullis::pfs.getScriptsDir().string() + ":" + PYTHON_INTERP_SITE_PKGS);
         ppaths.push_back(py_path_here);
 
         this->full_python_path_str = boost::algorithm::join(ppaths, ":");
