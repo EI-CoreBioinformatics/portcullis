@@ -3,20 +3,20 @@ AUTOMAKE_OPTIONS = subdir-objects
 if MAKE_PY_NOINSTALL
 
 install-exec-hook:
-	mkdir -p $(datadir)/portcullis/scripts/portcullis
-	cp -r portcullis/portcullis/*.py $(datadir)/portcullis/scripts/portcullis 
+	mkdir -p $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
+	cp -r portcullis/portcullis/*.py $(DESTDIR)$(datadir)/portcullis/scripts/portcullis 
 
 
 uninstall-hook:
-	rm -rf $(datarootdir)/portcullis/scripts
+	rm -rf $(DESTDIR)$(datadir)/portcullis/scripts
 
 endif
 
 if MAKE_PY_INSTALL
 
 install-exec-hook:
-	mkdir -p $(datadir)/portcullis/scripts/portcullis
-	cp -r portcullis/portcullis/*.py $(datadir)/portcullis/scripts/portcullis
+	mkdir -p $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
+	cp -r portcullis/portcullis/*.py $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
 	cd junctools && \
 	$(PYTHON_INT_PATH) setup.py install --record install_files.txt && \
 	cd ../portcullis && \
@@ -25,7 +25,7 @@ install-exec-hook:
 
 
 uninstall-hook:
-	rm -rf $(datadir)/portcullis/scripts
+	rm -rf $(DESTDIR)$(datadir)/portcullis/scripts
 	cd junctools && \
 	cat install_files.txt | xargs rm -rf && \
 	cd ../portcullis && \
@@ -38,18 +38,18 @@ if MAKE_PY_INSTALL_CUSTOM
 
 
 install-exec-hook:
-	mkdir -p $(datadir)/portcullis/scripts/portcullis
-	cp -r portcullis/portcullis/*.py $(datadir)/portcullis/scripts/portcullis
-	mkdir -p $(prefix)/lib/python$(PYTHON_VERSION)/site-packages
-	export PYTHONPATH=$(prefix)/lib/python$(PYTHON_VERSION)/site-packages && \
+	mkdir -p $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
+	cp -r portcullis/portcullis/*.py $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
+	mkdir -p $(DESTDIR)$(prefix)/lib/python$(PYTHON_VERSION)/site-packages
+	export PYTHONPATH=$(DESTDIR)$(prefix)/lib/python$(PYTHON_VERSION)/site-packages && \
 	cd junctools && \
-	python3 setup.py install --prefix=$(prefix) --record install_files.txt && \
+	python3 setup.py install --root=$(DESTDIR) --prefix=$(prefix) --record install_files.txt && \
 	cd ../portcullis && \
-	python3 setup.py install --prefix=$(prefix) --record install_files.txt && \
+	python3 setup.py install --root=$(DESTDIR) --prefix=$(prefix) --record install_files.txt && \
 	cd ..
 
 uninstall-hook:
-	rm -rf $(datadir)/portcullis/scripts
+	rm -rf $(DESTDIR)$(datadir)/portcullis/scripts
 	cd junctools && \
 	cat install_files.txt | xargs rm -rf && \
 	cd ../portcullis && \
