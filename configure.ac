@@ -121,6 +121,7 @@ AX_PYTHON_MODULE(pandas, 1, ${pybin})
 #AX_PYTHON_MODULE(scipy, [AC_MSG_ERROR([scipy not found])], ${pybin})
 #AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], ${pybin})
 #AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], ${pybin})
+AM_PATH_PYTHON([${PYTHON_VERSION}])
 
 AC_ARG_ENABLE([py-install],
     AS_HELP_STRING([--disable-py-install], [Disable installation of python packages.  If this is disabled, portcullis will not install the python portcullis and junctools packages to <prefix>/lib/python<version>/site-packages.  The user can manually install the portcullis and junctools packages using setuptools.]), make_py_install="no", make_py_install="yes")

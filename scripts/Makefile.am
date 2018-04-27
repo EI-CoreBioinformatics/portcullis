@@ -40,10 +40,10 @@ if MAKE_PY_INSTALL_CUSTOM
 install-exec-hook:
 	mkdir -p $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
 	cp -r portcullis/portcullis/*.py $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
-	mkdir -p $(DESTDIR)$(prefix)/lib/python$(PYTHON_VERSION)/site-packages
-	export PYTHONPATH=$(DESTDIR)$(prefix)/lib/python$(PYTHON_VERSION)/site-packages && \
+	mkdir -p $(DESTDIR)$(pythondir)
+	export PYTHONPATH=$(DESTDIR)$(pythondir) && \
 	cd junctools && \
-	python3 setup.py install --root=$(DESTDIR) --prefix=$(prefix) --record install_files.txt && \
+	python3 setup.py install --root=$(DESTDIR)--prefix=$(prefix) --record install_files.txt && \
 	cd ../portcullis && \
 	python3 setup.py install --root=$(DESTDIR) --prefix=$(prefix) --record install_files.txt && \
 	cd ..
