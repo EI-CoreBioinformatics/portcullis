@@ -132,15 +132,11 @@ AC_ARG_ENABLE([py-install],
 # if not the install the the python site packages location determined by whatever python3 instance
 # was found on the PATH.  So not necessarily at the default installation site: /usr/local/...
 make_py_install_custom="no"	
-if [[ "${make_pykat_install}" == "yes" ]]; then
+if [[ "${make_py_install}" == "yes" ]]; then
 	if [[ -n "${prefix}" ]]; then
 		if [[ "${prefix}" != "NONE" ]]; then
-			if [[ "${prefix}" != "/usr/local" ]]; then
-				if [[ "${prefix}" != "/usr" ]]; then
-					make_py_install_custom="yes"
-					make_py_install="no"
-				fi
-			fi
+			make_py_install_custom="yes"
+			make_py_install="no"
 		fi
 	fi
 fi
