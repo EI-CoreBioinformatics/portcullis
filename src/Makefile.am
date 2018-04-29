@@ -21,10 +21,6 @@ portcullis_CPPFLAGS = \
 
 portcullis_LDFLAGS = \
 			-static \
-			-L../lib \
-			-L../deps/boost/build/lib \
-			-L../deps/htslib-1.3 \
-			-L../deps/ranger-0.3.8 \
 			@AM_LDFLAGS@
 
 portcullis_LDADD = \

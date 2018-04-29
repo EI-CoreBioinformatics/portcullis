@@ -43,23 +43,25 @@ check_unit_tests_CXXFLAGS = -O0 @AM_CXXFLAGS@
 check_unit_tests_CPPFLAGS =	\
 				-I$(top_srcdir)/deps/boost/build/include \
 				-I$(top_srcdir)/deps/htslib-1.3 \
-        		-I$(top_srcdir)/lib/include \
+ 		       		-I$(top_srcdir)/lib/include \
 				-DRESOURCESDIR=\"$(top_srcdir)/tests/resources\" \
 				-DDATADIR=\"$(datadir)\" \
 				@AM_CPPFLAGS@
 
 check_unit_tests_LDFLAGS = \
 				-static \
-				-L. \
-				-L../lib \
-				-L../deps/boost/build/lib \
-				-Wl,-rpath=../deps/boost/build/lib \
+				-L$(top_builddir)/deps/boost/build/lib \
+				-Wl,-rpath=$(top_builddir)/deps/boost/build/lib \
 				@AM_LDFLAGS@
 
 check_unit_tests_LDADD = \
 				libgtest.la \
-				-lportcullis \
-				@AM_LIBS@
+				$(top_builddir)/lib/libportcullis.la \
+			        -lboost_timer \
+			        -lboost_chrono \
+			        -lboost_filesystem \
+			        -lboost_program_options \
+			        -lboost_system
 
 clean-local: clean-local-check
 .PHONY: clean-local-check
