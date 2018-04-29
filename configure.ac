@@ -95,7 +95,13 @@ fi
 
 # Check pthreads, zlib exist and are available
 AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
-AX_CHECK_ZLIB(, [AC_MSG_ERROR([zlib not found.  Please ensure that zlib is properly built and configured.])])
+
+AC_SEARCH_LIBS([inflateEnd], [z],
+    [Z_LIB="-lz"],
+    [AC_MSG_ERROR([libz not found.  Please ensure that zlib is properly built and configured.])])
+AC_CHECK_HEADER([zlib.h], , [AC_MSG_ERROR([zlib.h not found.  Please ensure you have the zlib development pack, with header files, installed.])])
+
+
 
 # Check for samtools (reqired)
 AC_CHECK_PROG([with_samtools],[samtools],[yes],[no])
@@ -171,13 +177,13 @@ AC_SUBST([MAKE_DOCS])
 AM_CXXFLAGS="-g -O2 -std=c++11"
 AC_SUBST([AM_CXXFLAGS])
 
-AM_CPPFLAGS="${ZLIB_CPPFLAGS} ${PYTHON_CPPFLAGS}"
+AM_CPPFLAGS="${PYTHON_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
-AM_LDFLAGS="-static-libstdc++ ${ZLIB_LDFLAGS}"
+AM_LDFLAGS="-static-libstdc++"
 AC_SUBST([AM_LDFLAGS])
 
-AM_LIBS="${PTHREAD_CFLAGS} ${ZLIB_LIB} ${RT_LIB} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS}"
+AM_LIBS="${PTHREAD_CFLAGS} ${Z_LIB} ${RT_LIB} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS}"
 AC_SUBST([AM_LIBS])
 
 AC_OUTPUT
