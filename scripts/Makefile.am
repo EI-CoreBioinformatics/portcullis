@@ -1,11 +1,11 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
-if MAKE_PY_NOINSTALL
-
-install-exec-hook:
+install-data-hook:
 	mkdir -p $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
-	cp -r portcullis/portcullis/*.py $(DESTDIR)$(datadir)/portcullis/scripts/portcullis 
+	cp -r portcullis/portcullis/*.py $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
 
+
+if MAKE_PY_NOINSTALL
 
 uninstall-hook:
 	rm -rf $(DESTDIR)$(datadir)/portcullis/scripts
@@ -15,8 +15,6 @@ endif
 if MAKE_PY_INSTALL
 
 install-exec-hook:
-	mkdir -p $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
-	cp -r portcullis/portcullis/*.py $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
 	cd junctools && \
 	$(PYTHON_INT_PATH) setup.py install --record install_files.txt && \
 	cd ../portcullis && \
@@ -38,14 +36,12 @@ if MAKE_PY_INSTALL_CUSTOM
 
 
 install-exec-hook:
-	mkdir -p $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
-	cp -r portcullis/portcullis/*.py $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
 	mkdir -p $(DESTDIR)$(pythondir)
 	export PYTHONPATH=$(DESTDIR)$(pythondir) && \
 	cd junctools && \
-	$(PYTHON_INT_PATH) setup.py install --prefix=$(DESTDIR)$(prefix) --record install_files.txt && \
+	$(PYTHON_INT_PATH) setup.py install --root=$(DESTDIR) --prefix=$(exec_prefix) --record install_files.txt && \
 	cd ../portcullis && \
-	$(PYTHON_INT_PATH) setup.py install --prefix=$(DESTDIR)$(prefix) --record install_files.txt && \
+	$(PYTHON_INT_PATH) setup.py install --root=$(DESTDIR) --prefix=$(exec_prefix) --record install_files.txt && \
 	cd ..
 
 uninstall-hook:
