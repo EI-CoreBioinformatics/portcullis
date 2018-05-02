@@ -17,6 +17,7 @@ portcullis_CPPFLAGS = \
 			-I$(top_srcdir)/deps/boost/build/include \
 			-I$(top_srcdir)/lib/include \
 			-DDATADIR=\"$(datadir)\" \
+			-DEXECPREFIX=\"$(exec_prefix)\" \
 			@AM_CPPFLAGS@
 
 portcullis_LDFLAGS = \

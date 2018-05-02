@@ -108,111 +108,77 @@ public:
             canonicalExe = do_readlink(); // Assume linux
 #endif
             isOnPath = true;
-            dataDir = path(DATADIR "/portcullis");
         }
-        // Check to see if scripts are adjacent to exe first
-        path root = canonicalExe.parent_path();
-        path kda(root);
-        if (kda.leaf() == "bin")   // Usually this is a good indication of whether portcullis has been installed
-        {
-            dataDir = path(DATADIR "/portcullis");
-            scriptsDir = path(DATADIR "/portcullis/scripts");
-            if (!exists(this->scriptsDir))
-            {
-                // Not all is lost here.  Perhaps the user installed to an alternate root.  Try to derive that from the bin path.
-                path alt_root(kda);
-                bool found = false;
-                for (int i = 0; i < 5; i++)
-                {
-                    alt_root = alt_root.parent_path();
-                    this->dataDir = alt_root / path(DATADIR "/portcullis");
-                    this->scriptsDir = alt_root / path(DATADIR "/portcullis/scripts");
-                    if (exists(this->scriptsDir))
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                {
-                    BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-                                              "Could not find portcullis scripts at the expected installed location: ") + this->scriptsDir.c_str()));
-                }
-            }
 
-        }
-        else
-        {
-            // If we are here then we are not running from an installed location,
-            // we are running from the source tree.
-            // Not 100% sure how far back we need to go (depends on whether using KAT exe or tests)
-            // so try 2, 3 and 4 levels.
-            root = root.parent_path();
-            dataDir = root;
-            dataDir /= "data";
-            if (!exists(dataDir))
-            {
-                root = root.parent_path();
-                dataDir = root;
-                dataDir /= "data";
-                if (!exists(dataDir))
-                {
-                    root = root.parent_path();
-                    dataDir = root;
-                    dataDir /= "data";
-                    if (!exists(dataDir))
-                    {
-                        BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-                                                  "Could not find suitable directory containing data files relative to provided exe: ") + canonicalExe.c_str()));
-                    }
-                }
-            }
-            // If we are here then we are not running from an installed location,
-            // we are running from the source tree.
-            // Not 100% sure how far back we need to go (depends on whether using KAT exe or tests)
-            // so try 2, 3 and 4 levels.
-            this->scriptsDir = canonicalExe.parent_path().parent_path();
-            this->scriptsDir /= "scripts";
-            if (!exists(this->scriptsDir))
-            {
-                this->scriptsDir = canonicalExe.parent_path().parent_path().parent_path();
-                this->scriptsDir /= "scripts";
+#ifdef DATADIR
+		path customDataDir(DATADIR);
+#else
+		path customDataDir("");
+#endif
 
-                if (!exists(this->scriptsDir))
-                {
-                    this->scriptsDir = canonicalExe.parent_path().parent_path().parent_path().parent_path();
-                    this->scriptsDir /= "scripts";
 
-                    if (!exists(this->scriptsDir))
-                    {
-                        BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-                                                  "Could not find suitable directory containing Portcullis scripts relative to provided exe: ") + canonicalExe.c_str()));
-                    }
-                }
-            }
-            this->scriptsDir /= "portcullis";
-        }
-        // Test to find specific files
-        path prf = this->scriptsDir / "portcullis/rule_filter.py";
-        if (!exists(prf))
-        {
-            BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
-                                    "Found the scripts directory where expected ") + scriptsDir.string() +
-                                    ". However, could not find \"rule_filter.py\" script inside."));
-        }
+		// If python is installed we need to figure out where the scripts are located relative to the
+		// running executable.  This can be in various different places depending on how everything is
+		// setup: installed kat, running compiled binary from source directory, or running unit tests.
+
+        // First get the executable directory
+        path exe_dir(canonicalExe.parent_path());
+			
+		if (exe_dir.stem().string() == "bin") {
+
+			// Ok, so we are in a installed location.  Figuring out the scripts directory isn't as straight
+			// forward as it may seem because we might have installed to a alternate root.  So wind back the 
+			// exec_prefix to get to root (or alternate root) directory.
+			path ep(EXECPREFIX);
+			path root = ep;
+			path altroot = exe_dir.parent_path();
+			while (root.has_parent_path()) {
+				root = root.parent_path();
+				altroot = altroot.parent_path();					
+			}
+			this->dataDir = altroot / customDataDir / "portcullis";
+   	        this->scriptsDir = this->dataDir / "scripts";
+		}
+		else if (exe_dir.stem().string() == "src") {
+			// Presumably if we are here then we are running the kat executable from the source directory
+    	    if (exists(exe_dir / "portcullis.cc") || exists(exe_dir / "check_portcullis.cc")) {
+        		this->dataDir = exe_dir.parent_path() / "data";
+        		this->scriptsDir = exe_dir.parent_path() / "scripts" / "portcullis";
+			}
+		}
+		else {
+			this->dataDir = customDataDir;
+			this->scriptsDir = this->dataDir / "scripts";
+		}
+
+
+		// Validate the existence of the scripts directory and scripts file.				
+        if (!exists(this->dataDir)) {
+        	BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
+                	"Could not find suitable directory containing Portcullis data files at the expected location: ") + this->dataDir.string()));
+        }	
         path df = this->dataDir / "default_filter.json";
-        if (!exists(df))
-        {
+        if (!exists(df)) {
             BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
                                   "Found the data directory where expected ") + dataDir.string() +
-                                  ". However, could not find the \"default_filter.json\" configuraton file inside."));
+                                  ". However, could not find the \"default_filter.json\" at: " + df.string()));
+        }
+
+        if (!exists(this->scriptsDir)) {
+        	BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
+                	"Could not find suitable directory containing Portcullis scripts at the expected location: ") + this->scriptsDir.string()));
+        }	
+        path prf = this->scriptsDir / "portcullis/rule_filter.py";
+        if (!exists(prf)) {
+            BOOST_THROW_EXCEPTION(FileSystemException() << FileSystemErrorInfo(string(
+                                    "Found the scripts directory where expected: ") + this->scriptsDir.string() +
+                                    ". However, could not find \"rule_filter.py\" script at: " + prf.string()));
         }
 
     }
 
 
-    std::string do_readlink()
-    {
+    std::string do_readlink() {
         char buff[PATH_MAX];
         ssize_t len = ::readlink("/proc/self/exe", buff, sizeof(buff) - 1);
         if (len != -1)
@@ -225,8 +191,7 @@ public:
     }
 
 #ifdef OS_MAC
-    std::string get_mac_exe()
-    {
+    std::string get_mac_exe() {
         char path[1024];
         uint32_t size = sizeof(path);
         _NSGetExecutablePath(path, &size);
@@ -236,9 +201,7 @@ public:
 
 
     // **** Destructor ****
-    virtual ~PortcullisFS()
-    {
-    }
+    virtual ~PortcullisFS() {}
 
     path getPortcullisExe() const
     {
