@@ -59,7 +59,12 @@ private:
     wchar_t* full_python_path_wchar = NULL;
 
     PyHelper() {
+#ifdef PY_DEBUG
         this->verbose = true;
+#else
+		this->verbose = false;
+#endif
+
 #ifdef HAVE_PYTHON
 
         if (this->verbose) {

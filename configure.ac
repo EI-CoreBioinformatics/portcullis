@@ -132,6 +132,11 @@ AM_PATH_PYTHON([${PYTHON_VERSION}])
 AC_ARG_ENABLE([py-install],
     AS_HELP_STRING([--disable-py-install], [Disable installation of python packages.  If this is disabled, portcullis will not install the python portcullis and junctools packages to <prefix>/lib/python<version>/site-packages.  The user can manually install the portcullis and junctools packages using setuptools.]), make_py_install="no", make_py_install="yes")
 
+AC_ARG_ENABLE([py-debug],
+    AS_HELP_STRING([--enable-py-debug], [Portcullis will emit additional information everytime it tries to invoke an embedded python script.]), py_debug="yes", py_debug="no")
+if [[ "${py_debug}" == "yes" ]]; then
+	AC_DEFINE_UNQUOTED([PY_DEBUG], [1], [Emit additional information everytime an embedded python script is invoked.])
+fi
 
 # This logic is a bit messy and probably OTT but it seems to work.
 # Basically if the user provides a prefix then we want to install the python libraries there,
