@@ -39,9 +39,9 @@ install-exec-hook:
 	mkdir -p $(DESTDIR)$(pythondir)
 	export PYTHONPATH=$(DESTDIR)$(pythondir) && \
 	cd junctools && \
-	$(PYTHON_INT_PATH) setup.py install --root=$(DESTDIR) --prefix=$(exec_prefix) --record install_files.txt && \
+	$(PYTHON_INT_PATH) setup.py install --prefix=$(DESTDIR)$(exec_prefix) --record install_files.txt && \
 	cd ../portcullis && \
-	$(PYTHON_INT_PATH) setup.py install --root=$(DESTDIR) --prefix=$(exec_prefix) --record install_files.txt && \
+	$(PYTHON_INT_PATH) setup.py install --prefix=$(DESTDIR)$(exec_prefix) --record install_files.txt && \
 	cd ..
 
 uninstall-hook:
