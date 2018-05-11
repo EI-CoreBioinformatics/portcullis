@@ -219,7 +219,7 @@ $(EMPTY_AUTOMAKE_TARGETS):
 .PHONY: all man pdf mostly-clean distclean maintainer-clean install install-data install-man install-html install-pdf installdirs uninstall distdirs
 
 # Hook in conventional make targets for building docs
-all: html man
+all: man
         
 # Redirect pdf to latexpdf
 pdf: latexpdf
@@ -232,7 +232,7 @@ maintainer-clean: clean
 # Install and uninstall overrides
 install: install-data
 
-install-data: install-man install-pdf install-html
+install-data: install-man
 
 # Fail on error
 install-man:

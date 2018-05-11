@@ -112,7 +112,7 @@ check_PROGRAMS = \
 	test/sam
 
 HTSLIB_TEST_CFLAGS = -O0 -Wno-deprecated-declarations -Wno-pointer-bool-conversion
-HTSLIB_LIBS = libphts.la @AM_LIBS@
+HTSLIB_LIBS = libphts.la -lz @AM_LIBS@
 
 test_fieldarith_SOURCES = test/fieldarith.c
 test_fieldarith_CFLAGS = $(HTSLIB_TEST_CFLAGS)

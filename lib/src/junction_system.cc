@@ -32,8 +32,11 @@ using std::unordered_set;
 #include <boost/lexical_cast.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/timer/timer.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 using boost::lexical_cast;
 using boost::timer::auto_cpu_timer;
+namespace bfs = boost::filesystem;
 
 #include <portcullis/bam/depth_parser.hpp>
 using portcullis::bam::DepthParser;
@@ -419,7 +422,12 @@ void portcullis::JunctionSystem::load(const path& junctionTabFile) {
 }
 
 void portcullis::JunctionSystem::load(const path& junctionTabFile, const bool simple) {
-	ifstream ifs(junctionTabFile.c_str());
+
+    if (!bfs::exists(junctionTabFile)) {
+        BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
+                                  "Could not find Portcullis junction tab file at: ") + junctionTabFile.string()));
+    }
+    ifstream ifs(junctionTabFile.c_str());
 	string line;
 	// Loop through until end of file or we move onto the next ref seq
 	while (std::getline(ifs, line)) {

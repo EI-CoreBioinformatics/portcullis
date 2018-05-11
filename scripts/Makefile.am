@@ -1,33 +1,57 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
+install-data-hook:
+	mkdir -p $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
+	cp -r portcullis/portcullis/*.py $(DESTDIR)$(datadir)/portcullis/scripts/portcullis
+
+
+if MAKE_PY_NOINSTALL
+
+uninstall-hook:
+	rm -rf $(DESTDIR)$(datadir)/portcullis/scripts
+
+endif
+
 if MAKE_PY_INSTALL
 
 install-exec-hook:
-	export PYTHONPATH=$(prefix)/lib/python$(PYTHON_VERSION)/site-packages/ && \
-	mkdir -p $(prefix)/lib/python$(PYTHON_VERSION)/site-packages/ && \
 	cd junctools && \
-	python3 setup.py install --prefix=$(prefix) --record install_files.txt && \
+	$(PYTHON_INT_PATH) setup.py install --record install_files.txt && \
 	cd ../portcullis && \
-	python3 setup.py install --prefix=$(prefix) --record install_files.txt && \
+	$(PYTHON_INT_PATH) setup.py install --record install_files.txt && \
 	cd ..
 
 
 uninstall-hook:
-	cat junctools/install_files.txt | xargs rm -rf	
-	cat portcullis/install_files.txt | xargs rm -rf	
+	rm -rf $(DESTDIR)$(datadir)/portcullis/scripts
+	cd junctools && \
+	cat install_files.txt | xargs rm -rf && \
+	cd ../portcullis && \
+	cat install_files.txt | xargs rm -rf && \
+	cd ..
 
-else
+endif
+
+if MAKE_PY_INSTALL_CUSTOM
 
 
 install-exec-hook:
-	mkdir -p $(prefix)/lib/python$(PYTHON_VERSION)/local/ && \
-	cp -r portcullis $(prefix)/lib/python$(PYTHON_VERSION)/local
-
-# Don't bother with junctools at this time... we should probably install this separately.
-# cp -r junctools $(prefix)/lib/python$(PYTHON_VERSION)/local
+	mkdir -p $(DESTDIR)$(pythondir)
+	export PYTHONPATH=$(DESTDIR)$(pythondir) && \
+	cd junctools && \
+	$(PYTHON_INT_PATH) setup.py install --root=$(DESTDIR) --prefix=$(exec_prefix) --record install_files.txt && \
+	cd ../portcullis && \
+	$(PYTHON_INT_PATH) setup.py install --root=$(DESTDIR) --prefix=$(exec_prefix) --record install_files.txt && \
+	cd ..
 
 uninstall-hook:
-	rm -rf $(prefix)/lib/python$(PYTHON_VERSION)/local
+	rm -rf $(DESTDIR)$(datadir)/portcullis/scripts
+	cd junctools && \
+	cat install_files.txt | xargs rm -rf && \
+	cd ../portcullis && \
+	cat install_files.txt | xargs rm -rf && \
+	cd ..
+
 
 endif
 

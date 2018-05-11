@@ -8,9 +8,20 @@ lib_LTLIBRARIES = libportcullis.la
 
 # Library inputs
 libportcullis_la_LDFLAGS = \
-	-version-info 18:0:18 \
-	-L../deps/boost/build/lib \
+	-version-info 19:0:19 \
+	-L$(top_builddir)/deps/boost/build/lib/ \
 	@AM_LDFLAGS@
+
+LIBS = \
+	$(top_builddir)/deps/htslib-1.3/libphts.la \
+	$(top_builddir)/deps/ranger-0.3.8/libranger.la \
+	-lboost_timer \
+	-lboost_chrono \
+	-lboost_filesystem \
+	-lboost_program_options \
+	-lboost_system \
+	-lz \
+	@AM_LIBS@
 
 libportcullis_la_SOURCES =	\
 	src/bam_master.cc \
@@ -24,8 +35,8 @@ libportcullis_la_SOURCES =	\
 	src/intron.cc \
 	src/junction.cc \
 	src/junction_system.cc \
-        src/performance.cc \
-        src/knn.cc \
+    src/performance.cc \
+    src/knn.cc \
 	src/enn.cc \
 	src/smote.cc
 
@@ -45,13 +56,13 @@ library_include_HEADERS = \
 	$(PI)/ml/knn.hpp \
 	$(PI)/ml/enn.hpp \
 	$(PI)/ml/smote.hpp \
-        $(PI)/kmer.hpp \
-        $(PI)/python_helper.hpp \
+	$(PI)/kmer.hpp \
+	$(PI)/python_helper.hpp \
 	$(PI)/intron.hpp \
 	$(PI)/junction.hpp \
 	$(PI)/junction_system.hpp \
 	$(PI)/portcullis_fs.hpp \
-        $(PI)/seq_utils.hpp
+	$(PI)/seq_utils.hpp
 
 
 libportcullis_la_CPPFLAGS = \
@@ -59,11 +70,11 @@ libportcullis_la_CPPFLAGS = \
 	-I$(top_srcdir)/deps/ranger-0.3.8/include \
 	-I$(top_srcdir)/deps/boost/build/include \
   	-I$(top_srcdir)/lib/include \
-	-DDATADIR=\"$(datadir)\"
+	-DDATADIR=\"$(datadir)\" \
 	@AM_CPPFLAGS@
 
 libportcullis_la_CXXFLAGS = \
-        -m64 \
+	-m64 \
 	-Wno-unused-function -Wno-unused-variable -Wno-ignored-qualifiers \
-        -Wall \
+	-Wall \
 	@AM_CXXFLAGS@

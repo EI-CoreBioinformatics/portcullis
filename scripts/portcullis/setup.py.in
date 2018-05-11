@@ -24,6 +24,7 @@ setup(
     zip_safe=False,
     keywords="rna-seq annotation genomics transcriptomics",
     packages=find_packages(),
+	entry_points={"console_scripts": ["portcullis_rule_filter = portcullis.rule_filter:main"]},
     # scripts=glob.glob("bin/*.py") + glob.glob("util/*.py"),
     install_requires=["pandas"],
     #test_suite="junctools.test"

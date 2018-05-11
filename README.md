@@ -27,7 +27,7 @@ The simplist way to install portcullis is via package manager.  We support both 
 
 For brew type: ```brew install brewsci/bio/portcullis```
 
-For bioconda type: ```conda install portcullis```
+For bioconda type: ```conda install portcullis --channel=bioconda```
 
 
 
@@ -43,10 +43,10 @@ Installing from source will ensure you have the latest version of the software. 
  - **zlib**
  - **pthreads**
  - **samtools** V1.2+
- - **Python3** V3.5+ (including python3 development libraries and the *pandas*, *numpy*, *scipy*, *matplotlib*, and *sklearn* packages)
+ - **Python3** V3.5+ (including python3 development libraries and the *pandas* packages)
  - **Sphinx-doc** V1.3+ (Optional: only required for building the documentation.)
 
-With regards to python3 and sphinx we recommend installing anaconda3 as this contains all packages and programs required by portcullis.  Also, if you have installed python to a custom location please verify that the *bin* directors on the *PATH* environment variable.
+NOTE ON INSTALLING PYTHON: Many system python installations do not come with the C API immediately available, which prevents Portcullis from embedding python code.  We typically would recommend installing anaconda3 as this would include the latest version of python, all required python packages as well as the C API.  If you are running a debian system and the C libraries are not available by default and you wish to use the system python installation the you can install them using: ``sudo apt-get install python-dev``.  Also, if you have installed python to a custom location please verify that the *bin* directors on the *PATH* environment variable, and the lib (or lib64) directory is on the *LD_LIBRARY_PATH* or *LD_RUN_PATH* as appropriate.
 
 Then proceed with the following steps:
 

@@ -59,7 +59,12 @@ private:
     wchar_t* full_python_path_wchar = NULL;
 
     PyHelper() {
-        this->verbose = false;
+#ifdef PY_DEBUG
+        this->verbose = true;
+#else
+		this->verbose = false;
+#endif
+
 #ifdef HAVE_PYTHON
 
         if (this->verbose) {
@@ -82,7 +87,7 @@ private:
         string py_path_interp(wppath2.begin(), wppath2.end());
         ppaths.push_back(py_path_interp);
 
-        string py_path_here(portcullis::pfs.getScriptsDir().string() + ":" + PYTHON_INTERP_SITE_PKGS + ":" + PORTCULLIS_SITE_PKGS);
+        string py_path_here(portcullis::pfs.getScriptsDir().string() + ":" + PYTHON_INTERP_SITE_PKGS);
         ppaths.push_back(py_path_here);
 
         this->full_python_path_str = boost::algorithm::join(ppaths, ":");
@@ -101,6 +106,9 @@ private:
         if (this->verbose) {
             cout << "Python interpretter initialised" << endl << endl;
         }
+#else
+        BOOST_THROW_EXCEPTION(PortcullisPythonException() << PortcullisPythonErrorInfo(string(
+                "Portcullis not configured to use Python.  Please check your configuration and rebuild.")));
 #endif
     }
 
@@ -169,6 +177,9 @@ public:
         if (this->verbose) {
             cout << endl << "Python script \"" << script_name << "\" executed successfully" << endl;
         }
+#else
+        BOOST_THROW_EXCEPTION(PortcullisPythonException() << PortcullisPythonErrorInfo(string(
+                "Portcullis not configured to use Python.  Please check your configuration and rebuild.")));
 #endif
     }
 

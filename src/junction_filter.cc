@@ -213,92 +213,114 @@ void portcullis::JunctionFilter::filter() {
 	mf.features[29].active=false;
 	 */
 	double ratio = 0.0;
-	if (train) {
-		// The initial positive and negative sets
-        JunctionList unlabelled, unlabelled2;
-		cout << "Self training mode activated." << endl << endl;
 
-        path rf_script = path("portcullis") / "rule_filter.py";
-        vector<string> args;
-        args.push_back(rf_script.string());
-
-        args.push_back("--pos_json");
-        args.push_back(dataDir.string() + "/selftrain_initial_pos.layer1.json");
-        args.push_back(dataDir.string() + "/selftrain_initial_pos.layer2.json");
-        args.push_back(dataDir.string() + "/selftrain_initial_pos.layer3.json");
-
-        args.push_back("--neg_json");
-        args.push_back(dataDir.string() + "/selftrain_initial_neg.layer1.json");
-        args.push_back(dataDir.string() + "/selftrain_initial_neg.layer2.json");
-        args.push_back(dataDir.string() + "/selftrain_initial_neg.layer3.json");
-        args.push_back(dataDir.string() + "/selftrain_initial_neg.layer4.json");
-        args.push_back(dataDir.string() + "/selftrain_initial_neg.layer5.json");
-        args.push_back(dataDir.string() + "/selftrain_initial_neg.layer6.json");
-        args.push_back(dataDir.string() + "/selftrain_initial_neg.layer7.json");
-
-        args.push_back("--prefix=" + output.string() + ".selftrain.initialset");
-        args.push_back(junctionFile.string());
-
-        char* char_args[50];
-
-        for(size_t i = 0; i < args.size(); i++) {
-            char_args[i] = strdup(args[i].c_str());
+    if (train) {
+        if (currentJuncs.size() < 200) {
+            cout << "Less that 200 junctions found in input set.  This is not enough to build a trained model.  Will apply a lenient rule-based filter instead." << endl;
+            filterFile = path(dataDir.string());
+            filterFile /= "low_juncs_filter.json";
         }
+        else {
+            // The initial positive and negative sets
+            JunctionList unlabelled, unlabelled2;
+            cout << "Self training mode activated." << endl << endl;
 
-        PyHelper::getInstance().execute(rf_script.string(), (int)args.size(), char_args);
+            path rf_script = path("portcullis") / "rule_filter.py";
+            vector<string> args;
+            args.push_back(rf_script.string());
 
-        // Load junction system
-        JunctionSystem posSystem(path(output.string() + ".selftrain.initialset.pos.junctions.tab"));
-        JunctionSystem negSystem(path(output.string() + ".selftrain.initialset.neg.junctions.tab"));
-        posSystem.sort();
-        negSystem.sort();
-        JunctionList pos = posSystem.getJunctions();
-        JunctionList neg = negSystem.getJunctions();
+            args.push_back("--pos_json");
+            args.push_back(dataDir.string() + "/selftrain_initial_pos.layer1.json");
+            args.push_back(dataDir.string() + "/selftrain_initial_pos.layer2.json");
+            args.push_back(dataDir.string() + "/selftrain_initial_pos.layer3.json");
 
-        // Ensure positive and negative set have the genuine flag set appropriately
-        for (auto & j : pos) {
-            j->setGenuine(true);
-        }
-        for (auto & j : neg) {
-            j->setGenuine(false);
-        }
+            args.push_back("--neg_json");
+            args.push_back(dataDir.string() + "/selftrain_initial_neg.layer1.json");
+            args.push_back(dataDir.string() + "/selftrain_initial_neg.layer2.json");
+            args.push_back(dataDir.string() + "/selftrain_initial_neg.layer3.json");
+            args.push_back(dataDir.string() + "/selftrain_initial_neg.layer4.json");
+            args.push_back(dataDir.string() + "/selftrain_initial_neg.layer5.json");
+            args.push_back(dataDir.string() + "/selftrain_initial_neg.layer6.json");
+            args.push_back(dataDir.string() + "/selftrain_initial_neg.layer7.json");
 
-		cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
-		ratio = 1.0 - ((double) pos.size() / (double) (pos.size() + neg.size()));
-		cout << "Pos to neg ratio: " << ratio << endl << endl;
+            args.push_back("--prefix=" + output.string() + ".selftrain.initialset");
+            args.push_back(junctionFile.string());
 
-        // Ensure the L95 is set to what the python script generated.
-        std::ifstream isL95(output.string() + ".selftrain.initialset.L95_intron_size.txt");
-        bool foundL95 = false;
-        for (int i = 0; i < 2; i++) {
-            string line;
-            std::getline(isL95, line);
-            if (i == 1) {
-                mf.L95 = lexical_cast<uint32_t>(line);
-                foundL95 = true;
-                break;
+            char* char_args[50];
+
+            for(size_t i = 0; i < args.size(); i++) {
+                char_args[i] = strdup(args[i].c_str());
+            }
+
+            if (verbose) {
+                string arg_str = boost::algorithm::join(args, " ");
+                cout << "Executing python script with this command: " << rf_script.string() << " " << arg_str << endl;
+            }
+
+            PyHelper::getInstance().execute(rf_script.string(), (int)args.size(), char_args);
+
+            // Load junction system
+            JunctionSystem posSystem(path(output.string() + ".selftrain.initialset.pos.junctions.tab"));
+            JunctionSystem negSystem(path(output.string() + ".selftrain.initialset.neg.junctions.tab"));
+            posSystem.sort();
+            negSystem.sort();
+            JunctionList pos = posSystem.getJunctions();
+            JunctionList neg = negSystem.getJunctions();
+
+            // Ensure positive and negative set have the genuine flag set appropriately
+            for (auto & j : pos) {
+                j->setGenuine(true);
+            }
+            for (auto & j : neg) {
+                j->setGenuine(false);
+            }
+
+            cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
+
+            if (pos.size() < 50 || neg.size() < 50) {
+                cout << "Training set is of insufficient size to reliably use machine learning, we will filter junctions using a lenient rule-based filter instead." << endl;
+                filterFile = path(dataDir.string());
+                filterFile /= "low_juncs_filter.json";
+            }
+            else {
+
+                ratio = 1.0 - ((double) pos.size() / (double) (pos.size() + neg.size()));
+                cout << "Pos to neg ratio: " << ratio << endl << endl;
+
+                // Ensure the L95 is set to what the python script generated.
+                std::ifstream isL95(output.string() + ".selftrain.initialset.L95_intron_size.txt");
+                bool foundL95 = false;
+                for (int i = 0; i < 2; i++) {
+                    string line;
+                    std::getline(isL95, line);
+                    if (i == 1) {
+                        mf.L95 = lexical_cast<uint32_t>(line);
+                        foundL95 = true;
+                        break;
+                    }
+                }
+
+                // Double check we got that correctly
+                if (!foundL95) {
+                    BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                                          "Problem loading L95 value from disk: " + output.string() + ".L95_intron_size.txt")));
+                }
+                cout << "Confirming intron length L95 is: " << mf.L95 << endl;
+
+                cout << "Feature learning from training set ...";
+                cout.flush();
+                mf.trainCodingPotentialModel(pos);
+                mf.trainSplicingModels(pos, neg);
+                cout << " done." << endl << endl;
+
+                cout << "Training Random Forest" << endl
+                     << "----------------------" << endl << endl;
+                shared_ptr<Forest> forest = mf.trainInstance(pos, neg, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true, smote, enn, saveFeatures);
+                forest->saveToFile();
+                modelFile = output.string() + ".selftrain.forest";
+                cout << endl;
             }
         }
-
-        // Double check we got that correctly
-        if (!foundL95) {
-            BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
-                                  "Problem loading L95 value from disk: " + output.string() + ".L95_intron_size.txt")));
-        }
-        cout << "Confirming intron length L95 is: " << mf.L95 << endl;
-
-        cout << "Feature learning from training set ...";
-		cout.flush();
-        mf.trainCodingPotentialModel(pos);
-		mf.trainSplicingModels(pos, neg);
-		cout << " done." << endl << endl;
-
-		cout << "Training Random Forest" << endl
-			 << "----------------------" << endl << endl;
-        shared_ptr<Forest> forest = mf.trainInstance(pos, neg, output.string() + ".selftrain", DEFAULT_SELFTRAIN_TREES, threads, true, true, smote, enn, saveFeatures);
-		forest->saveToFile();
-		modelFile = output.string() + ".selftrain.forest";
-		cout << endl;
 	}
 	// Manage a junction system of all discarded junctions
 	JunctionSystem discardedJuncs;
@@ -321,7 +343,7 @@ void portcullis::JunctionFilter::filter() {
 	}
 
     if (currentJuncs.empty()) {
-        cout << "WARNING: Trained model discarded all junctions from input.  Will not apply any further filters." << endl;
+        cout << "WARNING: No junctions left from input.  Will not apply any further filters." << endl;
     }
     else {
 

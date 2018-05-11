@@ -4,7 +4,7 @@
 
 # Autoconf setup
 AC_PREREQ([2.68])
-AC_INIT([portcullis],[1.1.0],[daniel.mapleson@earlham.ac.uk],[portcullis],[http://www.earlham.ac.uk])
+AC_INIT([portcullis],[1.1.1],[daniel.mapleson@earlham.ac.uk],[portcullis],[http://www.earlham.ac.uk])
 AC_CONFIG_SRCDIR([src/portcullis.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
@@ -95,7 +95,13 @@ fi
 
 # Check pthreads, zlib exist and are available
 AX_PTHREAD(, [AC_MSG_ERROR([pthreads lib not found.  Please ensure that pthreads is properly built and configured.])])
-AX_CHECK_ZLIB(, [AC_MSG_ERROR([zlib not found.  Please ensure that zlib is properly built and configured.])])
+
+AC_SEARCH_LIBS([inflateEnd], [z],
+    [Z_LIB="-lz"],
+    [AC_MSG_ERROR([libz not found.  Please ensure that zlib is properly built and configured.])])
+AC_CHECK_HEADER([zlib.h], , [AC_MSG_ERROR([zlib.h not found.  Please ensure you have the zlib development pack, with header files, installed.])])
+
+
 
 # Check for samtools (reqired)
 AC_CHECK_PROG([with_samtools],[samtools],[yes],[no])
@@ -116,17 +122,39 @@ fi
 pybin=python${PYTHON_VERSION}
 
 # Check for required python libraries
-AX_PYTHON_MODULE(pandas, [AC_MSG_ERROR([pandas not found])], ${pybin})
+AX_PYTHON_MODULE(pandas, 1, ${pybin})
 #AX_PYTHON_MODULE(matplotlib, [AC_MSG_ERROR([matplotlib not found])], ${pybin})
 #AX_PYTHON_MODULE(scipy, [AC_MSG_ERROR([scipy not found])], ${pybin})
 #AX_PYTHON_MODULE(sphinx, [AC_MSG_ERROR([sphinx not found])], ${pybin})
 #AX_PYTHON_MODULE(sklearn, [AC_MSG_ERROR([sklearn not found])], ${pybin})
+AM_PATH_PYTHON([${PYTHON_VERSION}])
 
 AC_ARG_ENABLE([py-install],
     AS_HELP_STRING([--disable-py-install], [Disable installation of python packages.  If this is disabled, portcullis will not install the python portcullis and junctools packages to <prefix>/lib/python<version>/site-packages.  The user can manually install the portcullis and junctools packages using setuptools.]), make_py_install="no", make_py_install="yes")
 
+AC_ARG_ENABLE([py-debug],
+    AS_HELP_STRING([--enable-py-debug], [Portcullis will emit additional information everytime it tries to invoke an embedded python script.]), py_debug="yes", py_debug="no")
+if [[ "${py_debug}" == "yes" ]]; then
+	AC_DEFINE_UNQUOTED([PY_DEBUG], [1], [Emit additional information everytime an embedded python script is invoked.])
+fi
+
+# This logic is a bit messy and probably OTT but it seems to work.
+# Basically if the user provides a prefix then we want to install the python libraries there,
+# if not the install the the python site packages location determined by whatever python3 instance
+# was found on the PATH.  So not necessarily at the default installation site: /usr/local/...
+make_py_install_custom="no"	
+if [[ "${make_py_install}" == "yes" ]]; then
+	if [[ -n "${prefix}" ]]; then
+		if [[ "${prefix}" != "NONE" ]]; then
+			make_py_install_custom="yes"
+			make_py_install="no"
+		fi
+	fi
+fi
+
 AM_CONDITIONAL([MAKE_PY_INSTALL], [test x$make_py_install = xyes])
-AC_SUBST([MAKE_PY_INSTALL])
+AM_CONDITIONAL([MAKE_PY_INSTALL_CUSTOM], [test x$make_py_install_custom = xyes])
+AM_CONDITIONAL([MAKE_PY_NOINSTALL], [test x$make_py_install_custom = xno && test x$make_py_install = xno])
 
 
 # Check for sphinx executable to build documentation
@@ -154,17 +182,38 @@ AC_SUBST([MAKE_DOCS])
 AM_CXXFLAGS="-g -O2 -std=c++11"
 AC_SUBST([AM_CXXFLAGS])
 
-AM_CPPFLAGS="${ZLIB_CPPFLAGS} ${PYTHON_CPPFLAGS}"
+AM_CPPFLAGS="${PYTHON_CPPFLAGS}"
 AC_SUBST([AM_CPPFLAGS])
 
-AM_LDFLAGS="-static-libstdc++ ${ZLIB_LDFLAGS} ${PYTHON_RPATH}"
+AM_LDFLAGS="-static-libstdc++"
 AC_SUBST([AM_LDFLAGS])
 
-AM_LIBS="${PTHREAD_CFLAGS} ${ZLIB_LIB} ${RT_LIB} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS}"
+AM_LIBS="${PTHREAD_CFLAGS} ${RT_LIB} ${PYTHON_EXTRA_LIBS} ${PYTHON_LIBS}"
 AC_SUBST([AM_LIBS])
 
 AC_OUTPUT
 
+
+pystr="detected ${PYTHON_VERSION}.  Plotting and downstream analysis enabled."
+
+sphinxstr="detected. Docs will be built."
 if [[ "${sphinx}" == "no" ]]; then
-    AC_MSG_WARN([Sphinx not detected, or version is too old.  Wont create documentation.  You can still find the documentation online at: https://portcullis.readthedocs.io/en/latest/])
+	sphinxstr="no.  Will not build docs. You can still find the documentation online at: https://kat.readthedocs.org/en/latest/"
 fi
+
+pyinststr="no"
+if [[ "${make_py_install_custom}" == "yes" ]]; then
+	pyinststr="${prefix}/lib/python${PYTHON_VERSION}/site-packages"
+elif [[ "${make_py_install}" == "yes" ]]; then
+	pyinststr="${PYTHON_SITE_PKG}"
+fi
+
+AC_MSG_NOTICE([
+
+	Configuration status:
+	- Installation prefix = ${prefix}
+	- Python V3.5+ - ${pystr}
+	- Sphinx V1.3+ - ${sphinxstr}
+	- Python install - ${pyinststr}])
+
+
