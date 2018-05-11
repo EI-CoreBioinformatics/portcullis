@@ -15,11 +15,6 @@ libportcullis_la_LDFLAGS = \
 LIBS = \
 	$(top_builddir)/deps/htslib-1.3/libphts.la \
 	$(top_builddir)/deps/ranger-0.3.8/libranger.la \
-	-lboost_timer \
-	-lboost_chrono \
-	-lboost_filesystem \
-	-lboost_program_options \
-	-lboost_system \
 	-lz \
 	@AM_LIBS@
 
