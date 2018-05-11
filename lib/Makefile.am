@@ -9,10 +9,17 @@ lib_LTLIBRARIES = libportcullis.la
 # Library inputs
 libportcullis_la_LDFLAGS = \
 	-version-info 19:0:19 \
-	-L$(top_builddir)/deps/boost/build/lib/ \
+	-static \
 	@AM_LDFLAGS@
 
-LIBS = \
+EXTRA_libportcullis_la_DEPENDENCIES = \
+	$(top_builddir)/deps/boost/build/lib/libboost_timer.a \
+	$(top_builddir)/deps/boost/build/lib/libboost_chrono.a \
+	$(top_builddir)/deps/boost/build/lib/libboost_filesystem.a \
+	$(top_builddir)/deps/boost/build/lib/libboost_system.a
+	
+
+libportcullis_la_LIBADD = \
 	$(top_builddir)/deps/htslib-1.3/libphts.la \
 	$(top_builddir)/deps/ranger-0.3.8/libranger.la \
 	-lz \
@@ -72,4 +79,5 @@ libportcullis_la_CXXFLAGS = \
 	-m64 \
 	-Wno-unused-function -Wno-unused-variable -Wno-ignored-qualifiers \
 	-Wall \
+	-fPIC \
 	@AM_CXXFLAGS@
