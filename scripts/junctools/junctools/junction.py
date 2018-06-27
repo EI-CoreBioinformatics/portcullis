@@ -616,13 +616,13 @@ class TabJunction(ExonJunction):
 		return ext == ".tab"
 
 	def getSSType(self):
-		return self.metrics[0]
+		return self.metrics[self.metric_names().index("canonical_ss")]
 
 	def getRaw(self):
-		return int(self.metrics[4])
+		return int(self.metrics[self.metric_names().index("nb_raw_aln")])
 
 	def getScore(self):
-		return float(self.metrics[1])
+		return float(self.metrics[self.metric_names().index("score")])
 
 	def getScoreAsStr(self):
 		return "{0:.2f}".format(self.getScore())
@@ -631,48 +631,49 @@ class TabJunction(ExonJunction):
 		return int(self.metrics[12])
 
 	def getEntropy(self):
-		return float(self.metrics[14])
+		return float(self.metrics[self.metric_names().index("entropy")])
 
 	def getEntropyAsStr(self):
 		return "{0:.2f}".format(self.getEntropy())
 
 	def getMaxMMES(self):
-		return int(self.metrics[18])
+		return int(self.metrics[self.metric_names().index("maxmmes")])
 
 	def getMinHamming(self):
-		return min(int(self.metrics[20]), int(self.metrics[21]))
+		return min(int(self.metrics[self.metric_names().index("hamming5p")]),
+                           int(self.metrics[self.metric_names().index("hamming3p")]))
 
 	def getNbSamples(self):
-		return int(self.metrics[36])
+		return int(self.metrics[self.metric_names().index("nb_samples")])
 
 	def setNbSamples(self, nb_samples):
-		self.metrics[36] = nb_samples
+		self.metrics[self.metric_names().index("nb_samples")] = nb_samples
 
 	def setRaw(self, raw_count):
-		self.metrics[4] = raw_count
+		self.metrics[self.metric_names().index("nb_raw_aln")] = raw_count
 
 	@staticmethod
 	def metric_names():
-		return ["canonical_ss",
-				"score",
-				"suspicious",
-				"pfp",
-				"nb_raw_aln",
-				"nb_dist_aln",
-				"nb_us_aln",
-				"nb_ms_aln",
-				"nb_um_aln",
-				"nb_mm_aln",
-				"nb_bpp_aln",
-				"nb_ppp_aln",
-				"nb_rel_aln",
-				"rel2raw",
-				"nb_r1_pos",
-				"nb_r1_neg",
-				"nb_r2_pos",
-				"nb_r2_neg",
-				"entropy",
-				"mean_mismatches",
+		return ["canonical_ss",              #0
+				"score",             #1
+				"suspicious",        #2
+				"pfp",               #3
+				"nb_raw_aln",        #4
+				"nb_dist_aln",       #5
+				"nb_us_aln",         #6
+				"nb_ms_aln",         #7
+				"nb_um_aln",         #8
+				"nb_mm_aln",         #9
+				"nb_bpp_aln",        #10
+				"nb_ppp_aln",        #11
+				"nb_rel_aln",        #12
+				"rel2raw",           #13
+				"nb_r1_pos",         #14
+				"nb_r1_neg",         #15
+				"nb_r2_pos",         #16
+				"nb_r2_neg",         #17
+				"entropy",           #18
+				"mean_mismatches",   
 				"mean_readlen",
 				"max_min_anc",
 				"maxmmes",
