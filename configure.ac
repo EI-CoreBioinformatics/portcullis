@@ -179,7 +179,7 @@ fi
 AM_CONDITIONAL([MAKE_DOCS], [test x$sphinx = xyes])
 AC_SUBST([MAKE_DOCS])
 
-AM_CXXFLAGS="-g -O2 -std=c++11"
+AM_CXXFLAGS="-g3 -gdwarf-2 -O0 -std=c++11"
 AC_SUBST([AM_CXXFLAGS])
 
 AM_CPPFLAGS="${PYTHON_CPPFLAGS}"

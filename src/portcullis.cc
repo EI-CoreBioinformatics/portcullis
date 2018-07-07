@@ -31,7 +31,6 @@ using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
-using std::exception;
 
 #include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
@@ -72,6 +71,43 @@ enum class Mode {
 	BAM_FILT,
     FULL
 };
+
+void print_backtrace(int depth = 0) {
+    try {
+        throw;
+    }    
+    // this block shows how to handle exceptions of some known type
+    // You can have your own types instead of std::exception
+    catch (const std::exception & e) {
+        std::cerr << std::string(depth, ' ') << e.what() << std::endl;
+        try {
+            std::rethrow_if_nested(e);
+        } catch (...) {
+            print_backtrace(++depth);
+        }
+    }    
+    // Not all nesting exceptions will be of a known type, but if they use the
+    // mixin type std::nested_exception, then we can at least handle them enough to
+    // get the nested exception:
+    catch (const std::nested_exception & ne) {
+        std::cerr << std::string(depth, ' ') << "Unknown nesting exception\n";
+
+        try {
+            ne.rethrow_nested();
+        } catch (...) {
+            print_backtrace(++depth);
+        }
+    }    
+    // Exception nesting works through inheritance, which means that if you
+    // can't inherit from the type, then you can't 'mixin' std::nesting exception.
+    // If you try something like std::throw_with_nested( int{10} ); Then you'll
+    // hit this catch block when printing the backtrace.
+    catch (...) {
+        std::cerr << std::string(depth, ' ') << "Unknown exception\n";
+    }
+}
+
+    
 
 Mode parseMode(string mode) {
 	string upperMode = boost::to_upper_copy(mode);
@@ -474,20 +510,23 @@ int main(int argc, char *argv[]) {
 		cerr << "Error: Parsing Command Line: " << e.what() << endl;
 		return 1;
 	}
-	catch (boost::exception &e) {
+	catch (boost::exception& e) {
 		cerr << boost::diagnostic_information(e);
-		return 4;
+                return 4;
 	}
-	catch (exception& e) {
+	catch (std::exception& e) {
 		cerr << "Error: " << e.what() << endl;
+                print_backtrace();
 		return 5;
 	}
 	catch (const char* msg) {
 		cerr << "Error: " << msg << endl;
+                print_backtrace();
 		return 6;
 	}
 	catch (...) {
 		cerr << "Error: Exception of unknown type!" << endl;
+                print_backtrace();
 		return 7;
 	}
 	return 0;
