@@ -1,0 +1,21 @@
+{
+    "parameters": {
+        "nb_rel_aln": {
+            "operator": "lt",
+            "value": 1
+        },
+        "entropy": {
+            "operator": "eq",
+            "value": 0
+        },
+        "primary_junc": {
+            "operator": "eq",
+            "value": 0
+        },
+        "suspicious": {
+            "operator": "eq",
+            "value": 1
+        }
+    },
+    "expression": "( nb_rel_aln & entropy & primary_junc & suspicious )"
+}

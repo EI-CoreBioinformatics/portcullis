@@ -1,0 +1,17 @@
+{
+    "parameters": {
+        "rel2raw": {
+            "operator": "eq",
+            "value": 0.0
+        },
+        "hamming5p": {
+            "operator": "lte",
+            "value": 3
+        },
+        "hamming3p": {
+            "operator": "lte",
+            "value": 3
+        }
+    },
+    "expression": "( rel2raw & hamming5p & hamming3p )"
+}

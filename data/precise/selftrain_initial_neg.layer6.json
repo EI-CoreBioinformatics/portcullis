@@ -1,0 +1,13 @@
+{
+    "parameters": {
+        "canonical_ss": {
+            "operator": "in",
+            "value": ["N", "S"]
+        },
+        "pfp": {
+            "operator": "eq",
+            "value": 1
+        }
+    },
+    "expression": "( canonical_ss & pfp )"
+}

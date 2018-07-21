@@ -1,0 +1,13 @@
+{
+    "parameters": {
+        "maxmmes": {
+            "operator": "lt",
+            "value": 15
+        },
+        "rel2raw": {
+            "operator": "lt",
+            "value": 0.3
+        }
+    },
+    "expression": "( maxmmes & rel2raw )"
+}

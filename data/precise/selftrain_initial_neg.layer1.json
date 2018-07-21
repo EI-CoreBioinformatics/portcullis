@@ -1,0 +1,17 @@
+{
+    "parameters": {
+        "maxmmes": {
+            "operator": "lt",
+            "value": 15
+        },
+        "nb_us_aln": {
+            "operator": "lte",
+            "value": 1
+        },
+        "rel2raw": {
+            "operator": "eq",
+            "value": 0
+        }
+    },
+    "expression": "( maxmmes & nb_us_aln & rel2raw )"
+}

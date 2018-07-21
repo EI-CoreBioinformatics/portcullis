@@ -1,0 +1,25 @@
+{
+    "parameters": {
+        "canonical_ss": {
+            "operator": "in",
+            "value": ["N", "S"]
+        },
+        "rel2raw": {
+            "operator": "lt",
+            "value": 0.5
+        },
+        "mean_mismatches": {
+            "operator": "gte",
+            "value": 1
+        },
+        "maxmmes": {
+            "operator": "lt",
+            "value": 15
+        },
+        "nb_us_aln": {
+            "operator": "lte",
+            "value": 1
+        }
+    },
+    "expression": "( nb_us_aln & maxmmes & rel2raw & ( canonical_ss | mean_mismatches ) )"
+}

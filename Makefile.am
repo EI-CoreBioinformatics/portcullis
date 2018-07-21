@@ -22,16 +22,26 @@ configdir = $(datadir)/portcullis
 dist_config_DATA = \
 		    data/default_filter.json \
 		    data/low_juncs_filter.json \
-		    data/selftrain_initial_neg.layer1.json \
-		    data/selftrain_initial_neg.layer2.json \
-		    data/selftrain_initial_neg.layer3.json \
-		    data/selftrain_initial_neg.layer4.json \
-		    data/selftrain_initial_neg.layer5.json \
-		    data/selftrain_initial_neg.layer6.json \
-		    data/selftrain_initial_neg.layer7.json \
-		    data/selftrain_initial_pos.layer1.json \
-		    data/selftrain_initial_pos.layer2.json \
-		    data/selftrain_initial_pos.layer3.json
+		    data/balanced/selftrain_initial_neg.layer1.json \
+		    data/balanced/selftrain_initial_neg.layer2.json \
+		    data/balanced/selftrain_initial_neg.layer3.json \
+		    data/balanced/selftrain_initial_neg.layer4.json \
+		    data/balanced/selftrain_initial_neg.layer5.json \
+		    data/balanced/selftrain_initial_neg.layer6.json \
+		    data/balanced/selftrain_initial_neg.layer7.json \
+		    data/balanced/selftrain_initial_pos.layer1.json \
+		    data/balanced/selftrain_initial_pos.layer2.json \
+		    data/balanced/selftrain_initial_pos.layer3.json \
+		    data/precise/selftrain_initial_neg.layer1.json \
+		    data/precise/selftrain_initial_neg.layer2.json \
+		    data/precise/selftrain_initial_neg.layer3.json \
+		    data/precise/selftrain_initial_neg.layer4.json \
+		    data/precise/selftrain_initial_neg.layer5.json \
+		    data/precise/selftrain_initial_neg.layer6.json \
+		    data/precise/selftrain_initial_neg.layer7.json \
+		    data/precise/selftrain_initial_pos.layer1.json \
+		    data/precise/selftrain_initial_pos.layer2.json \
+		    data/precise/selftrain_initial_pos.layer3.json
 
 # SRC DIRS
 make_dirs=deps/htslib-1.3 deps/ranger-0.3.8 lib src tests scripts
