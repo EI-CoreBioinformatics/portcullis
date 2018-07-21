@@ -21,7 +21,9 @@ dist_noinst_SCRIPTS = autogen.sh antigen.sh build_boost.sh
 configdir = $(datadir)/portcullis
 dist_config_DATA = \
 		    data/default_filter.json \
-		    data/low_juncs_filter.json \
+		    data/low_juncs_filter.json
+balanceddir = $(datadir)/portcullis/balanced
+dist_balanced_DATA = \
 		    data/balanced/selftrain_initial_neg.layer1.json \
 		    data/balanced/selftrain_initial_neg.layer2.json \
 		    data/balanced/selftrain_initial_neg.layer3.json \
@@ -31,7 +33,10 @@ dist_config_DATA = \
 		    data/balanced/selftrain_initial_neg.layer7.json \
 		    data/balanced/selftrain_initial_pos.layer1.json \
 		    data/balanced/selftrain_initial_pos.layer2.json \
-		    data/balanced/selftrain_initial_pos.layer3.json \
+		    data/balanced/selftrain_initial_pos.layer3.json
+
+precisedir = $(datadir)/portcullis/precise
+dist_precise_DATA = \
 		    data/precise/selftrain_initial_neg.layer1.json \
 		    data/precise/selftrain_initial_neg.layer2.json \
 		    data/precise/selftrain_initial_neg.layer3.json \
