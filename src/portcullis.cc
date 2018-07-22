@@ -248,8 +248,8 @@ int mainFull(int argc, char *argv[]) {
             "Only keep junctions with a number of split reads greater than or equal to this number")
             ("save_bad", po::bool_switch(&saveBad)->default_value(false),
             "Saves bad junctions (i.e. junctions that fail the filter), as well as good junctions (those that pass)")
-            ("balanced", po::bool_switch(&balanced)->default_value(false),
-            "Uses rules that should provide a balanced training set of positive and negative junctions.  By default, portcullis tends towards more precise predictions, which is useful for datasets with high coverage.  Setting to balanced tends to work better on smaller datasets with less coverage.")
+            //("balanced", po::bool_switch(&balanced)->default_value(false),
+            //"Uses rules that should provide a balanced training set of positive and negative junctions.  By default, portcullis tends towards more precise predictions, which is useful for datasets with high coverage.  Setting to balanced tends to work better on smaller datasets with less coverage.")
             ;
 
     // Hidden options, will be allowed both on command line and
@@ -347,7 +347,7 @@ int mainFull(int argc, char *argv[]) {
             << "-------------------" << endl << endl;
     path filtOut = outputDir.string() + "/3-filt/portcullis_filtered";
     path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
-    JunctionFilter filter(prepDir, juncTab, filtOut, !balanced);
+    JunctionFilter filter(prepDir, juncTab, filtOut, false);
     filter.setVerbose(verbose);
     filter.setSource(source);
     filter.setMaxLength(max_length);

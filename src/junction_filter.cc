@@ -700,8 +700,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             "Only keep junctions with a number of split reads greater than or equal to this number")
             ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD),
             "The threshold score at which we determine a junction to be genuine or not.  Increase value towards 1.0 to increase precision, decrease towards 0.0 to increase sensitivity.  We generally find that increasing sensitivity helps when using high coverage data, or when the aligner has already performed some form of junction filtering.")
-            ("balanced", po::bool_switch(&balanced)->default_value(false),
-            "Uses rules that should provide a balanced training set of positive and negative junctions.  By default, portcullis tends towards more precise predictions, which is useful for datasets with high coverage.  Setting to balanced tends to work better on smaller datasets with less coverage.")
+            //("balanced", po::bool_switch(&balanced)->default_value(false),
+            //"Uses rules that should provide a balanced training set of positive and negative junctions.  By default, portcullis tends towards more precise predictions, which is useful for datasets with high coverage.  Setting to balanced tends to work better on smaller datasets with less coverage.")
             ;
     // Hidden options, will be allowed both on command line and
     // in config file, but will not be shown to the user.
@@ -746,7 +746,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     cout << "Running portcullis in junction filter mode" << endl
             << "------------------------------------------" << endl << endl;
     // Create the prepare class
-    JunctionFilter filter(prepDir, junctionFile, output, !balanced);
+    JunctionFilter filter(prepDir, junctionFile, output, false);
     filter.setSaveBad(saveBad);
     filter.setSource(source);
     filter.setVerbose(verbose);

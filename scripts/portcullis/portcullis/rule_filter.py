@@ -272,7 +272,6 @@ def create_training_sets(args):
 			neg_juncs[-1].to_csv(args.prefix + ".neg_layer_" + str(i) + ".tab", sep='\t')
 
 
-
 	neg_length_limit = int(L95 * 10)
 	print("Intron size L95 =", L95, "negative set will use junctions with intron size over L95 x 10:", neg_length_limit)
 	neg_juncs.append(df.loc[df["size"] > neg_length_limit])
@@ -285,6 +284,9 @@ def create_training_sets(args):
 		neg_juncs[-1].to_csv(args.prefix + ".neg_layer_intronsize.tab", sep='\t')
 
 	neg_set = pd.concat(neg_juncs)
+	remaining = original.reset_index().merge(neg_set, indicator=True, how='inner').set_index('index')
+	neg_set = remaining.loc[remaining['_merge'] == 'both']
+	del neg_set['_merge']
 
 	print()
 	print("Negative set contains:", len(neg_set), "junctions")
@@ -302,6 +304,7 @@ def create_training_sets(args):
 		training = pd.concat([pos_juncs, neg_set])
 		remaining = original.reset_index().merge(training, indicator=True, how='outer').set_index('index')
 		others = remaining.loc[remaining['_merge'] == 'left_only']
+		del others['_merge']
 		other_file = args.prefix + ".others.tab"
 		others.to_csv(other_file, sep='\t')
 		print("done.  File saved to:", other_file)
