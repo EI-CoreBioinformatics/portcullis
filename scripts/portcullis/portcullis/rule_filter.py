@@ -283,7 +283,7 @@ def create_training_sets(args):
 	if args.save_layers:
 		neg_juncs[-1].to_csv(args.prefix + ".neg_layer_intronsize.tab", sep='\t')
 
-	neg_set = pd.concat(neg_juncs)
+	neg_set = pd.concat(neg_juncs).drop_duplicates()
 	remaining = original.reset_index().merge(neg_set, indicator=True, how='inner').set_index('index')
 	neg_set = remaining.loc[remaining['_merge'] == 'both']
 	del neg_set['_merge']
