@@ -198,11 +198,12 @@ def create_training_sets(args):
 
 	pos_intron_sizes = pos_juncs["size"].tolist()
 	pos_intron_sizes.sort(key=int)
-	L95 = pos_intron_sizes[int(len(pos_intron_sizes) * 0.95)]
-	pos_length_limit = int(L95 * 1.2)
+	L95_pos = int(len(pos_intron_sizes) * 0.95)
+	L95 = pos_intron_sizes[L95_pos]
+	pos_length_limit = L95 # int(L95 * 1.2)
 
 
-	print("Intron size L95 =", L95, " positive set maximum intron size limit set to L95 x 1.2:", pos_length_limit)
+	print("Intron size at L95 =", L95)
 
 	# Also save this to file as we'll need it back in the C program
 	with open(args.prefix + ".L95_intron_size.txt", 'w') as l95out:
@@ -272,8 +273,8 @@ def create_training_sets(args):
 			neg_juncs[-1].to_csv(args.prefix + ".neg_layer_" + str(i) + ".tab", sep='\t')
 
 
-	neg_length_limit = int(L95 * 10)
-	print("Intron size L95 =", L95, "negative set will use junctions with intron size over L95 x 10:", neg_length_limit)
+	neg_length_limit = int(L95 * 20)
+	print("Intron size L95 =", L95, "negative set will use junctions with intron size over L95 x 20:", neg_length_limit)
 	neg_juncs.append(df.loc[df["size"] > neg_length_limit])
 	if args.genuine:
 		print(str(i+1) + "\t" + calcPerformance(neg_juncs[-1], df).longStr())
