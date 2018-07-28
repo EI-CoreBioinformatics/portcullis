@@ -9,3 +9,4 @@ config.*
 /libtool
 *.la
 /ranger.pc
+/conftest.cpp

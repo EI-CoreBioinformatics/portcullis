@@ -36,6 +36,10 @@ portcullis::ml::KNN::KNN(uint16_t defaultK, uint16_t _threads, double* _data, si
 	threads = _threads;
 	verbose = false;
 	results.resize(_rows);
+        for (size_t i = 0; i < results.size(); i++) {
+            results[i].resize(k);
+        }
+        
 }
 
 void portcullis::ml::KNN::doSlice(uint16_t slice) {
@@ -79,12 +83,10 @@ void portcullis::ml::KNN::doSlice(uint16_t slice) {
 	}
 	// Store final results
 	for (uint32_t testidx = start; testidx <= end; testidx++) {
-		shared_ptr<vector<uint32_t>> knn = make_shared<vector<uint32_t>>();
 		for (size_t i = 0; i < k; i++) {
 			uint32_t index = rbuf[((testidx - start) * k) + i];
-			knn->push_back(index);
-		}
-		results[testidx] = knn;
+			results[testidx][i] = index;
+		}		 
 	}
 }
 
@@ -105,7 +107,7 @@ void portcullis::ml::KNN::execute() {
 
 void portcullis::ml::KNN::print(ostream& out) {
 	for (auto & i : results) {
-		for (auto j : *i) {
+		for (auto j : i) {
 			out << j << " ";
 		}
 		out << endl;

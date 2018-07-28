@@ -55,7 +55,7 @@ protected:
 	size_t rows;
 	size_t cols;
 
-	vector<shared_ptr<vector<uint32_t>>> results;
+	vector<vector<uint32_t>> results;
 
 	void doSlice( uint16_t slice );
 
@@ -87,12 +87,12 @@ public:
 		this->verbose = verbose;
 	}
 
-	const vector<shared_ptr<vector<uint32_t>>>& getResults() const {
+	const vector<vector<uint32_t>>& getResults() const {
 		return results;
 	}
 
 	const vector<uint32_t>& getNNs(size_t index) const {
-		return *results[index];
+		return results[index];
 	}
 
 	void execute();
