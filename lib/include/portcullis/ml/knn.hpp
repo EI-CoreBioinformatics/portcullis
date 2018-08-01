@@ -67,10 +67,6 @@ public:
 		return k;
 	}
 
-	void setK(uint16_t k) {
-		this->k = k;
-	}
-
 	uint16_t getThreads() const {
 		return threads;
 	}
