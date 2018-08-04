@@ -276,9 +276,10 @@ def create_training_sets(args):
 			neg_juncs.to_csv(args.prefix + ".neg_layer_" + str(i) + ".tab", sep='\t')
 
 
-	neg_length_limit = int(L95 * 20)
-	print("Intron size L95 =", L95, "negative set will use junctions with intron size over L95 x 20:", neg_length_limit)
+	neg_length_limit = int(L95 * 8)
+	print("Intron size L95 =", L95, "negative set will use junctions with intron size over L95 x 8:", neg_length_limit, "and with maxmmes < 12")
 	neg_juncs = other_juncs.loc[other_juncs["size"] > neg_length_limit]
+	neg_juncs = neg_juncs.loc[neg_juncs["maxmmes"] < 12]
 	neg_set = pd.concat([neg_set, neg_juncs])
 	if args.genuine:
 		print(str(i+1) + "\t" + calcPerformance(neg_juncs, df).longStr())

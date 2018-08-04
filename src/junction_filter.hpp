@@ -97,6 +97,7 @@ namespace portcullis {
         uint16_t threads;
         bool saveBad;
         bool saveFeatures;
+        bool saveLayers;
         bool outputExonGFF;
         bool outputIntronGFF;
         uint32_t maxLength;
@@ -192,12 +193,20 @@ namespace portcullis {
             this->train = train;
         }
 
-        bool isSaveBad() const {
+        bool doSaveBad() const {
             return saveBad;
         }
 
         void setSaveBad(bool saveBad) {
             this->saveBad = saveBad;
+        }
+
+        bool doSaveLayers() const {
+            return saveLayers;
+        }
+
+        void setSaveLayers(bool saveLayers) {
+            this->saveLayers = saveLayers;
         }
 
         bool isOutputExonGFF() const {

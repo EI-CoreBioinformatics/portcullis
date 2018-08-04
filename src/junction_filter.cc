@@ -244,6 +244,10 @@ void portcullis::JunctionFilter::filter() {
             args.push_back(ruleset + "/selftrain_initial_neg.layer7.json");
 
             args.push_back("--prefix=" + output.string() + ".selftrain.initialset");
+
+	    if (this->saveLayers) {
+		    args.push_back("--save_layers");
+	    }
             args.push_back(junctionFile.string());
 
             char* char_args[50];
@@ -648,6 +652,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     bool no_ml;
     bool saveBad;
     bool save_features;
+    bool save_layers;
     bool exongff;
     bool introngff;
     uint32_t max_length;
@@ -719,6 +724,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             "If you wish to use a custom random forest model to filter the junctions file, rather than self-training on the input dataset use this option to. See manual for more details.")
             ("save_features", po::bool_switch(&save_features)->default_value(false),
             "Use this flag to save features (both for training set and again for all junctions) to disk.")
+            ("save_layers", po::bool_switch(&save_layers)->default_value(false),
+            "Use this flag to save to disk each layer produced when creating the training set.")
             ;
     // Positional option for the input bam file
     po::positional_options_description p;
@@ -768,6 +775,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
         }
     }
     filter.setSaveFeatures(save_features);
+    filter.setSaveLayers(save_layers);
     filter.setReferenceFile(referenceFile);
     filter.setThreshold(threshold);
     filter.setSmote(!no_smote);

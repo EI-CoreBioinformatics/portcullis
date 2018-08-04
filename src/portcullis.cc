@@ -185,6 +185,8 @@ int mainFull(int argc, char *argv[]) {
     uint32_t max_length;
     uint32_t mincov;
     string canonical;
+    bool save_layers;
+    bool save_features;
     bool balanced;
     bool verbose;
     bool help;
@@ -258,6 +260,10 @@ int mainFull(int argc, char *argv[]) {
     hidden_options.add_options()
             ("bam-files", po::value< std::vector<path> >(&bamFiles), "Path to the BAM files to process.")
             ("genome-file", po::value<path>(&genomeFile), "Path to the genome file to process.")
+	    ("save_features", po::bool_switch(&save_features)->default_value(false),
+              "Use this flag to save features (both for training set and again for all junctions) to disk.")
+            ("save_layers", po::bool_switch(&save_layers)->default_value(false),
+              "Use this flag to save to disk each layer produced when creating the training set.")
             ;
     // Positional option for the input bam file
     po::positional_options_description p;
@@ -359,6 +365,8 @@ int mainFull(int argc, char *argv[]) {
     filter.setOutputExonGFF(exongff);
     filter.setOutputIntronGFF(introngff);
     filter.setSaveBad(saveBad);
+    filter.setSaveLayers(save_layers);
+    filter.setSaveFeatures(save_features);
     filter.filter();
 
     // *********** BAM filter *********
