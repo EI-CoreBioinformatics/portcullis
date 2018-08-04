@@ -88,6 +88,9 @@ public:
 	}
 
 	const vector<uint32_t>& getNNs(size_t index) const {
+		if (index >= results.size()) {
+			std::cerr << "ERROR: Can't request KNNs of item " << index << " as this doesn't exist." << std::endl;
+		}
 		return results[index];
 	}
 
