@@ -108,5 +108,5 @@ See AUTHORS file for more details.
 Acknowledgements
 ----------------
 
-Affiliation: The Genome Analysis Centre (TGAC)
+Affiliation: The Earlham Institute (EI)
 Funding: The Biotechnology and Biological Sciences Research Council (BBSRC)

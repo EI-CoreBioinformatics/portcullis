@@ -49,3 +49,4 @@ callgrind*
 /portcullis.files
 /portcullis.includes
 /portcullis.creator.user
+/conftest.cpp

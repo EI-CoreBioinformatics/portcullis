@@ -37,7 +37,7 @@ def load_genuine(genuine_file):
 	return glist
 
 
-def json2pandas(handle, fieldnames):
+def json2pandas(handle, fieldnames, data_frame):
 	'''This function will load the JSON configuration, check that
 	both parameters and expression are defined, and convert to a pandas string that will operate on a dataframe
 	call df
@@ -86,17 +86,17 @@ def json2pandas(handle, fieldnames):
 	for key in keys:
 		k = key[:-2] if key[-2] == '.' and key[-1].isdigit() else key
 		if json_dict['parameters'][key]['operator'] == "in":
-			newexpr = re.sub(key, "(df[\"{0}\"].isin({2}))".format(k, replace_op(json_dict['parameters'][key]['operator']),
-															   json_dict['parameters'][key]['value']), newexpr)
+			newexpr = re.sub(key, "({3}[\"{0}\"].isin({2}))".format(k, replace_op(json_dict['parameters'][key]['operator']),
+															   json_dict['parameters'][key]['value'], data_frame), newexpr)
 		elif json_dict['parameters'][key]['operator'] == "not in":
 			newexpr = re.sub(key,
-							 "(~df[\"{0}\"].isin({2}))".format(k, replace_op(json_dict['parameters'][key]['operator']),
-															  json_dict['parameters'][key]['value']), newexpr)
+							 "(~{3}[\"{0}\"].isin({2}))".format(k, replace_op(json_dict['parameters'][key]['operator']),
+															  json_dict['parameters'][key]['value'], data_frame), newexpr)
 		else:
-			newexpr = re.sub(key, "(df[\"{0}\"] {1} {2})".format(k, replace_op(json_dict['parameters'][key]['operator']),
-															 json_dict['parameters'][key]['value']), newexpr)
+			newexpr = re.sub(key, "({3}[\"{0}\"] {1} {2})".format(k, replace_op(json_dict['parameters'][key]['operator']),
+															 json_dict['parameters'][key]['value'], data_frame), newexpr)
 
-	return "df.loc[" + newexpr + "]"
+	return data_frame + ".loc[" + newexpr + "]", data_frame + ".loc[~" + newexpr + "]"
 
 
 def calcPerformance(passed, failed, invert=False):
@@ -163,12 +163,12 @@ def create_training_sets(args):
 		print(str(i) + "\t", end="", flush=True)
 
 		# Create pandas command
-		pandas_cmd = json2pandas(open(json_file), fieldnames)
+		pandas_cmd_in, pandas_cmd_out = json2pandas(open(json_file), fieldnames, "df")
 
 		# print(pandas_cmd)
 
 		# Execute the pandas command, result should be a filtered dataframe
-		pos_juncs = eval(pandas_cmd)
+		pos_juncs = eval(pandas_cmd_in)
 
 		nb_not_pos = len(original) - len(pos_juncs)
 
@@ -198,11 +198,11 @@ def create_training_sets(args):
 
 	pos_intron_sizes = pos_juncs["size"].tolist()
 	pos_intron_sizes.sort(key=int)
-	L95 = pos_intron_sizes[int(len(pos_intron_sizes) * 0.95)]
+	L95_pos = int(len(pos_intron_sizes) * 0.95)
+	L95 = pos_intron_sizes[L95_pos]
 	pos_length_limit = int(L95 * 1.2)
 
-
-	print("Intron size L95 =", L95, " positive set maximum intron size limit set to L95 x 1.2:", pos_length_limit)
+	print("Intron size at L95 =", L95, " positive set maximum intron size limit set to L95 x 1.2:", pos_length_limit)
 
 	# Also save this to file as we'll need it back in the C program
 	with open(args.prefix + ".L95_intron_size.txt", 'w') as l95out:
@@ -245,8 +245,8 @@ def create_training_sets(args):
 	else:
 		print("PASS\tFAIL")
 
-	neg_juncs = []
-	df = not_pos_juncs
+	neg_set = None
+	other_juncs = not_pos_juncs
 
 	# Run through layers of logic to get the positive set
 	for i, json_file in enumerate(args.neg_json, start=1):
@@ -254,37 +254,41 @@ def create_training_sets(args):
 		print(str(i) + "\t", end="", flush=True)
 
 		# Create pandas command
-		pandas_cmd = json2pandas(open(json_file), fieldnames)
+		pandas_cmd_in, pandas_cmd_out = json2pandas(open(json_file), fieldnames, "other_juncs")
 
 		#print(pandas_cmd)
 
 		# Execute the pandas command, result should be a filtered dataframe
-		neg_juncs.append(eval(pandas_cmd))
+		neg_juncs = eval(pandas_cmd_in)
+		other_juncs = eval(pandas_cmd_out)
 
-		nb_not_neg = len(df) - len(neg_juncs[-1])
+		if i > 1:
+			neg_set = pd.concat([neg_set, neg_juncs])
+		else:
+			neg_set = neg_juncs
 
 		if args.genuine:
-			print(calcPerformance(neg_juncs[-1], df).longStr())
+			print(calcPerformance(neg_juncs, df).longStr())
 		else:
-			print(str(len(neg_juncs[-1])) + "\t" + str(nb_not_neg))
+			print(str(len(neg_juncs)) + "\t" + str(len(other_juncs)))
 
 		if args.save_layers:
-			neg_juncs[-1].to_csv(args.prefix + ".neg_layer_" + str(i) + ".tab", sep='\t')
+			neg_juncs.to_csv(args.prefix + ".neg_layer_" + str(i) + ".tab", sep='\t')
 
 
-
-	neg_length_limit = int(L95 * 10)
-	print("Intron size L95 =", L95, "negative set will use junctions with intron size over L95 x 10:", neg_length_limit)
-	neg_juncs.append(df.loc[df["size"] > neg_length_limit])
+	neg_length_limit = int(L95 * 8)
+	print("Intron size L95 =", L95, "negative set will use junctions with intron size over L95 x 8:", neg_length_limit, "and with maxmmes < 12")
+	neg_juncs = other_juncs.loc[other_juncs["size"] > neg_length_limit]
+	neg_juncs = neg_juncs.loc[neg_juncs["maxmmes"] < 12]
+	neg_set = pd.concat([neg_set, neg_juncs])
 	if args.genuine:
-		print(str(i+1) + "\t" + calcPerformance(neg_juncs[-1], df).longStr())
+		print(str(i+1) + "\t" + calcPerformance(neg_juncs, df).longStr())
 	else:
-		print(str(i+1) + "\t" + str(len(neg_juncs[-1])) + "\t" + str(len(df) - len(neg_juncs[-1])))
+		print(str(i+1) + "\t" + str(len(neg_juncs)) + "\t" + str(len(other_juncs)))
 
 	if args.save_layers:
-		neg_juncs[-1].to_csv(args.prefix + ".neg_layer_intronsize.tab", sep='\t')
+		neg_juncs.to_csv(args.prefix + ".neg_layer_intronsize.tab", sep='\t')
 
-	neg_set = pd.concat(neg_juncs)
 
 	print()
 	print("Negative set contains:", len(neg_set), "junctions")
@@ -293,6 +297,7 @@ def create_training_sets(args):
 		del neg_set["genuine"]
 
 	print("Saving negative set to disk ... ", end="", flush=True)
+	neg_set.sort_index(inplace=True)
 	neg_file = args.prefix + ".neg.junctions.tab"
 	neg_set.to_csv(neg_file, sep='\t')
 	print("done. File saved to:", neg_file)
@@ -302,6 +307,7 @@ def create_training_sets(args):
 		training = pd.concat([pos_juncs, neg_set])
 		remaining = original.reset_index().merge(training, indicator=True, how='outer').set_index('index')
 		others = remaining.loc[remaining['_merge'] == 'left_only']
+		del others['_merge']
 		other_file = args.prefix + ".others.tab"
 		others.to_csv(other_file, sep='\t')
 		print("done.  File saved to:", other_file)
@@ -329,12 +335,12 @@ def filter_one(args):
 	fieldnames = [key for key in dict(original.dtypes)]
 
 	# Create pandas command
-	pandas_cmd = json2pandas(open(args.json), fieldnames)
+	pandas_cmd_in, pandas_cmd_out = json2pandas(open(args.json), fieldnames, "df")
 
 	# print(pandas_cmd)
 
 	# Execute the pandas command, result should be a filtered dataframe
-	passed = eval(pandas_cmd)
+	passed = eval(pandas_cmd_in)
 
 	print("After filtering", len(passed), "junctions remain.")
 

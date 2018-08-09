@@ -12,22 +12,6 @@
             "operator": "in",
             "value": ["N"]
         },
-        "nb_rel_aln.1": {
-            "operator": "gte",
-            "value": 5
-        },
-        "nb_rel_aln.2": {
-            "operator": "gte",
-            "value": 1
-        },
-        "maxmmes.1": {
-            "operator": "gte",
-            "value": 20
-        },
-        "maxmmes.2": {
-            "operator": "gte",
-            "value": 10
-        },
         "entropy.1": {
             "operator": "gt",
             "value": 3.0

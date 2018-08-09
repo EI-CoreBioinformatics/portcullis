@@ -1,0 +1,37 @@
+{
+    "parameters": {
+        "nb_rel_aln": {
+            "operator": "gte",
+            "value": 1
+        },
+        "maxmmes": {
+            "operator": "gte",
+            "value": 8
+        },
+        "entropy": {
+            "operator": "gt",
+            "value": 1.0
+        },
+        "hamming5p": {
+            "operator": "gte",
+            "value": 4
+        },
+        "hamming3p": {
+            "operator": "gte",
+            "value": 4
+        },
+        "mean_mismatches": {
+            "operator": "lte",
+            "value": 1.0
+        },
+        "nb_us_aln": {
+            "operator": "gte",
+            "value": 1
+        },
+        "rel2raw": {
+            "operator": "gte",
+            "value": 0.25
+        }
+    },
+    "expression": "nb_rel_aln & hamming5p & hamming3p & maxmmes & nb_us_aln & mean_mismatches & rel2raw"
+}

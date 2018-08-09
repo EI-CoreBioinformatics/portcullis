@@ -55,7 +55,7 @@ protected:
 	size_t rows;
 	size_t cols;
 
-	vector<shared_ptr<vector<uint32_t>>> results;
+	vector<vector<uint32_t>> results;
 
 	void doSlice( uint16_t slice );
 
@@ -65,10 +65,6 @@ public:
 
 	uint16_t getK() const {
 		return k;
-	}
-
-	void setK(uint16_t k) {
-		this->k = k;
 	}
 
 	uint16_t getThreads() const {
@@ -87,12 +83,15 @@ public:
 		this->verbose = verbose;
 	}
 
-	const vector<shared_ptr<vector<uint32_t>>>& getResults() const {
+	const vector<vector<uint32_t>>& getResults() const {
 		return results;
 	}
 
 	const vector<uint32_t>& getNNs(size_t index) const {
-		return *results[index];
+		if (index >= results.size()) {
+			std::cerr << "ERROR: Can't request KNNs of item " << index << " as this doesn't exist." << std::endl;
+		}
+		return results[index];
 	}
 
 	void execute();

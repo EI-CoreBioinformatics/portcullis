@@ -20,6 +20,7 @@
 #include <cmath>
 using std::ostream;
 using std::cout;
+using std::cerr;
 using std::endl;
 using std::make_shared;
 
@@ -36,6 +37,10 @@ portcullis::ml::KNN::KNN(uint16_t defaultK, uint16_t _threads, double* _data, si
 	threads = _threads;
 	verbose = false;
 	results.resize(_rows);
+        for (size_t i = 0; i < results.size(); i++) {
+            results[i].resize(k, 0);
+        }
+        
 }
 
 void portcullis::ml::KNN::doSlice(uint16_t slice) {
@@ -77,14 +82,19 @@ void portcullis::ml::KNN::doSlice(uint16_t slice) {
 			rbuf[ri + i] = baseidx;
 		}
 	}
-	// Store final results
+	// Store final results (we could probably optimise this part away by replacing
+	// rbuf with results)
 	for (uint32_t testidx = start; testidx <= end; testidx++) {
-		shared_ptr<vector<uint32_t>> knn = make_shared<vector<uint32_t>>();
 		for (size_t i = 0; i < k; i++) {
 			uint32_t index = rbuf[((testidx - start) * k) + i];
-			knn->push_back(index);
-		}
-		results[testidx] = knn;
+			if (testidx >= results.size()) {
+				cerr << "ERROR: item has index larger than results array" << endl;
+			}
+			if (i >= results[testidx].size()) {
+				cerr << "ERROR: item is trying to set a value larger than k" << endl;
+			}
+			results[testidx][i] = index;
+		}		 
 	}
 }
 
@@ -105,7 +115,7 @@ void portcullis::ml::KNN::execute() {
 
 void portcullis::ml::KNN::print(ostream& out) {
 	for (auto & i : results) {
-		for (auto j : *i) {
+		for (auto j : i) {
 			out << j << " ";
 		}
 		out << endl;
