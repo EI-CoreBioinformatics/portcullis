@@ -6,14 +6,7 @@ From: ubuntu:latest
 	apt-get update
 
 	# Install Common Dependencies via apt
-	apt-get install -qq \
-		autoconf automake libtool make \
-	        gcc-7 g++-7 \
-	        git \
-        	libbz2-dev liblzma-dev libncurses5-dev \
-	        python3.6 python3-pip \
-        	zlib1g zlib1g-dev \
-	        wget
+	apt-get install -qq autoconf automake libtool make gcc-7 g++-7 git libbz2-dev liblzma-dev libncurses5-dev python3.6 python3-pip	zlib1g zlib1g-dev wget
 
 	# Configure GCC
         update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 100
