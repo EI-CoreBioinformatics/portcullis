@@ -2,7 +2,7 @@ Bootstrap: docker
 From: ubuntu:latest
 
 %post
-
+	# Update packages
 	apt-get update
 
 	# Install Common Dependencies via apt
