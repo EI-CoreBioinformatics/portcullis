@@ -50,3 +50,4 @@ callgrind*
 /portcullis.includes
 /portcullis.creator.user
 /conftest.cpp
+.scannerwork/
