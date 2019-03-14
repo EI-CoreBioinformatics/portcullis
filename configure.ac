@@ -198,7 +198,7 @@ pystr="detected ${PYTHON_VERSION}.  Plotting and downstream analysis enabled."
 
 sphinxstr="detected. Docs will be built."
 if [[ "${sphinx}" == "no" ]]; then
-	sphinxstr="no.  Will not build docs. You can still find the documentation online at: https://kat.readthedocs.org/en/latest/"
+	sphinxstr="no.  Will not build docs. You can still find the documentation online at: https://portcullis.readthedocs.org/en/latest/"
 fi
 
 pyinststr="no"

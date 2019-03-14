@@ -67,6 +67,14 @@ by default.  Type ```./configure --help``` for full details and available option
 NOTE: if KAT is failing at the ```./autogen.sh``` step you will likely need to install autotools.  The following command should do this on MacOS: ```brew install autoconf automake libtool```.  On a debian system this can be done with: ```sudo apt-get install autoconf automake libtool```.
 
 
+**From container**
+
+We support both docker and singularity containers and portcullis should be accessible directly from docker hub or singularity hub.  We recommend singularity for general use.
+
+For singularity: ```singularity pull --name portcullis.img shub://maplesond/portcullis:master```.  You can then run portcullis or junctools from within the singularity image.  e.g.: ```singularity exec portcullis.img portcullis --help```.
+
+The docker image is mainly provided for use from singularity.  However, you can still get access portcullis from within docker, to do so first get the image: ```docker pull maplesond/portcullis```.  Then you can start a bash session within the container by typing: ```docker run -it maplesond/portcullis bash```.  Getting data in and out of the container isn't very natural however.  You can try using docker's ```-v``` option.
+
 
 Operating Instructions
 ----------------------
