@@ -124,7 +124,7 @@ def create_training_sets(args):
 
 	# Load portcullis junctions into dataframe
 	print("Loading input junctions ... ", end="", flush=True)
-	original = DataFrame.from_csv(args.input, sep='\t', header=0)
+	original = DataFrame.read_csv(args.input, sep='\t', header=0)
 	fieldnames = [key for key in dict(original.dtypes)]
 	print("done.", len(original), "junctions loaded.")
 
@@ -324,7 +324,7 @@ def filter_one(args):
 	# Load portcullis junctions into dataframe
 	if args.verbose:
 		print("Loading input junctions ... ", end="", flush=True)
-	original = DataFrame.from_csv(args.input, sep='\t', header=0)
+	original = DataFrame.read_csv(args.input, sep='\t', header=0)
 	if args.verbose:
 		print("done.")
 
