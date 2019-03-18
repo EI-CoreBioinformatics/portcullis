@@ -111,6 +111,7 @@ namespace portcullis {
         bool enn;
         bool precise;
         bool verbose;
+        path initial;
 
 
     public:
@@ -120,7 +121,7 @@ namespace portcullis {
         JunctionFilter(const path& _prepDir,
                 const path& _junctionFile,
                 const path& _output,
-                bool precise);
+		       const path& _initial);
 
         virtual ~JunctionFilter() {
         }

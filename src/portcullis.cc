@@ -353,7 +353,7 @@ int mainFull(int argc, char *argv[]) {
             << "-------------------" << endl << endl;
     path filtOut = outputDir.string() + "/3-filt/portcullis_filtered";
     path juncTab = juncDir.string() + "/portcullis_all.junctions.tab";
-    JunctionFilter filter(prepDir, juncTab, filtOut, false);
+    JunctionFilter filter(prepDir, juncTab, filtOut, "balanced");
     filter.setVerbose(verbose);
     filter.setSource(source);
     filter.setMaxLength(max_length);

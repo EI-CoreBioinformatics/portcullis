@@ -10,7 +10,7 @@ MKDIR_P	      = mkdir -p
 INSTALL	      = /usr/bin/install -c -m 644
 
 # Set autoconf variables
-prefix	      = /usr/local
+prefix	      = /home/luca/workspace/portcullis/compiled
 PACKAGE_TARNAME = portcullis
 top_srcdir    = ..
 srcdir	      = .

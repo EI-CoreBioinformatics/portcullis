@@ -1160,10 +1160,12 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
 	boost::split(parts, line, boost::is_any_of("\t"), boost::token_compress_on);
 	uint32_t expected_cols = 11 + Junction::STRAND_NAMES.size() + Junction::METRIC_NAMES.size() + Junction::JAD_NAMES.size();
 	if (parts.size() != expected_cols) {
+	  std::string sparts;
+	  sparts = accumulate(begin(parts), end(parts), sparts);
 		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 								  "Could not parse line due to incorrect number of columns.  This is probably a version mismatch.  Check file and portcullis versions.  Expected ")
 							  + std::to_string(expected_cols) + " columns.  Found "
-							  + std::to_string(parts.size()) + ".  Line: " + line));
+									       + std::to_string(parts.size()) + ".  Line:\n" + sparts));
 	}
 	// Create intron
 	IntronPtr intron = make_shared<Intron>(

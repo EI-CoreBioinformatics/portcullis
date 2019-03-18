@@ -124,7 +124,7 @@ def create_training_sets(args):
 
 	# Load portcullis junctions into dataframe
 	print("Loading input junctions ... ", end="", flush=True)
-	original = DataFrame.read_csv(args.input, sep='\t', header=0)
+	original = DataFrame.from_csv(args.input, sep='\t', header=0)
 	fieldnames = [key for key in dict(original.dtypes)]
 	print("done.", len(original), "junctions loaded.")
 
@@ -165,7 +165,9 @@ def create_training_sets(args):
 		# Create pandas command
 		pandas_cmd_in, pandas_cmd_out = json2pandas(open(json_file), fieldnames, "df")
 
-		# print(pandas_cmd)
+		if args.verbose:
+			print(pandas_cmd_in)
+			print(pandas_cmd_out)
 
 		# Execute the pandas command, result should be a filtered dataframe
 		pos_juncs = eval(pandas_cmd_in)
@@ -256,7 +258,9 @@ def create_training_sets(args):
 		# Create pandas command
 		pandas_cmd_in, pandas_cmd_out = json2pandas(open(json_file), fieldnames, "other_juncs")
 
-		#print(pandas_cmd)
+		if args.verbose:
+			print(pandas_cmd_in)
+			print(pandas_cmd_out)
 
 		# Execute the pandas command, result should be a filtered dataframe
 		neg_juncs = eval(pandas_cmd_in)
@@ -324,7 +328,7 @@ def filter_one(args):
 	# Load portcullis junctions into dataframe
 	if args.verbose:
 		print("Loading input junctions ... ", end="", flush=True)
-	original = DataFrame.read_csv(args.input, sep='\t', header=0)
+	original = DataFrame.from_csv(args.input, sep='\t', header=0)
 	if args.verbose:
 		print("done.")
 

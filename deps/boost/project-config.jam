@@ -14,6 +14,9 @@ if ! gcc in [ feature.values <toolset> ]
 
 project : default-build <toolset>gcc ;
 
+path-constant ICU_PATH : /usr ;
+
+
 # List of --with-<library> and --without-<library>
 # options. If left empty, all libraries will be built.
 # Options specified on the command line completely
