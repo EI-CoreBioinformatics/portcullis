@@ -114,6 +114,30 @@ const vector<string> portcullis::Junction::JAD_NAMES({
 	"JAD20"
 });
 
+const vector<string> portcullis::Junction::AJAD_NAMES({
+	"aJAD01",
+	"aJAD02",
+	"aJAD03",
+	"aJAD04",
+	"aJAD05",
+	"aJAD06",
+	"aJAD07",
+	"aJAD08",
+	"aJAD09",
+	"aJAD10",
+	"aJAD11",
+	"aJAD12",
+	"aJAD13",
+	"aJAD14",
+	"aJAD15",
+	"aJAD16",
+	"aJAD17",
+	"aJAD18",
+	"aJAD19",
+	"aJAD20"
+});
+
+
 const vector<string> portcullis::Junction::STRAND_NAMES = {
 	"read-strand",
 	"ss-strand",
@@ -147,6 +171,8 @@ void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t l
         // In which case just assume everything is fine.
 		totalUpstreamMismatches = 0;
         totalDownstreamMismatches = 0;
+        upstreamMismatchPositions = vector<bool> (query.size(), false);
+        downstreamMismatchPositions = vector<bool> (query.size(), false);
         totalUpstreamMatches = leftEnd - leftStart + 1;
         totalDownstreamMatches = rightEnd - rightStart + 1;
         nbMismatches = totalUpstreamMismatches + totalDownstreamMismatches;
@@ -155,9 +181,9 @@ void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t l
         minMatch = min(upstreamMatches, downstreamMatches);
         maxMatch = max(upstreamMatches, downstreamMatches);
         mmes = min(totalUpstreamMatches, totalDownstreamMatches);
+        
     }
     else {
-
         string qAnchorLeft = ba->getPaddedQuerySeq(query, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
         string qAnchorRight = ba->getPaddedQuerySeq(query, rightStart, rightEnd, qRightStart, qRightEnd, false);
         string gAnchorLeft = ba->getPaddedGenomeSeq(ancLeft, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
@@ -203,11 +229,35 @@ void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t l
             nbMismatches = totalUpstreamMismatches + totalDownstreamMismatches;
             upstreamMatches = getNbMatchesFromEnd(qAnchorLeft, gAnchorLeft);
             downstreamMatches = getNbMatchesFromStart(qAnchorRight, gAnchorRight);
+            upstreamMismatchPositions = getMismatchPositionFromEnd(qAnchorLeft, gAnchorLeft);
+            downstreamMismatchPositions = getMismatchPositionFromStart(qAnchorRight, gAnchorRight);
             minMatch = min(upstreamMatches, downstreamMatches);
             maxMatch = max(upstreamMatches, downstreamMatches);
             mmes = min(totalUpstreamMatches, totalDownstreamMatches);
+            
         }
     }
+}
+
+vector<bool> portcullis::AlignmentInfo::getMismatchPositionFromStart(const string& query, const string& anchor) {
+    vector<bool> mask (query.size(), false);
+    for (size_t i = 0; i < query.size(); i++) {
+		if (query[i] != anchor[i]) {
+			mask[i] = true;
+		}
+	}
+	return mask;
+}
+
+vector<bool> portcullis::AlignmentInfo::getMismatchPositionFromEnd(const string& query, const string& anchor) {
+    vector<bool> mask (query.size(), false);
+    for (size_t j = query.size(); j > 0; j--) {
+		size_t i = j-1;
+        if (query[i] != anchor[i]) {
+            mask[query.size() - i - 1] = true;
+		}
+	}
+	return mask;
 }
 
 uint32_t portcullis::AlignmentInfo::getNbMatchesFromStart(const string& query, const string& anchor) {
@@ -326,6 +376,10 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
 	for (size_t i = 0; i < JAD_NAMES.size(); i++) {
 		junctionAnchorDepth.push_back(0);
 	}
+    junctionAnchorClarity.clear();
+    for (size_t i = 0; i < AJAD_NAMES.size(); i++) {
+		junctionAnchorClarity.push_back(0);
+	}
 	alignments.clear();
 	alignmentCodes.clear();
 	trimmedCoverage.clear();
@@ -402,6 +456,10 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 	for (size_t i = 0; i < JAD_NAMES.size(); i++) {
 		junctionAnchorDepth.push_back(j.getJunctionAnchorDepth(i));
 	}
+    junctionAnchorClarity.clear();
+	for (size_t i = 0; i < AJAD_NAMES.size(); i++) {
+		junctionAnchorClarity.push_back(j.getJunctionAnchorClarity(i));
+	}
 }
 
 // **** Destructor ****
@@ -409,6 +467,7 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 portcullis::Junction::~Junction() {
 	alignments.clear();
 	junctionAnchorDepth.clear();
+    junctionAnchorClarity.clear();
 }
 
 void portcullis::Junction::clearAlignments() {
@@ -815,6 +874,10 @@ void portcullis::Junction::calcMismatchStats() {
 		for (uint16_t i = 0; i < JAD_NAMES.size() && i < a->minMatch; i++) {
 			junctionAnchorDepth[i]++;
 		}
+        // Update junction average mismatches vector
+        
+        
+        
 	}
 	// Set mean mismatches across junction
 	meanMismatches = (double) nbMismatches / (double) alignments.size();

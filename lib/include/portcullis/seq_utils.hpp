@@ -73,6 +73,24 @@ public:
 		}
 		return sum;
 	}
+    
+    static std::vector<bool> mismPosition(const string& s1, const string& s2) {
+        if (s1.size() != s2.size())
+			BOOST_THROW_EXCEPTION(SeqUtilsException() << SeqUtilsErrorInfo(string(
+									  "Can't find mismatched positions of strings that are not the same length.  ") +
+								  "s1: " + lexical_cast<string>(s1.size()) + "\"" + s1 + "\"; " +
+								  "s2: " + lexical_cast<string>(s2.size()) + "\"" + s2 + "\""));
+        std::vector<bool> mask;
+        
+        string s1u = boost::to_upper_copy(s1);
+		string s2u = boost::to_upper_copy(s2);
+		
+		for (size_t i = 0; i < s1u.size(); i++) {
+            mask.push_back(s1u[i] != s2u[i]);
+		}
+		return mask;
+    }
+    
 
 	/**
 	 * Reverses a string, and returns a copy of that string

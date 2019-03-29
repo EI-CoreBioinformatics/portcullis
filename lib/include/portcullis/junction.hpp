@@ -148,6 +148,8 @@ struct AlignmentInfo {
 	uint32_t maxMatch; // Distance to first mismatch (maximum of either upstream or downstream)
 	uint32_t nbMismatches; // Total number of mismatches in this junction window
 	uint32_t mmes; // Minimal Match on Either Side of exon junction
+    vector<bool> upstreamMismatchPositions;
+    vector<bool> downstreamMismatchPositions;
 
 	AlignmentInfo(BamAlignmentPtr _ba) {
 		// Copy alignment
@@ -164,6 +166,8 @@ struct AlignmentInfo {
 		maxMatch = 0;
 		nbMismatches = 0;
 		mmes = 0;
+        upstreamMismatchPositions = vector<bool> (0, false);
+        downstreamMismatchPositions = vector<bool> (0, false);
 	}
 
 	~AlignmentInfo() {
@@ -174,6 +178,8 @@ struct AlignmentInfo {
 
 	uint32_t getNbMatchesFromStart(const string& query, const string& anchor);
 	uint32_t getNbMatchesFromEnd(const string& query, const string& anchor);
+    vector<bool> getMismatchPositionFromStart(const string& query, const string& anchor);
+    vector<bool> getMismatchPositionFromEnd(const string& query, const string& anchor);
 };
 
 typedef shared_ptr<AlignmentInfo> AlignmentInfoPtr;
@@ -241,7 +247,7 @@ private:
 	bool suspicious;
 	bool pfp;
 	vector<uint32_t> junctionAnchorDepth;
-
+    vector<double> junctionAnchorClarity;
 
 	// **** Predictions ****
 
@@ -820,7 +826,10 @@ public:
 	uint32_t getJunctionAnchorDepth(size_t index) const {
 		return junctionAnchorDepth[index];
 	}
-
+    
+    double getJunctionAnchorClarity(size_t index) const {
+        return junctionAnchorClarity[index];
+    }
 
 	/**
 	 * This calls the relevant getter for the given name, assuming the name represents a property with
@@ -1299,6 +1308,9 @@ public:
 		for (size_t i = 0; i < JAD_NAMES.size(); i++) {
 			strm << "\t" << j.junctionAnchorDepth[i];
 		}
+        for (size_t i = 0; i < JAD_NAMES.size(); i++) {
+			strm << "\t" << j.junctionAnchorClarity[i];
+		}
 		return strm;
 	}
 
@@ -1315,6 +1327,7 @@ public:
 
 	static const vector<string> METRIC_NAMES;
 	static const vector<string> JAD_NAMES;
+    static const vector<string> AJAD_NAMES;
 	static const vector<string> STRAND_NAMES;
 
 	/**
