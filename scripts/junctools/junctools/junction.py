@@ -718,6 +718,28 @@ class TabJunction(ExonJunction):
 				"JAD18",
 				"JAD19",
 				"JAD20"]
+	@staticmethod
+	def ajo_names():
+		return ["aJAD01",
+				"aJAD02",
+				"aJAD03",
+				"aJAD04",
+				"aJAD05",
+				"aJAD06",
+				"aJAD07",
+				"aJAD08",
+				"aJAD09",
+				"aJAD10",
+				"aJAD11",
+				"aJAD12",
+				"aJAD13",
+				"aJAD14",
+				"aJAD15",
+				"aJAD16",
+				"aJAD17",
+				"aJAD18",
+				"aJAD19",
+				"aJAD20"]        
 
 	@staticmethod
 	def strand_names():
@@ -730,9 +752,10 @@ class TabJunction(ExonJunction):
 		chunks.append("\t".join(["ss1", "ss2"]))
 		chunks.append("\t".join(TabJunction.metric_names()))
 		chunks.append("\t".join(TabJunction.jo_names()))
+		#chunks.append("\t".join(TabJunction.ajo_names()))
 
 		return "\t".join(chunks)
-
+        
 	@staticmethod
 	def metric_at(index):
 		return TabJunction.mefeatures()[index]
@@ -744,8 +767,8 @@ class TabJunction(ExonJunction):
 		if parts[0] == "index" or len(parts) <= 1:
 			return None
 
-		if len(parts) != 75 and len(parts) > 1:
-			msg = "Unexpected number of columns in TAB file.  Expected 75, found " + str(len(parts))
+		if len(parts) != len(self.file_header().split("\t")) and len(parts) > 1:
+			msg = "Unexpected number of columns in TAB file.  Expected " + len(self.file_header().split("\t")) +", found " + str(len(parts))
 			raise ValueError(msg)
 
 		self.refseq = parts[2]

@@ -71,7 +71,7 @@ using portcullis::PyHelper;
 #include "prepare.hpp"
 
 portcullis::JunctionFilter::JunctionFilter(const path& _prepDir, const path& _junctionFile,
-					   const path& _output, const path& _initial) {  // bool _precise): precise(_precise) {
+					   const path& _output, const path& _initial) {
     junctionFile = _junctionFile;
     prepData.setPrepDir(_prepDir);
     modelFile = "";
@@ -93,10 +93,15 @@ portcullis::JunctionFilter::JunctionFilter(const path& _prepDir, const path& _ju
     enn = true;
 }
 
-std::tuple<vector<string>, vector<string>> find_jsons(path ruleset) {
+std::tuple<vector<string>, vector<string>> portcullis::JunctionFilter::find_jsons(path ruleset) {
   // string ruleset = dataDir.string() + (precise ? "/precise" : "/balanced");
   vector<string> pos_jsons;
   vector<string> neg_jsons;
+  if (!exists(ruleset)) {
+    string rules = ruleset.string();
+    ruleset = dataDir;
+    ruleset /= rules;
+  }
   if (exists(ruleset)) {
     for (const auto & entry : bfs::directory_iterator(ruleset)) {
       std::smatch sm;
@@ -116,12 +121,16 @@ std::tuple<vector<string>, vector<string>> find_jsons(path ruleset) {
       }
     }
   }
+  else {
+    BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                  "Could not find suitable directory containing training rules for ruleset")));
+  }
 
   return std::make_tuple(pos_jsons, neg_jsons);
 }
 
 
-bool sort_jsons(string& json1, string& json2) {
+bool portcullis::JunctionFilter::sort_jsons(string& json1, string& json2) {
   // selftrain_initial_pos.layer3.json < selftrain_initial_pos.layer4.json
   std::smatch jmatch1;
   std::smatch jmatch2;
@@ -294,7 +303,7 @@ void portcullis::JunctionFilter::filter() {
 
 	    // Now sort the vectors, and check that they are not empty.
 	    if (neg_jsons.empty() || pos_jsons.empty() ) {
-                    BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string("Not enough positive and negative layers found in " + ruleset)));
+                    BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string("Not enough positive and negative layers found in " + ruleset + " ruleset.")));
 	    }
 
 	    sort(neg_jsons.begin(), neg_jsons.end(), sort_jsons);
@@ -807,10 +816,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             "Only keep junctions with a number of split reads greater than or equal to this number")
             ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD),
             "The threshold score at which we determine a junction to be genuine or not.  Increase value towards 1.0 to increase precision, decrease towards 0.0 to increase sensitivity.  We generally find that increasing sensitivity helps when using high coverage data, or when the aligner has already performed some form of junction filtering.")
-      ("training_rule", po::value<path>(&initial)->default_value("balanced"),
-       "Pre-set to use for the self-training. Currently supported: balanced, precise. Default: balanced.")
-            //("balanced", po::bool_switch(&balanced)->default_value(false),
-            //"Uses rules that should provide a balanced training set of positive and negative junctions.  By default, portcullis tends towards more precise predictions, which is useful for datasets with high coverage.  Setting to balanced tends to work better on smaller datasets with less coverage.")
+            ("training_rule", po::value<path>(&initial)->default_value("balanced"),
+            "Pre-set to use for the self-training. Currently supported: balanced, precise. Default: balanced.")
             ;
     // Hidden options, will be allowed both on command line and
     // in config file, but will not be shown to the user.

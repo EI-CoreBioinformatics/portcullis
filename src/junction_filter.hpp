@@ -368,6 +368,10 @@ namespace portcullis {
 
         void undersample(JunctionList& jl, size_t size);
 
+	std::tuple<vector<string>, vector<string>> find_jsons(path ruleset);
+
+	static bool sort_jsons(string& json1, string& json2);
+
     public:
 
         static string title() {

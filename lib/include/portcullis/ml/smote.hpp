@@ -44,7 +44,6 @@ private:
 	bool verbose;
 
 	double* data;
-    size_t nelements;
 	size_t rows;
 	size_t cols;
 
@@ -53,7 +52,7 @@ private:
 
 public:
 
-  Smote(uint16_t defaultK, uint16_t _smoteness, uint16_t _threads, double* _data, size_t _nelements, size_t _rows, size_t _cols);
+	Smote(uint16_t defaultK, uint16_t _smoteness, uint16_t _threads, double* _data, size_t _rows, size_t _cols);
 
 	~Smote() {
 		delete[] synthetic;

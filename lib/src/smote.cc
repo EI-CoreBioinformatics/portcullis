@@ -25,11 +25,10 @@ using portcullis::ml::KNN;
 
 #include <portcullis/ml/smote.hpp>
 
-portcullis::ml::Smote::Smote(uint16_t defaultK, uint16_t _smoteness, uint16_t _threads, double* _data, size_t _nelements, size_t _rows, size_t _cols) {
+portcullis::ml::Smote::Smote(uint16_t defaultK, uint16_t _smoteness, uint16_t _threads, double* _data, size_t _rows, size_t _cols) {
 	data = _data;
 	rows = _rows;
 	cols = _cols;
-	nelements = _nelements;
 	if (_rows < defaultK && _rows < 100)
 		k = _rows;
 	else
@@ -59,16 +58,9 @@ void portcullis::ml::Smote::execute() {
 			const vector<uint32_t> nns = knn.getNNs(i);
 			uint32_t nn = nns[igen(rng)];    // Nearest neighbour row index
 			for (size_t j = 0; j < cols; j++) {
-                double dif;
-                double gap;
-                if ((nn * cols) + j <= nelements) {
-                    dif = data[(nn * cols) + j] - data[(i * cols) + j];  // This is causing errors in some weird cases.
-                    } else{
-                    dif = 0;
-                    }
-                gap = dgen(rng);
-                synthetic[(new_index * cols) + j] = data[(i * cols) + j] + gap * dif;
-
+				double dif = data[(nn * cols) + j] - data[(i * cols) + j];
+				double gap = dgen(rng);
+				synthetic[(new_index * cols) + j] = data[(i * cols) + j] + gap * dif;
 			}
 			new_index++;
 			N--;
