@@ -172,6 +172,8 @@ struct AlignmentInfo {
 
 	~AlignmentInfo() {
 		ba.reset();
+        upstreamMismatchPositions.clear();
+        downstreamMismatchPositions.clear();
 	}
 
 	void calcMatchStats(const Intron& i, const uint32_t leftStart, const uint32_t rightEnd, const string& ancLeft, const string& ancRight);
@@ -1023,7 +1025,9 @@ public:
 		junctionAnchorDepth[index] = val;
 	}
 
-
+    void setJunctionAnchorClarity(size_t index, double val) {
+		junctionAnchorClarity[index] = val;
+	}
 
 	// ****** Methods for building junction anchors ******
 
@@ -1308,7 +1312,7 @@ public:
 		for (size_t i = 0; i < JAD_NAMES.size(); i++) {
 			strm << "\t" << j.junctionAnchorDepth[i];
 		}
-        for (size_t i = 0; i < JAD_NAMES.size(); i++) {
+        for (size_t i = 0; i < AJAD_NAMES.size(); i++) {
 			strm << "\t" << j.junctionAnchorClarity[i];
 		}
 		return strm;
