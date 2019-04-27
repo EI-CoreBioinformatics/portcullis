@@ -504,11 +504,11 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
 		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 								  "Can't find genomic sequence for this junction as no intron is defined")));
 	// Process the predicted donor / acceptor regions and update junction
-	int donorLen = -1;
-	int acceptorLen = -1;
-	string donor = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->start, intron->start + 1, &donorLen);
-	string acceptor = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end - 1, intron->end, &acceptorLen);
-	if (donorLen == -1)
+	string donor = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->start, intron->start + 1);
+	string acceptor = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end - 1, intron->end);
+	int donorLen = donor.length();
+	int acceptorLen = acceptor.length();
+	if (donorLen == 0)
 		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 								  "Can't find donor site (left side splice site) region for junction: ") + this->intron->toString()));
 	if (donorLen != 2)
@@ -516,7 +516,7 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
 								  "Retrieved sequence for left side splice site of junction ") + this->intron->toString() + " is not the expected length" +
 							  "\nRetrieved sequence Length: " + lexical_cast<string>(donorLen) +
 							  "\nExpected sequence length: " + lexical_cast<string>(2) + "\n"));
-	if (acceptorLen == -1)
+	if (acceptorLen == 0)
 		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 								  "Can't find acceptor site (right side splice site) region for junction: ") + this->intron->toString()));
 	if (acceptorLen != 2)
@@ -528,14 +528,14 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
 	boost::to_upper(acceptor); // Removes any lowercase bases representing repeats
 	this->setDonorAndAcceptorMotif(donor, acceptor);
 	// Just access the whole junction region
-	int leftAncLen = -1;
-	int leftIntLen = -1;
-	int rightAncLen = -1;
-	int rightIntLen = -1;
-	string leftAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), leftAncStart, intron->start - 1, &leftAncLen);
-	string rightAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end + 1, rightAncEnd, &rightAncLen);
-	string leftInt = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->start, intron->start + 9, &leftIntLen);
-	string rightInt = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end - 9, intron->end, &rightIntLen);
+	string leftAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), leftAncStart, intron->start - 1);
+	string rightAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end + 1, rightAncEnd);
+	string leftInt = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->start, intron->start + 9);
+	string rightInt = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end - 9, intron->end);
+	int leftAncLen = leftAnc.length();
+	int leftIntLen = leftInt.length();
+	int rightAncLen = rightAnc.length();
+	int rightIntLen = rightInt.length();
 	if (leftAncLen == -1)
 		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 								  "Can't find left anchor region for junction: ") + this->intron->toString()));
@@ -1247,22 +1247,21 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
 }
 
 double portcullis::Junction::calcCodingPotential(GenomeMapper& gmap, KmerMarkovModel& exon, KmerMarkovModel& intron) {
-	int len = 0;
 	const char* ref = this->intron->ref.name.c_str();
 	const bool neg = getConsensusStrand() == Strand::NEGATIVE;
-	string left_exon = gmap.fetchBases(ref, this->intron->start - 82, this->intron->start - 2, &len);
+	string left_exon = gmap.fetchBases(ref, this->intron->start - 82, this->intron->start - 2);
 	if (neg) {
 		left_exon = SeqUtils::reverseComplement(left_exon);
 	}
-	string left_intron = gmap.fetchBases(ref, this->intron->start, this->intron->start + 80, &len);
+	string left_intron = gmap.fetchBases(ref, this->intron->start, this->intron->start + 80);
 	if (neg) {
 		left_intron = SeqUtils::reverseComplement(left_intron);
 	}
-	string right_intron = gmap.fetchBases(ref, this->intron->end - 80, this->intron->end, &len);
+	string right_intron = gmap.fetchBases(ref, this->intron->end - 80, this->intron->end);
 	if (neg) {
 		right_intron = SeqUtils::reverseComplement(right_intron);
 	}
-	string right_exon = gmap.fetchBases(ref, this->intron->end + 1, this->intron->end + 81, &len);
+	string right_exon = gmap.fetchBases(ref, this->intron->end + 1, this->intron->end + 81);
 	if (neg) {
 		right_exon = SeqUtils::reverseComplement(right_exon);
 	}
@@ -1282,14 +1281,13 @@ double portcullis::Junction::calcCodingPotential(GenomeMapper& gmap, KmerMarkovM
 portcullis::SplicingScores portcullis::Junction::calcSplicingScores(GenomeMapper& gmap, KmerMarkovModel& donorT, KmerMarkovModel& donorF,
 		KmerMarkovModel& acceptorT, KmerMarkovModel& acceptorF,
 		PosMarkovModel& donorP, PosMarkovModel& acceptorP) {
-	int len = 0;
 	const char* ref = this->intron->ref.name.c_str();
 	const bool neg = getConsensusStrand() == Strand::NEGATIVE;
-	string left = gmap.fetchBases(ref, intron->start - 3, intron->start + 20, &len);
+	string left = gmap.fetchBases(ref, intron->start - 3, intron->start + 20);
 	if (neg) {
 		left = SeqUtils::reverseComplement(left);
 	}
-	string right = gmap.fetchBases(ref, intron->end - 20, intron->end + 2, &len);
+	string right = gmap.fetchBases(ref, intron->end - 20, intron->end + 2);
 	if (neg) {
 		right = SeqUtils::reverseComplement(right);
 	}

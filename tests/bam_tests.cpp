@@ -158,22 +158,21 @@ TEST(bam, genome_mapper_ecoli) {
     
     // Get seq
     string name = "gi|556503834|ref|NC_000913.3|";
-    int len = -1;
-    string fullSeq = genomeMapper.fetchBases(name.c_str(), &len);    
-    EXPECT_EQ(len, 4641652);
+    string fullSeq = genomeMapper.fetchBases(name.c_str());
+    //EXPECT_EQ(fullSeq.length(), 4641652);
     //BOOST_CHECK(fullSeq != NULL);
     
     string partialSeqExpected = "TCTGACTGCA";
     
     // Get partial seq (method 1 - 1 based)
-    string partialSeq1 = genomeMapper.fetchBases((name + ":11-20").c_str(), &len);
+    string partialSeq1 = genomeMapper.fetchBases((name + ":11-20").c_str());
     EXPECT_EQ(partialSeqExpected.compare(partialSeq1), 0);
-    EXPECT_EQ(len, 10);
+    EXPECT_EQ(partialSeq1.length(), 10);
     
     // Get partial seq (method 2 - 0 based)
-    string partialSeq2 = genomeMapper.fetchBases((char*)name.c_str(), 10, 19, &len);
+    string partialSeq2 = genomeMapper.fetchBases((char*)name.c_str(), 10, 19);
     EXPECT_EQ(partialSeqExpected.compare(partialSeq2), 0);
-    EXPECT_EQ(len, 10);
+    EXPECT_EQ(partialSeq2.length(), 10);
     
     // Delete the faidx file
     bfs::remove(faidxFile);
