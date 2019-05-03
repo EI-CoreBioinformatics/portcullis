@@ -4,12 +4,12 @@
 
 # Autoconf setup
 AC_PREREQ([2.68])
-AC_INIT([portcullis],[x.y.z],[daniel.mapleson@earlham.ac.uk],[portcullis],[http://www.earlham.ac.uk])
+AC_INIT([portcullis],[2.2.2-alpha.89])
 AC_CONFIG_SRCDIR([src/portcullis.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile doc/Makefile doc/source/conf.py lib/portcullis.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile
+AC_CONFIG_FILES([Makefile doc/Makefile lib/portcullis.pc lib/Makefile src/Makefile tests/compat.sh tests/Makefile
                 scripts/junctools/setup.py scripts/junctools/junctools/__init__.py
                 scripts/portcullis/setup.py scripts/portcullis/portcullis/__init__.py
                 scripts/Makefile])

@@ -3,6 +3,18 @@
 Installation
 ============
 
+From container
+~~~~~~~~~~~~~~
+
+We support both docker and singularity containers and portcullis should be accessible directly from docker hub or singularity hub.
+
+For singularity: ``singularity pull --name portcullis.img shub://maplesond/portcullis:master``.  You can then run portcullis or junctools from within the singularity image.  e.g.: ``singularity exec portcullis.img portcullis --help``.
+
+To run from docker container, keep in mind you need to mount in any working directories to the container with the `-v` option.  Ideally, mount these into the /data directory which is the container's working directory.  For example:
+
+``docker run --it --rm -v /abspath/to/data/on/host:/data maplesond/portcullis:stable portcullis full genome.fa rnaalignments.bam``
+
+
 From brew
 ~~~~~~~~~
 
@@ -32,6 +44,7 @@ Before installing Portcullis from source please first confirm these dependencies
  - **libtool** V2.4.2+
  - **zlib**
  - **pthreads**
+ - **boost** V1.52+
  - **samtools** V1.2+
  - **Python3** V3.5+ (including python3 development libraries and the *pandas*, *numpy*, *tabulate* packages)
  - **Sphinx-doc** V1.3+ (Optional: only required for building the documentation.)
@@ -42,7 +55,6 @@ Then proceed with the following steps:
 
  - Clone the git repository (For ssh: ```git clone git@github.com:maplesond/portcullis.git```; or for https: ```git clone https://github.com/maplesond/portcullis.git```), into a directory on your machine.
  - "cd" into root directory of the installation
- - Build boost by typing ```./build_boost.sh```.
  - Create configuration script by typing: ```./autogen.sh```.
  - Generate makefiles and confirm dependencies: ```./configure```
  - Compile software: ```make```
