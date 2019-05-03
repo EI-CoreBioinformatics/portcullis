@@ -60,7 +60,7 @@ podTemplate(
             sh "portcullis --help"
             sh "junctools --help"
           }
-          docker.withRegistry('https://docker.sdlmapleson.net', 'docker-sdlmapleson-net') {
+          docker.withRegistry('https://docker.sdlmapleson.net', 'docker-registry') {
             image.push("${SEMVER}")
             image.push("latest")
             if(env.BRANCH_NAME == 'master') {
