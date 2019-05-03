@@ -15,7 +15,7 @@ EXTRA_DIST = \
 	NEWS
 
 # FILES NOT TO INSTALL
-dist_noinst_SCRIPTS = autogen.sh antigen.sh build_boost.sh
+dist_noinst_SCRIPTS = autogen.sh antigen.sh
 		    
 # Config files
 configdir = $(datadir)/portcullis

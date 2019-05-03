@@ -3,8 +3,8 @@ podTemplate(
     label: 'jenkins-portcullis',
     namespace: 'cicd',
     containers: [
-      containerTemplate(name: 'cppbuild', image: 'docker.sdlmapleson.net/cppbuild:4', ttyEnabled: true),
-      containerTemplate(name: 'gitversion', image: 'docker.sdlmapleson.net/gitversion:5', ttyEnabled: true, command: 'cat'),
+      containerTemplate(name: 'cppbuild', image: 'maplesond/cppbuild:latest', ttyEnabled: true),
+      containerTemplate(name: 'gitversion', image: 'maplesond/gitversion:latest', ttyEnabled: true, command: 'cat'),
       containerTemplate(name: 'sonarscanner', image: 'docker.sdlmapleson.net/sonarscanner:1', ttyEnabled: true),
       containerTemplate(name: 'docker', image: 'docker', ttyEnabled: true, command: 'cat'),
       containerTemplate(name: 'jnlp', image: 'jenkins/jnlp-slave:3.27-1')
@@ -16,9 +16,12 @@ podTemplate(
     stage('Git') {
       checkout(scm)
     }
-    stage('Git Version') {
-      container('gitversion') {
-        sh ("""SEMVER=`semver .` && echo "\$SEMVER" && sed -i "s/AC_INIT(\\[portcullis\\],\\[1.1.2\\]/AC_INIT(\\[portcullis\\],\\[\$SEMVER\\]/" configure.ac""")
+    // Only do semantic versioning on master or develop branch for now
+    if(env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop') {
+      stage('Git Version') {
+        container('gitversion') {
+          sh ("""SEMVER=`semver .` && echo "\$SEMVER" && sed -i "s/AC_INIT(\\[portcullis\\],\\[x.y.z\\]/AC_INIT(\\[portcullis\\],\\[\$SEMVER\\]/" configure.ac""")
+        }
       }
     }
     // We only have the free sonarqube, so just run on master branch to save time.
@@ -31,27 +34,40 @@ podTemplate(
         }
       }
     }    
-    stage('Build boost') {
-      container('cppbuild') {
-        sh "./build_boost.sh"
-      }
-    }
     stage('Build') {
       container('cppbuild') {
-        sh "./autogen.sh && ./configure"
+        sh "./autogen.sh"
+        sh "./configure"
         sh "make -j4 V=1"
       }
     }
     stage('Test') {
       container('cppbuild') {
-        echo 'Testing....'
         sh "make -j4 V=1 check"
       }
     }
-    stage('Install') {
+    stage('Install and Package') {
       container('cppbuild') {
-        echo 'Installing....'
         sh "make install"
+        sh "make dist"
+      }
+    }
+    if(env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop') {
+      stage('Docker') {
+        container('docker') {
+          def image = docker.build("docker.sdlmapleson.net/portcullis", "--build-arg VERSION=${SEMVER} .")
+          image.inside {
+            sh "portcullis --help"
+            sh "junctools --help"
+          }
+          docker.withRegistry('https://docker.sdlmapleson.net', 'docker-sdlmapleson-net') {
+            image.push("${SEMVER}")
+            image.push("latest")
+            if(env.BRANCH_NAME == 'master') {
+              image.push("stable")
+            }
+          }
+        }
       }
     }
   }

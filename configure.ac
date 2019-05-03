@@ -4,7 +4,7 @@
 
 # Autoconf setup
 AC_PREREQ([2.68])
-AC_INIT([portcullis],[1.1.2],[daniel.mapleson@earlham.ac.uk],[portcullis],[http://www.earlham.ac.uk])
+AC_INIT([portcullis],[x.y.z],[daniel.mapleson@earlham.ac.uk],[portcullis],[http://www.earlham.ac.uk])
 AC_CONFIG_SRCDIR([src/portcullis.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
@@ -101,7 +101,12 @@ AC_SEARCH_LIBS([inflateEnd], [z],
     [AC_MSG_ERROR([libz not found.  Please ensure that zlib is properly built and configured.])])
 AC_CHECK_HEADER([zlib.h], , [AC_MSG_ERROR([zlib.h not found.  Please ensure you have the zlib development pack, with header files, installed.])])
 
-
+# Boost
+AX_BOOST_BASE([1.52], , [AC_MSG_ERROR([Portcullis needs Boost, but it was not found in your system.])])
+AX_BOOST_SYSTEM
+AX_BOOST_FILESYSTEM
+AX_BOOST_CHRONO
+AX_BOOST_PROGRAM_OPTIONS
 
 # Check for samtools (reqired)
 AC_CHECK_PROG([with_samtools],[samtools],[yes],[no])

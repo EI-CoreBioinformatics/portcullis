@@ -12,17 +12,14 @@ libportcullis_la_LDFLAGS = \
 	-static \
 	@AM_LDFLAGS@
 
-EXTRA_libportcullis_la_DEPENDENCIES = \
-	$(top_builddir)/deps/boost/build/lib/libboost_timer.a \
-	$(top_builddir)/deps/boost/build/lib/libboost_chrono.a \
-	$(top_builddir)/deps/boost/build/lib/libboost_filesystem.a \
-	$(top_builddir)/deps/boost/build/lib/libboost_system.a
-	
-
 libportcullis_la_LIBADD = \
 	$(top_builddir)/deps/htslib-1.3/libphts.la \
 	$(top_builddir)/deps/ranger-0.3.8/libranger.la \
 	-lz \
+	-lboost_timer \
+	-lboost_chrono \
+	-lboost_filesystem \
+	-lboost_system \
 	@AM_LIBS@
 
 libportcullis_la_SOURCES =	\
@@ -37,8 +34,8 @@ libportcullis_la_SOURCES =	\
 	src/intron.cc \
 	src/junction.cc \
 	src/junction_system.cc \
-    src/performance.cc \
-    src/knn.cc \
+	src/performance.cc \
+	src/knn.cc \
 	src/enn.cc \
 	src/smote.cc
 
@@ -70,7 +67,6 @@ library_include_HEADERS = \
 libportcullis_la_CPPFLAGS = \
 	-I$(top_srcdir)/deps/htslib-1.3 \
 	-I$(top_srcdir)/deps/ranger-0.3.8/include \
-	-I$(top_srcdir)/deps/boost/build/include \
   	-I$(top_srcdir)/lib/include \
 	-DDATADIR=\"$(datadir)\" \
 	@AM_CPPFLAGS@
