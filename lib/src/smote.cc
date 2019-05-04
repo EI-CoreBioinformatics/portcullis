@@ -50,7 +50,7 @@ void portcullis::ml::Smote::execute() {
 	knn.setVerbose(verbose);
 	knn.execute();
 	std::mt19937 rng(12345);
-	std::uniform_int_distribution<uint16_t> igen(0, k);
+	std::uniform_int_distribution<uint16_t> igen(0, k-1);
 	std::uniform_real_distribution<double> dgen(0, 1);
 	for (size_t i = 0; i < rows; i++) {
 		uint16_t N = smoteness;
