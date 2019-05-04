@@ -158,8 +158,11 @@ void portcullis::BamFilter::filter() {
 	reader.open();
 	shared_ptr<RefSeqPtrList> refs = reader.createRefList();
 	js.setRefs(refs);
-	path outDir = outputBam.parent_path();
-	if (!bfs::exists(outDir)) {
+        path outDir = outputBam.parent_path();
+        if (outDir.empty()) {
+            outDir = ".";
+        }
+	if (!exists(outDir)) {
 		if (!bfs::create_directories(outDir)) {
 			BOOST_THROW_EXCEPTION(BamFilterException() << BamFilterErrorInfo(string(
 									  "Could not create output directory at: ") + outDir.string()));
