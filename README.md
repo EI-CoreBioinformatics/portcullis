@@ -22,7 +22,7 @@ We support multiple methods for installing and running portcullis.  Hopefully yo
 ```
 # Keep in mind you need to mount in any working directories to the container with the `-v` option.
 # Ideally, mount these into the /data directory which is the container's working directory.
-docker run --it --rm -v /abspath/to/data/on/host:/data maplesond/portcullis:stable portcullis <options and arguments>
+docker run --it --rm -v /abspath/to/data/on/host:/data maplesond/portcullis:stable portcullis --help
 ```
 
 **Singularity**
@@ -64,12 +64,11 @@ If you wish to install from source please first confirm that first you have thes
  - **automake** V1.11+
  - **make**
  - **libtool** V2.4.2+
- - **zlib**
+ - **zlib-dev**
  - **pthreads**
- - **boost** V1.52+
+ - **boost-dev** V1.52+
  - **samtools** V1.2+
- - **Python3** V3.5+ (including python3 development libraries and the *pandas* packages)
- - **Sphinx-doc** V1.3+ (Optional: only required for building the documentation.)
+ - **Python3-dev** V3.5+ (Make sure the following packages are installed: *pandas*, *matplotlib*, *setuptools*, *sphinx*, *tabulate*)
 
 Then proceed with the following steps:
 

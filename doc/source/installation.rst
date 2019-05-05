@@ -51,12 +51,11 @@ Before installing Portcullis from source please first confirm these dependencies
  - **automake** V1.11+
  - **make**
  - **libtool** V2.4.2+
- - **zlib**
+ - **zlib-dev**
  - **pthreads**
- - **boost** V1.52+
+ - **boost-dev** V1.52+
  - **samtools** V1.2+
- - **Python3** V3.5+ (including python3 development libraries and the *pandas*, *numpy*, *tabulate* packages)
- - **Sphinx-doc** V1.3+ (Optional: only required for building the documentation.)
+ - **Python3** V3.5+ (Make sure the following packages are installed: *pandas*, *matplotlib*, *setuptools*, *sphinx*, *tabulate*)
 
 .. code-block:: bash
 

@@ -87,9 +87,6 @@ podTemplate(
             SEMVER = versionFile.split('\n')[0]
             sh "git tag Release-${SEMVER} && git push --tags"
             sh "git remote add github-maplesond https://github.com/maplesond/portcullis.git && git push github-maplesond master && git push github-maplesond master --tags"
-            // Ignore these for now... not sure if they are being used.
-            //sh "git remote github-ei https://github.com/EI-CoreBioinformatics/portcullis.git"
-            //sh "git remote github-tgac https://github.com/TGAC/portcullis.git"
             GITHUB_USER=maplesond
             GITHUB_REPO=portcullis
             sh "DESCRIPTION=`git log -1 | tail -n +4`"
