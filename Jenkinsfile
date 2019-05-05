@@ -21,7 +21,7 @@ podTemplate(
     if(env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop') {
       stage('Git Version') {
         container('gitversion') {
-          sh ("""SEMVER=`semver .` && echo "\$SEMVER" > version && sed -i "s/AC_INIT(\\[portcullis\\],\\[x.y.z\\]/AC_INIT(\\[portcullis\\],\\[\$SEMVER\\]/" configure.ac""")
+          sh ("""SEMVER=`semver .` && echo "\$SEMVER" > version && ./update_version.sh \$SEMVER""")
         }
       }
     }
@@ -73,16 +73,7 @@ podTemplate(
             image.push()
             image.push("latest")
             if(env.BRANCH_NAME == 'master') {
-              withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
-                sh "docker push docker.sdlmapleson.net/portcullis:stable"
-                sh "docker tag docker.sdlmapleson.net/portcullis:${SEMVER} maplesond/portcullis:${SEMVER}"
-                sh "docker tag docker.sdlmapleson.net/portcullis:${SEMVER} maplesond/portcullis:latest"
-                sh "docker tag docker.sdlmapleson.net/portcullis:${SEMVER} maplesond/portcullis:stable"
-                sh "docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PASS}"
-                sh "docker push maplesond/portcullis:${SEMVER}"
-                sh "docker push maplesond/portcullis:latest"
-                sh "docker push maplesond/portcullis:stable"
-              }
+              sh "docker push docker.sdlmapleson.net/portcullis:stable"
             }
           }
         }

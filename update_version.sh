@@ -13,8 +13,8 @@ sed -i "s/version = .*/version = '$MAJOR.$MINOR'/" doc/source/conf.py
 sed -i "s/release = .*/release = '$VERSION'/" doc/source/conf.py
 
 # Singularity
-if [ -d Singularity ]; then sed -i "s/Version.*/Version $VERSION/" Singularity; fi
+if [ -f Singularity ]; then sed -i "s/Version.*/Version $VERSION/" Singularity; fi
 
 # Docker
-if [ -d Dockerfile ]; then sed -i "s/VERSION:.*/VERSION:-$VERSION\}/" Dockerfile; fi
+if [ -f Dockerfile ]; then sed -i "s/VERSION:.*/VERSION:-$VERSION\}/" Dockerfile; fi
 
