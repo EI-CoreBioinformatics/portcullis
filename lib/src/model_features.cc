@@ -273,7 +273,7 @@ portcullis::ml::ForestPtr portcullis::ml::ModelFeatures::trainInstance(const Jun
 			}
 			//cout << endl;
 		}
-		Smote smote(5, N, threads, nm, negData->getNumRows(), negData->getNumCols() - 1);
+		Smote smote(5, N, threads, nm, nelements, negData->getNumRows(), negData->getNumCols() - 1);
                 smote.setVerbose(verbose);
 		smote.execute();
 		smote_rows = smote.getNbSynthRows();

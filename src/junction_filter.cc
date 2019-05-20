@@ -93,6 +93,33 @@ portcullis::JunctionFilter::JunctionFilter(const path& _prepDir, const path& _ju
     enn = true;
 }
 
+std::tuple<vector<string>, vector<string>> find_jsons(path ruleset) {
+  // string ruleset = dataDir.string() + (precise ? "/precise" : "/balanced");
+  vector<string> pos_jsons;
+  vector<string> neg_jsons;
+  if (exists(ruleset)) {
+    for (const auto & entry : bfs::directory_iterator(ruleset)) {
+      std::smatch sm;
+      std::ostringstream entry_ss;
+      entry_ss << entry;
+      std::string entry_path = entry_ss.str();
+      std::regex r(".*layer[0-9]{1,}\\.json");
+      if ( std::regex_search( entry_path, sm, r) ) {
+	// Remove quotes, they break the Python caller
+	entry_path.erase(remove(entry_path.begin(), entry_path.end(), '\"'), entry_path.end());
+	if (entry_path.find("neg") != std::string::npos) {
+
+	  neg_jsons.push_back(entry_path);
+	} else if (entry_path.find("pos") != std::string::npos) {
+	  pos_jsons.push_back(entry_path);
+	}
+      }
+    }
+  }
+
+  return std::make_tuple(pos_jsons, neg_jsons);
+}
+
 
 bool sort_jsons(string& json1, string& json2) {
   // selftrain_initial_pos.layer3.json < selftrain_initial_pos.layer4.json
@@ -253,27 +280,16 @@ void portcullis::JunctionFilter::filter() {
             vector<string> args;
             args.push_back(rf_script.string());
 
-	    string ruleset = dataDir.string() + "/" + initial.string();
-	    
-            // string ruleset = dataDir.string() + (precise ? "/precise" : "/balanced");
-	    vector<string> pos_jsons;
-	    vector<string> neg_jsons;
-	    for (const auto & entry : bfs::directory_iterator(ruleset)) {
-	      std::smatch sm;
-	      std::ostringstream entry_ss;
-	      entry_ss << entry;
-	      std::string entry_path = entry_ss.str();
-	      std::regex r(".*layer[0-9]{1,}\\.json");
-	      if ( std::regex_search( entry_path, sm, r) ) {
-		// Remove quotes, they break the Python caller
-		entry_path.erase(remove(entry_path.begin(), entry_path.end(), '\"'), entry_path.end());
-		if (entry_path.find("neg") != std::string::npos) {
+	    string ruleset = initial.string();
+	    auto json_vectors = find_jsons(initial);
+	    vector<string> pos_jsons = std::get<0>(json_vectors);
+	    vector<string> neg_jsons = std::get<1>(json_vectors);
 
-		  neg_jsons.push_back(entry_path);
-		} else if (entry_path.find("pos") != std::string::npos) {
-		  pos_jsons.push_back(entry_path);
-		}
-	      }
+	    if (neg_jsons.empty() || pos_jsons.empty() ) {
+	      string ruleset = dataDir.string() + "/" + initial.string();
+	      auto json_vectors = find_jsons(path(ruleset));
+	      vector<string> pos_jsons = std::get<0>(json_vectors);
+	      vector<string> neg_jsons = std::get<1>(json_vectors);
 	    }
 
 	    // Now sort the vectors, and check that they are not empty.
