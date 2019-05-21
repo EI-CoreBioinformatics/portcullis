@@ -111,6 +111,7 @@ namespace portcullis {
         bool enn;
         bool precise;
         bool verbose;
+        path initial;
 
 
     public:
@@ -120,7 +121,7 @@ namespace portcullis {
         JunctionFilter(const path& _prepDir,
                 const path& _junctionFile,
                 const path& _output,
-                bool precise);
+                const path& _initial);
 
         virtual ~JunctionFilter() {
         }
@@ -366,6 +367,10 @@ namespace portcullis {
         double calcGoodThreshold(shared_ptr<Forest> f);
 
         void undersample(JunctionList& jl, size_t size);
+
+	std::tuple<vector<string>, vector<string>> find_jsons(path ruleset);
+
+	static bool sort_jsons(string& json1, string& json2);
 
     public:
 

@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <regex>
 #include <fstream>
 #include <string>
 #include <iostream>
@@ -29,6 +30,7 @@
 using std::boolalpha;
 using std::ifstream;
 using std::string;
+using std::stoi;
 using std::pair;
 using std::map;
 using std::unordered_map;
@@ -37,6 +39,8 @@ using std::vector;
 using std::to_string;
 using std::cout;
 using std::cerr;
+using std::regex_match;
+using std::regex_search;
 
 #include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
@@ -67,12 +71,13 @@ using portcullis::PyHelper;
 #include "prepare.hpp"
 
 portcullis::JunctionFilter::JunctionFilter(const path& _prepDir, const path& _junctionFile,
-        const path& _output, bool _precise): precise(_precise) {
+					   const path& _output, const path& _initial) {
     junctionFile = _junctionFile;
     prepData.setPrepDir(_prepDir);
     modelFile = "";
     genuineFile = "";
     output = _output;
+    initial = _initial;
     filterFile = "";
     referenceFile = "";
     saveBad = false;
@@ -87,6 +92,63 @@ portcullis::JunctionFilter::JunctionFilter(const path& _prepDir, const path& _ju
     smote = true;
     enn = true;
 }
+
+std::tuple<vector<string>, vector<string>> portcullis::JunctionFilter::find_jsons(path ruleset) {
+  // string ruleset = dataDir.string() + (precise ? "/precise" : "/balanced");
+  vector<string> pos_jsons;
+  vector<string> neg_jsons;
+  if (!exists(ruleset)) {
+    string rules = ruleset.string();
+    ruleset = dataDir;
+    ruleset /= rules;
+  }
+  if (exists(ruleset)) {
+    for (const auto & entry : bfs::directory_iterator(ruleset)) {
+      std::smatch sm;
+      std::ostringstream entry_ss;
+      entry_ss << entry;
+      std::string entry_path = entry_ss.str();
+      std::regex r(".*layer[0-9]{1,}\\.json");
+      if ( std::regex_search( entry_path, sm, r) ) {
+	// Remove quotes, they break the Python caller
+	entry_path.erase(remove(entry_path.begin(), entry_path.end(), '\"'), entry_path.end());
+	if (entry_path.find("neg") != std::string::npos) {
+
+	  neg_jsons.push_back(entry_path);
+	} else if (entry_path.find("pos") != std::string::npos) {
+	  pos_jsons.push_back(entry_path);
+	}
+      }
+    }
+  }
+  else {
+    BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string(
+                  "Could not find suitable directory containing training rules for ruleset")));
+  }
+
+  return std::make_tuple(pos_jsons, neg_jsons);
+}
+
+
+bool portcullis::JunctionFilter::sort_jsons(string& json1, string& json2) {
+  // selftrain_initial_pos.layer3.json < selftrain_initial_pos.layer4.json
+  std::smatch jmatch1;
+  std::smatch jmatch2;
+
+  int json1_pos;
+  int json2_pos;
+  
+  std::regex rgx(".*layer([0-9]*)\\.json");
+
+  std::regex_search(json1, jmatch1, rgx);
+  std::regex_search(json2, jmatch2, rgx);
+
+  json1_pos = std::stoi(jmatch1.str(1));
+  json2_pos = std::stoi(jmatch2.str(1));
+  return json1_pos < json2_pos;
+  
+}
+
 
 void portcullis::JunctionFilter::filter() {
     path outputDir = output.parent_path();
@@ -226,22 +288,36 @@ void portcullis::JunctionFilter::filter() {
             path rf_script = path("portcullis") / "rule_filter.py";
             vector<string> args;
             args.push_back(rf_script.string());
-            
-            string ruleset = dataDir.string() + (precise ? "/precise" : "/balanced");
 
-            args.push_back("--pos_json");
-            args.push_back(ruleset + "/selftrain_initial_pos.layer1.json");
-            args.push_back(ruleset + "/selftrain_initial_pos.layer2.json");
-            args.push_back(ruleset + "/selftrain_initial_pos.layer3.json");
+	    string ruleset = initial.string();
+	    auto json_vectors = find_jsons(initial);
+	    vector<string> pos_jsons = std::get<0>(json_vectors);
+	    vector<string> neg_jsons = std::get<1>(json_vectors);
 
-            args.push_back("--neg_json");
-            args.push_back(ruleset + "/selftrain_initial_neg.layer1.json");
-            args.push_back(ruleset + "/selftrain_initial_neg.layer2.json");
-            args.push_back(ruleset + "/selftrain_initial_neg.layer3.json");
-            args.push_back(ruleset + "/selftrain_initial_neg.layer4.json");
-            args.push_back(ruleset + "/selftrain_initial_neg.layer5.json");
-            args.push_back(ruleset + "/selftrain_initial_neg.layer6.json");
-            args.push_back(ruleset + "/selftrain_initial_neg.layer7.json");
+	    if (neg_jsons.empty() || pos_jsons.empty() ) {
+	      string ruleset = dataDir.string() + "/" + initial.string();
+	      auto json_vectors = find_jsons(path(ruleset));
+	      vector<string> pos_jsons = std::get<0>(json_vectors);
+	      vector<string> neg_jsons = std::get<1>(json_vectors);
+	    }
+
+	    // Now sort the vectors, and check that they are not empty.
+	    if (neg_jsons.empty() || pos_jsons.empty() ) {
+                    BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string("Not enough positive and negative layers found in " + ruleset + " ruleset.")));
+	    }
+
+	    sort(neg_jsons.begin(), neg_jsons.end(), sort_jsons);
+	    sort(pos_jsons.begin(), pos_jsons.end(), sort_jsons);
+
+	    args.push_back("--pos_json");
+	    for (vector<int>::size_type i = 0; i != pos_jsons.size(); ++i) {
+	      args.push_back(pos_jsons[i]);
+	    }
+	      
+	    args.push_back("--neg_json");
+	    for (vector<int>::size_type i = 0; i != neg_jsons.size(); ++i) {
+	      args.push_back(neg_jsons[i]);
+	    }
 
             args.push_back("--prefix=" + output.string() + ".selftrain.initialset");
 
@@ -258,18 +334,52 @@ void portcullis::JunctionFilter::filter() {
 
             if (verbose) {
                 string arg_str = boost::algorithm::join(args, " ");
-                cout << "Executing python script with this command: " << rf_script.string() << " " << arg_str << endl;
+                cout << "Executing python script with this command: " << arg_str << endl;
             }
 
+	    cout << "Executing python script." << endl;
             PyHelper::getInstance().execute(rf_script.string(), (int) args.size(), char_args);
+	    cout << "Executed Python script" << endl << endl;
 
-            // Load junction system
+
             JunctionSystem posSystem(path(output.string() + ".selftrain.initialset.pos.junctions.tab"));
             JunctionSystem negSystem(path(output.string() + ".selftrain.initialset.neg.junctions.tab"));
             posSystem.sort();
             negSystem.sort();
             JunctionList pos = posSystem.getJunctions();
-            JunctionList neg = negSystem.getJunctions();
+	    JunctionList neg = negSystem.getJunctions();	    
+	    
+            // Load junction system
+	    // string pos_string = output.string() + ".selftrain.initialset.pos.junctions.tab";
+	    // string neg_string = output.string() + ".selftrain.initialset.neg.junctions.tab";
+	    // path posPath = (path) pos_string;
+	    // path negPath = (path) neg_string;
+	    // JunctionSystem posSystem;
+	    // JunctionSystem negSystem;
+	    // try {
+	    //   cout << "Loading file " << pos_string << endl;
+	    //   JunctionSystem posSystem(posPath);
+	    //   cout << "Loaded file " << pos_string << endl;	      
+	    //   } catch (const std::exception& ex) {
+	    //   BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string("Error in loading " + pos_string + "\n")));
+	    // }
+	    // try {
+	    //   cout << "Loading file " << neg_string << endl;
+	    //   JunctionSystem negSystem(negPath);
+	    //   cout << "Loaded file " << neg_string << endl;
+	    // } catch (const std::exception& ex) {
+	    //   BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string("Error in loading " + neg_string + "\n")));
+	    // }
+            // posSystem.sort();
+            // negSystem.sort();
+            // JunctionList pos = posSystem.getJunctions();
+            // JunctionList neg = negSystem.getJunctions();
+	    // cout << "Initial training set consists of " << pos.size() << " positive and " << neg.size() << " negative junctions." << endl << endl;
+	    // if (pos.size() == 0) {
+	    //   BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string("No positive junction recovered from " + pos_string + "\n")));
+	    // } else if (neg.size() == 0) {
+	    //   BOOST_THROW_EXCEPTION(JuncFilterException() << JuncFilterErrorInfo(string("No positive junction recovered from " + neg_string + "\n")));
+	    // }
 
             // Ensure positive and negative set have the genuine flag set appropriately
             for (auto & j : pos) {
@@ -660,6 +770,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     bool balanced;
     uint32_t mincov;
     string source;
+    path initial;
     bool no_smote;
     bool enn;
     double threshold;
@@ -705,8 +816,8 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
             "Only keep junctions with a number of split reads greater than or equal to this number")
             ("threshold", po::value<double>(&threshold)->default_value(DEFAULT_FILTER_THRESHOLD),
             "The threshold score at which we determine a junction to be genuine or not.  Increase value towards 1.0 to increase precision, decrease towards 0.0 to increase sensitivity.  We generally find that increasing sensitivity helps when using high coverage data, or when the aligner has already performed some form of junction filtering.")
-            //("balanced", po::bool_switch(&balanced)->default_value(false),
-            //"Uses rules that should provide a balanced training set of positive and negative junctions.  By default, portcullis tends towards more precise predictions, which is useful for datasets with high coverage.  Setting to balanced tends to work better on smaller datasets with less coverage.")
+            ("training_rule", po::value<path>(&initial)->default_value("balanced"),
+            "Pre-set to use for the self-training. Currently supported: balanced, precise. Default: balanced.")
             ;
     // Hidden options, will be allowed both on command line and
     // in config file, but will not be shown to the user.
@@ -753,7 +864,7 @@ int portcullis::JunctionFilter::main(int argc, char *argv[]) {
     cout << "Running portcullis in junction filter mode" << endl
             << "------------------------------------------" << endl << endl;
     // Create the prepare class
-    JunctionFilter filter(prepDir, junctionFile, output, false);
+    JunctionFilter filter(prepDir, junctionFile, output, initial);
     filter.setSaveBad(saveBad);
     filter.setSource(source);
     filter.setVerbose(verbose);
