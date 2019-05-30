@@ -81,17 +81,19 @@ podTemplate(
     }
     if(env.BRANCH_NAME == 'master') {
       stage('Github Release') {
-        withCredentials([string(credentialsId: 'github-maplesond-portcullis', variable: 'GITHUB_TOKEN')]) {
-          sshAgent('gitea') {
-            def versionFile = readFile "version"
-            SEMVER = versionFile.split('\n')[0]
-            sh "git tag Release-${SEMVER} && git push --tags"
-            sh "git remote add github-maplesond https://github.com/maplesond/portcullis.git && git push github-maplesond master && git push github-maplesond master --tags"
-            GITHUB_USER=maplesond
-            GITHUB_REPO=portcullis
-            sh "DESCRIPTION=`git log -1 | tail -n +4`"
-            sh "github-release releases --tag ${SEMVER}"
-            sh "github-release upload --tag ${SEMVER} --name ${GITHUB_REPO}-${SEMVER}.tar.gz --file ${GITHUB_REPO}-${SEMVER}.tar.gz --label 'source code distributable' --description ${DESCRIPTION}"
+        container('githubrelease') {
+          withCredentials([string(credentialsId: 'github-maplesond-portcullis', variable: 'GITHUB_TOKEN')]) {
+            sshagent(credentials: ['gitea']) {
+              GITHUB_USER = "maplesond"
+              GITHUB_REPO = "portcullis"
+              def versionFile = readFile "version"
+              SEMVER = versionFile.split('\n')[0]
+              sh "git remote add github-maplesond https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/maplesond/portcullis.git && git push github-maplesond master && git push github-maplesond master --tags"
+              sh "git log -1 | tail -n +4 > description"
+              def DESCRIPTION = readFile "description"
+              sh "github-release release -u ${GITHUB_USER} -s ${GITHUB_TOKEN} --tag ${SEMVER} --repo ${GITHUB_REPO}"
+              sh "github-release upload -u ${GITHUB_USER} -s ${GITHUB_TOKEN} --tag ${SEMVER} --repo ${GITHUB_REPO} --name ${GITHUB_REPO}-${SEMVER}.tar.gz --file ${GITHUB_REPO}-${SEMVER}.tar.gz --label 'source code distributable' --description ${DESCRIPTION}"
+            }
           }
         }
       }
