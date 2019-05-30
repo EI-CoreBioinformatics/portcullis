@@ -63,17 +63,17 @@ podTemplate(
           def versionFile = readFile "version"
           SEMVER = versionFile.split('\n')[0]
           // Build the image
-          def image = docker.build("docker.sdlmapleson.net/portcullis:${SEMVER}", "--build-arg VERSION=${SEMVER} .")
+          def image = docker.build("harbor.sdlmapleson.net/portcullis/portcullis:${SEMVER}", "--build-arg VERSION=${SEMVER} .")
           image.inside {
             sh "portcullis --help || true"
             sh "junctools --help || true"
           }
           // Push to local registry
-          docker.withRegistry('https://docker.sdlmapleson.net', 'docker-registry') {
+          docker.withRegistry('https://harbor.sdlmapleson.net', 'harbor') {
             image.push()
             image.push("latest")
             if(env.BRANCH_NAME == 'master') {
-              sh "docker push docker.sdlmapleson.net/portcullis:stable"
+              sh "docker push harbor.sdlmapleson.net/portcullis/portcullis:stable"
             }
           }
         }
