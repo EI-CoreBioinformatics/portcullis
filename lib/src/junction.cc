@@ -114,6 +114,30 @@ const vector<string> portcullis::Junction::JAD_NAMES({
 	"JAD20"
 });
 
+const vector<string> portcullis::Junction::AJAD_NAMES({
+	"aJAD01",
+	"aJAD02",
+	"aJAD03",
+	"aJAD04",
+	"aJAD05",
+	"aJAD06",
+	"aJAD07",
+	"aJAD08",
+	"aJAD09",
+	"aJAD10",
+	"aJAD11",
+	"aJAD12",
+	"aJAD13",
+	"aJAD14",
+	"aJAD15",
+	"aJAD16",
+	"aJAD17",
+	"aJAD18",
+	"aJAD19",
+	"aJAD20"
+});
+
+
 const vector<string> portcullis::Junction::STRAND_NAMES = {
 	"read-strand",
 	"ss-strand",
@@ -147,6 +171,8 @@ void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t l
         // In which case just assume everything is fine.
 		totalUpstreamMismatches = 0;
         totalDownstreamMismatches = 0;
+        upstreamMismatchPositions = vector<bool> (portcullis::Junction::AJAD_NAMES.size(), false);
+        downstreamMismatchPositions = vector<bool> (portcullis::Junction::AJAD_NAMES.size(), false);
         totalUpstreamMatches = leftEnd - leftStart + 1;
         totalDownstreamMatches = rightEnd - rightStart + 1;
         nbMismatches = totalUpstreamMismatches + totalDownstreamMismatches;
@@ -155,9 +181,9 @@ void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t l
         minMatch = min(upstreamMatches, downstreamMatches);
         maxMatch = max(upstreamMatches, downstreamMatches);
         mmes = min(totalUpstreamMatches, totalDownstreamMatches);
+
     }
     else {
-
         string qAnchorLeft = ba->getPaddedQuerySeq(query, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
         string qAnchorRight = ba->getPaddedQuerySeq(query, rightStart, rightEnd, qRightStart, qRightEnd, false);
         string gAnchorLeft = ba->getPaddedGenomeSeq(ancLeft, leftStart, leftEnd, qLeftStart, qLeftEnd, false);
@@ -203,11 +229,35 @@ void portcullis::AlignmentInfo::calcMatchStats(const Intron& i, const uint32_t l
             nbMismatches = totalUpstreamMismatches + totalDownstreamMismatches;
             upstreamMatches = getNbMatchesFromEnd(qAnchorLeft, gAnchorLeft);
             downstreamMatches = getNbMatchesFromStart(qAnchorRight, gAnchorRight);
+            upstreamMismatchPositions = getMismatchPositionFromEnd(qAnchorLeft, gAnchorLeft);
+            downstreamMismatchPositions = getMismatchPositionFromStart(qAnchorRight, gAnchorRight);
             minMatch = min(upstreamMatches, downstreamMatches);
             maxMatch = max(upstreamMatches, downstreamMatches);
             mmes = min(totalUpstreamMatches, totalDownstreamMatches);
+
         }
     }
+}
+
+vector<bool> portcullis::AlignmentInfo::getMismatchPositionFromStart(const string& query, const string& anchor) {
+	vector<bool> mask (query.size(), false);
+	for (size_t i = 0; i < query.size(); i++) {
+		if (query[i] != anchor[i]) {
+			mask[i] = true;
+		}
+	}
+	return mask;
+}
+
+vector<bool> portcullis::AlignmentInfo::getMismatchPositionFromEnd(const string& query, const string& anchor) {
+	vector<bool> mask (query.size(), false);
+	for (size_t j = query.size(); j > 0; j--) {
+		size_t i = j-1;
+		if (query[i] != anchor[i]) {
+			mask[query.size() - i - 1] = true;
+		}
+	}
+	return mask;
 }
 
 uint32_t portcullis::AlignmentInfo::getNbMatchesFromStart(const string& query, const string& anchor) {
@@ -321,10 +371,14 @@ portcullis::Junction::Junction(shared_ptr<Intron> _location, int32_t _leftAncSta
 	multipleMappingScore = 0.0;
 	nbUpstreamFlankingAlignments = 0;
 	nbDownstreamFlankingAlignments = 0;
-    nbSamples = 1;
+	nbSamples = 1;
 	junctionAnchorDepth.clear();
 	for (size_t i = 0; i < JAD_NAMES.size(); i++) {
 		junctionAnchorDepth.push_back(0);
+	}
+	junctionAnchorClarity.clear();
+	for (size_t i = 0; i < AJAD_NAMES.size(); i++) {
+		junctionAnchorClarity.push_back(0);
 	}
 	alignments.clear();
 	alignmentCodes.clear();
@@ -383,7 +437,7 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 	multipleMappingScore = j.multipleMappingScore;
 	nbUpstreamFlankingAlignments = j.nbUpstreamFlankingAlignments;
 	nbDownstreamFlankingAlignments = j.nbDownstreamFlankingAlignments;
-    nbSamples = j.nbSamples;
+	nbSamples = j.nbSamples;
 	if (withAlignments) {
 		for (size_t i = 0; i < j.alignments.size(); i++) {
 			this->alignments.push_back(make_shared<AlignmentInfo>(j.alignments[i]->ba));
@@ -402,6 +456,10 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 	for (size_t i = 0; i < JAD_NAMES.size(); i++) {
 		junctionAnchorDepth.push_back(j.getJunctionAnchorDepth(i));
 	}
+	junctionAnchorClarity.clear();
+	for (size_t i = 0; i < AJAD_NAMES.size(); i++) {
+		junctionAnchorClarity.push_back(j.getJunctionAnchorClarity(i));
+	}
 }
 
 // **** Destructor ****
@@ -409,6 +467,7 @@ portcullis::Junction::Junction(const Junction& j, bool withAlignments) {
 portcullis::Junction::~Junction() {
 	alignments.clear();
 	junctionAnchorDepth.clear();
+	junctionAnchorClarity.clear();
 }
 
 void portcullis::Junction::clearAlignments() {
@@ -504,11 +563,11 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
 		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 								  "Can't find genomic sequence for this junction as no intron is defined")));
 	// Process the predicted donor / acceptor regions and update junction
-	int donorLen = -1;
-	int acceptorLen = -1;
-	string donor = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->start, intron->start + 1, &donorLen);
-	string acceptor = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end - 1, intron->end, &acceptorLen);
-	if (donorLen == -1)
+	string donor = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->start, intron->start + 1);
+	string acceptor = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end - 1, intron->end);
+	int donorLen = donor.length();
+	int acceptorLen = acceptor.length();
+	if (donorLen == 0)
 		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 								  "Can't find donor site (left side splice site) region for junction: ") + this->intron->toString()));
 	if (donorLen != 2)
@@ -516,7 +575,7 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
 								  "Retrieved sequence for left side splice site of junction ") + this->intron->toString() + " is not the expected length" +
 							  "\nRetrieved sequence Length: " + lexical_cast<string>(donorLen) +
 							  "\nExpected sequence length: " + lexical_cast<string>(2) + "\n"));
-	if (acceptorLen == -1)
+	if (acceptorLen == 0)
 		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 								  "Can't find acceptor site (right side splice site) region for junction: ") + this->intron->toString()));
 	if (acceptorLen != 2)
@@ -528,14 +587,14 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
 	boost::to_upper(acceptor); // Removes any lowercase bases representing repeats
 	this->setDonorAndAcceptorMotif(donor, acceptor);
 	// Just access the whole junction region
-	int leftAncLen = -1;
-	int leftIntLen = -1;
-	int rightAncLen = -1;
-	int rightIntLen = -1;
-	string leftAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), leftAncStart, intron->start - 1, &leftAncLen);
-	string rightAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end + 1, rightAncEnd, &rightAncLen);
-	string leftInt = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->start, intron->start + 9, &leftIntLen);
-	string rightInt = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end - 9, intron->end, &rightIntLen);
+	string leftAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), leftAncStart, intron->start - 1);
+	string rightAnc = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end + 1, rightAncEnd);
+	string leftInt = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->start, intron->start + 9);
+	string rightInt = genomeMapper.fetchBases(intron->ref.name.c_str(), intron->end - 9, intron->end);
+	int leftAncLen = leftAnc.length();
+	int leftIntLen = leftInt.length();
+	int rightAncLen = rightAnc.length();
+	int rightIntLen = rightInt.length();
 	if (leftAncLen == -1)
 		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 								  "Can't find left anchor region for junction: ") + this->intron->toString()));
@@ -583,6 +642,7 @@ void portcullis::Junction::processJunctionWindow(const GenomeMapper& genomeMappe
 	// Update match statistics for each alignment
 	for (const auto & a : alignments) {
 		a->calcMatchStats(*getIntron(), this->getLeftAncStart(), this->getRightAncEnd(), leftAnc, rightAnc);
+		// a->calcAJadVector(*getIntron(), this->getLeftAncStart(), this->getRightAncEnd(), leftAnc, rightAnc);
 	}
 	// MaxMMES can now use info in alignments
 	this->calcMismatchStats();
@@ -815,8 +875,21 @@ void portcullis::Junction::calcMismatchStats() {
 		for (uint16_t i = 0; i < JAD_NAMES.size() && i < a->minMatch; i++) {
 			junctionAnchorDepth[i]++;
 		}
+
+		uint32_t prev_mismatches = 0;
+		for (uint16_t i = 0; i < AJAD_NAMES.size(); i++) {
+			bool is_mismatch = a->upstreamMismatchPositions[i] || a->downstreamMismatchPositions[i];
+			if (is_mismatch) {
+				prev_mismatches++;
+			}
+			junctionAnchorClarity[i] += (double) prev_mismatches / (double) i;
+		}
 	}
 	// Set mean mismatches across junction
+	for (uint16_t i = 0; i < AJAD_NAMES.size(); i++) {
+		junctionAnchorClarity[i] = (double) junctionAnchorClarity[i] / (double) alignments.size();
+	}
+
 	meanMismatches = (double) nbMismatches / (double) alignments.size();
 	// Assuming we have some mismatches determine if this junction has no overhangs
 	// extending beyond first mismatch.  If so determine if that distance is small
@@ -1152,18 +1225,21 @@ string portcullis::Junction::junctionOutputHeader() {
 	return string("index\t") + Intron::locationOutputHeader() + "\tsize\tleft\tright\t" +
 		   boost::algorithm::join(Junction::STRAND_NAMES, "\t") + "\tss1\tss2\t" +
 		   boost::algorithm::join(Junction::METRIC_NAMES, "\t") + "\t" +
-		   boost::algorithm::join(Junction::JAD_NAMES, "\t");
+		   boost::algorithm::join(Junction::JAD_NAMES, "\t"); // + "\t" +
+		   //boost::algorithm::join(Junction::AJAD_NAMES, "\t");
 }
 
 shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line) {
 	vector<string> parts; // #2: Search for tokens
 	boost::split(parts, line, boost::is_any_of("\t"), boost::token_compress_on);
-	uint32_t expected_cols = 11 + Junction::STRAND_NAMES.size() + Junction::METRIC_NAMES.size() + Junction::JAD_NAMES.size();
+	uint32_t expected_cols = 11 + Junction::STRAND_NAMES.size() + Junction::METRIC_NAMES.size() + Junction::JAD_NAMES.size(); // + Junction::AJAD_NAMES.size();
 	if (parts.size() != expected_cols) {
+		std::string sparts;
+		sparts = accumulate(begin(parts), end(parts), sparts);
 		BOOST_THROW_EXCEPTION(JunctionException() << JunctionErrorInfo(string(
 								  "Could not parse line due to incorrect number of columns.  This is probably a version mismatch.  Check file and portcullis versions.  Expected ")
-							  + std::to_string(expected_cols) + " columns.  Found "
-							  + std::to_string(parts.size()) + ".  Line: " + line));
+					+ std::to_string(expected_cols) + " columns.  Found "
+					+ std::to_string(parts.size()) + ".  Line:\n" + sparts));
 	}
 	// Create intron
 	IntronPtr intron = make_shared<Intron>(
@@ -1238,31 +1314,33 @@ shared_ptr<portcullis::Junction> portcullis::Junction::parse(const string& line)
 	j->setCoverage(lexical_cast<double>(parts[i++]));
 	j->setNbUpstreamFlankingAlignments(lexical_cast<uint32_t>(parts[i++]));
 	j->setNbDownstreamFlankingAlignments(lexical_cast<uint32_t>(parts[i++]));
-    j->setNbSamples(lexical_cast<uint32_t>(parts[i++]));
+	j->setNbSamples(lexical_cast<uint32_t>(parts[i++]));
 	// Read Junction anchor depths
 	for (size_t k = 0; k < Junction::JAD_NAMES.size(); k++) {
 		j->setJunctionAnchorDepth(k, lexical_cast<uint32_t>(parts[i + k]));
 	}
+	//for (size_t k = 0; k < Junction::AJAD_NAMES.size(); k++) {
+	//	j->setJunctionAnchorClarity(k, lexical_cast<double>(parts[i + k]));
+	//}
 	return j;
 }
 
 double portcullis::Junction::calcCodingPotential(GenomeMapper& gmap, KmerMarkovModel& exon, KmerMarkovModel& intron) {
-	int len = 0;
 	const char* ref = this->intron->ref.name.c_str();
 	const bool neg = getConsensusStrand() == Strand::NEGATIVE;
-	string left_exon = gmap.fetchBases(ref, this->intron->start - 82, this->intron->start - 2, &len);
+	string left_exon = gmap.fetchBases(ref, this->intron->start - 82, this->intron->start - 2);
 	if (neg) {
 		left_exon = SeqUtils::reverseComplement(left_exon);
 	}
-	string left_intron = gmap.fetchBases(ref, this->intron->start, this->intron->start + 80, &len);
+	string left_intron = gmap.fetchBases(ref, this->intron->start, this->intron->start + 80);
 	if (neg) {
 		left_intron = SeqUtils::reverseComplement(left_intron);
 	}
-	string right_intron = gmap.fetchBases(ref, this->intron->end - 80, this->intron->end, &len);
+	string right_intron = gmap.fetchBases(ref, this->intron->end - 80, this->intron->end);
 	if (neg) {
 		right_intron = SeqUtils::reverseComplement(right_intron);
 	}
-	string right_exon = gmap.fetchBases(ref, this->intron->end + 1, this->intron->end + 81, &len);
+	string right_exon = gmap.fetchBases(ref, this->intron->end + 1, this->intron->end + 81);
 	if (neg) {
 		right_exon = SeqUtils::reverseComplement(right_exon);
 	}
@@ -1282,14 +1360,13 @@ double portcullis::Junction::calcCodingPotential(GenomeMapper& gmap, KmerMarkovM
 portcullis::SplicingScores portcullis::Junction::calcSplicingScores(GenomeMapper& gmap, KmerMarkovModel& donorT, KmerMarkovModel& donorF,
 		KmerMarkovModel& acceptorT, KmerMarkovModel& acceptorF,
 		PosMarkovModel& donorP, PosMarkovModel& acceptorP) {
-	int len = 0;
 	const char* ref = this->intron->ref.name.c_str();
 	const bool neg = getConsensusStrand() == Strand::NEGATIVE;
-	string left = gmap.fetchBases(ref, intron->start - 3, intron->start + 20, &len);
+	string left = gmap.fetchBases(ref, intron->start - 3, intron->start + 20);
 	if (neg) {
 		left = SeqUtils::reverseComplement(left);
 	}
-	string right = gmap.fetchBases(ref, intron->end - 20, intron->end + 2, &len);
+	string right = gmap.fetchBases(ref, intron->end - 20, intron->end + 2);
 	if (neg) {
 		right = SeqUtils::reverseComplement(right);
 	}

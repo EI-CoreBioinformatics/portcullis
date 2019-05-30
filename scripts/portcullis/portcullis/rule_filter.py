@@ -13,21 +13,23 @@ try:
 except:
 	from performance import Performance
 
+
 def replace_op(op):
-    if op == "eq":
-        return "=="
-    elif op == "gt":
-        return ">"
-    elif op == "lt":
-        return "<"
-    elif op == "gte":
-        return ">="
-    elif op == "lte":
-        return "<="
-    elif op == "in":
-        return ".isin("
-    elif op == "not in":
-        return ".isin("
+	if op == "eq":
+		return "=="
+	elif op == "gt":
+		return ">"
+	elif op == "lt":
+		return "<"
+	elif op == "gte":
+		return ">="
+	elif op == "lte":
+		return "<="
+	elif op == "in":
+		return ".isin("
+	elif op == "not in":
+		return ".isin("
+
 
 def load_genuine(genuine_file):
 	glist = []
@@ -65,7 +67,8 @@ def json2pandas(handle, fieldnames, data_frame):
 	for param in set(json_dict["parameters"]):
 		parameter_name = param.split(".")[0]
 		if json_dict["parameters"][param]["operator"] not in ("gt", "gte", "eq", "lt", "lte", "in", "not in"):
-			raise ValueError("Unrecognized operator for {1}: {0}".format(json_dict["parameters"][param]["operator"], param))
+			raise ValueError(
+				"Unrecognized operator for {1}: {0}".format(json_dict["parameters"][param]["operator"], param))
 
 		json_dict["parameters"][param]["name"] = parameter_name
 
@@ -74,8 +77,8 @@ def json2pandas(handle, fieldnames, data_frame):
 	diff = set.difference(parameter_names, set(fieldnames))
 	if len(diff) > 0:
 		raise ValueError("Unrecognized parameters: {0}".format(",".join(list(diff))) + "\n" +
-						"Fieldnames:\n\t{0}".format("\n\t".join(fieldnames)) + "\n" +
-						"Parameter names:\n\t{0}".format("\n\t".join(parameter_names)))
+						 "Fieldnames:\n\t{0}".format("\n\t".join(fieldnames)) + "\n" +
+						 "Parameter names:\n\t{0}".format("\n\t".join(parameter_names)))
 
 	keys = list(filter(lambda x: x not in ("&", "|"), re.findall("([^ ()]+)", json_dict["expression"])))
 	diff_params = set.difference(set(keys), set(json_dict["parameters"].keys()))
@@ -86,15 +89,20 @@ def json2pandas(handle, fieldnames, data_frame):
 	for key in keys:
 		k = key[:-2] if key[-2] == '.' and key[-1].isdigit() else key
 		if json_dict['parameters'][key]['operator'] == "in":
-			newexpr = re.sub(key, "({3}[\"{0}\"].isin({2}))".format(k, replace_op(json_dict['parameters'][key]['operator']),
-															   json_dict['parameters'][key]['value'], data_frame), newexpr)
+			newexpr = re.sub(key,
+							 "({3}[\"{0}\"].isin({2}))".format(k, replace_op(json_dict['parameters'][key]['operator']),
+															   json_dict['parameters'][key]['value'], data_frame),
+							 newexpr)
 		elif json_dict['parameters'][key]['operator'] == "not in":
 			newexpr = re.sub(key,
 							 "(~{3}[\"{0}\"].isin({2}))".format(k, replace_op(json_dict['parameters'][key]['operator']),
-															  json_dict['parameters'][key]['value'], data_frame), newexpr)
+																json_dict['parameters'][key]['value'], data_frame),
+							 newexpr)
 		else:
-			newexpr = re.sub(key, "({3}[\"{0}\"] {1} {2})".format(k, replace_op(json_dict['parameters'][key]['operator']),
-															 json_dict['parameters'][key]['value'], data_frame), newexpr)
+			newexpr = re.sub(key,
+							 "({3}[\"{0}\"] {1} {2})".format(k, replace_op(json_dict['parameters'][key]['operator']),
+															 json_dict['parameters'][key]['value'], data_frame),
+							 newexpr)
 
 	return data_frame + ".loc[" + newexpr + "]", data_frame + ".loc[~" + newexpr + "]"
 
@@ -111,7 +119,7 @@ def calcPerformance(passed, failed, invert=False):
 		fn = passed_res['True']
 		tp = failed_res['True']
 		fp = failed_res['False']
-	else :
+	else:
 		tp = passed_res['True']
 		fp = passed_res['False']
 		tn = failed_res['False']
@@ -121,10 +129,9 @@ def calcPerformance(passed, failed, invert=False):
 
 
 def create_training_sets(args):
-
 	# Load portcullis junctions into dataframe
 	print("Loading input junctions ... ", end="", flush=True)
-	original = DataFrame.from_csv(args.input, sep='\t', header=0)
+	original = pd.read_csv(args.input, sep='\t', header=0, index_col=0)
 	fieldnames = [key for key in dict(original.dtypes)]
 	print("done.", len(original), "junctions loaded.")
 
@@ -135,10 +142,11 @@ def create_training_sets(args):
 	if args.genuine:
 		glist = load_genuine(args.genuine)
 		if len(glist) != len(original):
-			raise ValueError("Genuine list and input junctions do not contain the same number of elements.  Genuine:" + len(glist) + "; input:" + len(original))
+			raise ValueError(
+				"Genuine list and input junctions do not contain the same number of elements.  Genuine:" + len(
+					glist) + "; input:" + len(original))
 
 		original["genuine"] = pd.Series(glist, index=original.index)
-
 
 	print()
 	print("Creating initial positive set for training")
@@ -154,7 +162,7 @@ def create_training_sets(args):
 	else:
 		print("PASS\tFAIL")
 
-	df = original.copy()	# Required for pandas eval
+	df = original.copy()  # Required for pandas eval
 	pos_juncs = None
 
 	# Run through layers of logic to get the positive set
@@ -165,7 +173,9 @@ def create_training_sets(args):
 		# Create pandas command
 		pandas_cmd_in, pandas_cmd_out = json2pandas(open(json_file), fieldnames, "df")
 
-		# print(pandas_cmd)
+		if args.verbose:
+			print(pandas_cmd_in)
+			print(pandas_cmd_out)
 
 		# Execute the pandas command, result should be a filtered dataframe
 		pos_juncs = eval(pandas_cmd_in)
@@ -187,7 +197,7 @@ def create_training_sets(args):
 		if len(pos_juncs) <= 100:
 			print("WARNING: We recommend at least 100 junctions in the positive set and this set of rules lowered " + \
 				  "the positive set to", len(pos_juncs), ".  Will not filter positive set further.", file=sys.stderr)
-			pos_juncs = df.copy()	# Override previous filter
+			pos_juncs = df.copy()  # Override previous filter
 			break
 
 		df = pos_juncs.copy()
@@ -211,7 +221,7 @@ def create_training_sets(args):
 
 	if len(pos_juncs) > 100:
 		pos_juncs = pos_juncs.loc[pos_juncs["size"] <= pos_length_limit]
-		print("\t".join([str(x) for x in [i+1, len(pos_juncs), len(original) - len(pos_juncs)]]))
+		print("\t".join([str(x) for x in [i + 1, len(pos_juncs), len(original) - len(pos_juncs)]]))
 
 		if args.save_layers:
 			pos_juncs.to_csv(args.prefix + ".pos_layer_intronsize.tab", sep='\t')
@@ -256,7 +266,9 @@ def create_training_sets(args):
 		# Create pandas command
 		pandas_cmd_in, pandas_cmd_out = json2pandas(open(json_file), fieldnames, "other_juncs")
 
-		#print(pandas_cmd)
+		if args.verbose:
+			print(pandas_cmd_in)
+			print(pandas_cmd_out)
 
 		# Execute the pandas command, result should be a filtered dataframe
 		neg_juncs = eval(pandas_cmd_in)
@@ -275,20 +287,19 @@ def create_training_sets(args):
 		if args.save_layers:
 			neg_juncs.to_csv(args.prefix + ".neg_layer_" + str(i) + ".tab", sep='\t')
 
-
 	neg_length_limit = int(L95 * 8)
-	print("Intron size L95 =", L95, "negative set will use junctions with intron size over L95 x 8:", neg_length_limit, "and with maxmmes < 12")
+	print("Intron size L95 =", L95, "negative set will use junctions with intron size over L95 x 8:", neg_length_limit,
+		  "and with maxmmes < 12")
 	neg_juncs = other_juncs.loc[other_juncs["size"] > neg_length_limit]
 	neg_juncs = neg_juncs.loc[neg_juncs["maxmmes"] < 12]
 	neg_set = pd.concat([neg_set, neg_juncs])
 	if args.genuine:
-		print(str(i+1) + "\t" + calcPerformance(neg_juncs, df).longStr())
+		print(str(i + 1) + "\t" + calcPerformance(neg_juncs, df).longStr())
 	else:
-		print(str(i+1) + "\t" + str(len(neg_juncs)) + "\t" + str(len(other_juncs)))
+		print(str(i + 1) + "\t" + str(len(neg_juncs)) + "\t" + str(len(other_juncs)))
 
 	if args.save_layers:
 		neg_juncs.to_csv(args.prefix + ".neg_layer_intronsize.tab", sep='\t')
-
 
 	print()
 	print("Negative set contains:", len(neg_set), "junctions")
@@ -312,7 +323,6 @@ def create_training_sets(args):
 		others.to_csv(other_file, sep='\t')
 		print("done.  File saved to:", other_file)
 
-
 	print()
 	print("Final train set stats:")
 	print(" - Positive set:", len(pos_juncs), "junctions.")
@@ -320,11 +330,12 @@ def create_training_sets(args):
 	print(" - Others:", len(original) - len(pos_juncs) - len(neg_set), "junctions.")
 	print()
 
+
 def filter_one(args):
 	# Load portcullis junctions into dataframe
 	if args.verbose:
 		print("Loading input junctions ... ", end="", flush=True)
-	original = DataFrame.from_csv(args.input, sep='\t', header=0)
+	original = pd.read_csv(args.input, sep='\t', header=0, index_col=0)
 	if args.verbose:
 		print("done.")
 
@@ -360,13 +371,17 @@ def filter_one(args):
 def main():
 	parser = argparse.ArgumentParser("Script to automate CSV filtering based on a JSON configuration.")
 	parser.add_argument("--json", help="Rules for filtering")
-	parser.add_argument("--pos_json", nargs="*", help="File containing rules for positive set filtering.  Multiple positive rule sets allowed.  Intersection of all files taken as positive set.")
-	parser.add_argument("--neg_json", nargs="*", help="File containing rules for negative set filtering.  Multiple negative rule sets allowed.  Union of all files taken as negative set")
-	parser.add_argument("--genuine", help="A simple line separated list file indicating whether each junction in the input file is genuine or not 0 means not genuine, 1 means genuine.  This is used to evaulate the performance of the rule filtering.")
+	parser.add_argument("--pos_json", nargs="*",
+						help="File containing rules for positive set filtering.  Multiple positive rule sets allowed.  Intersection of all files taken as positive set.")
+	parser.add_argument("--neg_json", nargs="*",
+						help="File containing rules for negative set filtering.  Multiple negative rule sets allowed.  Union of all files taken as negative set")
+	parser.add_argument("--genuine",
+						help="A simple line separated list file indicating whether each junction in the input file is genuine or not 0 means not genuine, 1 means genuine.  This is used to evaulate the performance of the rule filtering.")
 	parser.add_argument("--prefix", default="portcullis_filtered",
 						help="The prefix to apply to all portcullis junction output files.")
 	parser.add_argument("--save_layers", action='store_true', help="Whether to output the junctions at each layer")
-	parser.add_argument("--save_failed", action='store_true', help="Whether to output the junctions not passing the filter")
+	parser.add_argument("--save_failed", action='store_true',
+						help="Whether to output the junctions not passing the filter")
 	parser.add_argument("--verbose", "-v", action='store_true',
 						help="Output additional information")
 
@@ -376,7 +391,6 @@ def main():
 
 	if args.json and (args.pos_json or args.neg_json):
 		raise ValueError("Cannot use --json with --pos_json or --neg_json options ")
-
 
 	if args.json:
 		filter_one(args)
@@ -388,5 +402,4 @@ def main():
 		raise ValueError("Invalid configuration")
 
 
-
-if __name__=='__main__': main()
+if __name__ == '__main__': main()
