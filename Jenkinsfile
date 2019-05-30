@@ -73,7 +73,7 @@ podTemplate(
             image.push()
             image.push("latest")
             if(env.BRANCH_NAME == 'master') {
-              sh "docker push harbor.sdlmapleson.net/portcullis/portcullis:stable"
+              image.push("stable")
             }
           }
         }
