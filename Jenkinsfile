@@ -72,7 +72,7 @@ podTemplate(
             if(env.BRANCH_NAME == 'master') {
               image.push("stable")
               // Dockerhub
-              withCredentials([usernamePassword(credentialsId: 'dockerhub', username: 'DOCKERHUB_USER', password: 'DOCKERHUB_PASS')]) {
+              withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
                 sh "docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASS"
                 sh "docker tag harbor.sdlmapleson.net/portcullis/portcullis:${SEMVER} maplesond/portcullis:${SEMVER}" 
                 sh "docker tag harbor.sdlmapleson.net/portcullis/portcullis:${SEMVER} maplesond/portcullis:latest" 
