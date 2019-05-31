@@ -51,9 +51,6 @@ podTemplate(
       container('cppbuild') {
         sh "make install"        
         sh "make dist"
-        if(env.BRANCH_NAME == 'master') {
-          sh "echo 'TODO send release to github'"
-        }        
       }
     }
     if(env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop') {
@@ -74,6 +71,16 @@ podTemplate(
             image.push("latest")
             if(env.BRANCH_NAME == 'master') {
               image.push("stable")
+              // Dockerhub
+              withCredentials([usernamePassword(credentialsId: 'dockerhub', username: 'DOCKERHUB_USER', password: 'DOCKERHUB_PASS')]) {
+                sh "docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASS"
+                sh "docker tag harbor.sdlmapleson.net/portcullis/portcullis:${SEMVER} maplesond/portcullis:${SEMVER}" 
+                sh "docker tag harbor.sdlmapleson.net/portcullis/portcullis:${SEMVER} maplesond/portcullis:latest" 
+                sh "docker tag harbor.sdlmapleson.net/portcullis/portcullis:${SEMVER} maplesond/portcullis:stable" 
+                sh "docker push maplesond/portcullis:${SEMVER}"
+                sh "docker push maplesond/portcullis:latest"
+                sh "docker push maplesond/portcullis:stable"
+              }
             }
           }
         }
@@ -83,17 +90,16 @@ podTemplate(
       stage('Github Release') {
         container('githubrelease') {
           withCredentials([string(credentialsId: 'github-maplesond-portcullis', variable: 'GITHUB_TOKEN')]) {
-            sshagent(credentials: ['gitea']) {
-              GITHUB_USER = "maplesond"
-              GITHUB_REPO = "portcullis"
-              def versionFile = readFile "version"
-              SEMVER = versionFile.split('\n')[0]
-              sh "git remote add github-maplesond https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/maplesond/portcullis.git && git push github-maplesond master"
-              sh """DESCRIPTION=`git log -1 | tail -n +4` && echo "\$DESCRIPTION" > description"""
-              def DESCRIPTION = readFile "description"
-              sh "github-release release -u ${GITHUB_USER} -s ${GITHUB_TOKEN} --tag ${SEMVER} --repo ${GITHUB_REPO} --description '${DESCRIPTION}'"
-              sh "github-release upload -u ${GITHUB_USER} -s ${GITHUB_TOKEN} --tag ${SEMVER} --repo ${GITHUB_REPO} --name ${GITHUB_REPO}-${SEMVER}.tar.gz --file ${GITHUB_REPO}-${SEMVER}.tar.gz --label ${GITHUB_REPO}-${SEMVER}.tar.gz"
-            }
+            GITHUB_USER = "maplesond"
+            GITHUB_REPO = "portcullis"
+            def versionFile = readFile "version"
+            SEMVER = versionFile.split('\n')[0]
+            sh "git remote add github-maplesond https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/maplesond/portcullis.git && git push github-maplesond master"
+            sh """DESCRIPTION=`git log -1 | tail -n +4` && echo "\$DESCRIPTION" > description"""
+            def DESCRIPTION = readFile "description"
+            sh "ls"
+            sh "github-release release -u ${GITHUB_USER} -s ${GITHUB_TOKEN} --tag ${SEMVER} --repo ${GITHUB_REPO} --description '${DESCRIPTION}'"
+            sh "github-release upload -u ${GITHUB_USER} -s ${GITHUB_TOKEN} --tag ${SEMVER} --repo ${GITHUB_REPO} --name ${GITHUB_REPO}-${SEMVER}.tar.gz --file ${GITHUB_REPO}-${SEMVER}.tar.gz --label ${GITHUB_REPO}-${SEMVER}.tar.gz"
           }
         }
       }
