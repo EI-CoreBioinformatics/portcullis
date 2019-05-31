@@ -88,11 +88,11 @@ podTemplate(
               GITHUB_REPO = "portcullis"
               def versionFile = readFile "version"
               SEMVER = versionFile.split('\n')[0]
-              sh "git remote add github-maplesond https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/maplesond/portcullis.git && git push github-maplesond master && git push github-maplesond master --tags"
-              sh "git log -1 | tail -n +4 > description"
+              sh "git remote add github-maplesond https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/maplesond/portcullis.git && git push github-maplesond master"
+              sh """DESCRIPTION=`git log -1 | tail -n +4` && echo "\$DESCRIPTION" > description"""
               def DESCRIPTION = readFile "description"
-              sh "github-release release -u ${GITHUB_USER} -s ${GITHUB_TOKEN} --tag ${SEMVER} --repo ${GITHUB_REPO}"
-              sh "github-release upload -u ${GITHUB_USER} -s ${GITHUB_TOKEN} --tag ${SEMVER} --repo ${GITHUB_REPO} --name ${GITHUB_REPO}-${SEMVER}.tar.gz --file ${GITHUB_REPO}-${SEMVER}.tar.gz --label 'source code distributable' --description ${DESCRIPTION}"
+              sh "github-release release -u ${GITHUB_USER} -s ${GITHUB_TOKEN} --tag ${SEMVER} --repo ${GITHUB_REPO} --description '${DESCRIPTION}'"
+              sh "github-release upload -u ${GITHUB_USER} -s ${GITHUB_TOKEN} --tag ${SEMVER} --repo ${GITHUB_REPO} --name ${GITHUB_REPO}-${SEMVER}.tar.gz --file ${GITHUB_REPO}-${SEMVER}.tar.gz --label ${GITHUB_REPO}-${SEMVER}.tar.gz"
             }
           }
         }
