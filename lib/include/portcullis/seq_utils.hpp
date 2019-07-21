@@ -18,7 +18,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
 using std::string;
+using std::vector;
 
 #include <boost/algorithm/string.hpp>
 #include <boost/exception/all.hpp>
