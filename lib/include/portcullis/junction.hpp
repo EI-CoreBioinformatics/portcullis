@@ -148,8 +148,8 @@ struct AlignmentInfo {
 	uint32_t maxMatch; // Distance to first mismatch (maximum of either upstream or downstream)
 	uint32_t nbMismatches; // Total number of mismatches in this junction window
 	uint32_t mmes; // Minimal Match on Either Side of exon junction
-    vector<bool> upstreamMismatchPositions;
-    vector<bool> downstreamMismatchPositions;
+        vector<bool> upstreamMismatchPositions;
+        vector<bool> downstreamMismatchPositions;
 
 	AlignmentInfo(BamAlignmentPtr _ba) {
 		// Copy alignment
@@ -166,22 +166,22 @@ struct AlignmentInfo {
 		maxMatch = 0;
 		nbMismatches = 0;
 		mmes = 0;
-        upstreamMismatchPositions = vector<bool> (0, false);
-        downstreamMismatchPositions = vector<bool> (0, false);
+                upstreamMismatchPositions = vector<bool> (0, false);
+                downstreamMismatchPositions = vector<bool> (0, false);
 	}
 
 	~AlignmentInfo() {
 		ba.reset();
-        upstreamMismatchPositions.clear();
-        downstreamMismatchPositions.clear();
+		upstreamMismatchPositions.clear();
+		downstreamMismatchPositions.clear();
 	}
 
 	void calcMatchStats(const Intron& i, const uint32_t leftStart, const uint32_t rightEnd, const string& ancLeft, const string& ancRight);
 
 	uint32_t getNbMatchesFromStart(const string& query, const string& anchor);
 	uint32_t getNbMatchesFromEnd(const string& query, const string& anchor);
-    vector<bool> getMismatchPositionFromStart(const string& query, const string& anchor);
-    vector<bool> getMismatchPositionFromEnd(const string& query, const string& anchor);
+	vector<bool> getMismatchPositionFromStart(const string& query, const string& anchor);
+	vector<bool> getMismatchPositionFromEnd(const string& query, const string& anchor);
 };
 
 typedef shared_ptr<AlignmentInfo> AlignmentInfoPtr;
@@ -249,7 +249,7 @@ private:
 	bool suspicious;
 	bool pfp;
 	vector<uint32_t> junctionAnchorDepth;
-    vector<double> junctionAnchorClarity;
+	vector<double> junctionAnchorClarity;
 
 	// **** Predictions ****
 
@@ -829,10 +829,9 @@ public:
 		return junctionAnchorDepth[index];
 	}
     
-    double getJunctionAnchorClarity(size_t index) const {
-        return junctionAnchorClarity[index];
-    }
-
+	double getJunctionAnchorClarity(size_t index) const {
+		return junctionAnchorClarity[index];
+	}
 	/**
 	 * This calls the relevant getter for the given name, assuming the name represents a property with
 	 * a numeric value that can be converted to a double.
@@ -1025,7 +1024,7 @@ public:
 		junctionAnchorDepth[index] = val;
 	}
 
-    void setJunctionAnchorClarity(size_t index, double val) {
+	void setJunctionAnchorClarity(size_t index, double val) {
 		junctionAnchorClarity[index] = val;
 	}
 
@@ -1312,9 +1311,9 @@ public:
 		for (size_t i = 0; i < JAD_NAMES.size(); i++) {
 			strm << "\t" << j.junctionAnchorDepth[i];
 		}
-        for (size_t i = 0; i < AJAD_NAMES.size(); i++) {
-			strm << "\t" << j.junctionAnchorClarity[i];
-		}
+		//for (size_t i = 0; i < AJAD_NAMES.size(); i++) {
+		//	strm << "\t" << j.junctionAnchorClarity[i];
+		//}
 		return strm;
 	}
 
@@ -1331,7 +1330,7 @@ public:
 
 	static const vector<string> METRIC_NAMES;
 	static const vector<string> JAD_NAMES;
-    static const vector<string> AJAD_NAMES;
+	static const vector<string> AJAD_NAMES;
 	static const vector<string> STRAND_NAMES;
 
 	/**

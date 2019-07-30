@@ -98,20 +98,18 @@ public:
 	/**
 	 * @abstract    Fetch the sequence in a region.
 	 * @param  reg  Region in the format "chr2:20,000-30,000"
-	 * @param  len  Length of the region returned
 	 * @return      The sequence as a string; empty string if no seq found
 	 */
-	string fetchBases(const char* reg, int* len) const;
+	string fetchBases(const char* reg) const;
 
 	/**
 	 * @abstract    Fetch the sequence in a region.
 	 * @param  name Region name
 	 * @param  start    Start location on region (zero-based, inclusive)
 	 * @param  end  End position (zero-based, exclusive)
-	 * @param  len  Length of the region returned
 	 * @return      The sequence as a string; empty string if no seq found
 	 */
-	string fetchBases(const char* name, int start, int end, int* len) const;
+	string fetchBases(const char* name, int start, int end) const;
 
 	/**
 	 * Get the number of sequences / contigs / scaffolds in the genome

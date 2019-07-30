@@ -752,8 +752,7 @@ class TabJunction(ExonJunction):
 		chunks.append("\t".join(["ss1", "ss2"]))
 		chunks.append("\t".join(TabJunction.metric_names()))
 		chunks.append("\t".join(TabJunction.jo_names()))
-		chunks.append("\t".join(TabJunction.ajo_names()))
-
+		#chunks.append("\t".join(TabJunction.ajo_names()))
 		return "\t".join(chunks)
         
 	@staticmethod

@@ -14,7 +14,6 @@ portcullis_CXXFLAGS = \
 portcullis_CPPFLAGS = \
 			-I$(top_srcdir)/deps/htslib-1.3 \
 			-I$(top_srcdir)/deps/ranger-0.3.8/include \
-			-I$(top_srcdir)/deps/boost/build/include \
 			-I$(top_srcdir)/lib/include \
 			-DDATADIR=\"$(datadir)\" \
 			-DEXECPREFIX=\"$(exec_prefix)\" \
@@ -25,14 +24,14 @@ portcullis_LDFLAGS = \
 			@AM_LDFLAGS@
 
 portcullis_LDADD = \
-			$(top_builddir)/deps/boost/build/lib/libboost_timer.a \
-			$(top_builddir)/deps/boost/build/lib/libboost_chrono.a \
-			$(top_builddir)/deps/boost/build/lib/libboost_filesystem.a \
-			$(top_builddir)/deps/boost/build/lib/libboost_program_options.a \
-			$(top_builddir)/deps/boost/build/lib/libboost_system.a \
 			$(top_builddir)/deps/htslib-1.3/libphts.la \
 			$(top_builddir)/deps/ranger-0.3.8/libranger.la \
 			$(top_builddir)/lib/libportcullis.la \
+			-lboost_timer \
+			-lboost_chrono \
+			-lboost_filesystem \
+			-lboost_program_options \
+			-lboost_system \
 			@AM_LIBS@
 
 

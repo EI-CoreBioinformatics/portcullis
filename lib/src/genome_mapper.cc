@@ -90,11 +90,11 @@ void portcullis::bam::GenomeMapper::loadFastaIndex() {
 /**
 * @abstract    Fetch the sequence in a region.
 * @param  reg  Region in the format "chr2:20,000-30,000"
-* @param  len  Length of the region
 * @return      The sequence as a string; empty string if no seq found
 */
-string portcullis::bam::GenomeMapper::fetchBases(const char* reg, int* len) const {
-	char* cseq = fai_fetch(fastaIndex, reg, len);
+string portcullis::bam::GenomeMapper::fetchBases(const char* reg) const {
+	int len = 0;
+	char* cseq = fai_fetch(fastaIndex, reg, &len);
 	string strseq = cseq == NULL ? string("") : string(cseq);
 	if (cseq != NULL)
 		free(cseq);
@@ -106,11 +106,11 @@ string portcullis::bam::GenomeMapper::fetchBases(const char* reg, int* len) cons
  * @param  name Region name
  * @param  start    Start location on region (zero-based, inclusive)
  * @param  end  End position (zero-based, inclusive)
- * @param  len  Length of the region
  * @return      The sequence as a string; empty string if no seq found
  */
-string portcullis::bam::GenomeMapper::fetchBases(const char* name, int start, int end, int* len) const {
-	char* cseq = faidx_fetch_seq(fastaIndex, name, start, end, len);
+string portcullis::bam::GenomeMapper::fetchBases(const char* name, int start, int end) const {
+	int len = 0;
+	char* cseq = faidx_fetch_seq(fastaIndex, name, start, end, &len);
 	string strseq = cseq == NULL ? string("") : string(cseq);
 	if (cseq != NULL)
 		free(cseq);

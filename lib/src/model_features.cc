@@ -78,29 +78,28 @@ void portcullis::ml::ModelFeatures::trainCodingPotentialModel(const JunctionList
 	vector<string> exons;
 	vector<string> introns;
 	for (auto & j : in) {
-		int len = 0;
-		string left_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 202, j->getIntron()->start - 2, &len);
+		string left_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 202, j->getIntron()->start - 2);
 		if (j->getConsensusStrand() == Strand::NEGATIVE) {
 			left_exon = SeqUtils::reverseComplement(left_exon);
 		}
 		exons.push_back(left_exon);
-		/*string left_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->start+80, &len);
+		/*string left_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->start+80);
 		if (j->getConsensusStrand() == Strand::NEGATIVE) {
 		    left_intron = SeqUtils::reverseComplement(left_intron);
 		}
 		introns.push_back(left_intron);
 
-		string right_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end-80, j->getIntron()->end, &len);
+		string right_intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end-80, j->getIntron()->end);
 		if (j->getConsensusStrand() == Strand::NEGATIVE) {
 		    right_intron = SeqUtils::reverseComplement(right_intron);
 		}
 		introns.push_back(right_intron);*/
-		string intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->end, &len);
+		string intron = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start, j->getIntron()->end);
 		if (j->getConsensusStrand() == Strand::NEGATIVE) {
 			intron = SeqUtils::reverseComplement(intron);
 		}
 		introns.push_back(intron);
-		string right_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end + 1, j->getIntron()->end + 201, &len);
+		string right_exon = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end + 1, j->getIntron()->end + 201);
 		if (j->getConsensusStrand() == Strand::NEGATIVE) {
 			right_exon = SeqUtils::reverseComplement(right_exon);
 		}
@@ -114,12 +113,11 @@ void portcullis::ml::ModelFeatures::trainSplicingModels(const JunctionList& pass
 	vector<string> donors;
 	vector<string> acceptors;
 	for (auto & j : pass) {
-		int len = 0;
-		string left = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 3, j->getIntron()->start + 20, &len);
+		string left = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 3, j->getIntron()->start + 20);
 		if (j->getConsensusStrand() == Strand::NEGATIVE) {
 			left = SeqUtils::reverseComplement(left);
 		}
-		string right = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end - 20, j->getIntron()->end + 2, &len);
+		string right = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end - 20, j->getIntron()->end + 2);
 		if (j->getConsensusStrand() == Strand::NEGATIVE) {
 			right = SeqUtils::reverseComplement(right);
 		}
@@ -139,12 +137,11 @@ void portcullis::ml::ModelFeatures::trainSplicingModels(const JunctionList& pass
 	donors.clear();
 	acceptors.clear();
 	for (auto & j : fail) {
-		int len = 0;
-		string left = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 3, j->getIntron()->start + 20, &len);
+		string left = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->start - 3, j->getIntron()->start + 20);
 		if (j->getConsensusStrand() == Strand::NEGATIVE) {
 			left = SeqUtils::reverseComplement(left);
 		}
-		string right = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end - 20, j->getIntron()->end + 2, &len);
+		string right = gmap.fetchBases(j->getIntron()->ref.name.c_str(), j->getIntron()->end - 20, j->getIntron()->end + 2);
 		if (j->getConsensusStrand() == Strand::NEGATIVE) {
 			right = SeqUtils::reverseComplement(right);
 		}

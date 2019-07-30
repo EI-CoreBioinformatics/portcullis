@@ -336,7 +336,7 @@ vector<path> portcullis::Prepare::globFiles(vector<path> input) {
 	// Translate glob patterns into real paths
 	int i = 0;
 	for (path g : input) {
-		glob(g.c_str(), i > 0 ? GLOB_TILDE | GLOB_APPEND : GLOB_TILDE, NULL, &globbuf);
+		glob(g.c_str(), i > 0 ? GLOB_APPEND : 0, NULL, &globbuf);
 		i++;
 	}
 	vector<path> transformedBams;
