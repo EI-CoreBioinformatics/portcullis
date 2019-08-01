@@ -94,7 +94,9 @@ podTemplate(
             GITHUB_REPO = "portcullis"
             def versionFile = readFile "version"
             SEMVER = versionFile.split('\n')[0]
+            sh "git tag ${SEMVER}"
             sh "git remote add github-maplesond https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/maplesond/portcullis.git && git push github-maplesond master"
+            sh "git remote add github-ei https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/EI-CoreBioinformatics/portcullis.git && git push github-ei master && git push github-ei master --tags"
             sh """DESCRIPTION=`git log -1 | tail -n +4` && echo "\$DESCRIPTION" > description"""
             def DESCRIPTION = readFile "description"
             sh "ls"
