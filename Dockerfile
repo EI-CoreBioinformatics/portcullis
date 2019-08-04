@@ -15,6 +15,9 @@ RUN make -j4 check
 RUN make install
 RUN rm -rf /portcullis-src
 
+# Set python version to 3 by default
+RUN rm -f /usr/bin/python && ln -s /usr/bin/python3 /usr/bin/python
+
 ENV PATH=$PATH:/portcullis/bin
 ENV PYTHONPATH=$PYTHONPATH:/portcullis/lib/python3.6/site-packages
 WORKDIR /data
