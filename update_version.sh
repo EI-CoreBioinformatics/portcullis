@@ -4,6 +4,7 @@ VERSION=$1
 
 MAJOR="$(cut -d '.' -f 1 <<< "$VERSION")"
 MINOR="$(cut -d '.' -f 2 <<< "$VERSION")"
+PATCH="$(cut -d '.' -f 3 <<< "$VERSION")"
 
 # Configure.ac
 sed -i "s/AC_INIT(\[portcullis\],\[.*\]/AC_INIT(\[portcullis\],\[$VERSION\]/" configure.ac
