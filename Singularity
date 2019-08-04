@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: maplesond/portcullis:test
+From: maplesond/portcullis
 
 %labels
    Maintainer maplesond
