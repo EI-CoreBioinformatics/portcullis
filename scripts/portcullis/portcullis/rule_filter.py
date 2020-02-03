@@ -14,6 +14,9 @@ except:
 	from performance import Performance
 
 
+na_vals = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN', 'N/A', 'NULL', 'NaN', 'n/a', 'nan', 'null']
+
+        
 def replace_op(op):
 	if op == "eq":
 		return "=="
@@ -131,7 +134,7 @@ def calcPerformance(passed, failed, invert=False):
 def create_training_sets(args):
 	# Load portcullis junctions into dataframe
 	print("Loading input junctions ... ", end="", flush=True)
-	original = pd.read_csv(args.input, sep='\t', header=0, index_col=0)
+	original = pd.read_csv(args.input, sep='\t', header=0, index_col=0, na_values=na_vals)
 	fieldnames = [key for key in dict(original.dtypes)]
 	print("done.", len(original), "junctions loaded.")
 
@@ -335,7 +338,7 @@ def filter_one(args):
 	# Load portcullis junctions into dataframe
 	if args.verbose:
 		print("Loading input junctions ... ", end="", flush=True)
-	original = pd.read_csv(args.input, sep='\t', header=0, index_col=0)
+	original = pd.read_csv(args.input, sep='\t', header=0, index_col=0, na_values=na_vals)
 	if args.verbose:
 		print("done.")
 
