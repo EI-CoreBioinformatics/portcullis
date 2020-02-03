@@ -191,7 +191,7 @@ def create_training_sets(args):
 			print(str(len(pos_juncs)) + "\t" + str(nb_not_pos))
 
 		if args.save_layers:
-			pos_juncs.to_csv(args.prefix + ".pos_layer_" + str(i) + ".tab", sep='\t')
+			pos_juncs.to_csv(args.prefix + ".pos_layer_" + str(i) + ".tab", sep='\t', na_rep="NA")
 
 		# Check we have enough junctions left in positive se (100), if not then stop here
 		if len(pos_juncs) <= 100:
@@ -224,7 +224,7 @@ def create_training_sets(args):
 		print("\t".join([str(x) for x in [i + 1, len(pos_juncs), len(original) - len(pos_juncs)]]))
 
 		if args.save_layers:
-			pos_juncs.to_csv(args.prefix + ".pos_layer_intronsize.tab", sep='\t')
+			pos_juncs.to_csv(args.prefix + ".pos_layer_intronsize.tab", sep='\t', na_rep="NA")
 
 	print()
 	print("Positive set contains:", len(pos_juncs), "junctions")
@@ -233,7 +233,7 @@ def create_training_sets(args):
 	if args.genuine:
 		del pos_juncs["genuine"]
 	pos_file = args.prefix + ".pos.junctions.tab"
-	pos_juncs.to_csv(pos_file, sep='\t')
+	pos_juncs.to_csv(pos_file, sep='\t', na_rep="NA")
 	print("done. File saved to:", pos_file)
 
 	not_pos_juncs = original.reset_index().merge(pos_juncs, indicator=True, how='outer').set_index('index')
@@ -285,7 +285,7 @@ def create_training_sets(args):
 			print(str(len(neg_juncs)) + "\t" + str(len(other_juncs)))
 
 		if args.save_layers:
-			neg_juncs.to_csv(args.prefix + ".neg_layer_" + str(i) + ".tab", sep='\t')
+			neg_juncs.to_csv(args.prefix + ".neg_layer_" + str(i) + ".tab", sep='\t', na_rep="NA")
 
 	neg_length_limit = int(L95 * 8)
 	print("Intron size L95 =", L95, "negative set will use junctions with intron size over L95 x 8:", neg_length_limit,
@@ -299,7 +299,7 @@ def create_training_sets(args):
 		print(str(i + 1) + "\t" + str(len(neg_juncs)) + "\t" + str(len(other_juncs)))
 
 	if args.save_layers:
-		neg_juncs.to_csv(args.prefix + ".neg_layer_intronsize.tab", sep='\t')
+		neg_juncs.to_csv(args.prefix + ".neg_layer_intronsize.tab", sep='\t', na_rep="NA")
 
 	print()
 	print("Negative set contains:", len(neg_set), "junctions")
@@ -310,7 +310,7 @@ def create_training_sets(args):
 	print("Saving negative set to disk ... ", end="", flush=True)
 	neg_set.sort_index(inplace=True)
 	neg_file = args.prefix + ".neg.junctions.tab"
-	neg_set.to_csv(neg_file, sep='\t')
+	neg_set.to_csv(neg_file, sep='\t', na_rep="NA")
 	print("done. File saved to:", neg_file)
 
 	if args.save_failed:
@@ -320,7 +320,7 @@ def create_training_sets(args):
 		others = remaining.loc[remaining['_merge'] == 'left_only']
 		del others['_merge']
 		other_file = args.prefix + ".others.tab"
-		others.to_csv(other_file, sep='\t')
+		others.to_csv(other_file, sep='\t', na_rep="NA")
 		print("done.  File saved to:", other_file)
 
 	print()
@@ -355,7 +355,7 @@ def filter_one(args):
 
 	print("After filtering", len(passed), "junctions remain.")
 
-	passed.to_csv(args.prefix + ".passed.junctions.tab", sep='\t')
+	passed.to_csv(args.prefix + ".passed.junctions.tab", sep='\t', na_rep="NA")
 
 	if args.save_failed:
 		if args.verbose:
@@ -363,7 +363,7 @@ def filter_one(args):
 		failed = original.reset_index().merge(passed, indicator=True, how='outer').set_index('index')
 		failed.loc[failed['_merge'] == 'left_only']
 		del failed['_merge']
-		failed.to_csv(args.prefix + ".failed.junctions.tab", sep='\t')
+		failed.to_csv(args.prefix + ".failed.junctions.tab", sep='\t', na_rep="NA")
 		if args.verbose:
 			print("done.")
 
