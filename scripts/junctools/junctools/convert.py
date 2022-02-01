@@ -117,6 +117,8 @@ def convert(args):
 				j = JuncFactory.create_from_enum(in_type, use_strand=not args.ignore_strand).parse_line(line.strip())
 
 				if j:
+					if in_type == JuncFactory.PORTCULLIS and out_type.isBed():
+						j.score = j.getScore()
 
 					if args.dedup:
 						if j.key not in junction_set:
