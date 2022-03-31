@@ -3,7 +3,7 @@ From: maplesond/portcullis:test
 
 %labels
    Maintainer maplesond
-   Version 1.2.3
+   Version 1.2.4
 
 %apprun portcullis
     exec portcullis

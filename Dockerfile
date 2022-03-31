@@ -2,7 +2,7 @@ FROM maplesond/cppbuild:latest
 LABEL maintainer="d.mapleson@gmail.com"
 
 ARG VERSION
-ENV VERSION ${VERSION:-1.2.3}
+ENV VERSION ${VERSION:-1.2.4}
 RUN echo ${VERSION}
 
 COPY . /portcullis-src
